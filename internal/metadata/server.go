@@ -51,7 +51,7 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func startServer() {
+func StartServer() {
 	flag.Parse()
 
 	if *file == "" {
