@@ -124,7 +124,11 @@ func printDB() {
 }
 
 func main() {
-	DB = kv.InitDB()
+	var conf kv.Config = kv.Config{
+		Path: "./data/",
+	}
+
+	DB = kv.InitDB(conf)
 	defer DB.Close()
 
 	printDB()

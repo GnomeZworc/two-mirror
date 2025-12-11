@@ -4,8 +4,8 @@ import (
 	"github.com/dgraph-io/badger/v4"
 )
 
-func InitDB() *badger.DB {
-	opts := badger.DefaultOptions("./data")
+func InitDB(conf Config) *badger.DB {
+	opts := badger.DefaultOptions(conf.Path)
 	opts.Logger = nil
 	opts.ValueLogFileSize = 10 << 20 // 10 Mo par fichier vlog
 	opts.NumMemtables = 1
