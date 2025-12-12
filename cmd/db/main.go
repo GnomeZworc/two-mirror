@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"git.g3e.fr/syonad/two/internal/config"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 	"github.com/dgraph-io/badger/v4"
 )
@@ -12,8 +13,8 @@ import (
 var DB *badger.DB
 
 func CheckInDB(dbName, id string) int {
-	prefix := []byte(dbName + "/bash/")
-	key := []byte(dbName + "/bash/" + id)
+	prefix := []byte(dbName + "/")
+	key := []byte(dbName + "/" + id)
 
 	// vérifier si DB contient au moins une entrée avec ce préfixe
 	hasPrefix := false
@@ -47,8 +48,8 @@ func CheckInDB(dbName, id string) int {
 
 func AddInDB(dbName string, line string) error {
 	// ID = partie avant le premier ';'
-	id := strings.Split(line, ";")[0]
-	key := []byte(dbName + "/bash/" + id)
+	id := strings.Split(line, ";")[0] + "/bash"
+	key := []byte(dbName + "/" + id)
 
 	return DB.Update(func(txn *badger.Txn) error {
 		return txn.Set(key, []byte(line))
@@ -56,7 +57,7 @@ func AddInDB(dbName string, line string) error {
 }
 
 func DeleteInDB(dbName, id string) error {
-	key := []byte(dbName + "/bash/" + id)
+	key := []byte(dbName + "/" + id + "/bash")
 
 	return DB.Update(func(txn *badger.Txn) error {
 		return txn.Delete(key)
@@ -64,7 +65,7 @@ func DeleteInDB(dbName, id string) error {
 }
 
 func CountInDB(dbName, id string) int {
-	prefix := []byte(dbName + "/bash/" + id)
+	prefix := []byte(dbName + "/" + id + "/bash")
 	count := 0
 
 	DB.View(func(txn *badger.Txn) error {
@@ -81,7 +82,7 @@ func CountInDB(dbName, id string) int {
 }
 
 func GetFromDB(dbName, id string) (string, error) {
-	key := []byte(dbName + "/bash/" + id)
+	key := []byte(dbName + "/" + id + "/bash")
 
 	var result string
 
@@ -124,11 +125,15 @@ func printDB() {
 }
 
 func main() {
-	var conf kv.Config = kv.Config{
-		Path: "./data/",
+	configuration, err := config.LoadConfig("./two.yaml")
+	if err != nil {
+		fmt.Println(err)
+		return
 	}
 
-	DB = kv.InitDB(conf)
+	DB = kv.InitDB(kv.Config{
+		Path: configuration.Database.Path,
+	})
 	defer DB.Close()
 
 	printDB()
