@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"git.g3e.fr/syonad/two/internal/config"
+	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 	"github.com/dgraph-io/badger/v4"
 )
@@ -125,18 +125,16 @@ func printDB() {
 }
 
 func main() {
-	configuration, err := config.LoadConfig("./two.yaml")
+	conf, err := configuration.LoadConfig("./two.yaml")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
 	DB = kv.InitDB(kv.Config{
-		Path: configuration.Database.Path,
+		Path: conf.Database.Path,
 	})
 	defer DB.Close()
-
-	printDB()
 
 	if len(os.Args) < 2 {
 		fmt.Println("Usage: db <cmd> [args...]")
@@ -186,6 +184,9 @@ func main() {
 		}
 		line, _ := GetFromDB(os.Args[2], os.Args[3])
 		fmt.Println(line)
+	case "print":
+		printDB()
+		os.Exit(1)
 	default:
 		fmt.Println("Unknown command:", cmd)
 		os.Exit(1)
