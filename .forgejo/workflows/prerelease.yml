@@ -3,13 +3,7 @@ name: Pre Release Workflow
 on:
   push:
     tags:
-      - '*'
-    branches:
-      - main
-  pull_request:
-    types: [closed]
-    branches:
-      - main
+      - '*rc*'
 
 jobs:
   set-release-target:
