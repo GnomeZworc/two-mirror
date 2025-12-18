@@ -15,7 +15,7 @@ func LoadConfig(path string) (*Config, error) {
 	v.SetConfigFile(path)
 	v.SetConfigType("yaml")
 
-	v.SetDefault("database.path", "./data/")
+	v.SetDefault("database.path", "/var/lib/two/data/")
 
 	if err := v.ReadInConfig(); err != nil {
 		return nil, err

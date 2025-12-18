@@ -125,7 +125,7 @@ func printDB() {
 }
 
 func main() {
-	conf, err := configuration.LoadConfig("./two.yaml")
+	conf, err := configuration.LoadConfig("/etc/two/agent.yml")
 	if err != nil {
 		fmt.Println(err)
 		return
