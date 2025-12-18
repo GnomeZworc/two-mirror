@@ -11,6 +11,21 @@ esac
 
 SCRIPT_PATH="scripts/deploy.sh"
 
+exec_with_dry_run () {
+  if [[ ${1} -eq ${FLAGS_TRUE} ]]; then
+    echo "# ${2}"
+  else
+    eval "${2}" 2> /tmp/error || \
+    {
+      echo -e "failed with following error";
+      output=$(cat /tmp/error | sed -e "s/^/ error -> /g");
+      echo -e "${output}";
+      return 1;
+    }
+  fi
+  return 0
+}
+
 check_latest_script () {
     REMOTE_URL="${1}"
     LOCAL_PATH="${2}"
@@ -18,16 +33,15 @@ check_latest_script () {
     REMOTE=$(curl --silent "${REMOTE_URL}" | sha256sum)
     LOCAL=$(cat ${LOCAL_PATH} | sha256sum)
 
-    [[ "${REMOTE}" == "${LOCAL}" ]] \
-        && echo "both are the same" \
-        || echo "not the same"
+    [[ "${REMOTE}" == "${LOCAL}" ]] || return 1
+    return 0
 }
 
 main () {
-    echo "$@"
     [[ -f ./libs/shflags ]] && . ./libs/shflags || eval "$(curl --silent https://git.g3e.fr/H6N/tools/raw/branch/main/libs/shflags)"
 
     DEFINE_boolean 'dryrun'     false                 'Enable dry-run mode' 'd'
+    DEFINE_boolean 'up_script'  true                  'Upgrade script'      's'
     DEFINE_string  'git_server' 'https://git.g3e.fr/' 'Git Server'          'g'
     DEFINE_string  'repo_path'  'syonad/two/'         'Path of repository'  'r'
     DEFINE_string  'branch'     'main/'               'Branch name'         'b'
@@ -35,7 +49,12 @@ main () {
     FLAGS "$@" || exit $?
     eval set -- "${FLAGS_ARGV}"
 
-    check_latest_script "${FLAGS_git_server}${FLAGS_repo_path}raw/branch/${FLAGS_branch}${SCRIPT_PATH}" "${0}"
+    SCRIPT_URL="${FLAGS_git_server}${FLAGS_repo_path}raw/branch/${FLAGS_branch}${SCRIPT_PATH}"
+    check_latest_script "${SCRIPT_URL}" "${0}" || (
+        [[ ${FLAGS_up_script} -eq ${FLAGS_TRUE} ]] && \
+            exec_with_dry_run "${FLAGS_dryrun}" "curl --silent \"${SCRIPT_URL}\" -o \"${0}\""
+        exit 1
+    )
 }
 
 [[ "${BASH_SOURCE[0]}" == "${0}" ]] && (main "$@" || exit 1)
