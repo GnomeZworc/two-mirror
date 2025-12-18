@@ -45,7 +45,7 @@ download_binaries () {
 
     #'.[0].assets.[].browser_download_url'
     [[ "${TAG}" == "" ]] && TAG=$(curl --silent "${GIT_SERVER}api/v1/repos/${REPO_PATH}releases/?limit=1" | jq -r '.[0].tag_name')
-    echo "${TAG}"
+    echo "Deploy ${TAG} binaries"
 
     BIN_PATH="/opt/two/${TAG}/bin/"
     LN_PATH="/opt/two/bin/"
