@@ -59,6 +59,7 @@ download_binaries () {
         BINARY_SHORT_NAME=$(echo "${BINARY_NAME}" | cut -d_ -f 1)
         BINARY_URL=$(echo "${tmp}" | jq -r '.browser_download_url')
         exec_with_dry_run "${DRY_RUN}" "curl --silent '${BINARY_URL}' -o '${BIN_PATH}${BINARY_NAME}'"
+        exec_with_dry_run "${DRY_RUN}" "chmod +x '${BIN_PATH}${BINARY_NAME}'"
         exec_with_dry_run "${DRY_RUN}" "rm -f '${LN_PATH}${BINARY_SHORT_NAME}'"
         exec_with_dry_run "${DRY_RUN}" "ln -s '${BIN_PATH}${BINARY_NAME}' '${LN_PATH}${BINARY_SHORT_NAME}'"
     done
