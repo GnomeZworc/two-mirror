@@ -1,0 +1,56 @@
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+
+jobs:
+  release:
+    runs-on: docker
+    env:
+      TOKEN: ${{ secrets.RELEASE }}
+      TAG: ${{ inputs.tag }}
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: dist/
+      - name: Publier tous les binaires
+        run: ls -lR dist/
+      - name: Install jq
+        run: |
+          apt-get update
+          apt-get install -y jq
+      - name: Create prerelease
+        run: |
+          curl -X POST \
+            -H "Authorization: token $TOKEN" \
+            -H "Content-Type: application/json" \
+            "https://git.g3e.fr/api/v1/repos/${{ github.repository }}/releases" \
+            -d @- <<EOF
+            {
+              "tag_name": "$TAG",
+              "name": "$TAG",
+              "body": "Prerelease automatique générée par la CI",
+              "draft": false,
+              "prerelease": true
+            }
+          EOF
+      - name: Upload asset
+        run: |
+          RELEASE_ID=$(curl -s \
+            -H "Authorization: token ${TOKEN}" \
+            https://git.g3e.fr/api/v1/repos/${{ github.repository }}/releases/tags/${TAG} \
+            | jq -r .id)
+          echo ${RELEASE_ID}
+          ls dist | while read tmp
+          do
+            FILE=$(ls "./dist/${tmp}")
+            echo ${FILE}
+            curl -X POST \
+              -H "Authorization: token ${TOKEN}" \
+              -H "Content-Type: application/octet-stream" \
+              --data-binary @dist/${tmp}/${FILE} \
+              "https://git.g3e.fr/api/v1/repos/${{ github.repository }}/releases/${RELEASE_ID}/assets?name=${FILE}"
+          done

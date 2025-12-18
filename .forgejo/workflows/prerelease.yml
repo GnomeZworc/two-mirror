@@ -1,0 +1,49 @@
+name: Pre Release Workflow
+
+on:
+  push:
+    tags:
+      - '*rc*'
+
+jobs:
+  set-release-target:
+    runs-on: docker
+    outputs:
+      release_cible: ${{ steps.setvar.outputs.release_cible }}
+    steps:
+      - name: Déterminer la release cible
+        id: setvar
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+            echo "release_cible=$TAG" >> $GITHUB_OUTPUT
+          elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            echo "release_cible=latest" >> $GITHUB_OUTPUT
+          else
+            echo "release_cible=unknown" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Afficher la variable
+        run: echo "Release cible = ${{ steps.setvar.outputs.release_cible }}"
+  build:
+    runs-on: docker
+    needs: [set-release-target]
+    strategy:
+      matrix:
+        goos: [linux]
+        goarch: [amd64]
+        binaries: [db, metadata]
+    uses: ./.forgejo/workflows/build.yml
+    with:
+      tag: ${{ needs.set-release-target.outputs.release_cible }}
+      goos: ${{ matrix.goos }}
+      goarch: ${{ matrix.goarch }}
+      binari: ${{ matrix.binaries }}
+    secrets: inherit
+  prerelease:
+    runs-on: docker
+    needs: [set-release-target, build]
+    uses: ./.forgejo/workflows/release.yml
+    with:
+      tag: ${{ needs.set-release-target.outputs.release_cible }}
+    secrets: inherit

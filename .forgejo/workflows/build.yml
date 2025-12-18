@@ -1,0 +1,43 @@
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+      goos:
+        required: true
+        type: string
+      goarch:
+        required: true
+        type: string
+      binari:
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: docker
+    env:
+      RELEASE_CIBLE: ${{ inputs.tag }}
+      GOOS: ${{ inputs.goos }}
+      GOARCH: ${{ inputs.goarch }}
+      BINARI: ${{ inputs.binari }}
+      CGO_ENABLED: 0
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+      - name: Build du projet
+        run: |
+          echo "Building for ${BINARI}/${GOOS}/${GOARCH} (release: ${RELEASE_CIBLE})"
+          go env GOOS GOARCH
+          mkdir -p dist/
+          go build -o dist/${BINARI}_${GOOS}_${GOARCH} ./cmd/${BINARI}
+          echo "artifact pour ${RELEASE_CIBLE} ${BINARI} ${GOOS} ${GOARCH}" > dist/${BINARI}-${GOOS}-${GOARCH}.txt
+          ls -l ./dist
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.BINARI }}-${{ env.RELEASE_CIBLE }}-${{ env.GOOS }}-${{ env.GOARCH }}
+          path: dist/${{ env.BINARI }}_${{ env.GOOS }}_${{ env.GOARCH }}
