@@ -53,7 +53,7 @@ download_binaries () {
     exec_with_dry_run "${DRY_RUN}" "mkdir -p \"${BIN_PATH}\""
     exec_with_dry_run "${DRY_RUN}" "mkdir -p \"${LN_PATH}\""
 
-    curl --silent "${GIT_SERVER}api/v1/repos/${REPO_PATH}releases/tags/${TAG}" | jq -c '.assets.[]' | while read tmp
+    curl --silent "${GIT_SERVER}api/v1/repos/${REPO_PATH}releases/tags/${TAG}" | jq -c '.assets[]' | while read tmp
     do
         BINARY_NAME=$(echo "${tmp}" | jq -r '.name')
         BINARY_SHORT_NAME=$(echo "${BINARY_NAME}" | cut -d_ -f 1)
