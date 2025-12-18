@@ -45,7 +45,7 @@ download_binaries () {
 
     #'.[0].assets.[].browser_download_url'
     [[ "${TAG}" == "" ]] && TAG=$(curl --silent "${GIT_SERVER}api/v1/repos/${REPO_PATH}releases/?limit=1" | jq -r '.[0].tag_name')
-    echo "${TAG}"
+    echo "Deploy ${TAG} binaries"
 
     BIN_PATH="/opt/two/${TAG}/bin/"
     LN_PATH="/opt/two/bin/"
@@ -53,12 +53,13 @@ download_binaries () {
     exec_with_dry_run "${DRY_RUN}" "mkdir -p \"${BIN_PATH}\""
     exec_with_dry_run "${DRY_RUN}" "mkdir -p \"${LN_PATH}\""
 
-    curl --silent "${GIT_SERVER}api/v1/repos/${REPO_PATH}releases/tags/${TAG}" | jq -c '.assets.[]' | while read tmp
+    curl --silent "${GIT_SERVER}api/v1/repos/${REPO_PATH}releases/tags/${TAG}" | jq -c '.assets[]' | while read tmp
     do
         BINARY_NAME=$(echo "${tmp}" | jq -r '.name')
         BINARY_SHORT_NAME=$(echo "${BINARY_NAME}" | cut -d_ -f 1)
         BINARY_URL=$(echo "${tmp}" | jq -r '.browser_download_url')
         exec_with_dry_run "${DRY_RUN}" "curl --silent '${BINARY_URL}' -o '${BIN_PATH}${BINARY_NAME}'"
+        exec_with_dry_run "${DRY_RUN}" "chmod +x '${BIN_PATH}${BINARY_NAME}'"
         exec_with_dry_run "${DRY_RUN}" "rm -f '${LN_PATH}${BINARY_SHORT_NAME}'"
         exec_with_dry_run "${DRY_RUN}" "ln -s '${BIN_PATH}${BINARY_NAME}' '${LN_PATH}${BINARY_SHORT_NAME}'"
     done
