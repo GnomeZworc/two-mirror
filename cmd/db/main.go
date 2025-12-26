@@ -60,9 +60,7 @@ func AddInDB(dbName string, line string) error {
 func DeleteInDB(dbName, id string) error {
 	key := []byte(dbName + "/" + id + "/bash")
 
-	return DB.Update(func(txn *badger.Txn) error {
-		return txn.Delete(key)
-	})
+	return kv.DeleteInDB(DB, string(key))
 }
 
 func CountInDB(dbName, id string) int {
