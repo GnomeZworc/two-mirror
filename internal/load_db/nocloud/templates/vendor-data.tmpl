@@ -1,0 +1,13 @@
+#cloud-config
+users:
+  - name: syonad
+    lock_passwd: false
+    gecos: alpine Cloud User
+    groups: [adm, wheel]
+    doas:
+      - permit nopass syonad
+    sudo: ["ALL=(ALL) NOPASSWD:ALL"]
+    shell: /bin/ash
+    passwd: "{{ .Password }}"
+    ssh_authorized_keys:
+      - "{{ .SSHKEY }}"
