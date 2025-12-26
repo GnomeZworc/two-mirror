@@ -3,25 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"os"
-	"strings"
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
+	"git.g3e.fr/syonad/two/internal/load_db/nocloud"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
-	"github.com/dgraph-io/badger/v4"
 )
-
-var DB *badger.DB
-
-func AddInDB(dbName string, line string) error {
-	// ID = partie avant le premier ';'
-	id := strings.Split(line, ";")[0] + "/bash"
-	key := []byte(dbName + "/" + id)
-
-	return DB.Update(func(txn *badger.Txn) error {
-		return txn.Set(key, []byte(line))
-	})
-}
 
 func main() {
 	conf_file := flag.String("conf", "/etc/two/agent.yml", "configuration file")
@@ -43,12 +29,21 @@ func main() {
 	}
 	fmt.Print(conf)
 
-	DB = kv.InitDB(kv.Config{
+	db := kv.InitDB(kv.Config{
 		Path: conf.Database.Path,
 	})
-	defer DB.Close()
+	defer db.Close()
 
-	fmt.Printf("conf metadata for %s\n - this key %s\n - this password %s\n", *vm_name, *ssh_key, *password)
-
-	os.Exit(0)
+	if *start {
+		nocloud.LoadNcCloudInDB(nocloud.Config{
+			VpcName:  *vpc,
+			Name:     *vm_name,
+			BindIP:   *bind_ip,
+			BindPort: *bind_port,
+			Password: *password,
+			SSHKEY:   *ssh_key,
+		}, db)
+	} else if *stop {
+		nocloud.UnLoadNoCloudInDB(*vm_name, db)
+	}
 }
