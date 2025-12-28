@@ -9,14 +9,17 @@ import (
 	"net"
 	"net/http"
 	"time"
+
+	"git.g3e.fr/syonad/two/internal/netns"
 )
 
 var data NoCloudData
 
 var (
-	iface = flag.String("interface", "0.0.0.0", "Interface IP à écouter")
-	port  = flag.Int("port", 8080, "Port à utiliser")
-	file  = flag.String("file", "", "Fichier JSON contenant les données NoCloud")
+	iface      = flag.String("interface", "0.0.0.0", "Interface IP à écouter")
+	port       = flag.Int("port", 8080, "Port à utiliser")
+	file       = flag.String("file", "", "Fichier JSON contenant les données NoCloud")
+	netns_name = flag.String("netns", "", "Network namespace à utiliser")
 )
 
 func getIP(r *http.Request) string {
@@ -53,6 +56,12 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 
 func StartServer() {
 	flag.Parse()
+
+	if *netns_name != "" {
+		if err := netns.Enter(*netns_name); err != nil {
+			log.Fatalf("Impossible d'entrer dans le netns: %v", err)
+		}
+	}
 
 	if *file == "" {
 		log.Fatal("Vous devez spécifier un fichier via --file")
