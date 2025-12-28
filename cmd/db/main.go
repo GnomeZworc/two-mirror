@@ -52,9 +52,7 @@ func AddInDB(dbName string, line string) error {
 	id := strings.Split(line, ";")[0] + "/bash"
 	key := []byte(dbName + "/" + id)
 
-	return DB.Update(func(txn *badger.Txn) error {
-		return txn.Set(key, []byte(line))
-	})
+	return kv.AddInDB(DB, string(key), line)
 }
 
 func DeleteInDB(dbName, id string) error {
