@@ -1,0 +1,10 @@
+[Unit]
+Description=metadata in netns %i
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/run-metadata-in-netns.sh %i
+
+[Install]
+WantedBy=multi-user.target
