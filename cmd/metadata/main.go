@@ -2,29 +2,26 @@ package main
 
 import (
 	"flag"
-	"log"
 
 	"git.g3e.fr/syonad/two/internal/metadata"
 )
 
 var (
 	iface      = flag.String("interface", "0.0.0.0", "Interface IP à écouter")
-	port       = flag.Int("port", 8080, "Port à utiliser")
-	file       = flag.String("file", "", "Fichier JSON contenant les données NoCloud")
+	port       = flag.Int("port", 0, "Port à utiliser")
 	netns_name = flag.String("netns", "", "Network namespace à utiliser")
+	conf_file  = flag.String("conf", "/etc/two/agent.yml", "configuration file")
+	vm_name    = flag.String("vm", "", "Name of the vm")
 )
 
 func main() {
 	flag.Parse()
 
-	if *file == "" {
-		log.Fatal("Vous devez spécifier un fichier via --file")
-	}
-
 	metadata.StartServer(metadata.Config{
-		Netns: *netns_name,
-		File:  *file,
-		Iface: *iface,
-		Port:  *port,
+		Netns:    *netns_name,
+		Iface:    *iface,
+		Port:     *port,
+		ConfFile: *conf_file,
+		VmName:   *vm_name,
 	})
 }
