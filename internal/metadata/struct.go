@@ -6,3 +6,10 @@ type NoCloudData struct {
 	NetworkConfig string `json:"network-config"`
 	VendorData    string `json:"vendor-data"`
 }
+
+type Config struct {
+	Netns string
+	File  string
+	Iface string
+	Port  int
+}

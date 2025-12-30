@@ -2,7 +2,6 @@ package metadata
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -14,13 +13,6 @@ import (
 )
 
 var data NoCloudData
-
-var (
-	iface      = flag.String("interface", "0.0.0.0", "Interface IP à écouter")
-	port       = flag.Int("port", 8080, "Port à utiliser")
-	file       = flag.String("file", "", "Fichier JSON contenant les données NoCloud")
-	netns_name = flag.String("netns", "", "Network namespace à utiliser")
-)
 
 func getIP(r *http.Request) string {
 	ip, _, err := net.SplitHostPort(r.RemoteAddr)
@@ -54,20 +46,14 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func StartServer() {
-	flag.Parse()
-
-	if *netns_name != "" {
-		if err := netns.Enter(*netns_name); err != nil {
+func StartServer(config Config) {
+	if config.Netns != "" {
+		if err := netns.Enter(config.Netns); err != nil {
 			log.Fatalf("Impossible d'entrer dans le netns: %v", err)
 		}
 	}
 
-	if *file == "" {
-		log.Fatal("Vous devez spécifier un fichier via --file")
-	}
-
-	raw, err := ioutil.ReadFile(*file)
+	raw, err := ioutil.ReadFile(config.File)
 	if err != nil {
 		log.Fatalf("Erreur de lecture du fichier: %v", err)
 	}
@@ -78,7 +64,7 @@ func StartServer() {
 
 	http.HandleFunc("/", rootHandler)
 
-	address := fmt.Sprintf("%s:%d", *iface, *port)
+	address := fmt.Sprintf("%s:%d", config.Iface, config.Port)
 	log.Printf("Serveur NoCloud démarré sur http://%s/", address)
 	log.Fatal(http.ListenAndServe(address, nil))
 }
