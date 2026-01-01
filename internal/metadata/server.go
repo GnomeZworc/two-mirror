@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/netns"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 )
@@ -27,7 +28,9 @@ func getFromDB(config Config) NoCloudData {
 	var port int
 	var iface string
 
-	db := kv.InitDB(kv.Config{Path: config.ConfFile})
+	conf_db, _ := configuration.LoadConfig(config.ConfFile)
+
+	db := kv.InitDB(kv.Config{Path: conf_db.Database.Path})
 
 	metadata, _ := kv.GetFromDB(db, "metadata/"+config.VmName+"/meta-data")
 	userdata, _ := kv.GetFromDB(db, "metadata/"+config.VmName+"/user-data")
