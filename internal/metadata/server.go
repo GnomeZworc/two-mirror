@@ -31,6 +31,7 @@ func getFromDB(config Config) NoCloudData {
 	conf_db, _ := configuration.LoadConfig(config.ConfFile)
 
 	db := kv.InitDB(kv.Config{Path: conf_db.Database.Path})
+	defer db.Close()
 
 	metadata, _ := kv.GetFromDB(db, "metadata/"+config.VmName+"/meta-data")
 	userdata, _ := kv.GetFromDB(db, "metadata/"+config.VmName+"/user-data")
