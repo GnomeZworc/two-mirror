@@ -31,7 +31,7 @@ func main() {
 
 	db := kv.InitDB(kv.Config{
 		Path: conf.Database.Path,
-	})
+	}, false)
 	defer db.Close()
 
 	if *start {

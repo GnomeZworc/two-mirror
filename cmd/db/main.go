@@ -136,7 +136,7 @@ func main() {
 
 	DB = kv.InitDB(kv.Config{
 		Path: conf.Database.Path,
-	})
+	}, false)
 	defer DB.Close()
 
 	if len(args) < 1 {
