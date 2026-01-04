@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/run-metadata-in-netns.sh %i
+ExecStart=/opt/two/bin/metadata --vm %i
 
 [Install]
 WantedBy=multi-user.target
