@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"strings"
@@ -51,17 +52,13 @@ func AddInDB(dbName string, line string) error {
 	id := strings.Split(line, ";")[0] + "/bash"
 	key := []byte(dbName + "/" + id)
 
-	return DB.Update(func(txn *badger.Txn) error {
-		return txn.Set(key, []byte(line))
-	})
+	return kv.AddInDB(DB, string(key), line)
 }
 
 func DeleteInDB(dbName, id string) error {
 	key := []byte(dbName + "/" + id + "/bash")
 
-	return DB.Update(func(txn *badger.Txn) error {
-		return txn.Delete(key)
-	})
+	return kv.DeleteInDB(DB, string(key))
 }
 
 func CountInDB(dbName, id string) int {
@@ -125,7 +122,13 @@ func printDB() {
 }
 
 func main() {
-	conf, err := configuration.LoadConfig("/etc/two/agent.yml")
+	conf_file := flag.String("conf", "/etc/two/agent.yml", "configuration file")
+
+	flag.Parse()
+
+	args := flag.Args()
+
+	conf, err := configuration.LoadConfig(*conf_file)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -133,56 +136,56 @@ func main() {
 
 	DB = kv.InitDB(kv.Config{
 		Path: conf.Database.Path,
-	})
+	}, false)
 	defer DB.Close()
 
-	if len(os.Args) < 2 {
+	if len(args) < 1 {
 		fmt.Println("Usage: db <cmd> [args...]")
 		return
 	}
 
-	cmd := os.Args[1]
+	cmd := args[0]
 
 	switch cmd {
 	case "check_in_db":
-		if len(os.Args) != 4 {
+		if len(args) != 3 {
 			fmt.Println("Usage: check_in_db <db_name> <id>")
 			os.Exit(1)
 		}
-		ret := CheckInDB(os.Args[2], os.Args[3])
+		ret := CheckInDB(args[1], args[2])
 		os.Exit(ret)
 	case "add_in_db":
-		if len(os.Args) < 4 {
+		if len(args) < 3 {
 			fmt.Println("Usage: add_in_db <db_name> <line...>")
 			os.Exit(1)
 		}
-		line := strings.Join(os.Args[3:], ";")
-		if err := AddInDB(os.Args[2], line); err != nil {
+		line := strings.Join(args[2:], ";")
+		if err := AddInDB(args[1], line); err != nil {
 			fmt.Println("Error:", err)
 			os.Exit(1)
 		}
 	case "delete_in_db":
-		if len(os.Args) != 4 {
+		if len(args) != 3 {
 			fmt.Println("Usage: delete_in_db <db_name> <id>")
 			os.Exit(1)
 		}
-		if err := DeleteInDB(os.Args[2], os.Args[3]); err != nil {
+		if err := DeleteInDB(args[1], args[2]); err != nil {
 			fmt.Println("Error:", err)
 			os.Exit(1)
 		}
 	case "count_in_db":
-		if len(os.Args) != 4 {
+		if len(args) != 3 {
 			fmt.Println("Usage: count_in_db <db_name> <id>")
 			os.Exit(1)
 		}
-		count := CountInDB(os.Args[2], os.Args[3])
+		count := CountInDB(args[1], args[2])
 		fmt.Println(count)
 	case "get_from_db":
-		if len(os.Args) != 4 {
+		if len(args) != 3 {
 			fmt.Println("Usage: get_from_db <db_name> <id>")
 			os.Exit(1)
 		}
-		line, _ := GetFromDB(os.Args[2], os.Args[3])
+		line, _ := GetFromDB(args[1], args[2])
 		fmt.Println(line)
 	case "print":
 		printDB()

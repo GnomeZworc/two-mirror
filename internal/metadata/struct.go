@@ -1,8 +1,20 @@
 package metadata
 
 type NoCloudData struct {
-	MetaData      string `json:"meta-data"`
-	UserData      string `json:"user-data"`
-	NetworkConfig string `json:"network-config"`
-	VendorData    string `json:"vendor-data"`
+	MetaData      string
+	UserData      string
+	NetworkConfig string
+	VendorData    string
+	NetNs         string
+	Iface         string
+	Port          int
+}
+
+type Config struct {
+	Netns    string
+	File     string
+	Iface    string
+	Port     int
+	ConfFile string
+	VmName   string
 }

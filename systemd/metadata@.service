@@ -1,0 +1,10 @@
+[Unit]
+Description=metadata in netns %i
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/opt/two/bin/metadata --vm %i
+
+[Install]
+WantedBy=multi-user.target
