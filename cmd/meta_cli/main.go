@@ -7,6 +7,7 @@ import (
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/load_db/nocloud"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
+	"git.g3e.fr/syonad/two/pkg/systemd"
 )
 
 func main() {
@@ -21,6 +22,8 @@ func main() {
 	stop := flag.Bool("stop", false, "stop metadata server")
 
 	flag.Parse()
+
+	service, _ := systemd.New()
 
 	conf, err := configuration.LoadConfig(*conf_file)
 	if err != nil {
@@ -43,7 +46,9 @@ func main() {
 			Password: *password,
 			SSHKEY:   *ssh_key,
 		}, db)
+		service.Start("metadata@" + *vm_name)
 	} else if *stop {
 		nocloud.UnLoadNoCloudInDB(*vm_name, db)
+		service.Stop("metadata@" + *vm_name)
 	}
 }
