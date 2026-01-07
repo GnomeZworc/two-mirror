@@ -20,6 +20,7 @@ func main() {
 	password := flag.String("pass", "", "password user")
 	start := flag.Bool("start", false, "start metadata server")
 	stop := flag.Bool("stop", false, "stop metadata server")
+	dryrun := flag.Bool("dryrun", false, "launch in dry node")
 
 	flag.Parse()
 
@@ -45,9 +46,13 @@ func main() {
 			Password: *password,
 			SSHKEY:   *ssh_key,
 		}, db)
-		service.Start("metadata@" + *vm_name)
+		if !*dryrun {
+			service.Start("metadata@" + *vm_name)
+		}
 	} else if *stop {
 		nocloud.UnLoadNoCloudInDB(*vm_name, db)
-		service.Stop("metadata@" + *vm_name)
+		if !*dryrun {
+			service.Stop("metadata@" + *vm_name)
+		}
 	}
 }
