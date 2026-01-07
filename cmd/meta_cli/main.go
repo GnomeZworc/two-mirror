@@ -30,7 +30,6 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	fmt.Print(conf)
 
 	db := kv.InitDB(kv.Config{
 		Path: conf.Database.Path,
