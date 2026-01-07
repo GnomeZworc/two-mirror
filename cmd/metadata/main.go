@@ -17,7 +17,7 @@ var (
 func main() {
 	flag.Parse()
 
-	metadata.StartServer(metadata.Config{
+	metadata.StartServer(metadata.ServerConfig{
 		Netns:    *netns_name,
 		Iface:    *iface,
 		Port:     *port,

@@ -10,7 +10,7 @@ type NoCloudData struct {
 	Port          int
 }
 
-type Config struct {
+type ServerConfig struct {
 	Netns    string
 	File     string
 	Iface    string

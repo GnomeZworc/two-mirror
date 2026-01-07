@@ -23,7 +23,7 @@ func getIP(r *http.Request) string {
 	return ip
 }
 
-func getFromDB(config Config) NoCloudData {
+func getFromDB(config ServerConfig) NoCloudData {
 	var netns_name string
 	var port int
 	var iface string
@@ -92,7 +92,7 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func StartServer(config Config) {
+func StartServer(config ServerConfig) {
 	data = getFromDB(config)
 
 	if data.NetNs != "" {
