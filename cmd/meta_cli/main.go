@@ -5,9 +5,8 @@ import (
 	"fmt"
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
-	"git.g3e.fr/syonad/two/internal/load_db/nocloud"
+	"git.g3e.fr/syonad/two/internal/metadata"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
-	"git.g3e.fr/syonad/two/pkg/systemd"
 )
 
 func main() {
@@ -24,8 +23,6 @@ func main() {
 
 	flag.Parse()
 
-	service, _ := systemd.New()
-
 	conf, err := configuration.LoadConfig(*conf_file)
 	if err != nil {
 		fmt.Println(err)
@@ -38,21 +35,15 @@ func main() {
 	defer db.Close()
 
 	if *start {
-		nocloud.LoadNcCloudInDB(nocloud.Config{
+		metadata.StartMetadata(metadata.NoCloudConfig{
 			VpcName:  *vpc,
 			Name:     *vm_name,
 			BindIP:   *bind_ip,
 			BindPort: *bind_port,
 			Password: *password,
 			SSHKEY:   *ssh_key,
-		}, db)
-		if !*dryrun {
-			service.Start("metadata@" + *vm_name)
-		}
+		}, db, *dryrun)
 	} else if *stop {
-		nocloud.UnLoadNoCloudInDB(*vm_name, db)
-		if !*dryrun {
-			service.Stop("metadata@" + *vm_name)
-		}
+		metadata.StopMetadata(*vm_name, db, *dryrun)
 	}
 }

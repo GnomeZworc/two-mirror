@@ -1,4 +1,4 @@
-package nocloud
+package metadata
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 //go:embed templates/*.tmpl
 var templateFS embed.FS
 
-func renderConfig(path string, cfg Config) (string, error) {
+func RenderConfig(path string, cfg NoCloudConfig) (string, error) {
 	tpl, err := template.ParseFS(templateFS, path)
 	if err != nil {
 		return "", err
@@ -26,11 +26,11 @@ func renderConfig(path string, cfg Config) (string, error) {
 	return buf.String(), nil
 }
 
-func LoadNcCloudInDB(config Config, db *badger.DB) {
-	meta_data, _ := renderConfig("templates/meta-data.tmpl", config)
-	user_data, _ := renderConfig("templates/user-data.tmpl", config)
-	network_config, _ := renderConfig("templates/network-config.tmpl", config)
-	vendor_data, _ := renderConfig("templates/vendor-data.tmpl", config)
+func LoadNcCloudInDB(config NoCloudConfig, db *badger.DB) {
+	meta_data, _ := RenderConfig("templates/meta-data.tmpl", config)
+	user_data, _ := RenderConfig("templates/user-data.tmpl", config)
+	network_config, _ := RenderConfig("templates/network-config.tmpl", config)
+	vendor_data, _ := RenderConfig("templates/vendor-data.tmpl", config)
 
 	kv.AddInDB(db, "metadata/"+config.Name+"/meta-data", meta_data)
 	kv.AddInDB(db, "metadata/"+config.Name+"/user-data", user_data)

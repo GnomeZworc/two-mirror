@@ -18,3 +18,12 @@ type ServerConfig struct {
 	ConfFile string
 	VmName   string
 }
+
+type NoCloudConfig struct {
+	VpcName  string
+	BindIP   string
+	BindPort string
+	Name     string
+	Password string
+	SSHKEY   string
+}
