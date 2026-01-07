@@ -1,7 +1,6 @@
 package kv
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/dgraph-io/badger/v4"
@@ -29,7 +28,6 @@ func DeleteInDB(db *badger.DB, key string) error {
 			key := item.Key()
 
 			k := append([]byte{}, key...)
-			fmt.Println(string(k))
 			if err := deleteKey(db, string(k)); err != nil {
 				return err
 			}
