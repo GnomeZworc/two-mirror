@@ -5,9 +5,8 @@ import (
 	"fmt"
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
-	"git.g3e.fr/syonad/two/internal/load_db/nocloud"
+	"git.g3e.fr/syonad/two/internal/metadata"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
-	"git.g3e.fr/syonad/two/pkg/systemd"
 )
 
 func main() {
@@ -20,17 +19,15 @@ func main() {
 	password := flag.String("pass", "", "password user")
 	start := flag.Bool("start", false, "start metadata server")
 	stop := flag.Bool("stop", false, "stop metadata server")
+	dryrun := flag.Bool("dryrun", false, "launch in dry node")
 
 	flag.Parse()
-
-	service, _ := systemd.New()
 
 	conf, err := configuration.LoadConfig(*conf_file)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	fmt.Print(conf)
 
 	db := kv.InitDB(kv.Config{
 		Path: conf.Database.Path,
@@ -38,17 +35,15 @@ func main() {
 	defer db.Close()
 
 	if *start {
-		nocloud.LoadNcCloudInDB(nocloud.Config{
+		metadata.StartMetadata(metadata.NoCloudConfig{
 			VpcName:  *vpc,
 			Name:     *vm_name,
 			BindIP:   *bind_ip,
 			BindPort: *bind_port,
 			Password: *password,
 			SSHKEY:   *ssh_key,
-		}, db)
-		service.Start("metadata@" + *vm_name)
+		}, db, *dryrun)
 	} else if *stop {
-		nocloud.UnLoadNoCloudInDB(*vm_name, db)
-		service.Stop("metadata@" + *vm_name)
+		metadata.StopMetadata(*vm_name, db, *dryrun)
 	}
 }
