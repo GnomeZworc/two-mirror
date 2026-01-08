@@ -32,7 +32,12 @@ jobs:
       matrix:
         goos: [linux]
         goarch: [amd64]
-        binaries: [db, metadata, metacli, agent, netns]
+        binaries:
+          - db
+          - metadata
+          - metacli
+          - agent
+          - netns
     uses: ./.forgejo/workflows/build.yml
     with:
       tag: ${{ needs.set-release-target.outputs.release_cible }}
