@@ -36,3 +36,17 @@ func CreateBridge(name string, mtu int, stp bool) error {
 
 	return setBridgeSTP(name, stp)
 }
+
+func BridgeSetMaster(iface, bridge string) error {
+	link, err := netlink.LinkByName(iface)
+	if err != nil {
+		return err
+	}
+
+	br, err := netlink.LinkByName(bridge)
+	if err != nil {
+		return err
+	}
+
+	return netlink.LinkSetMaster(link, br)
+}
