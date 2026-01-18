@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"git.g3e.fr/syonad/two/internal/netif"
+	"git.g3e.fr/syonad/two/internal/vpc"
 )
 
 var (
@@ -19,8 +19,11 @@ func main() {
 
 	switch *action {
 	case "create":
-		err := netif.CreateVethToNetns("veth"+*name+"ext", "veth"+*name+"int", "/var/run/netns/"+*netns, 9000)
-		if err != nil {
+		if err := vpc.CreateVPC(*name); err != nil {
+			fmt.Println(err)
+		}
+	case "delete":
+		if err := vpc.DeleteVPC(*name); err != nil {
 			fmt.Println(err)
 		}
 	default:
