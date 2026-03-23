@@ -51,6 +51,12 @@ func main() {
 		} else if state == "deleted" {
 			kv.DeleteInDB(DB, "vpc/"+*name)
 		}
+	case "check":
+		if state, err := kv.GetFromDB(DB, "vpc/"+*name+"/state"); err != nil {
+			os.Exit(1)
+		} else if state == "created" {
+			os.Exit(1)
+		}
 	default:
 		fmt.Printf("Available commande:\n - create\n - delete\n - check\n")
 		os.Exit(1)
