@@ -61,4 +61,5 @@ func main() {
 		fmt.Printf("Available commande:\n - create\n - delete\n - check\n")
 		os.Exit(1)
 	}
+	os.Exit(0)
 }
