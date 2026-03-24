@@ -54,7 +54,7 @@ func main() {
 	case "check":
 		if state, err := kv.GetFromDB(DB, "vpc/"+*name+"/state"); err != nil {
 			os.Exit(1)
-		} else if state == "created" {
+		} else if state != "created" {
 			os.Exit(1)
 		}
 	default:
