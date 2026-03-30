@@ -46,6 +46,24 @@ jobs:
       goarch: ${{ matrix.goarch }}
       binari: ${{ matrix.binaries }}
     secrets: inherit
+  upload-scripts:
+    runs-on: docker
+    needs: [set-release-target]
+    strategy:
+      matrix:
+        script:
+          - run-dnsmasq-in-netns.sh
+    steps:
+      - uses: actions/checkout@v3
+      - name: Move asset
+        run: |
+          mkdir -p "dist"
+          cp scripts/${{ matrix.script }} dist/
+      - name: Upload script
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.script }}-${{ needs.set-release-target.outputs.release_cible }}
+          path: dist/${{ matrix.script }}
   prerelease:
     runs-on: docker
     needs: [set-release-target, build]
