@@ -38,6 +38,7 @@ jobs:
           - metacli
           - agent
           - vpc
+          - dhcp
     uses: ./.forgejo/workflows/build.yml
     with:
       tag: ${{ needs.set-release-target.outputs.release_cible }}
