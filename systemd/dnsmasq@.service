@@ -1,0 +1,11 @@
+[Unit]
+Description=dnsmasq in netns %i
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/opt/two/bin/run-dnsmasq-in-netns.sh %i
+ExecStopPost=/bin/rm -f /run/dnsmasq-%i.pid
+
+[Install]
+WantedBy=multi-user.target
