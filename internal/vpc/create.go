@@ -22,7 +22,7 @@ func CreateVPC(db *badger.DB, name string) error {
 		}
 
 		// create veth public for this netns
-		if err := netif.CreateVethToNetns("veth"+name+"ext", "vethpublicint", "/var/run/netns/"+name, 9000); err != nil {
+		if err := netif.CreateVethToNetns("vp-"+name+"-e", "vp-public-i", "/var/run/netns/"+name, 9000); err != nil {
 			return err
 		}
 
@@ -34,24 +34,24 @@ func CreateVPC(db *badger.DB, name string) error {
 		}
 
 		// set veth to ext public bridge
-		if err := netif.BridgeSetMaster("veth"+name+"ext", "br-public"); err != nil {
+		if err := netif.BridgeSetMaster("vp-"+name+"-e", "br-public"); err != nil {
 			return err
 		}
 
 		// set veth to int public bridge
 		if err := netns.Call(name, func() error {
-			return netif.BridgeSetMaster("vethpublicint", "br-public")
+			return netif.BridgeSetMaster("vp-public-i", "br-public")
 		}); err != nil {
 			return err
 		}
 
 		// set set ext veth up
-		if err := netif.LinkSetUp("veth" + name + "ext"); err != nil {
+		if err := netif.LinkSetUp("vp-" + name + "-e"); err != nil {
 			return nil
 		}
 		// set set int veth up
 		if err := netns.Call(name, func() error {
-			return netif.LinkSetUp("vethpublicint")
+			return netif.LinkSetUp("vp-public-i")
 		}); err != nil {
 			return err
 		}
