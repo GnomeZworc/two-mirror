@@ -4,11 +4,15 @@ package netns
 
 import (
 	"os"
+	"runtime"
 
 	"golang.org/x/sys/unix"
 )
 
 func create(name string) error {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
 	base := "/var/run/netns"
 	path := base + "/" + name
 
