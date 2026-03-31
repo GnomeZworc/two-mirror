@@ -2,6 +2,6 @@
 
 package netns
 
-func call(name string, fn func() error) error {
+func call(_ string, fn func() error) error {
 	return fn()
 }
