@@ -47,7 +47,7 @@ func CreateVPC(db *badger.DB, name string) error {
 
 		// set set ext veth up
 		if err := netif.LinkSetUp("vp-" + name + "-e"); err != nil {
-			return nil
+			return err
 		}
 		// set set int veth up
 		if err := netns.Call(name, func() error {
