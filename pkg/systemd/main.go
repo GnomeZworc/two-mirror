@@ -11,6 +11,7 @@ import (
 
 const (
 	defaultTimeout = 5 * time.Second
+	jobTimeout     = 30 * time.Second
 	jobMode        = "replace"
 )
 
@@ -28,10 +29,7 @@ type ServiceStatus struct {
 
 // New crée une connexion D-Bus systemd (scope système)
 func New() (*Manager, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
-	defer cancel()
-
-	conn, err := dbus.NewSystemConnectionContext(ctx)
+	conn, err := dbus.NewSystemConnectionContext(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -57,17 +55,17 @@ func (m *Manager) Stop(service string) error {
 }
 
 func (m *Manager) job(method, service string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
-	defer cancel()
+	callCtx, callCancel := context.WithTimeout(context.Background(), defaultTimeout)
+	defer callCancel()
 
 	ch := make(chan string, 1)
 
 	var err error
 	switch method {
 	case "StartUnit":
-		_, err = m.conn.StartUnitContext(ctx, service, jobMode, ch)
+		_, err = m.conn.StartUnitContext(callCtx, service, jobMode, ch)
 	case "StopUnit":
-		_, err = m.conn.StopUnitContext(ctx, service, jobMode, ch)
+		_, err = m.conn.StopUnitContext(callCtx, service, jobMode, ch)
 	default:
 		return errors.New("unsupported job method")
 	}
@@ -76,9 +74,16 @@ func (m *Manager) job(method, service string) error {
 		return err
 	}
 
-	result := <-ch
-	if result != "done" {
-		return fmt.Errorf("%s %s failed: %s", method, service, result)
+	waitCtx, waitCancel := context.WithTimeout(context.Background(), jobTimeout)
+	defer waitCancel()
+
+	select {
+	case result := <-ch:
+		if result != "done" {
+			return fmt.Errorf("%s %s failed: %s", method, service, result)
+		}
+	case <-waitCtx.Done():
+		return fmt.Errorf("%s %s timed out after %s", method, service, jobTimeout)
 	}
 
 	return nil
