@@ -6,7 +6,8 @@ import (
 
 func InitDB(conf Config, readonly bool) *badger.DB {
 	opts := badger.DefaultOptions(conf.Path).
-		WithReadOnly(readonly)
+		WithReadOnly(readonly).
+		WithBypassLockGuard(readonly)
 	opts.Logger = nil
 	opts.ValueLogFileSize = 10 << 20 // 10 Mo par fichier vlog
 	opts.NumMemtables = 1
