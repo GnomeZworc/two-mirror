@@ -1,17 +1,38 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"os"
-)
+	"log"
 
-var (
-	bin_name = os.Args[0]
+	agentapi "git.g3e.fr/syonad/two/internal/api/agent"
+	agentmetrics "git.g3e.fr/syonad/two/internal/prometheus/agent"
+	configuration "git.g3e.fr/syonad/two/internal/config/agent"
+	promserver "git.g3e.fr/syonad/two/pkg/prometheus"
+	"git.g3e.fr/syonad/two/pkg/db/kv"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 func main() {
+	confFile := flag.String("config", "/etc/two/agent.yml", "config file path")
+	flag.Parse()
 
-	fmt.Printf("%s: Start process\n", bin_name)
+	cfg, err := configuration.LoadConfig(*confFile)
+	if err != nil {
+		log.Fatalf("failed to load config: %v", err)
+	}
 
-	os.Exit(0)
+	db := kv.InitDB(kv.Config{Path: cfg.Database.Path}, true)
+	defer db.Close()
+
+	apiAddr := fmt.Sprintf("%s:%d", cfg.Api.Address, cfg.Api.Port)
+	promAddr := fmt.Sprintf("%s:%d", cfg.Prometheus.Address, cfg.Prometheus.Port)
+
+	registry := prometheus.NewRegistry()
+	registry.MustRegister(agentmetrics.NewAgentCollector(db))
+
+	go agentapi.Start(apiAddr)
+	go promserver.Start(promAddr, registry)
+
+	select {}
 }
