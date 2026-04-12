@@ -8,6 +8,14 @@ type Config struct {
 	Database struct {
 		Path string `mapstructure:"path"`
 	} `mapstructure:"database"`
+	Api struct {
+		Address string `mapstructure:"address"`
+		Port    int    `mapstructure:"port"`
+	} `mapstructure:"api"`
+	Prometheus struct {
+		Address string `mapstructure:"address"`
+		Port    int    `mapstructure:"port"`
+	} `mapstructure:"prometheus"`
 }
 
 func LoadConfig(path string) (*Config, error) {
@@ -16,6 +24,10 @@ func LoadConfig(path string) (*Config, error) {
 	v.SetConfigType("yaml")
 
 	v.SetDefault("database.path", "/var/lib/two/data/")
+	v.SetDefault("api.address", "")
+	v.SetDefault("api.port", 8080)
+	v.SetDefault("prometheus.address", "")
+	v.SetDefault("prometheus.port", 9090)
 
 	v.ReadInConfig()
 
