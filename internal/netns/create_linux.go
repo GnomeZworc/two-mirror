@@ -3,17 +3,28 @@
 package netns
 
 import (
+	"fmt"
 	"os"
+	"runtime"
 
 	"golang.org/x/sys/unix"
 )
 
 func create(name string) error {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
 	base := "/var/run/netns"
 	path := base + "/" + name
 
 	if err := os.MkdirAll(base, 0755); err != nil {
 		return err
+	}
+
+	// si le fichier existe déjà, le démonter d'abord
+	if _, err := os.Stat(path); err == nil {
+		unix.Unmount(path, unix.MNT_DETACH)
+		os.Remove(path)
 	}
 
 	// fichier cible
@@ -35,9 +46,12 @@ func create(name string) error {
 		return err
 	}
 
-	// bind mount du netns courant vers /var/run/netns/<name>
+	// bind mount du netns du thread courant vers /var/run/netns/<name>
+	// /proc/self/ns/net pointe vers le ns du processus (thread principal),
+	// pas du thread courant — il faut utiliser le tid explicitement
+	threadNsPath := fmt.Sprintf("/proc/self/task/%d/ns/net", unix.Gettid())
 	if err := unix.Mount(
-		"/proc/self/ns/net",
+		threadNsPath,
 		path,
 		"",
 		unix.MS_BIND,

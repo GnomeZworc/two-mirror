@@ -35,15 +35,19 @@ func main() {
 	defer db.Close()
 
 	if *start {
-		metadata.StartMetadata(metadata.NoCloudConfig{
+		if err := metadata.StartMetadata(metadata.NoCloudConfig{
 			VpcName:  *vpc,
 			Name:     *vm_name,
 			BindIP:   *bind_ip,
 			BindPort: *bind_port,
 			Password: *password,
 			SSHKEY:   *ssh_key,
-		}, db, *dryrun)
+		}, db, *dryrun); err != nil {
+			fmt.Println(err)
+		}
 	} else if *stop {
-		metadata.StopMetadata(*vm_name, db, *dryrun)
+		if err := metadata.StopMetadata(*vm_name, db, *dryrun); err != nil {
+			fmt.Println(err)
+		}
 	}
 }

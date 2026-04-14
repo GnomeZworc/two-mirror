@@ -12,7 +12,7 @@ func DeleteVPC(db *badger.DB, name string) error {
 	if state, err := kv.GetFromDB(db, "vpc/"+name+"/state"); err != nil {
 		return err
 	} else if state == "deleting" {
-		if err := netif.DeleteLink(name + "-ext"); err != nil {
+		if err := netif.DeleteLink("vp-" + name + "-e"); err != nil {
 			return err
 		}
 
