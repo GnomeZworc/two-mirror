@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func SubnetByNameHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) SubnetByNameHandler(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimPrefix(r.URL.Path, "/subnets/")
 	if name == "" {
 		http.NotFound(w, r)
@@ -18,8 +18,13 @@ func SubnetByNameHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(map[string]string{"name": name})
 	case http.MethodDelete:
+		s.queue.Submit(func() {
+			deleteSubnet(name)
+		})
 		w.WriteHeader(http.StatusAccepted)
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
 }
+
+func deleteSubnet(name string) {}

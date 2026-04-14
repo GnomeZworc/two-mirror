@@ -6,10 +6,11 @@ import (
 	"log"
 
 	agentapi "git.g3e.fr/syonad/two/internal/api/agent"
-	agentmetrics "git.g3e.fr/syonad/two/internal/prometheus/agent"
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
-	promserver "git.g3e.fr/syonad/two/pkg/prometheus"
+	agentmetrics "git.g3e.fr/syonad/two/internal/prometheus/agent"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
+	promserver "git.g3e.fr/syonad/two/pkg/prometheus"
+	"git.g3e.fr/syonad/two/pkg/worker"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -25,13 +26,16 @@ func main() {
 	db := kv.InitDB(kv.Config{Path: cfg.Database.Path}, true)
 	defer db.Close()
 
-	apiAddr := fmt.Sprintf("%s:%d", cfg.Api.Address, cfg.Api.Port)
-	promAddr := fmt.Sprintf("%s:%d", cfg.Prometheus.Address, cfg.Prometheus.Port)
+	q := worker.New(cfg.Worker.BufferSize)
+	q.Start(cfg.Worker.Count)
 
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(agentmetrics.NewAgentCollector(db))
 
-	go agentapi.Start(apiAddr)
+	apiAddr := fmt.Sprintf("%s:%d", cfg.Api.Address, cfg.Api.Port)
+	promAddr := fmt.Sprintf("%s:%d", cfg.Prometheus.Address, cfg.Prometheus.Port)
+
+	go agentapi.New(q).Start(apiAddr)
 	go promserver.Start(promAddr, registry)
 
 	select {}

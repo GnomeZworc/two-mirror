@@ -5,15 +5,20 @@ import (
 	"net/http"
 )
 
-func VpcsHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) VpcsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	switch r.Method {
 	case http.MethodGet:
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode([]interface{}{})
 	case http.MethodPost:
+		s.queue.Submit(func() {
+			createVpc()
+		})
 		w.WriteHeader(http.StatusAccepted)
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
 }
+
+func createVpc() {}

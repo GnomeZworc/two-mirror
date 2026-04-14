@@ -16,6 +16,10 @@ type Config struct {
 		Address string `mapstructure:"address"`
 		Port    int    `mapstructure:"port"`
 	} `mapstructure:"prometheus"`
+	Worker struct {
+		Count      int `mapstructure:"count"`
+		BufferSize int `mapstructure:"buffer_size"`
+	} `mapstructure:"worker"`
 }
 
 func LoadConfig(path string) (*Config, error) {
@@ -28,6 +32,8 @@ func LoadConfig(path string) (*Config, error) {
 	v.SetDefault("api.port", 8080)
 	v.SetDefault("prometheus.address", "")
 	v.SetDefault("prometheus.port", 9090)
+	v.SetDefault("worker.count", 4)
+	v.SetDefault("worker.buffer_size", 100)
 
 	v.ReadInConfig()
 
