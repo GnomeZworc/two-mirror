@@ -23,7 +23,7 @@ func main() {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
-	db := kv.InitDB(kv.Config{Path: cfg.Database.Path}, true)
+	db := kv.InitDB(kv.Config{Path: cfg.Database.Path}, false)
 	defer db.Close()
 
 	q := worker.New(cfg.Worker.BufferSize)
