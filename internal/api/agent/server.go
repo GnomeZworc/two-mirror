@@ -22,5 +22,12 @@ func (s *Server) Start(address string) {
 	mux.HandleFunc("/subnets", s.SubnetsHandler)
 	mux.HandleFunc("/subnets/", s.SubnetByNameHandler)
 	log.Printf("API server listening on %s", address)
-	log.Fatal(http.ListenAndServe(address, mux))
+	log.Fatal(http.ListenAndServe(address, logMiddleware(mux)))
+}
+
+func logMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("%s %s %s", r.RemoteAddr, r.Method, r.URL.Path)
+		next.ServeHTTP(w, r)
+	})
 }

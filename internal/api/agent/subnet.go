@@ -9,22 +9,33 @@ import (
 func (s *Server) SubnetByNameHandler(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimPrefix(r.URL.Path, "/subnets/")
 	if name == "" {
-		http.NotFound(w, r)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "resource not found"})
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	switch r.Method {
 	case http.MethodGet:
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{"name": name})
+		s.getSubnet(w, r, name)
 	case http.MethodDelete:
-		s.queue.Submit(func() {
-			deleteSubnet(name)
-		})
-		w.WriteHeader(http.StatusAccepted)
+		s.deleteSubnet(w, r, name)
 	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
 	}
 }
 
-func deleteSubnet(name string) {}
+func (s *Server) getSubnet(w http.ResponseWriter, r *http.Request, name string) {
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(Subnet{Name: name, State: "created"})
+}
+
+func (s *Server) deleteSubnet(w http.ResponseWriter, r *http.Request, name string) {
+	s.queue.Submit(func() {
+		destroySubnet(name)
+	})
+	w.WriteHeader(http.StatusAccepted)
+	json.NewEncoder(w).Encode(Subnet{Name: name, State: "deleting"})
+}
+
+func destroySubnet(name string) {}
