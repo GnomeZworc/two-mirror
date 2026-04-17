@@ -5,14 +5,16 @@ import (
 	"net/http"
 
 	"git.g3e.fr/syonad/two/pkg/worker"
+	"github.com/dgraph-io/badger/v4"
 )
 
 type Server struct {
 	queue *worker.Queue
+	db    *badger.DB
 }
 
-func New(queue *worker.Queue) *Server {
-	return &Server{queue: queue}
+func New(queue *worker.Queue, db *badger.DB) *Server {
+	return &Server{queue: queue, db: db}
 }
 
 func (s *Server) Start(address string) {
