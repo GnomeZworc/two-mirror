@@ -2,11 +2,9 @@ package agentapi
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
-	"git.g3e.fr/syonad/two/internal/vpc"
-	"git.g3e.fr/syonad/two/pkg/db/kv"
+	"git.g3e.fr/syonad/two/internal/dispatcher"
 )
 
 func (s *Server) VpcsHandler(w http.ResponseWriter, r *http.Request) {
@@ -38,12 +36,7 @@ func (s *Server) postVpc(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(ErrorResponse{Error: "name is required"})
 		return
 	}
-	s.queue.Submit(func() {
-		kv.AddInDB(s.db, "vpc/"+req.Name+"/state", "creating")
-		if err := vpc.CreateVPC(s.db, req.Name); err != nil {
-			fmt.Println(err)
-		}
-	})
+	s.dispatcher.Dispatch(dispatcher.CreateVPCCommand{Name: req.Name})
 	w.WriteHeader(http.StatusAccepted)
 	json.NewEncoder(w).Encode(VPC{Name: req.Name, State: "creating"})
 }

@@ -7,6 +7,7 @@ import (
 
 	agentapi "git.g3e.fr/syonad/two/internal/api/agent"
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
+	"git.g3e.fr/syonad/two/internal/dispatcher"
 	agentmetrics "git.g3e.fr/syonad/two/internal/prometheus/agent"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 	promserver "git.g3e.fr/syonad/two/pkg/prometheus"
@@ -35,7 +36,8 @@ func main() {
 	apiAddr := fmt.Sprintf("%s:%d", cfg.Api.Address, cfg.Api.Port)
 	promAddr := fmt.Sprintf("%s:%d", cfg.Prometheus.Address, cfg.Prometheus.Port)
 
-	go agentapi.New(q, db).Start(apiAddr)
+	d := dispatcher.New(q, db)
+	go agentapi.New(d, db).Start(apiAddr)
 	go promserver.Start(promAddr, registry)
 
 	select {}

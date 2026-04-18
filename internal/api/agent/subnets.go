@@ -3,6 +3,8 @@ package agentapi
 import (
 	"encoding/json"
 	"net/http"
+
+	"git.g3e.fr/syonad/two/internal/dispatcher"
 )
 
 func (s *Server) SubnetsHandler(w http.ResponseWriter, r *http.Request) {
@@ -34,8 +36,13 @@ func (s *Server) postSubnet(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(ErrorResponse{Error: "name, vpc, local_ip, gateway_ip and cidr are required"})
 		return
 	}
-	s.queue.Submit(func() {
-		createSubnet(req)
+	s.dispatcher.Dispatch(dispatcher.CreateSubnetCommand{
+		Name:      req.Name,
+		VPC:       req.VPC,
+		VxlanID:   req.VxlanID,
+		LocalIP:   req.LocalIP,
+		GatewayIP: req.GatewayIP,
+		CIDR:      req.CIDR,
 	})
 	w.WriteHeader(http.StatusAccepted)
 	json.NewEncoder(w).Encode(Subnet{
@@ -49,4 +56,3 @@ func (s *Server) postSubnet(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func createSubnet(req SubnetCreateRequest) {}

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+
+	"git.g3e.fr/syonad/two/internal/dispatcher"
 )
 
 func (s *Server) SubnetByNameHandler(w http.ResponseWriter, r *http.Request) {
@@ -31,11 +33,8 @@ func (s *Server) getSubnet(w http.ResponseWriter, r *http.Request, name string) 
 }
 
 func (s *Server) deleteSubnet(w http.ResponseWriter, r *http.Request, name string) {
-	s.queue.Submit(func() {
-		destroySubnet(name)
-	})
+	s.dispatcher.Dispatch(dispatcher.DeleteSubnetCommand{Name: name})
 	w.WriteHeader(http.StatusAccepted)
 	json.NewEncoder(w).Encode(Subnet{Name: name, State: "deleting"})
 }
 
-func destroySubnet(name string) {}
