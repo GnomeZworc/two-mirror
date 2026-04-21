@@ -1,6 +1,8 @@
 database:
   path: "/var/lib/two/data/"
 
+default_interface: br-000000
+
 interfaces:
   vms: br-000000
   internet: br-000000

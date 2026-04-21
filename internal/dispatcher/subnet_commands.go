@@ -23,7 +23,7 @@ type CreateSubnetCommand struct {
 func (c CreateSubnetCommand) Execute(db *badger.DB, cfg *configuration.Config) error {
 	localIface, ok := cfg.Interfaces[c.IfaceType]
 	if !ok {
-		return fmt.Errorf("unknown iface_type %q: not found in config", c.IfaceType)
+		localIface = cfg.DefaultInterface
 	}
 	kv.AddInDB(db, "subnet/"+c.Name+"/state", "creating")
 	kv.AddInDB(db, "subnet/"+c.Name+"/vpc", c.VPC)

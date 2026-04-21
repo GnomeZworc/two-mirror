@@ -20,7 +20,8 @@ type Config struct {
 		Count      int `mapstructure:"count"`
 		BufferSize int `mapstructure:"buffer_size"`
 	} `mapstructure:"worker"`
-	Interfaces map[string]string `mapstructure:"interfaces"`
+	DefaultInterface string            `mapstructure:"default_interface"`
+	Interfaces       map[string]string `mapstructure:"interfaces"`
 }
 
 func LoadConfig(path string) (*Config, error) {
@@ -35,6 +36,7 @@ func LoadConfig(path string) (*Config, error) {
 	v.SetDefault("prometheus.port", 9090)
 	v.SetDefault("worker.count", 4)
 	v.SetDefault("worker.buffer_size", 100)
+	v.SetDefault("default_interface", "br-000000")
 
 	v.ReadInConfig()
 
