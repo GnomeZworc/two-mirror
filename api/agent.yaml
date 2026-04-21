@@ -127,6 +127,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Subnet"
+        "400":
+          description: Missing required field or unknown iface_type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "409":
           description: Subnet already exists
           content:
@@ -219,7 +225,7 @@ components:
 
     SubnetCreateRequest:
       type: object
-      required: [name, vpc, vxlan_id, local_ip, gateway_ip, cidr]
+      required: [name, vpc, vxlan_id, gateway_ip, cidr]
       properties:
         name:
           type: string
@@ -233,11 +239,10 @@ components:
           type: integer
           description: VXLAN VNI identifier
           example: 100
-        local_ip:
+        iface_type:
           type: string
-          format: ipv4
-          description: Local VTEP IP address
-          example: "10.0.0.5"
+          description: Interface type key defined in the agent config (e.g. vms, internet, admin). Falls back to default_interface if omitted or unknown.
+          example: vms
         gateway_ip:
           type: string
           format: ipv4
@@ -264,9 +269,10 @@ components:
         vxlan_id:
           type: integer
           example: 100
-        local_ip:
+        local_iface:
           type: string
-          example: "10.0.0.5"
+          description: Resolved interface name
+          example: br-000000
         gateway_ip:
           type: string
           example: "10.10.10.1"
