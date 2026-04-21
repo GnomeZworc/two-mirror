@@ -14,16 +14,20 @@ type CreateSubnetCommand struct {
 	Name      string
 	VPC       string
 	VxlanID   int
-	LocalIP   string
+	IfaceType string
 	GatewayIP string
 	CIDR      string
 }
 
-func (c CreateSubnetCommand) Execute(db *badger.DB) error {
+func (c CreateSubnetCommand) Execute(db *badger.DB, interfaces map[string]string) error {
+	localIface, ok := interfaces[c.IfaceType]
+	if !ok {
+		return fmt.Errorf("unknown iface_type %q: not found in config", c.IfaceType)
+	}
 	kv.AddInDB(db, "subnet/"+c.Name+"/state", "creating")
 	kv.AddInDB(db, "subnet/"+c.Name+"/vpc", c.VPC)
 	kv.AddInDB(db, "subnet/"+c.Name+"/vxlan_id", strconv.Itoa(c.VxlanID))
-	kv.AddInDB(db, "subnet/"+c.Name+"/local_ip", c.LocalIP)
+	kv.AddInDB(db, "subnet/"+c.Name+"/local_iface", localIface)
 	kv.AddInDB(db, "subnet/"+c.Name+"/gateway_ip", c.GatewayIP)
 	kv.AddInDB(db, "subnet/"+c.Name+"/cidr", c.CIDR)
 	return subnet.CreateSubnet(db, c.Name)
@@ -33,7 +37,7 @@ type DeleteSubnetCommand struct {
 	Name string
 }
 
-func (c DeleteSubnetCommand) Execute(db *badger.DB) error {
+func (c DeleteSubnetCommand) Execute(db *badger.DB, _ map[string]string) error {
 	kv.AddInDB(db, "subnet/"+c.Name+"/state", "deleting")
 	if err := subnet.DeleteSubnet(db, c.Name); err != nil {
 		fmt.Println(err)

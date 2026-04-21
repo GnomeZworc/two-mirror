@@ -36,7 +36,7 @@ func main() {
 	apiAddr := fmt.Sprintf("%s:%d", cfg.Api.Address, cfg.Api.Port)
 	promAddr := fmt.Sprintf("%s:%d", cfg.Prometheus.Address, cfg.Prometheus.Port)
 
-	d := dispatcher.New(q, db)
+	d := dispatcher.New(q, db, cfg.Interfaces)
 	go agentapi.New(d, db).Start(apiAddr)
 	go promserver.Start(promAddr, registry)
 

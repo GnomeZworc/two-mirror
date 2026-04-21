@@ -8,21 +8,22 @@ import (
 )
 
 type Command interface {
-	Execute(db *badger.DB) error
+	Execute(db *badger.DB, interfaces map[string]string) error
 }
 
 type Dispatcher struct {
-	queue *worker.Queue
-	db    *badger.DB
+	queue      *worker.Queue
+	db         *badger.DB
+	interfaces map[string]string
 }
 
-func New(queue *worker.Queue, db *badger.DB) *Dispatcher {
-	return &Dispatcher{queue: queue, db: db}
+func New(queue *worker.Queue, db *badger.DB, interfaces map[string]string) *Dispatcher {
+	return &Dispatcher{queue: queue, db: db, interfaces: interfaces}
 }
 
 func (d *Dispatcher) Dispatch(cmd Command) {
 	d.queue.Submit(func() {
-		if err := cmd.Execute(d.db); err != nil {
+		if err := cmd.Execute(d.db, d.interfaces); err != nil {
 			log.Printf("command error (%T): %v", cmd, err)
 		}
 	})

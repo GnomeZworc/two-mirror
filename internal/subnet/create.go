@@ -40,13 +40,9 @@ func CreateSubnet(db *badger.DB, subnetName string) error {
 		return fmt.Errorf("parse vxlan_id: %w", err)
 	}
 
-	localIPStr, err := kv.GetFromDB(db, "subnet/"+subnetName+"/local_ip")
+	localIface, err := kv.GetFromDB(db, "subnet/"+subnetName+"/local_iface")
 	if err != nil {
-		return fmt.Errorf("get local_ip: %w", err)
-	}
-	localIP := net.ParseIP(localIPStr)
-	if localIP == nil {
-		return fmt.Errorf("invalid local_ip: %s", localIPStr)
+		return fmt.Errorf("get local_iface: %w", err)
 	}
 
 	gatewayIPStr, err := kv.GetFromDB(db, "subnet/"+subnetName+"/gateway_ip")
@@ -90,7 +86,7 @@ func CreateSubnet(db *badger.DB, subnetName string) error {
 	}
 
 	// vxlan
-	if err := netif.CreateVxlan(vxlanIface, vxlanID, localIP); err != nil {
+	if err := netif.CreateVxlan(vxlanIface, vxlanID, localIface); err != nil {
 		return fmt.Errorf("create vxlan: %w", err)
 	}
 

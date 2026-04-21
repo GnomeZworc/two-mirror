@@ -31,16 +31,16 @@ func (s *Server) postSubnet(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(ErrorResponse{Error: "invalid request body"})
 		return
 	}
-	if req.Name == "" || req.VPC == "" || req.LocalIP == "" || req.GatewayIP == "" || req.CIDR == "" {
+	if req.Name == "" || req.VPC == "" || req.IfaceType == "" || req.GatewayIP == "" || req.CIDR == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrorResponse{Error: "name, vpc, local_ip, gateway_ip and cidr are required"})
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "name, vpc, iface_type, gateway_ip and cidr are required"})
 		return
 	}
 	s.dispatcher.Dispatch(dispatcher.CreateSubnetCommand{
 		Name:      req.Name,
 		VPC:       req.VPC,
 		VxlanID:   req.VxlanID,
-		LocalIP:   req.LocalIP,
+		IfaceType: req.IfaceType,
 		GatewayIP: req.GatewayIP,
 		CIDR:      req.CIDR,
 	})
@@ -50,9 +50,7 @@ func (s *Server) postSubnet(w http.ResponseWriter, r *http.Request) {
 		State:     "creating",
 		VPC:       req.VPC,
 		VxlanID:   req.VxlanID,
-		LocalIP:   req.LocalIP,
 		GatewayIP: req.GatewayIP,
 		CIDR:      req.CIDR,
 	})
 }
-

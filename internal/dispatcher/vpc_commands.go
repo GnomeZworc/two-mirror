@@ -10,7 +10,7 @@ type CreateVPCCommand struct {
 	Name string
 }
 
-func (c CreateVPCCommand) Execute(db *badger.DB) error {
+func (c CreateVPCCommand) Execute(db *badger.DB, _ map[string]string) error {
 	kv.AddInDB(db, "vpc/"+c.Name+"/state", "creating")
 	return vpc.CreateVPC(db, c.Name)
 }
@@ -19,7 +19,7 @@ type DeleteVPCCommand struct {
 	Name string
 }
 
-func (c DeleteVPCCommand) Execute(db *badger.DB) error {
+func (c DeleteVPCCommand) Execute(db *badger.DB, _ map[string]string) error {
 	kv.AddInDB(db, "vpc/"+c.Name+"/state", "deleting")
 	if err := vpc.DeleteVPC(db, c.Name); err != nil {
 		return err
