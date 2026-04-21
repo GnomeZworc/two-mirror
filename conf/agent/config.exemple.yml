@@ -1,2 +1,7 @@
 database:
   path: "/var/lib/two/data/"
+
+interfaces:
+  vms: br-000000
+  internet: br-000000
+  admin: br-000000

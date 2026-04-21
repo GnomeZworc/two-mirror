@@ -20,6 +20,7 @@ type Config struct {
 		Count      int `mapstructure:"count"`
 		BufferSize int `mapstructure:"buffer_size"`
 	} `mapstructure:"worker"`
+	Interfaces map[string]string `mapstructure:"interfaces"`
 }
 
 func LoadConfig(path string) (*Config, error) {
