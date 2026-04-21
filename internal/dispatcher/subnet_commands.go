@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 
+	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/subnet"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 	"github.com/dgraph-io/badger/v4"
@@ -19,8 +20,8 @@ type CreateSubnetCommand struct {
 	CIDR      string
 }
 
-func (c CreateSubnetCommand) Execute(db *badger.DB, interfaces map[string]string) error {
-	localIface, ok := interfaces[c.IfaceType]
+func (c CreateSubnetCommand) Execute(db *badger.DB, cfg *configuration.Config) error {
+	localIface, ok := cfg.Interfaces[c.IfaceType]
 	if !ok {
 		return fmt.Errorf("unknown iface_type %q: not found in config", c.IfaceType)
 	}
@@ -37,7 +38,7 @@ type DeleteSubnetCommand struct {
 	Name string
 }
 
-func (c DeleteSubnetCommand) Execute(db *badger.DB, _ map[string]string) error {
+func (c DeleteSubnetCommand) Execute(db *badger.DB, _ *configuration.Config) error {
 	kv.AddInDB(db, "subnet/"+c.Name+"/state", "deleting")
 	if err := subnet.DeleteSubnet(db, c.Name); err != nil {
 		fmt.Println(err)
