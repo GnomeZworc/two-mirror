@@ -1,6 +1,8 @@
 package vpc
 
 import (
+	"strings"
+
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
@@ -9,49 +11,40 @@ import (
 )
 
 func CreateVPC(db *badger.DB, name string) error {
-	// missing
-	// search data in db
-	//  change state in db
-
-	// create netns
 	if state, err := kv.GetFromDB(db, "vpc/"+name+"/state"); err != nil {
 		return err
 	} else if state == "creating" {
+		vpcID := strings.SplitN(name, "-", 2)[1]
+
 		if err := netns.Create(name); err != nil {
 			return err
 		}
 
-		// create veth public for this netns
-		if err := netif.CreateVethToNetns("vp-"+name+"-e", "vp-public-i", "/var/run/netns/"+name, 9000); err != nil {
+		if err := netif.CreateVethToNetns("vp-"+vpcID+"-e", "vp-"+vpcID+"-i", "/var/run/netns/"+name, 9000); err != nil {
 			return err
 		}
 
-		// create public bridge in netns
 		if err := netns.Call(name, func() error {
 			return netif.CreateBridge("br-public", 1500)
 		}); err != nil {
 			return err
 		}
 
-		// set veth to ext public bridge
-		if err := netif.BridgeSetMaster("vp-"+name+"-e", "br-public"); err != nil {
+		if err := netif.BridgeSetMaster("vp-"+vpcID+"-e", "br-public"); err != nil {
 			return err
 		}
 
-		// set veth to int public bridge
 		if err := netns.Call(name, func() error {
-			return netif.BridgeSetMaster("vp-public-i", "br-public")
+			return netif.BridgeSetMaster("vp-"+vpcID+"-i", "br-public")
 		}); err != nil {
 			return err
 		}
 
-		// set set ext veth up
-		if err := netif.LinkSetUp("vp-" + name + "-e"); err != nil {
+		if err := netif.LinkSetUp("vp-" + vpcID + "-e"); err != nil {
 			return err
 		}
-		// set set int veth up
 		if err := netns.Call(name, func() error {
-			return netif.LinkSetUp("vp-public-i")
+			return netif.LinkSetUp("vp-" + vpcID + "-i")
 		}); err != nil {
 			return err
 		}

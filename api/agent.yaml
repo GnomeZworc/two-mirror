@@ -209,15 +209,16 @@ components:
       properties:
         name:
           type: string
-          description: Unique name for the VPC
-          example: vpc1
+          description: Unique name for the VPC, must follow the format vp-[id]
+          pattern: '^vp-.+'
+          example: vp-00001
 
     VPC:
       type: object
       properties:
         name:
           type: string
-          example: vpc1
+          example: vp-00001
         state:
           type: string
           enum: [creating, created, deleting, deleted]
