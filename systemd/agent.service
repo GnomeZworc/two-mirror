@@ -1,0 +1,10 @@
+[Unit]
+Description=Agent service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/opt/two/bin/agent
+
+[Install]
+WantedBy=multi-user.target
