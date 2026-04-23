@@ -2,7 +2,6 @@ package dispatcher
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 	"time"
 
@@ -77,13 +76,13 @@ func (c DeleteSubnetCommand) Prepare(db *badger.DB, _ *configuration.Config) err
 
 func (c DeleteSubnetCommand) Execute(db *badger.DB, _ *configuration.Config) error {
 	if err := subnet.DeleteSubnet(db, c.Name); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		return err
 	}
-	if state, err := kv.GetFromDB(db, "subnet/"+c.Name+"/state"); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	} else if state == "deleted" {
+	state, err := kv.GetFromDB(db, "subnet/"+c.Name+"/state")
+	if err != nil {
+		return err
+	}
+	if state == "deleted" {
 		kv.DeleteInDB(db, "subnet/"+c.Name)
 	}
 	return nil
