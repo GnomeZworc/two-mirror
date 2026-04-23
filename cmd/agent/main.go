@@ -7,7 +7,7 @@ import (
 
 	agentapi "git.g3e.fr/syonad/two/internal/api/agent"
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
-	"git.g3e.fr/syonad/two/internal/dispatcher"
+	dispatcher "git.g3e.fr/syonad/two/internal/dispatcher/agent"
 	agentmetrics "git.g3e.fr/syonad/two/internal/prometheus/agent"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 	promserver "git.g3e.fr/syonad/two/pkg/prometheus"

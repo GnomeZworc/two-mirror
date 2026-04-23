@@ -4,7 +4,7 @@ import (
 	"log"
 	"net/http"
 
-	"git.g3e.fr/syonad/two/internal/dispatcher"
+	dispatcher "git.g3e.fr/syonad/two/internal/dispatcher/agent"
 	"github.com/dgraph-io/badger/v4"
 )
 

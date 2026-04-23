@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"git.g3e.fr/syonad/two/internal/dispatcher"
+	dispatcher "git.g3e.fr/syonad/two/internal/dispatcher/agent"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 )
 
@@ -66,4 +66,3 @@ func (s *Server) deleteSubnet(w http.ResponseWriter, r *http.Request, name strin
 	w.WriteHeader(http.StatusAccepted)
 	json.NewEncoder(w).Encode(Subnet{Name: name, State: "deleting"})
 }
-

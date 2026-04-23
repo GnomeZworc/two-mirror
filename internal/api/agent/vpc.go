@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"git.g3e.fr/syonad/two/internal/dispatcher"
+	dispatcher "git.g3e.fr/syonad/two/internal/dispatcher/agent"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 )
 
@@ -44,4 +44,3 @@ func (s *Server) deleteVpc(w http.ResponseWriter, _ *http.Request, name string) 
 	w.WriteHeader(http.StatusAccepted)
 	json.NewEncoder(w).Encode(VPC{Name: name, State: "deleting"})
 }
-

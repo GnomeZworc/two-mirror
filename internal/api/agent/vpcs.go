@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"git.g3e.fr/syonad/two/internal/dispatcher"
+	dispatcher "git.g3e.fr/syonad/two/internal/dispatcher/agent"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 )
 
