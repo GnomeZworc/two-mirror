@@ -3,13 +3,14 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
+	"log/slog"
 
 	agentapi "git.g3e.fr/syonad/two/internal/api/agent"
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	dispatcher "git.g3e.fr/syonad/two/internal/dispatcher/agent"
 	agentmetrics "git.g3e.fr/syonad/two/internal/prometheus/agent"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
+	"git.g3e.fr/syonad/two/pkg/logger"
 	promserver "git.g3e.fr/syonad/two/pkg/prometheus"
 	"git.g3e.fr/syonad/two/pkg/worker"
 	"github.com/prometheus/client_golang/prometheus"
@@ -21,8 +22,11 @@ func main() {
 
 	cfg, err := configuration.LoadConfig(*confFile)
 	if err != nil {
-		log.Fatalf("failed to load config: %v", err)
+		slog.Error("failed to load config", "error", err)
+		return
 	}
+
+	log := logger.New(cfg.Logger.Level, cfg.Logger.Debug)
 
 	db := kv.InitDB(kv.Config{Path: cfg.Database.Path}, false)
 	defer db.Close()
@@ -36,8 +40,16 @@ func main() {
 	apiAddr := fmt.Sprintf("%s:%d", cfg.Api.Address, cfg.Api.Port)
 	promAddr := fmt.Sprintf("%s:%d", cfg.Prometheus.Address, cfg.Prometheus.Port)
 
-	d := dispatcher.New(q, db, cfg)
-	go agentapi.New(d, db).Start(apiAddr)
+	log.Info("starting agent",
+		"api", apiAddr,
+		"prometheus", promAddr,
+		"workers", cfg.Worker.Count,
+		"log_level", cfg.Logger.Level,
+		"debug", cfg.Logger.Debug,
+	)
+
+	d := dispatcher.New(q, db, cfg, log.With(slog.String("component", "dispatcher")))
+	go agentapi.New(d, db, log.With(slog.String("component", "api"))).Start(apiAddr)
 	go promserver.Start(promAddr, registry)
 
 	select {}

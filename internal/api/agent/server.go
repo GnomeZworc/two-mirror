@@ -1,8 +1,11 @@
 package agentapi
 
 import (
-	"log"
+	"crypto/rand"
+	"encoding/hex"
+	"log/slog"
 	"net/http"
+	"time"
 
 	dispatcher "git.g3e.fr/syonad/two/internal/dispatcher/agent"
 	"github.com/dgraph-io/badger/v4"
@@ -11,10 +14,11 @@ import (
 type Server struct {
 	dispatcher *dispatcher.Dispatcher
 	db         *badger.DB
+	logger     *slog.Logger
 }
 
-func New(d *dispatcher.Dispatcher, db *badger.DB) *Server {
-	return &Server{dispatcher: d, db: db}
+func New(d *dispatcher.Dispatcher, db *badger.DB, logger *slog.Logger) *Server {
+	return &Server{dispatcher: d, db: db, logger: logger}
 }
 
 func (s *Server) Start(address string) {
@@ -23,13 +27,39 @@ func (s *Server) Start(address string) {
 	mux.HandleFunc("/vpcs/", s.VpcByNameHandler)
 	mux.HandleFunc("/subnets", s.SubnetsHandler)
 	mux.HandleFunc("/subnets/", s.SubnetByNameHandler)
-	log.Printf("API server listening on %s", address)
-	log.Fatal(http.ListenAndServe(address, logMiddleware(mux)))
+	s.logger.Info("API server listening", "address", address)
+	if err := http.ListenAndServe(address, s.logMiddleware(mux)); err != nil {
+		s.logger.Error("API server stopped", "error", err)
+	}
 }
 
-func logMiddleware(next http.Handler) http.Handler {
+type statusWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+func (sw *statusWriter) WriteHeader(code int) {
+	sw.status = code
+	sw.ResponseWriter.WriteHeader(code)
+}
+
+func (s *Server) logMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("%s %s %s", r.RemoteAddr, r.Method, r.URL.Path)
-		next.ServeHTTP(w, r)
+		var b [4]byte
+		rand.Read(b[:])
+		reqID := hex.EncodeToString(b[:])
+
+		sw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
+		start := time.Now()
+		next.ServeHTTP(sw, r)
+
+		s.logger.Info("request",
+			"request_id", reqID,
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", sw.status,
+			"duration_ms", time.Since(start).Milliseconds(),
+			"remote", r.RemoteAddr,
+		)
 	})
 }

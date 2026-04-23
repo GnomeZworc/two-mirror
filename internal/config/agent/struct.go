@@ -21,9 +21,13 @@ type Config struct {
 		BufferSize int `mapstructure:"buffer_size"`
 	} `mapstructure:"worker"`
 	Dispatcher struct {
-		TimeoutSeconds  int `mapstructure:"timeout_seconds"`
-		PollSeconds     int `mapstructure:"poll_seconds"`
+		TimeoutSeconds int `mapstructure:"timeout_seconds"`
+		PollSeconds    int `mapstructure:"poll_seconds"`
 	} `mapstructure:"dispatcher"`
+	Logger struct {
+		Level string `mapstructure:"level"`
+		Debug bool   `mapstructure:"debug"`
+	} `mapstructure:"logger"`
 	DefaultInterface string            `mapstructure:"default_interface"`
 	Interfaces       map[string]string `mapstructure:"interfaces"`
 }
@@ -43,6 +47,8 @@ func LoadConfig(path string) (*Config, error) {
 	v.SetDefault("dispatcher.timeout_seconds", 300)
 	v.SetDefault("dispatcher.poll_seconds", 2)
 	v.SetDefault("default_interface", "br-000000")
+	v.SetDefault("logger.level", "info")
+	v.SetDefault("logger.debug", false)
 
 	v.ReadInConfig()
 
