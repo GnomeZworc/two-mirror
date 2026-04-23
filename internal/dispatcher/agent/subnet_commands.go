@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/subnet"
@@ -44,7 +45,22 @@ func (c CreateSubnetCommand) Prepare(db *badger.DB, cfg *configuration.Config) e
 	return nil
 }
 
-func (c CreateSubnetCommand) Execute(db *badger.DB, _ *configuration.Config) error {
+func (c CreateSubnetCommand) Execute(db *badger.DB, cfg *configuration.Config) error {
+	timeout := time.After(time.Duration(cfg.Dispatcher.TimeoutSeconds) * time.Second)
+	for {
+		state, err := kv.GetFromDB(db, "vpc/"+c.VPC+"/state")
+		if err != nil {
+			return fmt.Errorf("vpc %q not found while waiting", c.VPC)
+		}
+		if state == "created" {
+			break
+		}
+		select {
+		case <-timeout:
+			return fmt.Errorf("timed out waiting for vpc %q to be created", c.VPC)
+		case <-time.After(time.Duration(cfg.Dispatcher.PollSeconds) * time.Second):
+		}
+	}
 	return subnet.CreateSubnet(db, c.Name)
 }
 

@@ -20,6 +20,10 @@ type Config struct {
 		Count      int `mapstructure:"count"`
 		BufferSize int `mapstructure:"buffer_size"`
 	} `mapstructure:"worker"`
+	Dispatcher struct {
+		TimeoutSeconds  int `mapstructure:"timeout_seconds"`
+		PollSeconds     int `mapstructure:"poll_seconds"`
+	} `mapstructure:"dispatcher"`
 	DefaultInterface string            `mapstructure:"default_interface"`
 	Interfaces       map[string]string `mapstructure:"interfaces"`
 }
@@ -36,6 +40,8 @@ func LoadConfig(path string) (*Config, error) {
 	v.SetDefault("prometheus.port", 9090)
 	v.SetDefault("worker.count", 4)
 	v.SetDefault("worker.buffer_size", 100)
+	v.SetDefault("dispatcher.timeout_seconds", 300)
+	v.SetDefault("dispatcher.poll_seconds", 2)
 	v.SetDefault("default_interface", "br-000000")
 
 	v.ReadInConfig()
