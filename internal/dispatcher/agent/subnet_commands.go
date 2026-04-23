@@ -20,7 +20,17 @@ type CreateSubnetCommand struct {
 	CIDR      string
 }
 
-func (c CreateSubnetCommand) Execute(db *badger.DB, cfg *configuration.Config) error {
+func (c CreateSubnetCommand) Prepare(db *badger.DB, cfg *configuration.Config) error {
+	if _, err := kv.GetFromDB(db, "subnet/"+c.Name+"/state"); err == nil {
+		return fmt.Errorf("subnet %q already exists", c.Name)
+	}
+	vpcState, err := kv.GetFromDB(db, "vpc/"+c.VPC+"/state")
+	if err != nil {
+		return fmt.Errorf("vpc %q not found", c.VPC)
+	}
+	if vpcState == "deleting" || vpcState == "deleted" {
+		return fmt.Errorf("vpc %q is %s", c.VPC, vpcState)
+	}
 	localIface, ok := cfg.Interfaces[c.IfaceType]
 	if !ok {
 		localIface = cfg.DefaultInterface
@@ -31,6 +41,10 @@ func (c CreateSubnetCommand) Execute(db *badger.DB, cfg *configuration.Config) e
 	kv.AddInDB(db, "subnet/"+c.Name+"/local_iface", localIface)
 	kv.AddInDB(db, "subnet/"+c.Name+"/gateway_ip", c.GatewayIP)
 	kv.AddInDB(db, "subnet/"+c.Name+"/cidr", c.CIDR)
+	return nil
+}
+
+func (c CreateSubnetCommand) Execute(db *badger.DB, _ *configuration.Config) error {
 	return subnet.CreateSubnet(db, c.Name)
 }
 
@@ -38,8 +52,14 @@ type DeleteSubnetCommand struct {
 	Name string
 }
 
+func (c DeleteSubnetCommand) Prepare(db *badger.DB, _ *configuration.Config) error {
+	if _, err := kv.GetFromDB(db, "subnet/"+c.Name+"/state"); err != nil {
+		return fmt.Errorf("subnet %q not found", c.Name)
+	}
+	return kv.AddInDB(db, "subnet/"+c.Name+"/state", "deleting")
+}
+
 func (c DeleteSubnetCommand) Execute(db *badger.DB, _ *configuration.Config) error {
-	kv.AddInDB(db, "subnet/"+c.Name+"/state", "deleting")
 	if err := subnet.DeleteSubnet(db, c.Name); err != nil {
 		fmt.Println(err)
 		os.Exit(1)

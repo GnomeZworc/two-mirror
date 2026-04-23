@@ -9,6 +9,7 @@ import (
 )
 
 type Command interface {
+	Prepare(db *badger.DB, cfg *configuration.Config) error
 	Execute(db *badger.DB, cfg *configuration.Config) error
 }
 
@@ -20,6 +21,10 @@ type Dispatcher struct {
 
 func New(queue *worker.Queue, db *badger.DB, cfg *configuration.Config) *Dispatcher {
 	return &Dispatcher{queue: queue, db: db, cfg: cfg}
+}
+
+func (d *Dispatcher) Prepare(cmd Command) error {
+	return cmd.Prepare(d.db, d.cfg)
 }
 
 func (d *Dispatcher) Dispatch(cmd Command) {

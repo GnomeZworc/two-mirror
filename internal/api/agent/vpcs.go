@@ -62,7 +62,14 @@ func (s *Server) postVpc(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(ErrorResponse{Error: "name is required"})
 		return
 	}
-	s.dispatcher.Dispatch(dispatcher.CreateVPCCommand{Name: req.Name})
+	cmd := dispatcher.CreateVPCCommand{Name: req.Name}
+	if err := s.dispatcher.Prepare(cmd); err != nil {
+		w.WriteHeader(http.StatusConflict)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: err.Error()})
+		return
+	}
+	s.dispatcher.Dispatch(cmd)
+	state, _ := kv.GetFromDB(s.db, "vpc/"+req.Name+"/state")
 	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(VPC{Name: req.Name, State: "creating"})
+	json.NewEncoder(w).Encode(VPC{Name: req.Name, State: state})
 }

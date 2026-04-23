@@ -61,8 +61,15 @@ func (s *Server) getSubnet(w http.ResponseWriter, _ *http.Request, name string) 
 	json.NewEncoder(w).Encode(sub)
 }
 
-func (s *Server) deleteSubnet(w http.ResponseWriter, r *http.Request, name string) {
-	s.dispatcher.Dispatch(dispatcher.DeleteSubnetCommand{Name: name})
+func (s *Server) deleteSubnet(w http.ResponseWriter, _ *http.Request, name string) {
+	cmd := dispatcher.DeleteSubnetCommand{Name: name}
+	if err := s.dispatcher.Prepare(cmd); err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: err.Error()})
+		return
+	}
+	s.dispatcher.Dispatch(cmd)
+	state, _ := kv.GetFromDB(s.db, "subnet/"+name+"/state")
 	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(Subnet{Name: name, State: "deleting"})
+	json.NewEncoder(w).Encode(Subnet{Name: name, State: state})
 }

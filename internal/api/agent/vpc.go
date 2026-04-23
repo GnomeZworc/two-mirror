@@ -40,7 +40,14 @@ func (s *Server) getVpc(w http.ResponseWriter, _ *http.Request, name string) {
 }
 
 func (s *Server) deleteVpc(w http.ResponseWriter, _ *http.Request, name string) {
-	s.dispatcher.Dispatch(dispatcher.DeleteVPCCommand{Name: name})
+	cmd := dispatcher.DeleteVPCCommand{Name: name}
+	if err := s.dispatcher.Prepare(cmd); err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: err.Error()})
+		return
+	}
+	s.dispatcher.Dispatch(cmd)
+	state, _ := kv.GetFromDB(s.db, "vpc/"+name+"/state")
 	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(VPC{Name: name, State: "deleting"})
+	json.NewEncoder(w).Encode(VPC{Name: name, State: state})
 }

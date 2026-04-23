@@ -74,21 +74,42 @@ func (s *Server) postSubnet(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(ErrorResponse{Error: "name, vpc, iface_type, gateway_ip and cidr are required"})
 		return
 	}
-	s.dispatcher.Dispatch(dispatcher.CreateSubnetCommand{
+	cmd := dispatcher.CreateSubnetCommand{
 		Name:      req.Name,
 		VPC:       req.VPC,
 		VxlanID:   req.VxlanID,
 		IfaceType: req.IfaceType,
 		GatewayIP: req.GatewayIP,
 		CIDR:      req.CIDR,
-	})
+	}
+	if err := s.dispatcher.Prepare(cmd); err != nil {
+		w.WriteHeader(http.StatusConflict)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: err.Error()})
+		return
+	}
+	s.dispatcher.Dispatch(cmd)
+	entries, _ := kv.ListByPrefix(s.db, "subnet/"+req.Name+"/")
+	sub := Subnet{Name: req.Name}
+	for key, value := range entries {
+		parts := strings.Split(key, "/")
+		if len(parts) != 3 {
+			continue
+		}
+		switch parts[2] {
+		case "state":
+			sub.State = value
+		case "vpc":
+			sub.VPC = value
+		case "vxlan_id":
+			sub.VxlanID, _ = strconv.Atoi(value)
+		case "local_iface":
+			sub.LocalIface = value
+		case "gateway_ip":
+			sub.GatewayIP = value
+		case "cidr":
+			sub.CIDR = value
+		}
+	}
 	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(Subnet{
-		Name:      req.Name,
-		State:     "creating",
-		VPC:       req.VPC,
-		VxlanID:   req.VxlanID,
-		GatewayIP: req.GatewayIP,
-		CIDR:      req.CIDR,
-	})
+	json.NewEncoder(w).Encode(sub)
 }
