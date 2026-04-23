@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"git.g3e.fr/syonad/two/internal/dispatcher"
+	"git.g3e.fr/syonad/two/pkg/db/kv"
 )
 
 func (s *Server) VpcByNameHandler(w http.ResponseWriter, r *http.Request) {
@@ -28,8 +29,14 @@ func (s *Server) VpcByNameHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) getVpc(w http.ResponseWriter, _ *http.Request, name string) {
+	state, err := kv.GetFromDB(s.db, "vpc/"+name+"/state")
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "vpc not found"})
+		return
+	}
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(VPC{Name: name, State: "created"})
+	json.NewEncoder(w).Encode(VPC{Name: name, State: state})
 }
 
 func (s *Server) deleteVpc(w http.ResponseWriter, _ *http.Request, name string) {
