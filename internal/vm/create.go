@@ -3,6 +3,7 @@ package vm
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"git.g3e.fr/syonad/two/internal/iptables"
 	"git.g3e.fr/syonad/two/internal/metadata"
@@ -23,15 +24,22 @@ func StartVM(db *badger.DB, name string) error {
 		return nil
 	}
 
-	vpcName, err := kv.GetFromDB(db, "vm/"+name+"/vpc")
+	subnetName, err := kv.GetFromDB(db, "vm/"+name+"/subnet")
+	if err != nil {
+		return fmt.Errorf("get subnet: %w", err)
+	}
+
+	vpcName, err := kv.GetFromDB(db, "subnet/"+subnetName+"/vpc")
 	if err != nil {
 		return fmt.Errorf("get vpc: %w", err)
 	}
 
-	bridge, err := kv.GetFromDB(db, "vm/"+name+"/bridge")
+	gatewayIP, err := kv.GetFromDB(db, "subnet/"+subnetName+"/gateway_ip")
 	if err != nil {
-		return fmt.Errorf("get bridge: %w", err)
+		return fmt.Errorf("get gateway_ip: %w", err)
 	}
+
+	bridge := "br-" + strings.SplitN(subnetName, "-", 2)[1]
 
 	tapIDStr, err := kv.GetFromDB(db, "vm/"+name+"/tap_id")
 	if err != nil {
@@ -45,11 +53,6 @@ func StartVM(db *badger.DB, name string) error {
 	vmIP, err := kv.GetFromDB(db, "vm/"+name+"/ip")
 	if err != nil {
 		return fmt.Errorf("get ip: %w", err)
-	}
-
-	gatewayIP, err := kv.GetFromDB(db, "vm/"+name+"/gateway_ip")
-	if err != nil {
-		return fmt.Errorf("get gateway_ip: %w", err)
 	}
 
 	metadataPort, err := kv.GetFromDB(db, "vm/"+name+"/metadata_port")

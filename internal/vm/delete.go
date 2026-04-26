@@ -25,9 +25,19 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 		return nil
 	}
 
-	vpcName, err := kv.GetFromDB(db, "vm/"+name+"/vpc")
+	subnetName, err := kv.GetFromDB(db, "vm/"+name+"/subnet")
+	if err != nil {
+		return fmt.Errorf("get subnet: %w", err)
+	}
+
+	vpcName, err := kv.GetFromDB(db, "subnet/"+subnetName+"/vpc")
 	if err != nil {
 		return fmt.Errorf("get vpc: %w", err)
+	}
+
+	gatewayIP, err := kv.GetFromDB(db, "subnet/"+subnetName+"/gateway_ip")
+	if err != nil {
+		return fmt.Errorf("get gateway_ip: %w", err)
 	}
 
 	tapIDStr, err := kv.GetFromDB(db, "vm/"+name+"/tap_id")
@@ -42,11 +52,6 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	vmIP, err := kv.GetFromDB(db, "vm/"+name+"/ip")
 	if err != nil {
 		return fmt.Errorf("get ip: %w", err)
-	}
-
-	gatewayIP, err := kv.GetFromDB(db, "vm/"+name+"/gateway_ip")
-	if err != nil {
-		return fmt.Errorf("get gateway_ip: %w", err)
 	}
 
 	metadataPort, err := kv.GetFromDB(db, "vm/"+name+"/metadata_port")
