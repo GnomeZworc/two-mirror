@@ -4,7 +4,7 @@ import (
 	"github.com/vishvananda/netlink"
 )
 
-func CreateVxlan(name string, vxlanID int, localIface string) error {
+func CreateVxlan(name string, vxlanID int, localIface string, mtu int) error {
 	link, err := netlink.LinkByName(localIface)
 	if err != nil {
 		return err
@@ -12,6 +12,7 @@ func CreateVxlan(name string, vxlanID int, localIface string) error {
 	vxlan := &netlink.Vxlan{
 		LinkAttrs: netlink.LinkAttrs{
 			Name: name,
+			MTU:  mtu,
 		},
 		VxlanId:      vxlanID,
 		Port:         4789,

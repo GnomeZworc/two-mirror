@@ -86,7 +86,7 @@ func CreateSubnet(db *badger.DB, subnetName string) error {
 	}
 
 	// vxlan
-	if err := netif.CreateVxlan(vxlanIface, vxlanID, localIface); err != nil {
+	if err := netif.CreateVxlan(vxlanIface, vxlanID, localIface, 1500); err != nil {
 		return fmt.Errorf("create vxlan: %w", err)
 	}
 
