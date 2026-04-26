@@ -99,6 +99,95 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  # ── VM ─────────────────────────────────────────────────────────────────────
+
+  /vms:
+    get:
+      summary: List all VMs
+      operationId: listVMs
+      responses:
+        "200":
+          description: List of VMs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VM"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      summary: Start a VM
+      operationId: startVM
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VMCreateRequest"
+      responses:
+        "202":
+          description: VM start accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VM"
+        "400":
+          description: Missing required field or invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: VM already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: Subnet not found or not in created state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /vms/{name}:
+    parameters:
+      - $ref: "#/components/parameters/ResourceName"
+
+    get:
+      summary: Get VM status and info
+      operationId: getVM
+      responses:
+        "200":
+          description: VM found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VM"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      summary: Stop a VM
+      operationId: stopVM
+      responses:
+        "202":
+          description: VM stop accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VM"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   # ── Subnet ─────────────────────────────────────────────────────────────────
 
   /subnets:
@@ -280,6 +369,97 @@ components:
         cidr:
           type: string
           example: "10.10.10.0/24"
+
+    VMCreateRequest:
+      type: object
+      required: [name, metadata_port, interfaces, storage]
+      properties:
+        name:
+          type: string
+          example: vm-00001
+        metadata_port:
+          type: string
+          example: "80"
+        memory:
+          type: integer
+          description: Memory in MB (default 512)
+          example: 1024
+        cpus:
+          type: integer
+          description: Number of vCPUs (default 1)
+          example: 2
+        password:
+          type: string
+        sshkey:
+          type: string
+          example: "ssh-ed25519 AAAA..."
+        interfaces:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/VMInterface"
+        storage:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/VMStorage"
+
+    VMInterface:
+      type: object
+      required: [subnet, ip, primary]
+      properties:
+        subnet:
+          type: string
+          example: sn-00001
+        ip:
+          type: string
+          format: ipv4
+          example: "10.0.0.5"
+        primary:
+          type: boolean
+          example: true
+
+    VMStorage:
+      type: object
+      required: [path, dev]
+      properties:
+        path:
+          type: string
+          description: Path to the disk image on the host
+          example: /var/lib/two/volumes/abc.qcow2
+        dev:
+          type: string
+          description: Device name inside the VM
+          pattern: '^[sv]d[a-z]$'
+          example: vda
+
+    VM:
+      type: object
+      properties:
+        name:
+          type: string
+          example: vm-00001
+        state:
+          type: string
+          enum: [starting, started, stopping, stopped]
+          example: started
+        metadata_port:
+          type: string
+          example: "80"
+        memory:
+          type: integer
+          example: 1024
+        cpus:
+          type: integer
+          example: 2
+        interfaces:
+          type: array
+          items:
+            $ref: "#/components/schemas/VMInterface"
+        storage:
+          type: array
+          items:
+            $ref: "#/components/schemas/VMStorage"
 
     Error:
       type: object
