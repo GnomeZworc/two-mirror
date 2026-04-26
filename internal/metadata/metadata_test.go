@@ -1,6 +1,8 @@
 package metadata
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -180,6 +182,103 @@ func TestUnLoadNoCloudInDB_RemovesAllKeys(t *testing.T) {
 		}
 	}
 }
+
+// --- getIP ---
+
+func TestGetIP_ValidHostPort(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "10.0.0.1:4567"
+	if ip := getIP(req); ip != "10.0.0.1" {
+		t.Errorf("attendu 10.0.0.1, obtenu %q", ip)
+	}
+}
+
+func TestGetIP_IPv6(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "[::1]:8080"
+	if ip := getIP(req); ip != "::1" {
+		t.Errorf("attendu ::1, obtenu %q", ip)
+	}
+}
+
+func TestGetIP_NoPort(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = "10.0.0.1"
+	if ip := getIP(req); ip != "10.0.0.1" {
+		t.Errorf("attendu RemoteAddr brut, obtenu %q", ip)
+	}
+}
+
+// --- rootHandler ---
+
+func TestRootHandler_UserData(t *testing.T) {
+	data = NoCloudData{UserData: "userdata-content"}
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/user-data", nil)
+	rootHandler(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("attendu 200, obtenu %d", w.Code)
+	}
+	if body := w.Body.String(); body != "userdata-content" {
+		t.Errorf("body inattendu : %q", body)
+	}
+}
+
+func TestRootHandler_MetaData(t *testing.T) {
+	data = NoCloudData{MetaData: "metadata-content"}
+	w := httptest.NewRecorder()
+	rootHandler(w, httptest.NewRequest(http.MethodGet, "/meta-data", nil))
+	if w.Code != http.StatusOK {
+		t.Errorf("attendu 200, obtenu %d", w.Code)
+	}
+	if body := w.Body.String(); body != "metadata-content" {
+		t.Errorf("body inattendu : %q", body)
+	}
+}
+
+func TestRootHandler_NetworkConfig(t *testing.T) {
+	data = NoCloudData{NetworkConfig: "network-content"}
+	w := httptest.NewRecorder()
+	rootHandler(w, httptest.NewRequest(http.MethodGet, "/network-config", nil))
+	if w.Code != http.StatusOK {
+		t.Errorf("attendu 200, obtenu %d", w.Code)
+	}
+	if body := w.Body.String(); body != "network-content" {
+		t.Errorf("body inattendu : %q", body)
+	}
+}
+
+func TestRootHandler_VendorData(t *testing.T) {
+	data = NoCloudData{VendorData: "vendor-content"}
+	w := httptest.NewRecorder()
+	rootHandler(w, httptest.NewRequest(http.MethodGet, "/vendor-data", nil))
+	if w.Code != http.StatusOK {
+		t.Errorf("attendu 200, obtenu %d", w.Code)
+	}
+	if body := w.Body.String(); body != "vendor-content" {
+		t.Errorf("body inattendu : %q", body)
+	}
+}
+
+func TestRootHandler_UnknownPath(t *testing.T) {
+	data = NoCloudData{}
+	w := httptest.NewRecorder()
+	rootHandler(w, httptest.NewRequest(http.MethodGet, "/unknown", nil))
+	if w.Code != http.StatusNotFound {
+		t.Errorf("attendu 404, obtenu %d", w.Code)
+	}
+}
+
+func TestRootHandler_ContentType(t *testing.T) {
+	data = NoCloudData{MetaData: "x"}
+	w := httptest.NewRecorder()
+	rootHandler(w, httptest.NewRequest(http.MethodGet, "/meta-data", nil))
+	if ct := w.Header().Get("Content-Type"); ct != "text/yaml" {
+		t.Errorf("Content-Type attendu text/yaml, obtenu %q", ct)
+	}
+}
+
+// --- UnLoadNoCloudInDB_DoesNotAffectOtherVMs ---
 
 func TestUnLoadNoCloudInDB_DoesNotAffectOtherVMs(t *testing.T) {
 	db := kv.InitDB(kv.Config{Path: t.TempDir()}, false)

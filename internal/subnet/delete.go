@@ -3,9 +3,9 @@ package subnet
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 
+	"git.g3e.fr/syonad/two/internal/ebtables"
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
@@ -33,6 +33,11 @@ func DeleteSubnet(db *badger.DB, subnetName string) error {
 		return fmt.Errorf("get vxlan_id: %w", err)
 	}
 
+	gatewayIP, err := kv.GetFromDB(db, "subnet/"+subnetName+"/gateway_ip")
+	if err != nil {
+		return fmt.Errorf("get gateway_ip: %w", err)
+	}
+
 	subnetID := strings.SplitN(subnetName, "-", 2)[1]
 	bridge := "br-" + subnetID
 	vxlanIface := "vxlan-" + vxlanIDStr
@@ -55,19 +60,12 @@ func DeleteSubnet(db *badger.DB, subnetName string) error {
 	}
 
 	// suppression des règles ebtables
-	exec.Command("ebtables", "-D", "FORWARD",
-		"--out-interface", bridge,
-		"-p", "arp",
-		"--arp-op", "Request",
-		"-j", "DROP").Run()
-
-	exec.Command("ebtables", "-D", "FORWARD",
-		"--out-interface", bridge,
-		"-p", "IPv4",
-		"--ip-protocol", "udp",
-		"--ip-source-port", "67:68",
-		"--ip-destination-port", "67:68",
-		"-j", "DROP").Run()
+	if err := ebtables.DeleteARPToGateway(bridge, gatewayIP); err != nil {
+		return fmt.Errorf("delete ebtables arp rule: %w", err)
+	}
+	if err := ebtables.DeleteDHCP(bridge); err != nil {
+		return fmt.Errorf("delete ebtables dhcp rule: %w", err)
+	}
 
 	// suppression du bridge dans le netns VPC
 	if err := netns.Call(vpcName, func() error {

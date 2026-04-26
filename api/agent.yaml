@@ -1,0 +1,303 @@
+openapi: "3.1.0"
+info:
+  title: Two API
+  version: "0.1.0"
+  description: REST API for managing VPCs and Subnets in the Two orchestrator.
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+paths:
+
+  # ── VPC ────────────────────────────────────────────────────────────────────
+
+  /vpcs:
+    get:
+      summary: List all VPCs
+      operationId: listVPCs
+      responses:
+        "200":
+          description: List of VPCs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VPC"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      summary: Create a VPC
+      operationId: createVPC
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VPCCreateRequest"
+      responses:
+        "202":
+          description: VPC creation accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VPC"
+        "400":
+          description: Missing required field or invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: VPC already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /vpcs/{name}:
+    parameters:
+      - $ref: "#/components/parameters/ResourceName"
+
+    get:
+      summary: Get VPC status and info
+      operationId: getVPC
+      responses:
+        "200":
+          description: VPC found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VPC"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      summary: Delete a VPC
+      operationId: deleteVPC
+      responses:
+        "202":
+          description: VPC deletion accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VPC"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: VPC not in a deletable state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ── Subnet ─────────────────────────────────────────────────────────────────
+
+  /subnets:
+    get:
+      summary: List all subnets
+      operationId: listSubnets
+      responses:
+        "200":
+          description: List of subnets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Subnet"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      summary: Create a subnet
+      operationId: createSubnet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubnetCreateRequest"
+      responses:
+        "202":
+          description: Subnet creation accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subnet"
+        "400":
+          description: Missing required field or unknown iface_type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Subnet already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: Parent VPC does not exist or is not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /subnets/{name}:
+    parameters:
+      - $ref: "#/components/parameters/ResourceName"
+
+    get:
+      summary: Get subnet status and info
+      operationId: getSubnet
+      responses:
+        "200":
+          description: Subnet found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subnet"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      summary: Delete a subnet
+      operationId: deleteSubnet
+      responses:
+        "202":
+          description: Subnet deletion accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subnet"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+# ── Components ──────────────────────────────────────────────────────────────
+
+components:
+
+  parameters:
+    ResourceName:
+      name: name
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Resource name
+
+  schemas:
+
+    VPCCreateRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          description: Unique name for the VPC, must follow the format vp-[id]
+          pattern: '^vp-.+'
+          example: vp-00001
+
+    VPC:
+      type: object
+      properties:
+        name:
+          type: string
+          example: vp-00001
+        state:
+          type: string
+          enum: [creating, created, deleting, deleted]
+          example: created
+
+    SubnetCreateRequest:
+      type: object
+      required: [name, vpc, vxlan_id, gateway_ip, cidr]
+      properties:
+        name:
+          type: string
+          description: Unique name for the subnet
+          example: sn-00001
+        vpc:
+          type: string
+          description: Parent VPC name
+          example: vpc1
+        vxlan_id:
+          type: integer
+          description: VXLAN VNI identifier
+          example: 100
+        iface_type:
+          type: string
+          description: Interface type key defined in the agent config (e.g. vms, internet, admin). Falls back to default_interface if omitted or unknown.
+          example: vms
+        gateway_ip:
+          type: string
+          format: ipv4
+          description: Gateway IP for the subnet
+          example: "10.10.10.1"
+        cidr:
+          type: string
+          description: Subnet CIDR block
+          example: "10.10.10.0/24"
+
+    Subnet:
+      type: object
+      properties:
+        name:
+          type: string
+          example: sn-00001
+        state:
+          type: string
+          enum: [creating, created, deleting, deleted]
+          example: created
+        vpc:
+          type: string
+          example: vpc1
+        vxlan_id:
+          type: integer
+          example: 100
+        local_iface:
+          type: string
+          description: Resolved interface name
+          example: br-000000
+        gateway_ip:
+          type: string
+          example: "10.10.10.1"
+        cidr:
+          type: string
+          example: "10.10.10.0/24"
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "resource not found"
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"

@@ -1,6 +1,8 @@
 package vpc
 
 import (
+	"strings"
+
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
@@ -12,7 +14,9 @@ func DeleteVPC(db *badger.DB, name string) error {
 	if state, err := kv.GetFromDB(db, "vpc/"+name+"/state"); err != nil {
 		return err
 	} else if state == "deleting" {
-		if err := netif.DeleteLink("vp-" + name + "-e"); err != nil {
+		vpcID := strings.SplitN(name, "-", 2)[1]
+
+		if err := netif.DeleteLink("vp-" + vpcID + "-e"); err != nil {
 			return err
 		}
 

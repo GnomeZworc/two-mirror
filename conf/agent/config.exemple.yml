@@ -1,2 +1,43 @@
+# Path to the Badger key-value database directory
 database:
   path: "/var/lib/two/data/"
+
+# REST API server
+api:
+  address: "0.0.0.0"
+  port: 8080
+
+# Prometheus metrics server
+prometheus:
+  address: "0.0.0.0"
+  port: 9090
+
+# Worker pool that executes dispatched commands
+worker:
+  # Number of concurrent worker goroutines
+  count: 4
+  # Maximum number of commands queued before Dispatch blocks
+  buffer_size: 100
+
+# Timing for commands that wait on resource state transitions
+dispatcher:
+  # How long (in seconds) to wait before giving up
+  timeout_seconds: 300
+  # Interval (in seconds) between each state check
+  poll_seconds: 2
+
+# Bridge interface used when the requested iface_type is not found in interfaces
+default_interface: br-000000
+
+# Map of logical interface types to physical bridge names on this host
+interfaces:
+  vms: br-000000
+  internet: br-000000
+  admin: br-000000
+
+# Logging configuration
+logger:
+  # Log level: debug, info, warn, error (default: info)
+  level: info
+  # Force debug level regardless of level setting (default: false)
+  debug: false
