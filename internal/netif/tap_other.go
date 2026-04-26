@@ -7,3 +7,7 @@ import "errors"
 func CreateTap(_ int, _, _ string) error {
 	return errors.New("netif: tap not supported on this platform")
 }
+
+func DeleteTap(_ int, _ string) error {
+	return errors.New("netif: tap not supported on this platform")
+}

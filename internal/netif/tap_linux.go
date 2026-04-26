@@ -26,3 +26,9 @@ func CreateTap(tapID int, bridgeName, vpcName string) error {
 		return LinkSetUp(name)
 	})
 }
+
+func DeleteTap(tapID int, vpcName string) error {
+	return netns.Call(vpcName, func() error {
+		return DeleteLink(fmt.Sprintf("tap%d", tapID))
+	})
+}
