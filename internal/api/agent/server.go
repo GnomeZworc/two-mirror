@@ -27,6 +27,8 @@ func (s *Server) Start(address string) {
 	mux.HandleFunc("/vpcs/", s.VpcByNameHandler)
 	mux.HandleFunc("/subnets", s.SubnetsHandler)
 	mux.HandleFunc("/subnets/", s.SubnetByNameHandler)
+	mux.HandleFunc("/vms", s.VmsHandler)
+	mux.HandleFunc("/vms/", s.VmByNameHandler)
 	s.logger.Info("API server listening", "address", address)
 	if err := http.ListenAndServe(address, s.logMiddleware(mux)); err != nil {
 		s.logger.Error("API server stopped", "error", err)
