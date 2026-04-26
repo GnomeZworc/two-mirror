@@ -3,11 +3,11 @@ package subnet
 import (
 	"fmt"
 	"net"
-	"os/exec"
 	"strconv"
 	"strings"
 
 	"git.g3e.fr/syonad/two/internal/dhcp"
+	"git.g3e.fr/syonad/two/internal/ebtables"
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
@@ -136,25 +136,11 @@ func CreateSubnet(db *badger.DB, subnetName string) error {
 		return fmt.Errorf("add route in netns: %w", err)
 	}
 
-	// ebtables : drop ARP Request vers la gateway sur ce bridge
-	if err := exec.Command("ebtables", "-A", "FORWARD",
-		"--out-interface", bridge,
-		"-p", "arp",
-		"--arp-op", "Request",
-		"--arp-ip-dst", gatewayIP.String(),
-		"-j", "DROP").Run(); err != nil {
-		return fmt.Errorf("ebtables arp rule: %w", err)
+	if err := ebtables.DropARPToGateway(bridge, gatewayIP.String()); err != nil {
+		return err
 	}
-
-	// ebtables : drop trafic DHCP sur ce bridge
-	if err := exec.Command("ebtables", "-A", "FORWARD",
-		"--out-interface", bridge,
-		"-p", "IPv4",
-		"--ip-protocol", "udp",
-		"--ip-source-port", "67:68",
-		"--ip-destination-port", "67:68",
-		"-j", "DROP").Run(); err != nil {
-		return fmt.Errorf("ebtables dhcp rule: %w", err)
+	if err := ebtables.DropDHCP(bridge); err != nil {
+		return err
 	}
 
 	// génération de la config dnsmasq et démarrage du service
