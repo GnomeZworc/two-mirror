@@ -101,8 +101,12 @@ func CreateSubnet(db *badger.DB, subnetName string) error {
 		Name:    d.vpc + "_" + d.bridge,
 		ConfDir: "/etc/dnsmasq.d",
 	}
-	if _, err := dhcp.GenerateConfig(conf); err != nil {
+	_, entries, err := dhcp.GenerateConfig(conf)
+	if err != nil {
 		return fmt.Errorf("generate dhcp config: %w", err)
+	}
+	if err := dhcp.StoreDHCPEntries(db, subnetName, entries); err != nil {
+		return fmt.Errorf("store dhcp entries: %w", err)
 	}
 
 	svc, err := systemd.New()

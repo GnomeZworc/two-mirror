@@ -42,6 +42,9 @@ func DeleteSubnet(db *badger.DB, subnetName string) error {
 	if err := os.Remove("/etc/dnsmasq.d/" + d.vpc + "_" + d.bridge + ".conf"); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("remove dnsmasq config: %w", err)
 	}
+	if err := kv.DeleteInDB(db, "subnet/"+subnetName+"/dhcp"); err != nil {
+		return fmt.Errorf("delete dhcp entries: %w", err)
+	}
 
 	if err := ebtables.DeleteARPToGateway(d.bridge, d.gatewayIP.String()); err != nil {
 		return fmt.Errorf("delete ebtables arp rule: %w", err)

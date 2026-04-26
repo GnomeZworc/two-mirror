@@ -61,7 +61,7 @@ func newConf(t *testing.T, cidr string) Config {
 
 func TestGenerateConfig_CreatesFile(t *testing.T) {
 	conf := newConf(t, "192.168.1.0/29") // 6 hôtes
-	path, err := GenerateConfig(conf)
+	path, _, err := GenerateConfig(conf)
 	if err != nil {
 		t.Fatalf("GenerateConfig a échoué : %v", err)
 	}
@@ -73,7 +73,7 @@ func TestGenerateConfig_CreatesFile(t *testing.T) {
 
 func TestGenerateConfig_FilenameMatchesName(t *testing.T) {
 	conf := newConf(t, "192.168.1.0/29")
-	path, err := GenerateConfig(conf)
+	path, _, err := GenerateConfig(conf)
 	if err != nil {
 		t.Fatalf("GenerateConfig a échoué : %v", err)
 	}
@@ -86,7 +86,7 @@ func TestGenerateConfig_FilenameMatchesName(t *testing.T) {
 
 func TestGenerateConfig_ContainsGateway(t *testing.T) {
 	conf := newConf(t, "192.168.1.0/29")
-	path, _ := GenerateConfig(conf)
+	path, _, _ := GenerateConfig(conf)
 	content, _ := os.ReadFile(path)
 
 	if !strings.Contains(string(content), "dhcp-option=3,192.168.1.1") {
@@ -102,7 +102,7 @@ func TestGenerateConfig_ContainsDhcpRange(t *testing.T) {
 		Name:    "vpc1",
 		ConfDir: t.TempDir(),
 	}
-	path, _ := GenerateConfig(conf)
+	path, _, _ := GenerateConfig(conf)
 	content, _ := os.ReadFile(path)
 
 	if !strings.Contains(string(content), "dhcp-range=10.10.0.0,static,255.255.255.0,12h") {
@@ -113,7 +113,7 @@ func TestGenerateConfig_ContainsDhcpRange(t *testing.T) {
 func TestGenerateConfig_OneHostEntryPerIP(t *testing.T) {
 	// /29 = réseau + broadcast + 6 hôtes → 8 adresses
 	conf := newConf(t, "10.0.0.0/29")
-	path, _ := GenerateConfig(conf)
+	path, _, _ := GenerateConfig(conf)
 	content, _ := os.ReadFile(path)
 
 	lines := strings.Split(string(content), "\n")
@@ -131,7 +131,7 @@ func TestGenerateConfig_OneHostEntryPerIP(t *testing.T) {
 
 func TestGenerateConfig_MACPrefix(t *testing.T) {
 	conf := newConf(t, "10.0.0.0/30") // 4 adresses
-	path, _ := GenerateConfig(conf)
+	path, _, _ := GenerateConfig(conf)
 	content, _ := os.ReadFile(path)
 
 	if !strings.Contains(string(content), "00:22:33:") {
@@ -148,7 +148,7 @@ func TestGenerateConfig_CreatesConfDir(t *testing.T) {
 		Name:    "net",
 		ConfDir: dir,
 	}
-	if _, err := GenerateConfig(conf); err != nil {
+	if _, _, err := GenerateConfig(conf); err != nil {
 		t.Fatalf("GenerateConfig devrait créer les répertoires manquants : %v", err)
 	}
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
