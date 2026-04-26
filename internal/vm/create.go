@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"git.g3e.fr/syonad/two/internal/iptables"
 	"git.g3e.fr/syonad/two/internal/metadata"
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
@@ -41,6 +42,21 @@ func StartVM(db *badger.DB, name string) error {
 		return fmt.Errorf("parse tap_id: %w", err)
 	}
 
+	vmIP, err := kv.GetFromDB(db, "vm/"+name+"/ip")
+	if err != nil {
+		return fmt.Errorf("get ip: %w", err)
+	}
+
+	gatewayIP, err := kv.GetFromDB(db, "vm/"+name+"/gateway_ip")
+	if err != nil {
+		return fmt.Errorf("get gateway_ip: %w", err)
+	}
+
+	metadataPort, err := kv.GetFromDB(db, "vm/"+name+"/metadata_port")
+	if err != nil {
+		return fmt.Errorf("get metadata_port: %w", err)
+	}
+
 	mac, err := kv.GetFromDB(db, "vm/"+name+"/mac")
 	if err != nil {
 		return fmt.Errorf("get mac: %w", err)
@@ -63,16 +79,6 @@ func StartVM(db *badger.DB, name string) error {
 	}
 	cpus, _ := strconv.Atoi(cpusStr)
 
-	bindIP, err := kv.GetFromDB(db, "vm/"+name+"/metadata_bind_ip")
-	if err != nil {
-		return fmt.Errorf("get metadata_bind_ip: %w", err)
-	}
-
-	bindPort, err := kv.GetFromDB(db, "vm/"+name+"/metadata_bind_port")
-	if err != nil {
-		return fmt.Errorf("get metadata_bind_port: %w", err)
-	}
-
 	password, _ := kv.GetFromDB(db, "vm/"+name+"/password")
 	sshkey, _ := kv.GetFromDB(db, "vm/"+name+"/sshkey")
 
@@ -80,11 +86,17 @@ func StartVM(db *badger.DB, name string) error {
 		return fmt.Errorf("create tap: %w", err)
 	}
 
+	if err := netns.Call(vpcName, func() error {
+		return iptables.AddMetadataRedirect(vmIP, gatewayIP, metadataPort)
+	}); err != nil {
+		return fmt.Errorf("add metadata redirect: %w", err)
+	}
+
 	if err := metadata.StartMetadata(metadata.NoCloudConfig{
 		Name:     name,
 		VpcName:  vpcName,
-		BindIP:   bindIP,
-		BindPort: bindPort,
+		BindIP:   gatewayIP,
+		BindPort: metadataPort,
 		Password: password,
 		SSHKEY:   sshkey,
 	}, db, false); err != nil {
