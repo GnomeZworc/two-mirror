@@ -88,7 +88,12 @@ func (s *Server) postSubnet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.dispatcher.Dispatch(cmd)
-	entries, _ := kv.ListByPrefix(s.db, "subnet/"+req.Name+"/")
+	entries, err := kv.ListByPrefix(s.db, "subnet/"+req.Name+"/")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "failed to read subnet state"})
+		return
+	}
 	sub := Subnet{Name: req.Name}
 	for key, value := range entries {
 		parts := strings.Split(key, "/")

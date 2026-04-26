@@ -47,7 +47,12 @@ func (s *Server) deleteVpc(w http.ResponseWriter, _ *http.Request, name string) 
 		return
 	}
 	s.dispatcher.Dispatch(cmd)
-	state, _ := kv.GetFromDB(s.db, "vpc/"+name+"/state")
+	state, err := kv.GetFromDB(s.db, "vpc/"+name+"/state")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "failed to read vpc state"})
+		return
+	}
 	w.WriteHeader(http.StatusAccepted)
 	json.NewEncoder(w).Encode(VPC{Name: name, State: state})
 }

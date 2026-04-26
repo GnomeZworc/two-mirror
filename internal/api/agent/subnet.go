@@ -69,7 +69,12 @@ func (s *Server) deleteSubnet(w http.ResponseWriter, _ *http.Request, name strin
 		return
 	}
 	s.dispatcher.Dispatch(cmd)
-	state, _ := kv.GetFromDB(s.db, "subnet/"+name+"/state")
+	state, err := kv.GetFromDB(s.db, "subnet/"+name+"/state")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "failed to read subnet state"})
+		return
+	}
 	w.WriteHeader(http.StatusAccepted)
 	json.NewEncoder(w).Encode(Subnet{Name: name, State: state})
 }
