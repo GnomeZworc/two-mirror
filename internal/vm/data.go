@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"git.g3e.fr/syonad/two/internal/dhcp"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 	"github.com/dgraph-io/badger/v4"
 )
@@ -74,9 +75,9 @@ func loadVM(db *badger.DB, name string) (vmData, error) {
 	}
 	d.metadataPort = metadataPort
 
-	mac, err := kv.GetFromDB(db, "vm/"+name+"/mac")
+	mac, err := dhcp.GetMACForIP(db, d.subnetName, d.ip)
 	if err != nil {
-		return d, fmt.Errorf("get mac: %w", err)
+		return d, fmt.Errorf("get mac for ip %s: %w", d.ip, err)
 	}
 	d.mac = mac
 
