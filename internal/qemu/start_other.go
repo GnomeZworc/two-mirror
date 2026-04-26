@@ -9,6 +9,6 @@ type Config struct {
 	TapID, Memory, CPUs   int
 }
 
-func Start(cfg Config) error {
+func Start(_ Config) error {
 	return errors.New("vm: not supported on this platform")
 }

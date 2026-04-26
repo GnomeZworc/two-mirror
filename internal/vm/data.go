@@ -91,13 +91,19 @@ func loadVM(db *badger.DB, name string) (vmData, error) {
 	if err != nil {
 		return d, fmt.Errorf("get memory: %w", err)
 	}
-	d.memory, _ = strconv.Atoi(memoryStr)
+	d.memory, err = strconv.Atoi(memoryStr)
+	if err != nil {
+		return d, fmt.Errorf("parse memory: %w", err)
+	}
 
 	cpusStr, err := kv.GetFromDB(db, "vm/"+name+"/cpus")
 	if err != nil {
 		return d, fmt.Errorf("get cpus: %w", err)
 	}
-	d.cpus, _ = strconv.Atoi(cpusStr)
+	d.cpus, err = strconv.Atoi(cpusStr)
+	if err != nil {
+		return d, fmt.Errorf("parse cpus: %w", err)
+	}
 
 	d.password, _ = kv.GetFromDB(db, "vm/"+name+"/password")
 	d.sshkey, _ = kv.GetFromDB(db, "vm/"+name+"/sshkey")
