@@ -81,11 +81,29 @@ func TestPostSubnet_Created(t *testing.T) {
 
 func TestPostSubnet_MissingFields(t *testing.T) {
 	s, _ := newTestServer(t)
-	body, _ := json.Marshal(SubnetCreateRequest{Name: "sn-1"}) // vpc, iface_type, gateway_ip, cidr manquants
+	body, _ := json.Marshal(SubnetCreateRequest{Name: "sn-1"}) // vpc, gateway_ip, cidr manquants
 	w := httptest.NewRecorder()
 	s.SubnetsHandler(w, httptest.NewRequest(http.MethodPost, "/subnets", bytes.NewReader(body)))
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("attendu 400, obtenu %d", w.Code)
+	}
+}
+
+func TestPostSubnet_IfaceTypeOptional(t *testing.T) {
+	s, db := newTestServer(t)
+	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	req := SubnetCreateRequest{
+		Name:      "sn-opt",
+		VPC:       "vpc-1",
+		GatewayIP: "10.0.0.1",
+		CIDR:      "10.0.0.0/24",
+		// IfaceType omis — doit utiliser default_interface
+	}
+	body, _ := json.Marshal(req)
+	w := httptest.NewRecorder()
+	s.SubnetsHandler(w, httptest.NewRequest(http.MethodPost, "/subnets", bytes.NewReader(body)))
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("attendu 202, obtenu %d: %s", w.Code, w.Body.String())
 	}
 }
 
@@ -101,8 +119,8 @@ func TestPostSubnet_VPCNotFound(t *testing.T) {
 	body, _ := json.Marshal(req)
 	w := httptest.NewRecorder()
 	s.SubnetsHandler(w, httptest.NewRequest(http.MethodPost, "/subnets", bytes.NewReader(body)))
-	if w.Code != http.StatusConflict {
-		t.Errorf("attendu 409, obtenu %d", w.Code)
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Errorf("attendu 422, obtenu %d", w.Code)
 	}
 }
 
@@ -138,8 +156,8 @@ func TestPostSubnet_VPCDeleting(t *testing.T) {
 	body, _ := json.Marshal(req)
 	w := httptest.NewRecorder()
 	s.SubnetsHandler(w, httptest.NewRequest(http.MethodPost, "/subnets", bytes.NewReader(body)))
-	if w.Code != http.StatusConflict {
-		t.Errorf("attendu 409, obtenu %d", w.Code)
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Errorf("attendu 422, obtenu %d", w.Code)
 	}
 }
 

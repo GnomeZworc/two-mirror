@@ -69,9 +69,9 @@ func (s *Server) postSubnet(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(ErrorResponse{Error: "invalid request body"})
 		return
 	}
-	if req.Name == "" || req.VPC == "" || req.IfaceType == "" || req.GatewayIP == "" || req.CIDR == "" {
+	if req.Name == "" || req.VPC == "" || req.GatewayIP == "" || req.CIDR == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrorResponse{Error: "name, vpc, iface_type, gateway_ip and cidr are required"})
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "name, vpc, gateway_ip and cidr are required"})
 		return
 	}
 	cmd := dispatcher.CreateSubnetCommand{
@@ -83,7 +83,11 @@ func (s *Server) postSubnet(w http.ResponseWriter, r *http.Request) {
 		CIDR:      req.CIDR,
 	}
 	if err := s.dispatcher.Prepare(cmd); err != nil {
-		w.WriteHeader(http.StatusConflict)
+		if _, dbErr := kv.GetFromDB(s.db, "subnet/"+req.Name+"/state"); dbErr == nil {
+			w.WriteHeader(http.StatusConflict)
+		} else {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+		}
 		json.NewEncoder(w).Encode(ErrorResponse{Error: err.Error()})
 		return
 	}

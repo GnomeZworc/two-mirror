@@ -44,6 +44,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/VPC"
+        "400":
+          description: Missing required field or invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "409":
           description: VPC already exists
           content:
@@ -179,12 +185,6 @@ paths:
                 $ref: "#/components/schemas/Subnet"
         "404":
           $ref: "#/components/responses/NotFound"
-        "409":
-          description: Subnet not in a deletable state
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
         "500":
           $ref: "#/components/responses/InternalError"
 

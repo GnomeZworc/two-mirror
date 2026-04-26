@@ -171,8 +171,8 @@ func TestDeleteVpc_BlockedByActiveSubnet(t *testing.T) {
 	req := httptest.NewRequest(http.MethodDelete, "/vpcs/vpc-busy", nil)
 	w := httptest.NewRecorder()
 	s.VpcByNameHandler(w, req)
-	if w.Code != http.StatusNotFound {
-		t.Errorf("attendu 404 (Prepare échoue), obtenu %d: %s", w.Code, w.Body.String())
+	if w.Code != http.StatusConflict {
+		t.Errorf("attendu 409, obtenu %d: %s", w.Code, w.Body.String())
 	}
 }
 
