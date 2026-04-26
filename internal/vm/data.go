@@ -2,6 +2,7 @@ package vm
 
 import (
 	"fmt"
+	"math/rand"
 	"strconv"
 	"strings"
 
@@ -49,13 +50,17 @@ func loadVM(db *badger.DB, name string) (vmData, error) {
 
 	tapIDStr, err := kv.GetFromDB(db, "vm/"+name+"/tap_id")
 	if err != nil {
-		return d, fmt.Errorf("get tap_id: %w", err)
+		d.tapID = rand.Intn(90000000) + 10000000
+		if err := kv.AddInDB(db, "vm/"+name+"/tap_id", strconv.Itoa(d.tapID)); err != nil {
+			return d, fmt.Errorf("store tap_id: %w", err)
+		}
+	} else {
+		tapID, err := strconv.Atoi(tapIDStr)
+		if err != nil {
+			return d, fmt.Errorf("parse tap_id: %w", err)
+		}
+		d.tapID = tapID
 	}
-	tapID, err := strconv.Atoi(tapIDStr)
-	if err != nil {
-		return d, fmt.Errorf("parse tap_id: %w", err)
-	}
-	d.tapID = tapID
 
 	ip, err := kv.GetFromDB(db, "vm/"+name+"/ip")
 	if err != nil {
