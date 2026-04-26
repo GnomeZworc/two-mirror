@@ -2,7 +2,6 @@ package vm
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
@@ -25,38 +24,9 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 		return nil
 	}
 
-	subnetName, err := kv.GetFromDB(db, "vm/"+name+"/subnet")
+	d, err := loadVM(db, name)
 	if err != nil {
-		return fmt.Errorf("get subnet: %w", err)
-	}
-
-	vpcName, err := kv.GetFromDB(db, "subnet/"+subnetName+"/vpc")
-	if err != nil {
-		return fmt.Errorf("get vpc: %w", err)
-	}
-
-	gatewayIP, err := kv.GetFromDB(db, "subnet/"+subnetName+"/gateway_ip")
-	if err != nil {
-		return fmt.Errorf("get gateway_ip: %w", err)
-	}
-
-	tapIDStr, err := kv.GetFromDB(db, "vm/"+name+"/tap_id")
-	if err != nil {
-		return fmt.Errorf("get tap_id: %w", err)
-	}
-	tapID, err := strconv.Atoi(tapIDStr)
-	if err != nil {
-		return fmt.Errorf("parse tap_id: %w", err)
-	}
-
-	vmIP, err := kv.GetFromDB(db, "vm/"+name+"/ip")
-	if err != nil {
-		return fmt.Errorf("get ip: %w", err)
-	}
-
-	metadataPort, err := kv.GetFromDB(db, "vm/"+name+"/metadata_port")
-	if err != nil {
-		return fmt.Errorf("get metadata_port: %w", err)
+		return err
 	}
 
 	socketPath := fmt.Sprintf("/tmp/%s.qmp-sock", name)
@@ -81,8 +51,8 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 		}
 	}
 
-	if err := netns.Call(vpcName, func() error {
-		return iptables.DeleteMetadataRedirect(vmIP, gatewayIP, metadataPort)
+	if err := netns.Call(d.vpcName, func() error {
+		return iptables.DeleteMetadataRedirect(d.ip, d.gatewayIP, d.metadataPort)
 	}); err != nil {
 		return fmt.Errorf("delete metadata redirect: %w", err)
 	}
@@ -91,7 +61,7 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 		return fmt.Errorf("stop metadata: %w", err)
 	}
 
-	if err := netif.DeleteTap(tapID, vpcName); err != nil {
+	if err := netif.DeleteTap(d.tapID, d.vpcName); err != nil {
 		return fmt.Errorf("delete tap: %w", err)
 	}
 
