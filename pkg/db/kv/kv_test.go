@@ -151,3 +151,69 @@ func TestDeleteInDB_MissingKey(t *testing.T) {
 		t.Logf("DeleteInDB clé inexistante retourne : %v (non bloquant)", err)
 	}
 }
+
+// --- ListByPrefix ---
+
+func TestListByPrefix_MatchingKeys(t *testing.T) {
+	db := newTestDB(t)
+	AddInDB(db, "subnet/sn1/state", "created")
+	AddInDB(db, "subnet/sn1/vpc", "vpc-1")
+	AddInDB(db, "subnet/sn1/cidr", "10.0.0.0/24")
+
+	entries, err := ListByPrefix(db, "subnet/sn1/")
+	if err != nil {
+		t.Fatalf("ListByPrefix a échoué : %v", err)
+	}
+	if len(entries) != 3 {
+		t.Fatalf("attendu 3 entrées, obtenu %d", len(entries))
+	}
+	if entries["subnet/sn1/state"] != "created" {
+		t.Errorf("valeur inattendue pour state : %q", entries["subnet/sn1/state"])
+	}
+	if entries["subnet/sn1/vpc"] != "vpc-1" {
+		t.Errorf("valeur inattendue pour vpc : %q", entries["subnet/sn1/vpc"])
+	}
+}
+
+func TestListByPrefix_NoMatch(t *testing.T) {
+	db := newTestDB(t)
+	AddInDB(db, "vpc/v1/state", "created")
+
+	entries, err := ListByPrefix(db, "subnet/")
+	if err != nil {
+		t.Fatalf("ListByPrefix a échoué : %v", err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("attendu 0 entrées, obtenu %d", len(entries))
+	}
+}
+
+func TestListByPrefix_IsolatesPrefix(t *testing.T) {
+	db := newTestDB(t)
+	AddInDB(db, "subnet/sn1/state", "created")
+	AddInDB(db, "subnet/sn2/state", "creating")
+	AddInDB(db, "vpc/v1/state", "created")
+
+	entries, err := ListByPrefix(db, "subnet/sn1/")
+	if err != nil {
+		t.Fatalf("ListByPrefix a échoué : %v", err)
+	}
+	if len(entries) != 1 {
+		t.Errorf("attendu 1 entrée, obtenu %d : %v", len(entries), entries)
+	}
+	if _, ok := entries["subnet/sn1/state"]; !ok {
+		t.Error("subnet/sn1/state devrait être présent")
+	}
+}
+
+func TestListByPrefix_EmptyDB(t *testing.T) {
+	db := newTestDB(t)
+
+	entries, err := ListByPrefix(db, "subnet/")
+	if err != nil {
+		t.Fatalf("ListByPrefix a échoué : %v", err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("attendu 0 entrées sur DB vide, obtenu %d", len(entries))
+	}
+}
