@@ -45,7 +45,7 @@ func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 		BindPort: d.metadataPort,
 		Password: d.password,
 		SSHKEY:   d.sshkey,
-	}, db, false); err != nil {
+	}, cfg, false); err != nil {
 		return fmt.Errorf("start metadata: %w", err)
 	}
 

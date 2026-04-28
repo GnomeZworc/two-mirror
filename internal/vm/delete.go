@@ -57,7 +57,7 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 		return fmt.Errorf("delete metadata redirect: %w", err)
 	}
 
-	if err := metadata.StopMetadata(name, db, false); err != nil {
+	if err := metadata.StopMetadata(name, cfg, false); err != nil {
 		return fmt.Errorf("stop metadata: %w", err)
 	}
 
