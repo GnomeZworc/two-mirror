@@ -1,6 +1,8 @@
 package kv
 
 import (
+	"log"
+
 	"github.com/dgraph-io/badger/v4"
 )
 
@@ -15,7 +17,7 @@ func InitDB(conf Config, readonly bool) *badger.DB {
 	opts.NumLevelZeroTablesStall = 2
 	db, err := badger.Open(opts)
 	if err != nil {
-		panic(err)
+		log.Fatalf("kv.InitDB (readonly=%v, path=%s): %v", readonly, conf.Path, err)
 	}
 	return db
 }
