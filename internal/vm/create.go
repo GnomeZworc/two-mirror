@@ -3,6 +3,7 @@ package vm
 import (
 	"fmt"
 
+	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/iptables"
 	"git.g3e.fr/syonad/two/internal/metadata"
 	"git.g3e.fr/syonad/two/internal/netif"
@@ -13,7 +14,7 @@ import (
 	"github.com/dgraph-io/badger/v4"
 )
 
-func StartVM(db *badger.DB, name string) error {
+func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	state, err := kv.GetFromDB(db, "vm/"+name+"/state")
 	if err != nil {
 		return err

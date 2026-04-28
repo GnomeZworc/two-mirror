@@ -66,7 +66,7 @@ func (c StartVMCommand) Execute(db *badger.DB, cfg *configuration.Config) error 
 		case <-time.After(time.Duration(cfg.Dispatcher.PollSeconds) * time.Second):
 		}
 	}
-	return vm.StartVM(db, c.Name)
+	return vm.StartVM(db, c.Name, cfg)
 }
 
 type StopVMCommand struct {
