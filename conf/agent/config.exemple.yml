@@ -35,6 +35,10 @@ interfaces:
   internet: br-000000
   admin: br-000000
 
+# Metadata server runtime directory (cloud-init files per VM)
+metadata:
+  run_dir: "/run/two/metadata"
+
 # Logging configuration
 logger:
   # Log level: debug, info, warn, error (default: info)
