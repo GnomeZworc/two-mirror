@@ -3,10 +3,10 @@ package metadata
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
-
-	"git.g3e.fr/syonad/two/pkg/db/kv"
 )
 
 func newCfg() NoCloudConfig {
@@ -20,11 +20,9 @@ func newCfg() NoCloudConfig {
 	}
 }
 
-func newTestDB(t *testing.T) interface{ Close() error } {
+func useTestDir(t *testing.T) string {
 	t.Helper()
-	db := kv.InitDB(kv.Config{Path: t.TempDir()}, false)
-	t.Cleanup(func() { db.Close() })
-	return db
+	return t.TempDir()
 }
 
 // --- RenderConfig ---
@@ -108,78 +106,67 @@ func TestRenderConfig_SpecialCharsInName(t *testing.T) {
 
 // --- LoadNcCloudInDB / UnLoadNoCloudInDB ---
 
-func TestLoadNcCloudInDB_StoresAllKeys(t *testing.T) {
-	db := kv.InitDB(kv.Config{Path: t.TempDir()}, false)
-	t.Cleanup(func() { db.Close() })
-
-	cfg := newCfg()
-	LoadNcCloudInDB(cfg, db)
-
-	keys := []string{
-		"metadata/vm1/meta-data",
-		"metadata/vm1/user-data",
-		"metadata/vm1/network-config",
-		"metadata/vm1/vendor-data",
-		"metadata/vm1/vpc",
-		"metadata/vm1/bind_ip",
-		"metadata/vm1/bind_port",
+func readTestFile(t *testing.T, dir, vmName, name string) string {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join(dir, vmName, name))
+	if err != nil {
+		t.Errorf("fichier %q absent après LoadNcCloudInDB : %v", name, err)
+		return ""
 	}
-	for _, key := range keys {
-		val, err := kv.GetFromDB(db, key)
-		if err != nil {
-			t.Errorf("clé %q absente après LoadNcCloudInDB : %v", key, err)
-		}
-		if val == "" && key != "metadata/vm1/user-data" {
-			t.Errorf("clé %q vide après LoadNcCloudInDB", key)
+	return string(b)
+}
+
+func TestLoadNcCloudInDB_StoresAllFiles(t *testing.T) {
+	dir := useTestDir(t)
+	LoadNcCloudInDB(newCfg(), dir)
+
+	files := []string{"meta-data", "user-data", "network-config", "vendor-data", "vpc", "bind_ip", "bind_port"}
+	for _, f := range files {
+		path := filepath.Join(dir, "vm1", f)
+		if _, err := os.Stat(path); err != nil {
+			t.Errorf("fichier %q absent : %v", f, err)
 		}
 	}
 }
 
 func TestLoadNcCloudInDB_VpcAndBindValues(t *testing.T) {
-	db := kv.InitDB(kv.Config{Path: t.TempDir()}, false)
-	t.Cleanup(func() { db.Close() })
+	dir := useTestDir(t)
+	LoadNcCloudInDB(newCfg(), dir)
 
-	cfg := newCfg()
-	LoadNcCloudInDB(cfg, db)
-
-	vpc, _ := kv.GetFromDB(db, "metadata/vm1/vpc")
-	if vpc != "vpc-test" {
+	if vpc := readTestFile(t, dir, "vm1", "vpc"); vpc != "vpc-test" {
 		t.Errorf("vpc attendu %q, obtenu %q", "vpc-test", vpc)
 	}
-
-	ip, _ := kv.GetFromDB(db, "metadata/vm1/bind_ip")
-	if ip != "169.254.169.254" {
+	if ip := readTestFile(t, dir, "vm1", "bind_ip"); ip != "169.254.169.254" {
 		t.Errorf("bind_ip attendu %q, obtenu %q", "169.254.169.254", ip)
 	}
-
-	port, _ := kv.GetFromDB(db, "metadata/vm1/bind_port")
-	if port != "80" {
+	if port := readTestFile(t, dir, "vm1", "bind_port"); port != "80" {
 		t.Errorf("bind_port attendu %q, obtenu %q", "80", port)
 	}
 }
 
-func TestUnLoadNoCloudInDB_RemovesAllKeys(t *testing.T) {
-	db := kv.InitDB(kv.Config{Path: t.TempDir()}, false)
-	t.Cleanup(func() { db.Close() })
+func TestUnLoadNoCloudInDB_RemovesAllFiles(t *testing.T) {
+	dir := useTestDir(t)
+	LoadNcCloudInDB(newCfg(), dir)
+	UnLoadNoCloudInDB("vm1", dir)
 
-	cfg := newCfg()
-	LoadNcCloudInDB(cfg, db)
-	UnLoadNoCloudInDB("vm1", db)
-
-	keys := []string{
-		"metadata/vm1/meta-data",
-		"metadata/vm1/user-data",
-		"metadata/vm1/network-config",
-		"metadata/vm1/vendor-data",
-		"metadata/vm1/vpc",
-		"metadata/vm1/bind_ip",
-		"metadata/vm1/bind_port",
+	if _, err := os.Stat(filepath.Join(dir, "vm1")); !os.IsNotExist(err) {
+		t.Error("répertoire vm1 devrait être supprimé après UnLoadNoCloudInDB")
 	}
-	for _, key := range keys {
-		_, err := kv.GetFromDB(db, key)
-		if err == nil {
-			t.Errorf("clé %q devrait être supprimée après UnLoadNoCloudInDB", key)
-		}
+}
+
+func TestUnLoadNoCloudInDB_DoesNotAffectOtherVMs(t *testing.T) {
+	dir := useTestDir(t)
+
+	cfg1 := newCfg()
+	cfg2 := newCfg()
+	cfg2.Name = "vm2"
+	LoadNcCloudInDB(cfg1, dir)
+	LoadNcCloudInDB(cfg2, dir)
+
+	UnLoadNoCloudInDB("vm1", dir)
+
+	if _, err := os.Stat(filepath.Join(dir, "vm2", "vpc")); err != nil {
+		t.Errorf("vm2 ne devrait pas être supprimée : %v", err)
 	}
 }
 
@@ -275,25 +262,5 @@ func TestRootHandler_ContentType(t *testing.T) {
 	rootHandler(w, httptest.NewRequest(http.MethodGet, "/meta-data", nil))
 	if ct := w.Header().Get("Content-Type"); ct != "text/yaml" {
 		t.Errorf("Content-Type attendu text/yaml, obtenu %q", ct)
-	}
-}
-
-// --- UnLoadNoCloudInDB_DoesNotAffectOtherVMs ---
-
-func TestUnLoadNoCloudInDB_DoesNotAffectOtherVMs(t *testing.T) {
-	db := kv.InitDB(kv.Config{Path: t.TempDir()}, false)
-	t.Cleanup(func() { db.Close() })
-
-	cfg1 := newCfg()
-	cfg2 := newCfg()
-	cfg2.Name = "vm2"
-	LoadNcCloudInDB(cfg1, db)
-	LoadNcCloudInDB(cfg2, db)
-
-	UnLoadNoCloudInDB("vm1", db)
-
-	_, err := kv.GetFromDB(db, "metadata/vm2/vpc")
-	if err != nil {
-		t.Errorf("vm2 ne devrait pas être supprimée : %v", err)
 	}
 }

@@ -5,12 +5,13 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
-	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/netns"
-	"git.g3e.fr/syonad/two/pkg/db/kv"
 )
 
 var data NoCloudData
@@ -23,47 +24,23 @@ func getIP(r *http.Request) string {
 	return ip
 }
 
-func getFromDB(config ServerConfig) NoCloudData {
-	var netns_name string
-	var port int
-	var iface string
+func readFile(dir, name string) string {
+	b, _ := os.ReadFile(filepath.Join(dir, name))
+	return strings.TrimRight(string(b), "\n")
+}
 
-	conf_db, _ := configuration.LoadConfig(config.ConfFile)
+func getFromFiles(config ServerConfig) NoCloudData {
+	dir := filepath.Join(config.RunDir, config.VmName)
 
-	db := kv.InitDB(kv.Config{Path: conf_db.Database.Path}, true)
-	defer db.Close()
-
-	metadata, _ := kv.GetFromDB(db, "metadata/"+config.VmName+"/meta-data")
-	userdata, _ := kv.GetFromDB(db, "metadata/"+config.VmName+"/user-data")
-	networkconfig, _ := kv.GetFromDB(db, "metadata/"+config.VmName+"/network-config")
-	vendordata, _ := kv.GetFromDB(db, "metadata/"+config.VmName+"/vendor-data")
-
-	if config.Netns == "" {
-		netns_name, _ = kv.GetFromDB(db, "metadata/"+config.VmName+"/vpc")
-	} else {
-		netns_name = config.Netns
-	}
-
-	if config.Iface == "" {
-		iface, _ = kv.GetFromDB(db, "metadata/"+config.VmName+"/bind_ip")
-	} else {
-		iface = config.Iface
-	}
-
-	if config.Port == 0 {
-		sport, _ := kv.GetFromDB(db, "metadata/"+config.VmName+"/bind_port")
-		port, _ = strconv.Atoi(sport)
-	} else {
-		port = config.Port
-	}
+	port, _ := strconv.Atoi(readFile(dir, "bind_port"))
 
 	return NoCloudData{
-		MetaData:      metadata,
-		UserData:      userdata,
-		NetworkConfig: networkconfig,
-		VendorData:    vendordata,
-		NetNs:         netns_name,
-		Iface:         iface,
+		MetaData:      readFile(dir, "meta-data"),
+		UserData:      readFile(dir, "user-data"),
+		NetworkConfig: readFile(dir, "network-config"),
+		VendorData:    readFile(dir, "vendor-data"),
+		NetNs:         readFile(dir, "vpc"),
+		Iface:         readFile(dir, "bind_ip"),
 		Port:          port,
 	}
 }
@@ -93,7 +70,7 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func StartServer(config ServerConfig) {
-	data = getFromDB(config)
+	data = getFromFiles(config)
 
 	if data.NetNs != "" {
 		if err := netns.Enter(data.NetNs); err != nil {
