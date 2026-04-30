@@ -17,7 +17,8 @@ func InitDB(conf Config, readonly bool) *badger.DB {
 	opts.NumLevelZeroTablesStall = 2
 	db, err := badger.Open(opts)
 	if err != nil {
-		log.Fatalf("kv.InitDB (readonly=%v, path=%s): %v", readonly, conf.Path, err)
+		log.Printf("kv.InitDB (readonly=%v, path=%s): %v", readonly, conf.Path, err)
+		panic(err)
 	}
 	return db
 }

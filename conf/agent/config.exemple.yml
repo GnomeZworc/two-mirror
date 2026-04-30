@@ -39,6 +39,12 @@ interfaces:
 metadata:
   run_dir: "/run/two/metadata"
 
+# Admin API (read-only DB inspection, loopback only)
+admin:
+  enabled: false
+  address: "127.0.0.1"
+  port: 9091
+
 # Logging configuration
 logger:
   # Log level: debug, info, warn, error (default: info)
