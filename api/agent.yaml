@@ -315,7 +315,7 @@ components:
 
     SubnetCreateRequest:
       type: object
-      required: [name, vpc, gateway_ip, cidr]
+      required: [name, vpc, interface_ip, cidr]
       properties:
         name:
           type: string
@@ -342,7 +342,7 @@ components:
           type: string
           description: Interface type key defined in the agent config (e.g. vms, internet, admin). Falls back to default_interface if omitted or unknown.
           example: vms
-        gateway_ip:
+        interface_ip:
           type: string
           format: ipv4
           description: Gateway IP for the subnet
@@ -377,7 +377,7 @@ components:
           type: string
           description: Resolved interface name from agent config
           example: br-000000
-        gateway_ip:
+        interface_ip:
           type: string
           example: "10.10.10.1"
         cidr:

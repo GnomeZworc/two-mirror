@@ -52,7 +52,7 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	}
 
 	if err := netns.Call(d.vpcName, func() error {
-		return iptables.DeleteMetadataRedirect(d.ip, d.gatewayIP, d.metadataPort)
+		return iptables.DeleteMetadataRedirect(d.ip, d.interfaceIP, d.metadataPort)
 	}); err != nil {
 		return fmt.Errorf("delete metadata redirect: %w", err)
 	}

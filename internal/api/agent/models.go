@@ -15,7 +15,7 @@ type SubnetCreateRequest struct {
 	Mode      string `json:"mode"`
 	VxlanID   int    `json:"vxlan_id"`
 	IfaceType string `json:"iface_type"`
-	GatewayIP string `json:"gateway_ip"`
+	InterfaceIP string `json:"interface_ip"`
 	CIDR      string `json:"cidr"`
 }
 
@@ -26,7 +26,7 @@ type Subnet struct {
 	Mode       string `json:"mode"`
 	VxlanID    int    `json:"vxlan_id"`
 	LocalIface string `json:"local_iface"`
-	GatewayIP  string `json:"gateway_ip"`
+	InterfaceIP string `json:"interface_ip"`
 	CIDR       string `json:"cidr"`
 }
 

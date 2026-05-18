@@ -81,7 +81,7 @@ func createSubnet(db *badger.DB, subnetName string, d subnetData) error {
 	switch d.mode {
 	case "vxlan":
 		if err := netns.Call(d.vpc, func() error {
-			return netif.AddrAdd(d.bridge, d.gatewayIP)
+			return netif.AddrAdd(d.bridge, d.interfaceIP)
 		}); err != nil {
 			return fmt.Errorf("add addr to bridge in netns: %w", err)
 		}
@@ -95,7 +95,7 @@ func createSubnet(db *badger.DB, subnetName string, d subnetData) error {
 
 	switch d.mode {
 	case "vxlan":
-		if err := ebtables.DropARPToGateway(d.bridge, d.gatewayIP.String()); err != nil {
+		if err := ebtables.DropARPToGateway(d.bridge, d.interfaceIP.String()); err != nil {
 			return err
 		}
 		if err := ebtables.DropDHCP(d.bridge); err != nil {
@@ -133,7 +133,7 @@ func setupVxlanHost(d subnetData, vethE string) error {
 func startDHCP(db *badger.DB, subnetName string, d subnetData) error {
 	conf := dhcp.Config{
 		Network: d.cidr,
-		Gateway: d.gatewayIP,
+		Gateway: d.interfaceIP,
 		Name:    d.vpc + "_" + d.bridge,
 		ConfDir: "/etc/dnsmasq.d",
 	}

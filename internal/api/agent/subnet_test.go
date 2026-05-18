@@ -60,7 +60,7 @@ func TestPostSubnet_Created(t *testing.T) {
 		Name:      "sn-new",
 		VPC:       "vpc-1",
 		IfaceType: "vms",
-		GatewayIP: "10.0.0.1",
+		InterfaceIP: "10.0.0.1",
 		CIDR:      "10.0.0.0/24",
 	}
 	body, _ := json.Marshal(req)
@@ -95,7 +95,7 @@ func TestPostSubnet_IfaceTypeOptional(t *testing.T) {
 	req := SubnetCreateRequest{
 		Name:      "sn-opt",
 		VPC:       "vpc-1",
-		GatewayIP: "10.0.0.1",
+		InterfaceIP: "10.0.0.1",
 		CIDR:      "10.0.0.0/24",
 		// IfaceType omis — doit utiliser default_interface
 	}
@@ -113,7 +113,7 @@ func TestPostSubnet_VPCNotFound(t *testing.T) {
 		Name:      "sn-1",
 		VPC:       "vpc-inexistant",
 		IfaceType: "vms",
-		GatewayIP: "10.0.0.1",
+		InterfaceIP: "10.0.0.1",
 		CIDR:      "10.0.0.0/24",
 	}
 	body, _ := json.Marshal(req)
@@ -132,7 +132,7 @@ func TestPostSubnet_Duplicate(t *testing.T) {
 		Name:      "sn-exist",
 		VPC:       "vpc-1",
 		IfaceType: "vms",
-		GatewayIP: "10.0.0.1",
+		InterfaceIP: "10.0.0.1",
 		CIDR:      "10.0.0.0/24",
 	}
 	body, _ := json.Marshal(req)
@@ -150,7 +150,7 @@ func TestPostSubnet_VPCDeleting(t *testing.T) {
 		Name:      "sn-1",
 		VPC:       "vpc-dying",
 		IfaceType: "vms",
-		GatewayIP: "10.0.0.1",
+		InterfaceIP: "10.0.0.1",
 		CIDR:      "10.0.0.0/24",
 	}
 	body, _ := json.Marshal(req)
@@ -169,7 +169,7 @@ func TestPostSubnet_BridgeMode_Success(t *testing.T) {
 		VPC:       "vpc-1",
 		Mode:      "bridge",
 		IfaceType: "vms",
-		GatewayIP: "10.0.0.1",
+		InterfaceIP: "10.0.0.1",
 		CIDR:      "10.0.0.0/24",
 	}
 	body, _ := json.Marshal(req)
@@ -195,7 +195,7 @@ func TestPostSubnet_UnknownMode(t *testing.T) {
 		Name:      "sn-1",
 		VPC:       "vpc-1",
 		Mode:      "vlan",
-		GatewayIP: "10.0.0.1",
+		InterfaceIP: "10.0.0.1",
 		CIDR:      "10.0.0.0/24",
 	}
 	body, _ := json.Marshal(req)
@@ -222,7 +222,7 @@ func TestGetSubnet_Found(t *testing.T) {
 	kv.AddInDB(db, "subnet/sn-1/state", "created")
 	kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-1")
 	kv.AddInDB(db, "subnet/sn-1/cidr", "10.0.0.0/24")
-	kv.AddInDB(db, "subnet/sn-1/gateway_ip", "10.0.0.1")
+	kv.AddInDB(db, "subnet/sn-1/interface_ip", "10.0.0.1")
 	req := httptest.NewRequest(http.MethodGet, "/subnets/sn-1", nil)
 	w := httptest.NewRecorder()
 	s.SubnetByNameHandler(w, req)

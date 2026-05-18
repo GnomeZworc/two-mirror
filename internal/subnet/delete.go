@@ -71,7 +71,7 @@ func stopDHCP(db *badger.DB, subnetName string, d subnetData) error {
 func deleteSubnetVxlan(d subnetData) error {
 	vxlanIface := fmt.Sprintf("vxlan-%d", d.vxlanID)
 
-	if err := ebtables.DeleteARPToGateway(d.bridge, d.gatewayIP.String()); err != nil {
+	if err := ebtables.DeleteARPToGateway(d.bridge, d.interfaceIP.String()); err != nil {
 		return fmt.Errorf("delete ebtables arp rule: %w", err)
 	}
 	if err := ebtables.DeleteDHCP(d.bridge); err != nil {

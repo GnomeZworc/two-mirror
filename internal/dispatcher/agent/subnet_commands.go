@@ -17,7 +17,7 @@ type CreateSubnetCommand struct {
 	Mode      string
 	VxlanID   int
 	IfaceType string
-	GatewayIP string
+	InterfaceIP string
 	CIDR      string
 }
 
@@ -46,7 +46,7 @@ func (c CreateSubnetCommand) Prepare(db *badger.DB, cfg *configuration.Config) e
 	kv.AddInDB(db, "subnet/"+c.Name+"/vpc", c.VPC)
 	kv.AddInDB(db, "subnet/"+c.Name+"/mode", c.Mode)
 	kv.AddInDB(db, "subnet/"+c.Name+"/local_iface", localIface)
-	kv.AddInDB(db, "subnet/"+c.Name+"/gateway_ip", c.GatewayIP)
+	kv.AddInDB(db, "subnet/"+c.Name+"/interface_ip", c.InterfaceIP)
 	kv.AddInDB(db, "subnet/"+c.Name+"/cidr", c.CIDR)
 	if c.Mode == "vxlan" {
 		kv.AddInDB(db, "subnet/"+c.Name+"/vxlan_id", strconv.Itoa(c.VxlanID))

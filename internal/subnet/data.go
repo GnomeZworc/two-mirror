@@ -17,7 +17,7 @@ type subnetData struct {
 	mode       string
 	vxlanID    int
 	localIface string
-	gatewayIP  net.IP
+	interfaceIP net.IP
 	cidr       *net.IPNet
 }
 
@@ -57,15 +57,15 @@ func loadSubnet(db *badger.DB, name string) (subnetData, error) {
 	}
 	d.localIface = localIface
 
-	gatewayIPStr, err := kv.GetFromDB(db, "subnet/"+name+"/gateway_ip")
+	interfaceIPStr, err := kv.GetFromDB(db, "subnet/"+name+"/interface_ip")
 	if err != nil {
-		return d, fmt.Errorf("get gateway_ip: %w", err)
+		return d, fmt.Errorf("get interface_ip: %w", err)
 	}
-	gatewayIP := net.ParseIP(gatewayIPStr)
-	if gatewayIP == nil {
-		return d, fmt.Errorf("invalid gateway_ip: %s", gatewayIPStr)
+	interfaceIP := net.ParseIP(interfaceIPStr)
+	if interfaceIP == nil {
+		return d, fmt.Errorf("invalid interface_ip: %s", interfaceIPStr)
 	}
-	d.gatewayIP = gatewayIP
+	d.interfaceIP = interfaceIP
 
 	cidrStr, err := kv.GetFromDB(db, "subnet/"+name+"/cidr")
 	if err != nil {

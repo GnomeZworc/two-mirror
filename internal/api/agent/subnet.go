@@ -53,8 +53,8 @@ func (s *Server) getSubnet(w http.ResponseWriter, _ *http.Request, name string) 
 			sub.VxlanID, _ = strconv.Atoi(value)
 		case "local_iface":
 			sub.LocalIface = value
-		case "gateway_ip":
-			sub.GatewayIP = value
+		case "interface_ip":
+			sub.InterfaceIP = value
 		case "cidr":
 			sub.CIDR = value
 		}

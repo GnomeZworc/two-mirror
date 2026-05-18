@@ -33,7 +33,7 @@ func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	}
 
 	if err := netns.Call(d.vpcName, func() error {
-		return iptables.AddMetadataRedirect(d.ip, d.gatewayIP, d.metadataPort)
+		return iptables.AddMetadataRedirect(d.ip, d.interfaceIP, d.metadataPort)
 	}); err != nil {
 		return fmt.Errorf("add metadata redirect: %w", err)
 	}
@@ -41,7 +41,7 @@ func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	if err := metadata.StartMetadata(metadata.NoCloudConfig{
 		Name:     name,
 		VpcName:  d.vpcName,
-		BindIP:   d.gatewayIP,
+		BindIP:   d.interfaceIP,
 		BindPort: d.metadataPort,
 		Password: d.password,
 		SSHKEY:   d.sshkey,

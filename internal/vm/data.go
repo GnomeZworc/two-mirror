@@ -14,7 +14,7 @@ import (
 type vmData struct {
 	subnetName   string
 	vpcName      string
-	gatewayIP    string
+	interfaceIP    string
 	bridge       string
 	tapID        int
 	ip           string
@@ -43,11 +43,11 @@ func loadVM(db *badger.DB, name string) (vmData, error) {
 	}
 	d.vpcName = vpcName
 
-	gatewayIP, err := kv.GetFromDB(db, "subnet/"+subnetName+"/gateway_ip")
+	interfaceIP, err := kv.GetFromDB(db, "subnet/"+subnetName+"/interface_ip")
 	if err != nil {
-		return d, fmt.Errorf("get gateway_ip: %w", err)
+		return d, fmt.Errorf("get interface_ip: %w", err)
 	}
-	d.gatewayIP = gatewayIP
+	d.interfaceIP = interfaceIP
 
 	tapIDStr, err := kv.GetFromDB(db, "vm/"+name+"/tap_id")
 	if err != nil {
