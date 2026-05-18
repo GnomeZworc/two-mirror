@@ -47,6 +47,8 @@ func (s *Server) getSubnet(w http.ResponseWriter, _ *http.Request, name string) 
 			sub.State = value
 		case "vpc":
 			sub.VPC = value
+		case "mode":
+			sub.Mode = value
 		case "vxlan_id":
 			sub.VxlanID, _ = strconv.Atoi(value)
 		case "local_iface":

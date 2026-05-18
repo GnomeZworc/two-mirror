@@ -14,6 +14,7 @@ import (
 type CreateSubnetCommand struct {
 	Name      string
 	VPC       string
+	Mode      string
 	VxlanID   int
 	IfaceType string
 	GatewayIP string
@@ -21,6 +22,12 @@ type CreateSubnetCommand struct {
 }
 
 func (c CreateSubnetCommand) Prepare(db *badger.DB, cfg *configuration.Config) error {
+	if c.Mode == "" {
+		c.Mode = "vxlan"
+	}
+	if c.Mode != "vxlan" && c.Mode != "bridge" {
+		return fmt.Errorf("unknown subnet mode %q", c.Mode)
+	}
 	if _, err := kv.GetFromDB(db, "subnet/"+c.Name+"/state"); err == nil {
 		return fmt.Errorf("subnet %q already exists", c.Name)
 	}
@@ -37,10 +44,13 @@ func (c CreateSubnetCommand) Prepare(db *badger.DB, cfg *configuration.Config) e
 	}
 	kv.AddInDB(db, "subnet/"+c.Name+"/state", "creating")
 	kv.AddInDB(db, "subnet/"+c.Name+"/vpc", c.VPC)
-	kv.AddInDB(db, "subnet/"+c.Name+"/vxlan_id", strconv.Itoa(c.VxlanID))
+	kv.AddInDB(db, "subnet/"+c.Name+"/mode", c.Mode)
 	kv.AddInDB(db, "subnet/"+c.Name+"/local_iface", localIface)
 	kv.AddInDB(db, "subnet/"+c.Name+"/gateway_ip", c.GatewayIP)
 	kv.AddInDB(db, "subnet/"+c.Name+"/cidr", c.CIDR)
+	if c.Mode == "vxlan" {
+		kv.AddInDB(db, "subnet/"+c.Name+"/vxlan_id", strconv.Itoa(c.VxlanID))
+	}
 	return nil
 }
 

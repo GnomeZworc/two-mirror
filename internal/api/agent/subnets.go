@@ -44,6 +44,8 @@ func (s *Server) listSubnets(w http.ResponseWriter, _ *http.Request) {
 			subnets[name].State = value
 		case "vpc":
 			subnets[name].VPC = value
+		case "mode":
+			subnets[name].Mode = value
 		case "vxlan_id":
 			subnets[name].VxlanID, _ = strconv.Atoi(value)
 		case "local_iface":
@@ -77,6 +79,7 @@ func (s *Server) postSubnet(w http.ResponseWriter, r *http.Request) {
 	cmd := dispatcher.CreateSubnetCommand{
 		Name:      req.Name,
 		VPC:       req.VPC,
+		Mode:      req.Mode,
 		VxlanID:   req.VxlanID,
 		IfaceType: req.IfaceType,
 		GatewayIP: req.GatewayIP,
@@ -109,6 +112,8 @@ func (s *Server) postSubnet(w http.ResponseWriter, r *http.Request) {
 			sub.State = value
 		case "vpc":
 			sub.VPC = value
+		case "mode":
+			sub.Mode = value
 		case "vxlan_id":
 			sub.VxlanID, _ = strconv.Atoi(value)
 		case "local_iface":
