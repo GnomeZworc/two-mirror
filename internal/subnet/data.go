@@ -14,6 +14,7 @@ type subnetData struct {
 	vpc        string
 	subnetID   string
 	bridge     string
+	mode       string
 	vxlanID    int
 	localIface string
 	gatewayIP  net.IP
@@ -32,15 +33,23 @@ func loadSubnet(db *badger.DB, name string) (subnetData, error) {
 	}
 	d.vpc = vpc
 
-	vxlanIDStr, err := kv.GetFromDB(db, "subnet/"+name+"/vxlan_id")
+	mode, err := kv.GetFromDB(db, "subnet/"+name+"/mode")
 	if err != nil {
-		return d, fmt.Errorf("get vxlan_id: %w", err)
+		return d, fmt.Errorf("get mode: %w", err)
 	}
-	vxlanID, err := strconv.Atoi(vxlanIDStr)
-	if err != nil {
-		return d, fmt.Errorf("parse vxlan_id: %w", err)
+	d.mode = mode
+
+	if d.mode == "vxlan" {
+		vxlanIDStr, err := kv.GetFromDB(db, "subnet/"+name+"/vxlan_id")
+		if err != nil {
+			return d, fmt.Errorf("get vxlan_id: %w", err)
+		}
+		vxlanID, err := strconv.Atoi(vxlanIDStr)
+		if err != nil {
+			return d, fmt.Errorf("parse vxlan_id: %w", err)
+		}
+		d.vxlanID = vxlanID
 	}
-	d.vxlanID = vxlanID
 
 	localIface, err := kv.GetFromDB(db, "subnet/"+name+"/local_iface")
 	if err != nil {

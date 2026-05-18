@@ -27,8 +27,27 @@ func DeleteSubnet(db *badger.DB, subnetName string) error {
 		return err
 	}
 
-	vxlanIface := fmt.Sprintf("vxlan-%d", d.vxlanID)
+	if err := stopDHCP(db, subnetName, d); err != nil {
+		return err
+	}
 
+	switch d.mode {
+	case "vxlan":
+		if err := deleteSubnetVxlan(d); err != nil {
+			return err
+		}
+	case "bridge":
+		if err := deleteSubnetBridge(d); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("unknown subnet mode %q", d.mode)
+	}
+
+	return kv.AddInDB(db, "subnet/"+subnetName+"/state", "deleted")
+}
+
+func stopDHCP(db *badger.DB, subnetName string, d subnetData) error {
 	svc, err := systemd.New()
 	if err != nil {
 		return fmt.Errorf("connect to systemd: %w", err)
@@ -42,9 +61,15 @@ func DeleteSubnet(db *badger.DB, subnetName string) error {
 	if err := os.Remove("/etc/dnsmasq.d/" + d.vpc + "_" + d.bridge + ".conf"); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("remove dnsmasq config: %w", err)
 	}
+
 	if err := kv.DeleteInDB(db, "subnet/"+subnetName+"/dhcp"); err != nil {
 		return fmt.Errorf("delete dhcp entries: %w", err)
 	}
+	return nil
+}
+
+func deleteSubnetVxlan(d subnetData) error {
+	vxlanIface := fmt.Sprintf("vxlan-%d", d.vxlanID)
 
 	if err := ebtables.DeleteARPToGateway(d.bridge, d.gatewayIP.String()); err != nil {
 		return fmt.Errorf("delete ebtables arp rule: %w", err)
@@ -70,6 +95,27 @@ func DeleteSubnet(db *badger.DB, subnetName string) error {
 	if err := netif.DeleteLink(d.bridge); err != nil {
 		return fmt.Errorf("delete bridge: %w", err)
 	}
+	return nil
+}
 
-	return kv.AddInDB(db, "subnet/"+subnetName+"/state", "deleted")
+func deleteSubnetBridge(d subnetData) error {
+	if err := netns.Call(d.vpc, func() error {
+		if err := ebtables.DeleteARPToGateway(d.bridge, d.gatewayIP.String()); err != nil {
+			return fmt.Errorf("delete ebtables arp rule: %w", err)
+		}
+		return ebtables.DeleteDHCP(d.bridge)
+	}); err != nil {
+		return fmt.Errorf("delete ebtables in netns: %w", err)
+	}
+
+	if err := netns.Call(d.vpc, func() error {
+		return netif.DeleteLink(d.bridge)
+	}); err != nil {
+		return fmt.Errorf("delete bridge in netns: %w", err)
+	}
+
+	if err := netif.DeleteLink("v-" + d.subnetID + "-e"); err != nil {
+		return fmt.Errorf("delete veth: %w", err)
+	}
+	return nil
 }

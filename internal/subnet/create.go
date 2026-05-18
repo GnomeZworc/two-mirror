@@ -27,46 +27,48 @@ func CreateSubnet(db *badger.DB, subnetName string) error {
 		return err
 	}
 
-	vxlanIface := fmt.Sprintf("vxlan-%d", d.vxlanID)
+	if err := createSubnet(db, subnetName, d); err != nil {
+		return err
+	}
 
-	if err := netif.CreateVethToNetns("v-"+d.subnetID+"-e", "v-"+d.subnetID+"-i", "/var/run/netns/"+d.vpc, 1500); err != nil {
+	return kv.AddInDB(db, "subnet/"+subnetName+"/state", "created")
+}
+
+func createSubnet(db *badger.DB, subnetName string, d subnetData) error {
+	vethE := "v-" + d.subnetID + "-e"
+	vethI := "v-" + d.subnetID + "-i"
+
+	if err := netif.CreateVethToNetns(vethE, vethI, "/var/run/netns/"+d.vpc, 1500); err != nil {
 		return fmt.Errorf("create veth: %w", err)
 	}
 
-	if err := netif.CreateBridge(d.bridge, 1500); err != nil {
-		return fmt.Errorf("create bridge: %w", err)
-	}
-
-	if err := netns.Call(d.vpc, func() error {
-		return netif.CreateBridge(d.bridge, 1500)
-	}); err != nil {
-		return fmt.Errorf("create bridge in netns: %w", err)
-	}
-
-	if err := netif.CreateVxlan(vxlanIface, d.vxlanID, d.localIface, 1500); err != nil {
-		return fmt.Errorf("create vxlan: %w", err)
-	}
-
-	if err := netif.BridgeSetMaster("v-"+d.subnetID+"-e", d.bridge); err != nil {
-		return fmt.Errorf("add veth-e to bridge: %w", err)
-	}
-	if err := netns.Call(d.vpc, func() error {
-		return netif.BridgeSetMaster("v-"+d.subnetID+"-i", d.bridge)
-	}); err != nil {
-		return fmt.Errorf("add veth-i to bridge in netns: %w", err)
-	}
-	if err := netif.BridgeSetMaster(vxlanIface, d.bridge); err != nil {
-		return fmt.Errorf("add vxlan to bridge: %w", err)
-	}
-
-	for _, iface := range []string{"v-" + d.subnetID + "-e", vxlanIface, d.bridge} {
-		if err := netif.LinkSetUp(iface); err != nil {
-			return fmt.Errorf("set up %s: %w", iface, err)
+	switch d.mode {
+	case "vxlan":
+		if err := setupVxlanHost(d, vethE); err != nil {
+			return err
 		}
+	case "bridge":
+		if err := netif.BridgeSetMaster(vethE, d.localIface); err != nil {
+			return fmt.Errorf("add veth-e to bridge: %w", err)
+		}
+		if err := netif.LinkSetUp(vethE); err != nil {
+			return fmt.Errorf("set up %s: %w", vethE, err)
+		}
+	default:
+		return fmt.Errorf("unknown subnet mode %q", d.mode)
 	}
 
 	if err := netns.Call(d.vpc, func() error {
-		for _, iface := range []string{"v-" + d.subnetID + "-i", d.bridge} {
+		if err := netif.CreateBridge(d.bridge, 1500); err != nil {
+			return fmt.Errorf("create bridge: %w", err)
+		}
+		return netif.BridgeSetMaster(vethI, d.bridge)
+	}); err != nil {
+		return fmt.Errorf("setup bridge in netns: %w", err)
+	}
+
+	if err := netns.Call(d.vpc, func() error {
+		for _, iface := range []string{vethI, d.bridge} {
 			if err := netif.LinkSetUp(iface); err != nil {
 				return fmt.Errorf("set up %s: %w", iface, err)
 			}
@@ -76,25 +78,65 @@ func CreateSubnet(db *badger.DB, subnetName string) error {
 		return fmt.Errorf("set up interfaces in netns: %w", err)
 	}
 
-	if err := netns.Call(d.vpc, func() error {
-		return netif.AddrAdd(d.bridge, d.gatewayIP)
-	}); err != nil {
-		return fmt.Errorf("add addr to bridge in netns: %w", err)
+	switch d.mode {
+	case "vxlan":
+		if err := netns.Call(d.vpc, func() error {
+			return netif.AddrAdd(d.bridge, d.gatewayIP)
+		}); err != nil {
+			return fmt.Errorf("add addr to bridge in netns: %w", err)
+		}
+		if err := netns.Call(d.vpc, func() error {
+			return netif.RouteAdd(d.bridge, d.cidr)
+		}); err != nil {
+			return fmt.Errorf("add route in netns: %w", err)
+		}
+	case "bridge":
 	}
 
-	if err := netns.Call(d.vpc, func() error {
-		return netif.RouteAdd(d.bridge, d.cidr)
-	}); err != nil {
-		return fmt.Errorf("add route in netns: %w", err)
+	applyEbtables := func() error {
+		if err := ebtables.DropARPToGateway(d.bridge, d.gatewayIP.String()); err != nil {
+			return err
+		}
+		return ebtables.DropDHCP(d.bridge)
+	}
+	switch d.mode {
+	case "vxlan":
+		if err := applyEbtables(); err != nil {
+			return err
+		}
+	case "bridge":
+		if err := netns.Call(d.vpc, applyEbtables); err != nil {
+			return fmt.Errorf("set ebtables in netns: %w", err)
+		}
 	}
 
-	if err := ebtables.DropARPToGateway(d.bridge, d.gatewayIP.String()); err != nil {
-		return err
-	}
-	if err := ebtables.DropDHCP(d.bridge); err != nil {
-		return err
-	}
+	return startDHCP(db, subnetName, d)
+}
 
+func setupVxlanHost(d subnetData, vethE string) error {
+	vxlanIface := fmt.Sprintf("vxlan-%d", d.vxlanID)
+
+	if err := netif.CreateBridge(d.bridge, 1500); err != nil {
+		return fmt.Errorf("create bridge: %w", err)
+	}
+	if err := netif.CreateVxlan(vxlanIface, d.vxlanID, d.localIface, 1500); err != nil {
+		return fmt.Errorf("create vxlan: %w", err)
+	}
+	if err := netif.BridgeSetMaster(vethE, d.bridge); err != nil {
+		return fmt.Errorf("add veth-e to bridge: %w", err)
+	}
+	if err := netif.BridgeSetMaster(vxlanIface, d.bridge); err != nil {
+		return fmt.Errorf("add vxlan to bridge: %w", err)
+	}
+	for _, iface := range []string{vethE, vxlanIface, d.bridge} {
+		if err := netif.LinkSetUp(iface); err != nil {
+			return fmt.Errorf("set up %s: %w", iface, err)
+		}
+	}
+	return nil
+}
+
+func startDHCP(db *badger.DB, subnetName string, d subnetData) error {
 	conf := dhcp.Config{
 		Network: d.cidr,
 		Gateway: d.gatewayIP,
@@ -118,6 +160,5 @@ func CreateSubnet(db *badger.DB, subnetName string) error {
 	if err := svc.Start("dnsmasq@" + conf.Name + ".service"); err != nil {
 		return fmt.Errorf("start dnsmasq: %w", err)
 	}
-
-	return kv.AddInDB(db, "subnet/"+subnetName+"/state", "created")
+	return nil
 }
