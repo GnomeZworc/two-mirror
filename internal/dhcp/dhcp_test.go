@@ -52,10 +52,11 @@ func newConf(t *testing.T, cidr string) Config {
 	t.Helper()
 	_, network, _ := net.ParseCIDR(cidr)
 	return Config{
-		Network: network,
-		Gateway: net.ParseIP("192.168.1.1").To4(),
-		Name:    "test",
-		ConfDir: t.TempDir(),
+		Network:      network,
+		Gateway:      net.ParseIP("192.168.1.1").To4(),
+		DefaultRoute: true,
+		Name:         "test",
+		ConfDir:      t.TempDir(),
 	}
 }
 
@@ -91,6 +92,17 @@ func TestGenerateConfig_ContainsGateway(t *testing.T) {
 
 	if !strings.Contains(string(content), "dhcp-option=3,192.168.1.1") {
 		t.Errorf("gateway absente du fichier généré :\n%s", content)
+	}
+}
+
+func TestGenerateConfig_NoDefaultRoute(t *testing.T) {
+	conf := newConf(t, "192.168.1.0/29")
+	conf.DefaultRoute = false
+	path, _, _ := GenerateConfig(conf)
+	content, _ := os.ReadFile(path)
+
+	if strings.Contains(string(content), "dhcp-option=3,") {
+		t.Errorf("dhcp-option=3 présente alors que DefaultRoute=false :\n%s", content)
 	}
 }
 

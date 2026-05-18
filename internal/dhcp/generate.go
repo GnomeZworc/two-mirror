@@ -14,7 +14,9 @@ func GenerateConfig(c Config) (string, map[string]string, error) {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "no-resolv\n")
 	fmt.Fprintf(&sb, "dhcp-range=%s,static,%s,12h\n", c.Network.IP.String(), mask)
-	fmt.Fprintf(&sb, "dhcp-option=3,%s\n", c.Gateway.String())
+	if c.DefaultRoute {
+		fmt.Fprintf(&sb, "dhcp-option=3,%s\n", c.Gateway.String())
+	}
 	fmt.Fprintf(&sb, "dhcp-option=6,1.1.1.1,8.8.8.8\n\n")
 
 	entries := make(map[string]string)

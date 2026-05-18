@@ -5,8 +5,9 @@ import (
 )
 
 type Config struct {
-	Network *net.IPNet
-	Gateway net.IP
-	Name    string
-	ConfDir string
+	Network      *net.IPNet
+	Gateway      net.IP
+	DefaultRoute bool
+	Name         string
+	ConfDir      string
 }
