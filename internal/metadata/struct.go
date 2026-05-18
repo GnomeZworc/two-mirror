@@ -11,12 +11,8 @@ type NoCloudData struct {
 }
 
 type ServerConfig struct {
-	Netns    string
-	File     string
-	Iface    string
-	Port     int
-	ConfFile string
-	VmName   string
+	VmName string
+	RunDir string
 }
 
 type NoCloudConfig struct {

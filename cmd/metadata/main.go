@@ -2,26 +2,29 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"os"
 
+	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/metadata"
 )
 
 var (
-	iface      = flag.String("interface", "0.0.0.0", "Interface IP à écouter")
-	port       = flag.Int("port", 0, "Port à utiliser")
-	netns_name = flag.String("netns", "", "Network namespace à utiliser")
-	conf_file  = flag.String("conf", "/etc/two/agent.yml", "configuration file")
-	vm_name    = flag.String("vm", "", "Name of the vm")
+	confFile = flag.String("conf", "/etc/two/agent.yml", "configuration file")
+	vm_name  = flag.String("vm", "", "Name of the vm")
 )
 
 func main() {
 	flag.Parse()
 
+	cfg, err := configuration.LoadConfig(*confFile)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to load config: %v\n", err)
+		os.Exit(1)
+	}
+
 	metadata.StartServer(metadata.ServerConfig{
-		Netns:    *netns_name,
-		Iface:    *iface,
-		Port:     *port,
-		ConfFile: *conf_file,
-		VmName:   *vm_name,
+		VmName: *vm_name,
+		RunDir: cfg.Metadata.RunDir,
 	})
 }

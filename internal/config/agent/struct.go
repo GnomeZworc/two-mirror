@@ -28,6 +28,14 @@ type Config struct {
 		Level string `mapstructure:"level"`
 		Debug bool   `mapstructure:"debug"`
 	} `mapstructure:"logger"`
+	Metadata struct {
+		RunDir string `mapstructure:"run_dir"`
+	} `mapstructure:"metadata"`
+	Admin struct {
+		Enabled bool   `mapstructure:"enabled"`
+		Address string `mapstructure:"address"`
+		Port    int    `mapstructure:"port"`
+	} `mapstructure:"admin"`
 	DefaultInterface string            `mapstructure:"default_interface"`
 	Interfaces       map[string]string `mapstructure:"interfaces"`
 }
@@ -46,6 +54,10 @@ func LoadConfig(path string) (*Config, error) {
 	v.SetDefault("worker.buffer_size", 100)
 	v.SetDefault("dispatcher.timeout_seconds", 300)
 	v.SetDefault("dispatcher.poll_seconds", 2)
+	v.SetDefault("metadata.run_dir", "/run/two/metadata")
+	v.SetDefault("admin.enabled", false)
+	v.SetDefault("admin.address", "127.0.0.1")
+	v.SetDefault("admin.port", 9091)
 	v.SetDefault("default_interface", "br-000000")
 	v.SetDefault("logger.level", "info")
 	v.SetDefault("logger.debug", false)

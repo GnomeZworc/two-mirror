@@ -51,6 +51,10 @@ func main() {
 	d := dispatcher.New(q, db, cfg, log.With(slog.String("component", "dispatcher")))
 	go agentapi.New(d, db, log.With(slog.String("component", "api"))).Start(apiAddr)
 	go promserver.Start(promAddr, registry)
+	if cfg.Admin.Enabled {
+		adminAddr := fmt.Sprintf("%s:%d", cfg.Admin.Address, cfg.Admin.Port)
+		go kv.NewAdminServer(db, log.With(slog.String("component", "admin"))).Start(adminAddr)
+	}
 
 	select {}
 }

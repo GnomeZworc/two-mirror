@@ -3,18 +3,18 @@ package metadata
 import (
 	"fmt"
 
+	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/pkg/systemd"
-	"github.com/dgraph-io/badger/v4"
 )
 
-func StartMetadata(config NoCloudConfig, db *badger.DB, dryrun bool) error {
+func StartMetadata(config NoCloudConfig, cfg *configuration.Config, dryrun bool) error {
 	service, err := systemd.New()
 	if err != nil {
 		return fmt.Errorf("failed to connect to systemd: %w", err)
 	}
 	defer service.Close()
 
-	LoadNcCloudInDB(config, db)
+	LoadNcCloudInDB(config, cfg.Metadata.RunDir)
 	if !dryrun {
 		if err := service.Start("metadata@" + config.Name + ".service"); err != nil {
 			return fmt.Errorf("failed to start metadata@%s: %w", config.Name, err)
@@ -23,17 +23,17 @@ func StartMetadata(config NoCloudConfig, db *badger.DB, dryrun bool) error {
 	return nil
 }
 
-func StopMetadata(vm_name string, db *badger.DB, dryrun bool) error {
+func StopMetadata(vmName string, cfg *configuration.Config, dryrun bool) error {
 	service, err := systemd.New()
 	if err != nil {
 		return fmt.Errorf("failed to connect to systemd: %w", err)
 	}
 	defer service.Close()
 
-	UnLoadNoCloudInDB(vm_name, db)
+	UnLoadNoCloudInDB(vmName, cfg.Metadata.RunDir)
 	if !dryrun {
-		if err := service.Stop("metadata@" + vm_name + ".service"); err != nil {
-			return fmt.Errorf("failed to stop metadata@%s: %w", vm_name, err)
+		if err := service.Stop("metadata@" + vmName + ".service"); err != nil {
+			return fmt.Errorf("failed to stop metadata@%s: %w", vmName, err)
 		}
 	}
 	return nil

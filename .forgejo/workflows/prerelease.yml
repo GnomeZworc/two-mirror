@@ -33,9 +33,7 @@ jobs:
         goos: [linux]
         goarch: [amd64]
         binaries:
-          - db
           - metadata
-          - metacli
           - agent
     uses: ./.forgejo/workflows/build.yml
     with:
