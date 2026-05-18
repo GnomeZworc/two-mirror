@@ -12,24 +12,26 @@ type VPC struct {
 }
 
 type SubnetCreateRequest struct {
-	Name      string `json:"name"`
-	VPC       string `json:"vpc"`
-	Mode      string `json:"mode"`
-	VxlanID   int    `json:"vxlan_id"`
-	IfaceType string `json:"iface_type"`
-	InterfaceIP string `json:"interface_ip"`
-	CIDR      string `json:"cidr"`
+	Name         string `json:"name"`
+	VPC          string `json:"vpc"`
+	Mode         string `json:"mode"`
+	VxlanID      int    `json:"vxlan_id"`
+	IfaceType    string `json:"iface_type"`
+	InterfaceIP  string `json:"interface_ip"`
+	CIDR         string `json:"cidr"`
+	DefaultRoute bool   `json:"default_route"`
 }
 
 type Subnet struct {
-	Name       string `json:"name"`
-	State      string `json:"state"`
-	VPC        string `json:"vpc"`
-	Mode       string `json:"mode"`
-	VxlanID    int    `json:"vxlan_id"`
-	LocalIface string `json:"local_iface"`
-	InterfaceIP string `json:"interface_ip"`
-	CIDR       string `json:"cidr"`
+	Name         string `json:"name"`
+	State        string `json:"state"`
+	VPC          string `json:"vpc"`
+	Mode         string `json:"mode"`
+	VxlanID      int    `json:"vxlan_id"`
+	LocalIface   string `json:"local_iface"`
+	InterfaceIP  string `json:"interface_ip"`
+	CIDR         string `json:"cidr"`
+	DefaultRoute bool   `json:"default_route"`
 }
 
 type VMInterface struct {

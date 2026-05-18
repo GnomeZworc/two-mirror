@@ -57,6 +57,8 @@ func (s *Server) getSubnet(w http.ResponseWriter, _ *http.Request, name string) 
 			sub.InterfaceIP = value
 		case "cidr":
 			sub.CIDR = value
+		case "default_route":
+			sub.DefaultRoute = value == "true"
 		}
 	}
 	w.WriteHeader(http.StatusOK)

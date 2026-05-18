@@ -11,15 +11,16 @@ import (
 )
 
 type subnetData struct {
-	vpc         string
-	subnetID    string
-	bridge      string
-	mode        string
-	vxlanID     int
-	localIface  string
-	interfaceIP net.IP
-	cidr        *net.IPNet
-	vpcCIDR     *net.IPNet
+	vpc          string
+	subnetID     string
+	bridge       string
+	mode         string
+	vxlanID      int
+	localIface   string
+	interfaceIP  net.IP
+	cidr         *net.IPNet
+	vpcCIDR      *net.IPNet
+	defaultRoute bool
 }
 
 func loadSubnet(db *badger.DB, name string) (subnetData, error) {
@@ -77,6 +78,12 @@ func loadSubnet(db *badger.DB, name string) (subnetData, error) {
 		return d, fmt.Errorf("parse cidr: %w", err)
 	}
 	d.cidr = ipNet
+
+	defaultRouteStr, err := kv.GetFromDB(db, "subnet/"+name+"/default_route")
+	if err != nil {
+		return d, fmt.Errorf("get default_route: %w", err)
+	}
+	d.defaultRoute = defaultRouteStr == "true"
 
 	vpcCIDRStr, err := kv.GetFromDB(db, "vpc/"+d.vpc+"/cidr")
 	if err != nil {

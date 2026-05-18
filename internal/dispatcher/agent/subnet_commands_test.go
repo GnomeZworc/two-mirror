@@ -173,6 +173,40 @@ func TestCreateSubnetCommand_Prepare_UnknownMode(t *testing.T) {
 	}
 }
 
+func TestCreateSubnetCommand_Prepare_DefaultRouteStored(t *testing.T) {
+	_, db := newTestDispatcher(t)
+	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	cmd := CreateSubnetCommand{
+		Name: "sn-1", VPC: "vpc-1", VxlanID: 100,
+		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+		DefaultRoute: true,
+	}
+	if err := cmd.Prepare(db, testCfg()); err != nil {
+		t.Fatalf("Prepare a échoué : %v", err)
+	}
+	val, err := kv.GetFromDB(db, "subnet/sn-1/default_route")
+	if err != nil {
+		t.Fatalf("default_route non écrit en DB : %v", err)
+	}
+	if val != "true" {
+		t.Errorf("default_route attendu true, obtenu %q", val)
+	}
+}
+
+func TestCreateSubnetCommand_Prepare_DefaultRouteFalseByDefault(t *testing.T) {
+	_, db := newTestDispatcher(t)
+	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	cmd := CreateSubnetCommand{
+		Name: "sn-1", VPC: "vpc-1", VxlanID: 100,
+		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+	}
+	cmd.Prepare(db, testCfg())
+	val, _ := kv.GetFromDB(db, "subnet/sn-1/default_route")
+	if val != "false" {
+		t.Errorf("default_route attendu false, obtenu %q", val)
+	}
+}
+
 // --- DeleteSubnetCommand.Prepare ---
 
 func TestDeleteSubnetCommand_Prepare_Success(t *testing.T) {

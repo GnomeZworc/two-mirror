@@ -358,6 +358,12 @@ components:
           type: string
           description: Subnet CIDR block
           example: "10.10.10.0/24"
+        default_route:
+          type: boolean
+          description: >
+            If true, advertise a default route via DHCP. For vxlan mode the gateway is the interface IP.
+            For bridge mode the gateway is read from the host routing table.
+          default: false
 
     Subnet:
       type: object
@@ -390,6 +396,9 @@ components:
         cidr:
           type: string
           example: "10.10.10.0/24"
+        default_route:
+          type: boolean
+          example: false
 
     VMCreateRequest:
       type: object

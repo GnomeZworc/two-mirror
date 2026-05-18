@@ -54,6 +54,8 @@ func (s *Server) listSubnets(w http.ResponseWriter, _ *http.Request) {
 			subnets[name].InterfaceIP = value
 		case "cidr":
 			subnets[name].CIDR = value
+		case "default_route":
+			subnets[name].DefaultRoute = value == "true"
 		}
 	}
 	result := make([]Subnet, 0, len(subnets))
@@ -77,13 +79,14 @@ func (s *Server) postSubnet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	cmd := dispatcher.CreateSubnetCommand{
-		Name:      req.Name,
-		VPC:       req.VPC,
-		Mode:      req.Mode,
-		VxlanID:   req.VxlanID,
-		IfaceType: req.IfaceType,
-		InterfaceIP: req.InterfaceIP,
-		CIDR:      req.CIDR,
+		Name:         req.Name,
+		VPC:          req.VPC,
+		Mode:         req.Mode,
+		VxlanID:      req.VxlanID,
+		IfaceType:    req.IfaceType,
+		InterfaceIP:  req.InterfaceIP,
+		CIDR:         req.CIDR,
+		DefaultRoute: req.DefaultRoute,
 	}
 	if err := s.dispatcher.Prepare(cmd); err != nil {
 		if _, dbErr := kv.GetFromDB(s.db, "subnet/"+req.Name+"/state"); dbErr == nil {
@@ -122,6 +125,8 @@ func (s *Server) postSubnet(w http.ResponseWriter, r *http.Request) {
 			sub.InterfaceIP = value
 		case "cidr":
 			sub.CIDR = value
+		case "default_route":
+			sub.DefaultRoute = value == "true"
 		}
 	}
 	w.WriteHeader(http.StatusAccepted)
