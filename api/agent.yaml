@@ -294,13 +294,17 @@ components:
 
     VPCCreateRequest:
       type: object
-      required: [name]
+      required: [name, cidr]
       properties:
         name:
           type: string
           description: Unique name for the VPC, must follow the format vp-[id]
           pattern: '^vp-.+'
           example: vp-00001
+        cidr:
+          type: string
+          description: CIDR block for the entire VPC address space
+          example: "10.0.0.0/16"
 
     VPC:
       type: object
@@ -312,6 +316,9 @@ components:
           type: string
           enum: [creating, created, deleting, deleted]
           example: created
+        cidr:
+          type: string
+          example: "10.0.0.0/16"
 
     SubnetCreateRequest:
       type: object

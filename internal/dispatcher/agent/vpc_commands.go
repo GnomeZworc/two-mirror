@@ -2,6 +2,7 @@ package dispatcher
 
 import (
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
@@ -13,11 +14,18 @@ import (
 
 type CreateVPCCommand struct {
 	Name string
+	CIDR string
 }
 
 func (c CreateVPCCommand) Prepare(db *badger.DB, _ *configuration.Config) error {
 	if _, err := kv.GetFromDB(db, "vpc/"+c.Name+"/state"); err == nil {
 		return fmt.Errorf("vpc %q already exists", c.Name)
+	}
+	if _, _, err := net.ParseCIDR(c.CIDR); err != nil {
+		return fmt.Errorf("invalid cidr %q: %w", c.CIDR, err)
+	}
+	if err := kv.AddInDB(db, "vpc/"+c.Name+"/cidr", c.CIDR); err != nil {
+		return err
 	}
 	return kv.AddInDB(db, "vpc/"+c.Name+"/state", "creating")
 }

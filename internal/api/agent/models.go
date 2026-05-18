@@ -2,11 +2,13 @@ package agentapi
 
 type VPCCreateRequest struct {
 	Name string `json:"name"`
+	CIDR string `json:"cidr"`
 }
 
 type VPC struct {
 	Name  string `json:"name"`
 	State string `json:"state"`
+	CIDR  string `json:"cidr"`
 }
 
 type SubnetCreateRequest struct {

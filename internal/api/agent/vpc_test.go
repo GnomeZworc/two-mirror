@@ -53,7 +53,7 @@ func TestListVpcs_InvalidMethod(t *testing.T) {
 
 func TestPostVpc_Created(t *testing.T) {
 	s, _ := newTestServer(t)
-	body, _ := json.Marshal(VPCCreateRequest{Name: "vpc-new"})
+	body, _ := json.Marshal(VPCCreateRequest{Name: "vpc-new", CIDR: "10.0.0.0/16"})
 	w := httptest.NewRecorder()
 	s.VpcsHandler(w, httptest.NewRequest(http.MethodPost, "/vpcs", bytes.NewReader(body)))
 	if w.Code != http.StatusAccepted {
@@ -67,11 +67,34 @@ func TestPostVpc_Created(t *testing.T) {
 	if result.State != "creating" {
 		t.Errorf("state attendu creating, obtenu %q", result.State)
 	}
+	if result.CIDR != "10.0.0.0/16" {
+		t.Errorf("cidr attendu 10.0.0.0/16, obtenu %q", result.CIDR)
+	}
 }
 
 func TestPostVpc_MissingName(t *testing.T) {
 	s, _ := newTestServer(t)
-	body, _ := json.Marshal(VPCCreateRequest{})
+	body, _ := json.Marshal(VPCCreateRequest{CIDR: "10.0.0.0/16"})
+	w := httptest.NewRecorder()
+	s.VpcsHandler(w, httptest.NewRequest(http.MethodPost, "/vpcs", bytes.NewReader(body)))
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("attendu 400, obtenu %d", w.Code)
+	}
+}
+
+func TestPostVpc_MissingCIDR(t *testing.T) {
+	s, _ := newTestServer(t)
+	body, _ := json.Marshal(VPCCreateRequest{Name: "vpc-new"})
+	w := httptest.NewRecorder()
+	s.VpcsHandler(w, httptest.NewRequest(http.MethodPost, "/vpcs", bytes.NewReader(body)))
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("attendu 400, obtenu %d", w.Code)
+	}
+}
+
+func TestPostVpc_InvalidCIDR(t *testing.T) {
+	s, _ := newTestServer(t)
+	body, _ := json.Marshal(VPCCreateRequest{Name: "vpc-new", CIDR: "not-a-cidr"})
 	w := httptest.NewRecorder()
 	s.VpcsHandler(w, httptest.NewRequest(http.MethodPost, "/vpcs", bytes.NewReader(body)))
 	if w.Code != http.StatusBadRequest {
@@ -82,7 +105,7 @@ func TestPostVpc_MissingName(t *testing.T) {
 func TestPostVpc_Duplicate(t *testing.T) {
 	s, db := newTestServer(t)
 	kv.AddInDB(db, "vpc/vpc-exist/state", "created")
-	body, _ := json.Marshal(VPCCreateRequest{Name: "vpc-exist"})
+	body, _ := json.Marshal(VPCCreateRequest{Name: "vpc-exist", CIDR: "10.0.0.0/16"})
 	w := httptest.NewRecorder()
 	s.VpcsHandler(w, httptest.NewRequest(http.MethodPost, "/vpcs", bytes.NewReader(body)))
 	if w.Code != http.StatusConflict {

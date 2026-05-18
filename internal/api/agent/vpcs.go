@@ -2,6 +2,7 @@ package agentapi
 
 import (
 	"encoding/json"
+	"net"
 	"net/http"
 	"strings"
 
@@ -38,8 +39,11 @@ func (s *Server) listVpcs(w http.ResponseWriter, _ *http.Request) {
 		if _, ok := vpcs[name]; !ok {
 			vpcs[name] = &VPC{Name: name}
 		}
-		if parts[2] == "state" {
+		switch parts[2] {
+		case "state":
 			vpcs[name].State = value
+		case "cidr":
+			vpcs[name].CIDR = value
 		}
 	}
 	result := make([]VPC, 0, len(vpcs))
@@ -62,7 +66,17 @@ func (s *Server) postVpc(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(ErrorResponse{Error: "name is required"})
 		return
 	}
-	cmd := dispatcher.CreateVPCCommand{Name: req.Name}
+	if req.CIDR == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "cidr is required"})
+		return
+	}
+	if _, _, err := net.ParseCIDR(req.CIDR); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "invalid cidr"})
+		return
+	}
+	cmd := dispatcher.CreateVPCCommand{Name: req.Name, CIDR: req.CIDR}
 	if err := s.dispatcher.Prepare(cmd); err != nil {
 		w.WriteHeader(http.StatusConflict)
 		json.NewEncoder(w).Encode(ErrorResponse{Error: err.Error()})
@@ -76,5 +90,5 @@ func (s *Server) postVpc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(VPC{Name: req.Name, State: state})
+	json.NewEncoder(w).Encode(VPC{Name: req.Name, State: state, CIDR: req.CIDR})
 }

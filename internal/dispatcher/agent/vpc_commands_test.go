@@ -10,7 +10,7 @@ import (
 
 func TestCreateVPCCommand_Prepare_NewVPC(t *testing.T) {
 	_, db := newTestDispatcher(t)
-	cmd := CreateVPCCommand{Name: "vpc-1"}
+	cmd := CreateVPCCommand{Name: "vpc-1", CIDR: "10.0.0.0/16"}
 	if err := cmd.Prepare(db, nil); err != nil {
 		t.Fatalf("Prepare a échoué : %v", err)
 	}
@@ -21,14 +21,29 @@ func TestCreateVPCCommand_Prepare_NewVPC(t *testing.T) {
 	if state != "creating" {
 		t.Errorf("state attendu creating, obtenu %q", state)
 	}
+	cidr, err := kv.GetFromDB(db, "vpc/vpc-1/cidr")
+	if err != nil {
+		t.Fatalf("cidr non écrit en DB : %v", err)
+	}
+	if cidr != "10.0.0.0/16" {
+		t.Errorf("cidr attendu 10.0.0.0/16, obtenu %q", cidr)
+	}
 }
 
 func TestCreateVPCCommand_Prepare_Duplicate(t *testing.T) {
 	_, db := newTestDispatcher(t)
 	kv.AddInDB(db, "vpc/vpc-exist/state", "created")
-	cmd := CreateVPCCommand{Name: "vpc-exist"}
+	cmd := CreateVPCCommand{Name: "vpc-exist", CIDR: "10.0.0.0/16"}
 	if err := cmd.Prepare(db, nil); err == nil {
 		t.Error("Prepare devrait échouer sur un VPC déjà existant")
+	}
+}
+
+func TestCreateVPCCommand_Prepare_InvalidCIDR(t *testing.T) {
+	_, db := newTestDispatcher(t)
+	cmd := CreateVPCCommand{Name: "vpc-bad", CIDR: "not-a-cidr"}
+	if err := cmd.Prepare(db, nil); err == nil {
+		t.Error("Prepare devrait échouer avec un CIDR invalide")
 	}
 }
 
