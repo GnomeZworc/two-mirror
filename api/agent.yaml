@@ -402,14 +402,11 @@ components:
 
     VMCreateRequest:
       type: object
-      required: [name, metadata_port, interfaces, storage]
+      required: [name, interfaces, storage]
       properties:
         name:
           type: string
           example: vm-00001
-        metadata_port:
-          type: string
-          example: "80"
         memory:
           type: integer
           description: Memory in MB (default 512)
