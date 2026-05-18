@@ -136,11 +136,22 @@ func setupVxlanHost(d subnetData, vethE string) error {
 
 func startDHCP(db *badger.DB, subnetName string, d subnetData) error {
 	conf := dhcp.Config{
-		Network:      d.cidr,
-		Gateway:      d.interfaceIP,
-		DefaultRoute: d.mode == "vxlan",
-		Name:         d.vpc + "_" + d.bridge,
-		ConfDir:      "/etc/dnsmasq.d",
+		Network: d.cidr,
+		Name:    d.vpc + "_" + d.bridge,
+		ConfDir: "/etc/dnsmasq.d",
+	}
+	switch d.mode {
+	case "vxlan":
+		conf.VPCGateway = d.interfaceIP
+		conf.VPCRoute = d.vpcCIDR
+	case "bridge":
+		if d.defaultRoute {
+			gw, err := netif.GetDefaultGateway()
+			if err != nil {
+				return fmt.Errorf("get default gateway: %w", err)
+			}
+			conf.DefaultGateway = gw
+		}
 	}
 	_, entries, err := dhcp.GenerateConfig(conf)
 	if err != nil {
