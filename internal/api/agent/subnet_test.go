@@ -161,6 +161,51 @@ func TestPostSubnet_VPCDeleting(t *testing.T) {
 	}
 }
 
+func TestPostSubnet_BridgeMode_Success(t *testing.T) {
+	s, db := newTestServer(t)
+	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	req := SubnetCreateRequest{
+		Name:      "sn-br",
+		VPC:       "vpc-1",
+		Mode:      "bridge",
+		IfaceType: "vms",
+		GatewayIP: "10.0.0.1",
+		CIDR:      "10.0.0.0/24",
+	}
+	body, _ := json.Marshal(req)
+	w := httptest.NewRecorder()
+	s.SubnetsHandler(w, httptest.NewRequest(http.MethodPost, "/subnets", bytes.NewReader(body)))
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("attendu 202, obtenu %d: %s", w.Code, w.Body.String())
+	}
+	var result Subnet
+	json.NewDecoder(w.Body).Decode(&result)
+	if result.Mode != "bridge" {
+		t.Errorf("mode attendu bridge, obtenu %q", result.Mode)
+	}
+	if result.VxlanID != 0 {
+		t.Errorf("vxlan_id devrait être 0 en mode bridge, obtenu %d", result.VxlanID)
+	}
+}
+
+func TestPostSubnet_UnknownMode(t *testing.T) {
+	s, db := newTestServer(t)
+	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	req := SubnetCreateRequest{
+		Name:      "sn-1",
+		VPC:       "vpc-1",
+		Mode:      "vlan",
+		GatewayIP: "10.0.0.1",
+		CIDR:      "10.0.0.0/24",
+	}
+	body, _ := json.Marshal(req)
+	w := httptest.NewRecorder()
+	s.SubnetsHandler(w, httptest.NewRequest(http.MethodPost, "/subnets", bytes.NewReader(body)))
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Errorf("attendu 422, obtenu %d", w.Code)
+	}
+}
+
 func TestPostSubnet_InvalidBody(t *testing.T) {
 	s, _ := newTestServer(t)
 	w := httptest.NewRecorder()

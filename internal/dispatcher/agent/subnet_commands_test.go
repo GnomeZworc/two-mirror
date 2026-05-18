@@ -111,6 +111,68 @@ func TestCreateSubnetCommand_Prepare_VPCDeleted(t *testing.T) {
 	}
 }
 
+func TestCreateSubnetCommand_Prepare_DefaultsToVxlanMode(t *testing.T) {
+	_, db := newTestDispatcher(t)
+	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	cmd := CreateSubnetCommand{
+		Name: "sn-1", VPC: "vpc-1", VxlanID: 100,
+		IfaceType: "vms", GatewayIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+	}
+	cmd.Prepare(db, testCfg())
+	mode, _ := kv.GetFromDB(db, "subnet/sn-1/mode")
+	if mode != "vxlan" {
+		t.Errorf("mode attendu vxlan, obtenu %q", mode)
+	}
+	if _, err := kv.GetFromDB(db, "subnet/sn-1/vxlan_id"); err != nil {
+		t.Error("vxlan_id devrait être écrit en mode vxlan")
+	}
+}
+
+func TestCreateSubnetCommand_Prepare_BridgeMode_Success(t *testing.T) {
+	_, db := newTestDispatcher(t)
+	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	cmd := CreateSubnetCommand{
+		Name: "sn-1", VPC: "vpc-1", Mode: "bridge",
+		IfaceType: "vms", GatewayIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+	}
+	if err := cmd.Prepare(db, testCfg()); err != nil {
+		t.Fatalf("Prepare a échoué : %v", err)
+	}
+	mode, _ := kv.GetFromDB(db, "subnet/sn-1/mode")
+	if mode != "bridge" {
+		t.Errorf("mode attendu bridge, obtenu %q", mode)
+	}
+	iface, _ := kv.GetFromDB(db, "subnet/sn-1/local_iface")
+	if iface != "br-vms" {
+		t.Errorf("local_iface attendu br-vms, obtenu %q", iface)
+	}
+}
+
+func TestCreateSubnetCommand_Prepare_BridgeMode_NoVxlanID(t *testing.T) {
+	_, db := newTestDispatcher(t)
+	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	cmd := CreateSubnetCommand{
+		Name: "sn-1", VPC: "vpc-1", Mode: "bridge",
+		IfaceType: "vms", GatewayIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+	}
+	cmd.Prepare(db, testCfg())
+	if _, err := kv.GetFromDB(db, "subnet/sn-1/vxlan_id"); err == nil {
+		t.Error("vxlan_id ne devrait pas être écrit en mode bridge")
+	}
+}
+
+func TestCreateSubnetCommand_Prepare_UnknownMode(t *testing.T) {
+	_, db := newTestDispatcher(t)
+	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	cmd := CreateSubnetCommand{
+		Name: "sn-1", VPC: "vpc-1", Mode: "vlan",
+		IfaceType: "vms", GatewayIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+	}
+	if err := cmd.Prepare(db, testCfg()); err == nil {
+		t.Error("Prepare devrait échouer pour un mode inconnu")
+	}
+}
+
 // --- DeleteSubnetCommand.Prepare ---
 
 func TestDeleteSubnetCommand_Prepare_Success(t *testing.T) {
