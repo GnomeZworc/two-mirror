@@ -70,18 +70,18 @@ func stopDHCP(db *badger.DB, subnetName string, d subnetData) error {
 
 func deleteSubnetVxlan(d subnetData) error {
 	vxlanIface := fmt.Sprintf("vxlan-%d", d.vxlanID)
-
-	if err := ebtables.DeleteARPToGateway(d.bridge, d.interfaceIP.String()); err != nil {
-		return fmt.Errorf("delete ebtables arp rule: %w", err)
-	}
-	if err := ebtables.DeleteDHCP(d.bridge); err != nil {
-		return fmt.Errorf("delete ebtables dhcp rule: %w", err)
-	}
+	vethI := "v-" + d.subnetID + "-i"
 
 	if err := netns.Call(d.vpc, func() error {
+		if err := ebtables.DeleteARPToGateway(vethI, d.interfaceIP.String()); err != nil {
+			return fmt.Errorf("delete ebtables arp rule: %w", err)
+		}
+		if err := ebtables.DeleteDHCP(vethI, d.interfaceIP.String()); err != nil {
+			return fmt.Errorf("delete ebtables dhcp rule: %w", err)
+		}
 		return netif.DeleteLink(d.bridge)
 	}); err != nil {
-		return fmt.Errorf("delete bridge in netns: %w", err)
+		return fmt.Errorf("delete netns resources: %w", err)
 	}
 
 	if err := netif.DeleteLink(vxlanIface); err != nil {
@@ -99,10 +99,15 @@ func deleteSubnetVxlan(d subnetData) error {
 }
 
 func deleteSubnetBridge(d subnetData) error {
+	vethI := "v-" + d.subnetID + "-i"
+
 	if err := netns.Call(d.vpc, func() error {
+		if err := ebtables.DeleteDHCP(vethI, d.interfaceIP.String()); err != nil {
+			return fmt.Errorf("delete ebtables dhcp rule: %w", err)
+		}
 		return netif.DeleteLink(d.bridge)
 	}); err != nil {
-		return fmt.Errorf("delete bridge in netns: %w", err)
+		return fmt.Errorf("delete netns resources: %w", err)
 	}
 
 	if err := netif.DeleteLink("v-" + d.subnetID + "-e"); err != nil {
