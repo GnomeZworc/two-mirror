@@ -100,15 +100,6 @@ func deleteSubnetVxlan(d subnetData) error {
 
 func deleteSubnetBridge(d subnetData) error {
 	if err := netns.Call(d.vpc, func() error {
-		if err := ebtables.DeleteARPToGateway(d.bridge, d.gatewayIP.String()); err != nil {
-			return fmt.Errorf("delete ebtables arp rule: %w", err)
-		}
-		return ebtables.DeleteDHCP(d.bridge)
-	}); err != nil {
-		return fmt.Errorf("delete ebtables in netns: %w", err)
-	}
-
-	if err := netns.Call(d.vpc, func() error {
 		return netif.DeleteLink(d.bridge)
 	}); err != nil {
 		return fmt.Errorf("delete bridge in netns: %w", err)

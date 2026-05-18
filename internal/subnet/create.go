@@ -93,21 +93,15 @@ func createSubnet(db *badger.DB, subnetName string, d subnetData) error {
 	case "bridge":
 	}
 
-	applyEbtables := func() error {
+	switch d.mode {
+	case "vxlan":
 		if err := ebtables.DropARPToGateway(d.bridge, d.gatewayIP.String()); err != nil {
 			return err
 		}
-		return ebtables.DropDHCP(d.bridge)
-	}
-	switch d.mode {
-	case "vxlan":
-		if err := applyEbtables(); err != nil {
+		if err := ebtables.DropDHCP(d.bridge); err != nil {
 			return err
 		}
 	case "bridge":
-		if err := netns.Call(d.vpc, applyEbtables); err != nil {
-			return fmt.Errorf("set ebtables in netns: %w", err)
-		}
 	}
 
 	return startDHCP(db, subnetName, d)
