@@ -12,6 +12,7 @@ type VPC struct {
 type SubnetCreateRequest struct {
 	Name      string `json:"name"`
 	VPC       string `json:"vpc"`
+	Mode      string `json:"mode"`
 	VxlanID   int    `json:"vxlan_id"`
 	IfaceType string `json:"iface_type"`
 	GatewayIP string `json:"gateway_ip"`
@@ -22,6 +23,7 @@ type Subnet struct {
 	Name       string `json:"name"`
 	State      string `json:"state"`
 	VPC        string `json:"vpc"`
+	Mode       string `json:"mode"`
 	VxlanID    int    `json:"vxlan_id"`
 	LocalIface string `json:"local_iface"`
 	GatewayIP  string `json:"gateway_ip"`

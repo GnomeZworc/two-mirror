@@ -315,7 +315,7 @@ components:
 
     SubnetCreateRequest:
       type: object
-      required: [name, vpc, vxlan_id, gateway_ip, cidr]
+      required: [name, vpc, gateway_ip, cidr]
       properties:
         name:
           type: string
@@ -325,9 +325,18 @@ components:
           type: string
           description: Parent VPC name
           example: vpc1
+        mode:
+          type: string
+          description: >
+            Subnet mode. "vxlan" (default): creates a VXLAN tunnel and a host bridge.
+            "bridge": attaches directly to an existing bridge resolved from iface_type in the agent config.
+            "vlan" is reserved for future use.
+          enum: [vxlan, bridge]
+          default: vxlan
+          example: vxlan
         vxlan_id:
           type: integer
-          description: VXLAN VNI identifier
+          description: VXLAN VNI identifier. Required when mode is "vxlan", ignored otherwise.
           example: 100
         iface_type:
           type: string
@@ -356,12 +365,17 @@ components:
         vpc:
           type: string
           example: vpc1
+        mode:
+          type: string
+          enum: [vxlan, bridge]
+          example: vxlan
         vxlan_id:
           type: integer
+          description: VXLAN VNI. Present only when mode is "vxlan".
           example: 100
         local_iface:
           type: string
-          description: Resolved interface name
+          description: Resolved interface name from agent config
           example: br-000000
         gateway_ip:
           type: string
