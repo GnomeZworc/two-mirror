@@ -54,8 +54,11 @@ func stopDHCP(db *badger.DB, subnetName string, d subnetData) error {
 	}
 	defer svc.Close()
 
-	if err := svc.Stop("dnsmasq@" + d.vpc + "_" + d.bridge + ".service"); err != nil {
-		return fmt.Errorf("stop dnsmasq: %w", err)
+	svcName := "dnsmasq@" + d.vpc + "_" + d.bridge + ".service"
+	if status, err := svc.Status(svcName); err == nil && status.ActiveState == "active" {
+		if err := svc.Stop(svcName); err != nil {
+			return fmt.Errorf("stop dnsmasq: %w", err)
+		}
 	}
 
 	if err := os.Remove("/etc/dnsmasq.d/" + d.vpc + "_" + d.bridge + ".conf"); err != nil && !os.IsNotExist(err) {

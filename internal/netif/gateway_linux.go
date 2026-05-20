@@ -15,7 +15,13 @@ func GetDefaultGateway() (net.IP, error) {
 		return nil, fmt.Errorf("list routes: %w", err)
 	}
 	for _, r := range routes {
-		if r.Dst == nil && r.Gw != nil {
+		if r.Gw == nil {
+			continue
+		}
+		if r.Dst == nil {
+			return r.Gw, nil
+		}
+		if ones, _ := r.Dst.Mask.Size(); ones == 0 {
 			return r.Gw, nil
 		}
 	}
