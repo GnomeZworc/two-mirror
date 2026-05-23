@@ -20,6 +20,7 @@ type StartVMCommand struct {
 	VolumePath string
 	Memory     int
 	CPUs       int
+	UEFI       bool
 	Password   string
 	SSHKey     string
 }
@@ -46,6 +47,9 @@ func (c StartVMCommand) Prepare(db *badger.DB, _ *configuration.Config) error {
 	kv.AddInDB(db, "vm/"+c.Name+"/volume_path", c.VolumePath)
 	kv.AddInDB(db, "vm/"+c.Name+"/memory", strconv.Itoa(c.Memory))
 	kv.AddInDB(db, "vm/"+c.Name+"/cpus", strconv.Itoa(c.CPUs))
+	if c.UEFI {
+		kv.AddInDB(db, "vm/"+c.Name+"/uefi", "true")
+	}
 	if c.Password != "" {
 		kv.AddInDB(db, "vm/"+c.Name+"/password", c.Password)
 	}

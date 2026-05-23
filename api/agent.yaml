@@ -430,6 +430,10 @@ components:
           minItems: 1
           items:
             $ref: "#/components/schemas/VMStorage"
+        uefi:
+          type: boolean
+          description: Boot with UEFI firmware (OVMF). Defaults to false (SeaBIOS).
+          example: false
 
     VMInterface:
       type: object
@@ -487,6 +491,9 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/VMStorage"
+        uefi:
+          type: boolean
+          example: false
 
     Error:
       type: object

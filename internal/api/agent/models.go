@@ -49,6 +49,7 @@ type VMCreateRequest struct {
 	Name       string        `json:"name"`
 	Memory     int           `json:"memory"`
 	CPUs       int           `json:"cpus"`
+	UEFI       bool          `json:"uefi"`
 	Password   string        `json:"password"`
 	SSHKey     string        `json:"sshkey"`
 	Interfaces []VMInterface `json:"interfaces"`
@@ -61,6 +62,7 @@ type VM struct {
 	MetadataPort string        `json:"metadata_port"`
 	Memory       int           `json:"memory"`
 	CPUs         int           `json:"cpus"`
+	UEFI         bool          `json:"uefi"`
 	Interfaces   []VMInterface `json:"interfaces"`
 	Storage      []VMStorage   `json:"storage"`
 }

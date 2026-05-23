@@ -84,6 +84,7 @@ func (s *Server) startVM(w http.ResponseWriter, r *http.Request) {
 		VolumePath: req.Storage[0].Path,
 		Memory:     req.Memory,
 		CPUs:       req.CPUs,
+		UEFI:       req.UEFI,
 		Password:   req.Password,
 		SSHKey:     req.SSHKey,
 	}
