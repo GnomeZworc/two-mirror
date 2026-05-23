@@ -39,6 +39,18 @@ interfaces:
 metadata:
   run_dir: "/run/two/metadata"
 
+# QEMU runtime paths
+qemu:
+  # UEFI firmware (requires apt install ovmf on Debian/Ubuntu)
+  ovmf_code_path: "/usr/share/OVMF/OVMF_CODE.fd"
+  ovmf_vars_template: "/usr/share/OVMF/OVMF_VARS.fd"
+  # Per-VM UEFI variable store (writable copy, created at start / deleted at stop)
+  uefi_vars_dir: "/run/two/vms/efi"
+  # QEMU Unix socket directories
+  serial_dir: "/run/two/vms/serial"
+  monitor_dir: "/run/two/vms/monitor"
+  qmp_dir: "/run/two/vms/qmp"
+
 # Admin API (read-only DB inspection, loopback only)
 admin:
   enabled: false

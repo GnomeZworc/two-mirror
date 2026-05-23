@@ -36,6 +36,14 @@ type Config struct {
 		Address string `mapstructure:"address"`
 		Port    int    `mapstructure:"port"`
 	} `mapstructure:"admin"`
+	QEMU struct {
+		OVMFCodePath     string `mapstructure:"ovmf_code_path"`
+		OVMFVarsTemplate string `mapstructure:"ovmf_vars_template"`
+		UEFIVarsDir      string `mapstructure:"uefi_vars_dir"`
+		SerialDir        string `mapstructure:"serial_dir"`
+		MonitorDir       string `mapstructure:"monitor_dir"`
+		QMPDir           string `mapstructure:"qmp_dir"`
+	} `mapstructure:"qemu"`
 	DefaultInterface string            `mapstructure:"default_interface"`
 	Interfaces       map[string]string `mapstructure:"interfaces"`
 }
@@ -55,6 +63,12 @@ func LoadConfig(path string) (*Config, error) {
 	v.SetDefault("dispatcher.timeout_seconds", 300)
 	v.SetDefault("dispatcher.poll_seconds", 2)
 	v.SetDefault("metadata.run_dir", "/run/two/metadata")
+	v.SetDefault("qemu.ovmf_code_path", "/usr/share/OVMF/OVMF_CODE.fd")
+	v.SetDefault("qemu.ovmf_vars_template", "/usr/share/OVMF/OVMF_VARS.fd")
+	v.SetDefault("qemu.uefi_vars_dir", "/run/two/vms/uefi")
+	v.SetDefault("qemu.serial_dir", "/run/two/vms/serial")
+	v.SetDefault("qemu.monitor_dir", "/run/two/vms/monitor")
+	v.SetDefault("qemu.qmp_dir", "/run/two/vms/qmp")
 	v.SetDefault("admin.enabled", false)
 	v.SetDefault("admin.address", "127.0.0.1")
 	v.SetDefault("admin.port", 9091)
