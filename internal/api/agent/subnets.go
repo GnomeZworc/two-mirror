@@ -44,14 +44,18 @@ func (s *Server) listSubnets(w http.ResponseWriter, _ *http.Request) {
 			subnets[name].State = value
 		case "vpc":
 			subnets[name].VPC = value
+		case "mode":
+			subnets[name].Mode = value
 		case "vxlan_id":
 			subnets[name].VxlanID, _ = strconv.Atoi(value)
 		case "local_iface":
 			subnets[name].LocalIface = value
-		case "gateway_ip":
-			subnets[name].GatewayIP = value
+		case "interface_ip":
+			subnets[name].InterfaceIP = value
 		case "cidr":
 			subnets[name].CIDR = value
+		case "default_route":
+			subnets[name].DefaultRoute = value == "true"
 		}
 	}
 	result := make([]Subnet, 0, len(subnets))
@@ -69,18 +73,20 @@ func (s *Server) postSubnet(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(ErrorResponse{Error: "invalid request body"})
 		return
 	}
-	if req.Name == "" || req.VPC == "" || req.GatewayIP == "" || req.CIDR == "" {
+	if req.Name == "" || req.VPC == "" || req.InterfaceIP == "" || req.CIDR == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrorResponse{Error: "name, vpc, gateway_ip and cidr are required"})
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "name, vpc, interface_ip and cidr are required"})
 		return
 	}
 	cmd := dispatcher.CreateSubnetCommand{
-		Name:      req.Name,
-		VPC:       req.VPC,
-		VxlanID:   req.VxlanID,
-		IfaceType: req.IfaceType,
-		GatewayIP: req.GatewayIP,
-		CIDR:      req.CIDR,
+		Name:         req.Name,
+		VPC:          req.VPC,
+		Mode:         req.Mode,
+		VxlanID:      req.VxlanID,
+		IfaceType:    req.IfaceType,
+		InterfaceIP:  req.InterfaceIP,
+		CIDR:         req.CIDR,
+		DefaultRoute: req.DefaultRoute,
 	}
 	if err := s.dispatcher.Prepare(cmd); err != nil {
 		if _, dbErr := kv.GetFromDB(s.db, "subnet/"+req.Name+"/state"); dbErr == nil {
@@ -109,14 +115,18 @@ func (s *Server) postSubnet(w http.ResponseWriter, r *http.Request) {
 			sub.State = value
 		case "vpc":
 			sub.VPC = value
+		case "mode":
+			sub.Mode = value
 		case "vxlan_id":
 			sub.VxlanID, _ = strconv.Atoi(value)
 		case "local_iface":
 			sub.LocalIface = value
-		case "gateway_ip":
-			sub.GatewayIP = value
+		case "interface_ip":
+			sub.InterfaceIP = value
 		case "cidr":
 			sub.CIDR = value
+		case "default_route":
+			sub.DefaultRoute = value == "true"
 		}
 	}
 	w.WriteHeader(http.StatusAccepted)

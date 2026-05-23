@@ -35,8 +35,9 @@ func (s *Server) getVpc(w http.ResponseWriter, _ *http.Request, name string) {
 		json.NewEncoder(w).Encode(ErrorResponse{Error: "vpc not found"})
 		return
 	}
+	cidr, _ := kv.GetFromDB(s.db, "vpc/"+name+"/cidr")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(VPC{Name: name, State: state})
+	json.NewEncoder(w).Encode(VPC{Name: name, State: state, CIDR: cidr})
 }
 
 func (s *Server) deleteVpc(w http.ResponseWriter, _ *http.Request, name string) {

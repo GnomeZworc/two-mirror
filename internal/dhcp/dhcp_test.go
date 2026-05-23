@@ -51,11 +51,15 @@ func TestIncrementIP_Carry(t *testing.T) {
 func newConf(t *testing.T, cidr string) Config {
 	t.Helper()
 	_, network, _ := net.ParseCIDR(cidr)
+	_, vpcNet, _ := net.ParseCIDR("10.0.0.0/16")
+	gw := net.ParseIP("192.168.1.1").To4()
 	return Config{
-		Network: network,
-		Gateway: net.ParseIP("192.168.1.1").To4(),
-		Name:    "test",
-		ConfDir: t.TempDir(),
+		Network:        network,
+		VPCGateway:     gw,
+		VPCRoute:       vpcNet,
+		DefaultGateway: gw,
+		Name:           "test",
+		ConfDir:        t.TempDir(),
 	}
 }
 
@@ -84,13 +88,45 @@ func TestGenerateConfig_FilenameMatchesName(t *testing.T) {
 	}
 }
 
-func TestGenerateConfig_ContainsGateway(t *testing.T) {
+func TestGenerateConfig_ContainsDefaultGateway(t *testing.T) {
 	conf := newConf(t, "192.168.1.0/29")
 	path, _, _ := GenerateConfig(conf)
 	content, _ := os.ReadFile(path)
 
 	if !strings.Contains(string(content), "dhcp-option=3,192.168.1.1") {
-		t.Errorf("gateway absente du fichier généré :\n%s", content)
+		t.Errorf("dhcp-option=3 absente du fichier généré :\n%s", content)
+	}
+}
+
+func TestGenerateConfig_NoDefaultGateway(t *testing.T) {
+	conf := newConf(t, "192.168.1.0/29")
+	conf.DefaultGateway = nil
+	path, _, _ := GenerateConfig(conf)
+	content, _ := os.ReadFile(path)
+
+	if strings.Contains(string(content), "dhcp-option=3,") {
+		t.Errorf("dhcp-option=3 présente alors que DefaultGateway=nil :\n%s", content)
+	}
+}
+
+func TestGenerateConfig_ContainsVPCRoute(t *testing.T) {
+	conf := newConf(t, "192.168.1.0/29")
+	path, _, _ := GenerateConfig(conf)
+	content, _ := os.ReadFile(path)
+
+	if !strings.Contains(string(content), "dhcp-option=121,10.0.0.0/16,192.168.1.1") {
+		t.Errorf("dhcp-option=121 absente ou incorrecte :\n%s", content)
+	}
+}
+
+func TestGenerateConfig_NoVPCRoute(t *testing.T) {
+	conf := newConf(t, "192.168.1.0/29")
+	conf.VPCRoute = nil
+	path, _, _ := GenerateConfig(conf)
+	content, _ := os.ReadFile(path)
+
+	if strings.Contains(string(content), "dhcp-option=121,") {
+		t.Errorf("dhcp-option=121 présente alors que VPCRoute=nil :\n%s", content)
 	}
 }
 
@@ -98,7 +134,6 @@ func TestGenerateConfig_ContainsDhcpRange(t *testing.T) {
 	_, network, _ := net.ParseCIDR("10.10.0.0/24")
 	conf := Config{
 		Network: network,
-		Gateway: net.ParseIP("10.10.0.1").To4(),
 		Name:    "vpc1",
 		ConfDir: t.TempDir(),
 	}
@@ -144,7 +179,6 @@ func TestGenerateConfig_CreatesConfDir(t *testing.T) {
 	_, network, _ := net.ParseCIDR("10.0.0.0/30")
 	conf := Config{
 		Network: network,
-		Gateway: net.ParseIP("10.0.0.1").To4(),
 		Name:    "net",
 		ConfDir: dir,
 	}

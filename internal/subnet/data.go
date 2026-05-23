@@ -11,13 +11,16 @@ import (
 )
 
 type subnetData struct {
-	vpc        string
-	subnetID   string
-	bridge     string
-	vxlanID    int
-	localIface string
-	gatewayIP  net.IP
-	cidr       *net.IPNet
+	vpc          string
+	subnetID     string
+	bridge       string
+	mode         string
+	vxlanID      int
+	localIface   string
+	interfaceIP  net.IP
+	cidr         *net.IPNet
+	vpcCIDR      *net.IPNet
+	defaultRoute bool
 }
 
 func loadSubnet(db *badger.DB, name string) (subnetData, error) {
@@ -32,15 +35,23 @@ func loadSubnet(db *badger.DB, name string) (subnetData, error) {
 	}
 	d.vpc = vpc
 
-	vxlanIDStr, err := kv.GetFromDB(db, "subnet/"+name+"/vxlan_id")
+	mode, err := kv.GetFromDB(db, "subnet/"+name+"/mode")
 	if err != nil {
-		return d, fmt.Errorf("get vxlan_id: %w", err)
+		return d, fmt.Errorf("get mode: %w", err)
 	}
-	vxlanID, err := strconv.Atoi(vxlanIDStr)
-	if err != nil {
-		return d, fmt.Errorf("parse vxlan_id: %w", err)
+	d.mode = mode
+
+	if d.mode == "vxlan" {
+		vxlanIDStr, err := kv.GetFromDB(db, "subnet/"+name+"/vxlan_id")
+		if err != nil {
+			return d, fmt.Errorf("get vxlan_id: %w", err)
+		}
+		vxlanID, err := strconv.Atoi(vxlanIDStr)
+		if err != nil {
+			return d, fmt.Errorf("parse vxlan_id: %w", err)
+		}
+		d.vxlanID = vxlanID
 	}
-	d.vxlanID = vxlanID
 
 	localIface, err := kv.GetFromDB(db, "subnet/"+name+"/local_iface")
 	if err != nil {
@@ -48,15 +59,15 @@ func loadSubnet(db *badger.DB, name string) (subnetData, error) {
 	}
 	d.localIface = localIface
 
-	gatewayIPStr, err := kv.GetFromDB(db, "subnet/"+name+"/gateway_ip")
+	interfaceIPStr, err := kv.GetFromDB(db, "subnet/"+name+"/interface_ip")
 	if err != nil {
-		return d, fmt.Errorf("get gateway_ip: %w", err)
+		return d, fmt.Errorf("get interface_ip: %w", err)
 	}
-	gatewayIP := net.ParseIP(gatewayIPStr)
-	if gatewayIP == nil {
-		return d, fmt.Errorf("invalid gateway_ip: %s", gatewayIPStr)
+	interfaceIP := net.ParseIP(interfaceIPStr)
+	if interfaceIP == nil {
+		return d, fmt.Errorf("invalid interface_ip: %s", interfaceIPStr)
 	}
-	d.gatewayIP = gatewayIP
+	d.interfaceIP = interfaceIP
 
 	cidrStr, err := kv.GetFromDB(db, "subnet/"+name+"/cidr")
 	if err != nil {
@@ -67,6 +78,22 @@ func loadSubnet(db *badger.DB, name string) (subnetData, error) {
 		return d, fmt.Errorf("parse cidr: %w", err)
 	}
 	d.cidr = ipNet
+
+	defaultRouteStr, err := kv.GetFromDB(db, "subnet/"+name+"/default_route")
+	if err != nil {
+		return d, fmt.Errorf("get default_route: %w", err)
+	}
+	d.defaultRoute = defaultRouteStr == "true"
+
+	vpcCIDRStr, err := kv.GetFromDB(db, "vpc/"+d.vpc+"/cidr")
+	if err != nil {
+		return d, fmt.Errorf("get vpc cidr: %w", err)
+	}
+	_, vpcIPNet, err := net.ParseCIDR(vpcCIDRStr)
+	if err != nil {
+		return d, fmt.Errorf("parse vpc cidr: %w", err)
+	}
+	d.vpcCIDR = vpcIPNet
 
 	return d, nil
 }

@@ -2,7 +2,9 @@ package dispatcher
 
 import (
 	"fmt"
+	"math/rand"
 	"strconv"
+	"strings"
 	"time"
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
@@ -12,15 +14,15 @@ import (
 )
 
 type StartVMCommand struct {
-	Name         string
-	Subnet       string
-	IP           string
-	MetadataPort string
-	VolumePath   string
-	Memory       int
-	CPUs         int
-	Password     string
-	SSHKey       string
+	Name       string
+	Subnet     string
+	IP         string
+	VolumePath string
+	Memory     int
+	CPUs       int
+	UEFI       bool
+	Password   string
+	SSHKey     string
 }
 
 func (c StartVMCommand) Prepare(db *badger.DB, _ *configuration.Config) error {
@@ -34,13 +36,20 @@ func (c StartVMCommand) Prepare(db *badger.DB, _ *configuration.Config) error {
 	if subnetState == "deleting" || subnetState == "deleted" {
 		return fmt.Errorf("subnet %q is %s", c.Subnet, subnetState)
 	}
+	port, err := allocateMetadataPort(db)
+	if err != nil {
+		return fmt.Errorf("allocate metadata port: %w", err)
+	}
 	kv.AddInDB(db, "vm/"+c.Name+"/state", "starting")
 	kv.AddInDB(db, "vm/"+c.Name+"/subnet", c.Subnet)
 	kv.AddInDB(db, "vm/"+c.Name+"/ip", c.IP)
-	kv.AddInDB(db, "vm/"+c.Name+"/metadata_port", c.MetadataPort)
+	kv.AddInDB(db, "vm/"+c.Name+"/metadata_port", strconv.Itoa(port))
 	kv.AddInDB(db, "vm/"+c.Name+"/volume_path", c.VolumePath)
 	kv.AddInDB(db, "vm/"+c.Name+"/memory", strconv.Itoa(c.Memory))
 	kv.AddInDB(db, "vm/"+c.Name+"/cpus", strconv.Itoa(c.CPUs))
+	if c.UEFI {
+		kv.AddInDB(db, "vm/"+c.Name+"/uefi", "true")
+	}
 	if c.Password != "" {
 		kv.AddInDB(db, "vm/"+c.Name+"/password", c.Password)
 	}
@@ -48,6 +57,28 @@ func (c StartVMCommand) Prepare(db *badger.DB, _ *configuration.Config) error {
 		kv.AddInDB(db, "vm/"+c.Name+"/sshkey", c.SSHKey)
 	}
 	return nil
+}
+
+func allocateMetadataPort(db *badger.DB) (int, error) {
+	entries, err := kv.ListByPrefix(db, "vm/")
+	if err != nil {
+		return 0, err
+	}
+	used := make(map[int]struct{})
+	for key, value := range entries {
+		if strings.HasSuffix(key, "/metadata_port") {
+			if p, err := strconv.Atoi(value); err == nil {
+				used[p] = struct{}{}
+			}
+		}
+	}
+	for range 100 {
+		p := rand.Intn(9000) + 1000
+		if _, taken := used[p]; !taken {
+			return p, nil
+		}
+	}
+	return 0, fmt.Errorf("no free metadata port available in [1000, 9999]")
 }
 
 func (c StartVMCommand) Execute(db *badger.DB, cfg *configuration.Config) error {

@@ -2,6 +2,8 @@ package vm
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
@@ -29,7 +31,7 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 		return err
 	}
 
-	socketPath := fmt.Sprintf("/tmp/%s.qmp-sock", name)
+	socketPath := filepath.Join(cfg.QEMU.QMPDir, name+".sock")
 
 	if _, err := qmp.Send(socketPath, []string{`{"execute":"system_powerdown"}`}); err != nil {
 		return fmt.Errorf("qmp system_powerdown: %w", err)
@@ -52,7 +54,7 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	}
 
 	if err := netns.Call(d.vpcName, func() error {
-		return iptables.DeleteMetadataRedirect(d.ip, d.gatewayIP, d.metadataPort)
+		return iptables.DeleteMetadataRedirect(d.ip, d.interfaceIP, d.metadataPort)
 	}); err != nil {
 		return fmt.Errorf("delete metadata redirect: %w", err)
 	}
@@ -63,6 +65,11 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 
 	if err := netif.DeleteTap(d.tapID, d.vpcName); err != nil {
 		return fmt.Errorf("delete tap: %w", err)
+	}
+
+	if d.uefi {
+		varsPath := filepath.Join(cfg.QEMU.UEFIVarsDir, name+"-uefi-vars.fd")
+		os.Remove(varsPath)
 	}
 
 	return kv.AddInDB(db, "vm/"+name+"/state", "stopped")

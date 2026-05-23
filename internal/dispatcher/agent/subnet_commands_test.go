@@ -20,7 +20,7 @@ func TestCreateSubnetCommand_Prepare_Success(t *testing.T) {
 	kv.AddInDB(db, "vpc/vpc-1/state", "created")
 	cmd := CreateSubnetCommand{
 		Name: "sn-1", VPC: "vpc-1", VxlanID: 100,
-		IfaceType: "vms", GatewayIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
 	}
 	if err := cmd.Prepare(db, testCfg()); err != nil {
 		t.Fatalf("Prepare a échoué : %v", err)
@@ -40,7 +40,7 @@ func TestCreateSubnetCommand_Prepare_UsesIfaceTypeMapping(t *testing.T) {
 	kv.AddInDB(db, "vpc/vpc-1/state", "created")
 	cmd := CreateSubnetCommand{
 		Name: "sn-1", VPC: "vpc-1", VxlanID: 100,
-		IfaceType: "vms", GatewayIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
 	}
 	cmd.Prepare(db, testCfg())
 	iface, _ := kv.GetFromDB(db, "subnet/sn-1/local_iface")
@@ -54,7 +54,7 @@ func TestCreateSubnetCommand_Prepare_UsesDefaultIfaceWhenTypeUnknown(t *testing.
 	kv.AddInDB(db, "vpc/vpc-1/state", "created")
 	cmd := CreateSubnetCommand{
 		Name: "sn-1", VPC: "vpc-1", VxlanID: 100,
-		IfaceType: "inconnu", GatewayIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+		IfaceType: "inconnu", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
 	}
 	cmd.Prepare(db, testCfg())
 	iface, _ := kv.GetFromDB(db, "subnet/sn-1/local_iface")
@@ -69,7 +69,7 @@ func TestCreateSubnetCommand_Prepare_Duplicate(t *testing.T) {
 	kv.AddInDB(db, "subnet/sn-exist/state", "created")
 	cmd := CreateSubnetCommand{
 		Name: "sn-exist", VPC: "vpc-1", VxlanID: 100,
-		IfaceType: "vms", GatewayIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
 	}
 	if err := cmd.Prepare(db, testCfg()); err == nil {
 		t.Error("Prepare devrait échouer sur un subnet déjà existant")
@@ -80,7 +80,7 @@ func TestCreateSubnetCommand_Prepare_VPCNotFound(t *testing.T) {
 	_, db := newTestDispatcher(t)
 	cmd := CreateSubnetCommand{
 		Name: "sn-1", VPC: "vpc-inexistant", VxlanID: 100,
-		IfaceType: "vms", GatewayIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
 	}
 	if err := cmd.Prepare(db, testCfg()); err == nil {
 		t.Error("Prepare devrait échouer si le VPC n'existe pas")
@@ -92,7 +92,7 @@ func TestCreateSubnetCommand_Prepare_VPCDeleting(t *testing.T) {
 	kv.AddInDB(db, "vpc/vpc-dying/state", "deleting")
 	cmd := CreateSubnetCommand{
 		Name: "sn-1", VPC: "vpc-dying", VxlanID: 100,
-		IfaceType: "vms", GatewayIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
 	}
 	if err := cmd.Prepare(db, testCfg()); err == nil {
 		t.Error("Prepare devrait échouer si le VPC est en cours de suppression")
@@ -104,10 +104,106 @@ func TestCreateSubnetCommand_Prepare_VPCDeleted(t *testing.T) {
 	kv.AddInDB(db, "vpc/vpc-gone/state", "deleted")
 	cmd := CreateSubnetCommand{
 		Name: "sn-1", VPC: "vpc-gone", VxlanID: 100,
-		IfaceType: "vms", GatewayIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
 	}
 	if err := cmd.Prepare(db, testCfg()); err == nil {
 		t.Error("Prepare devrait échouer si le VPC est supprimé")
+	}
+}
+
+func TestCreateSubnetCommand_Prepare_DefaultsToVxlanMode(t *testing.T) {
+	_, db := newTestDispatcher(t)
+	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	cmd := CreateSubnetCommand{
+		Name: "sn-1", VPC: "vpc-1", VxlanID: 100,
+		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+	}
+	cmd.Prepare(db, testCfg())
+	mode, _ := kv.GetFromDB(db, "subnet/sn-1/mode")
+	if mode != "vxlan" {
+		t.Errorf("mode attendu vxlan, obtenu %q", mode)
+	}
+	if _, err := kv.GetFromDB(db, "subnet/sn-1/vxlan_id"); err != nil {
+		t.Error("vxlan_id devrait être écrit en mode vxlan")
+	}
+}
+
+func TestCreateSubnetCommand_Prepare_BridgeMode_Success(t *testing.T) {
+	_, db := newTestDispatcher(t)
+	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	cmd := CreateSubnetCommand{
+		Name: "sn-1", VPC: "vpc-1", Mode: "bridge",
+		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+	}
+	if err := cmd.Prepare(db, testCfg()); err != nil {
+		t.Fatalf("Prepare a échoué : %v", err)
+	}
+	mode, _ := kv.GetFromDB(db, "subnet/sn-1/mode")
+	if mode != "bridge" {
+		t.Errorf("mode attendu bridge, obtenu %q", mode)
+	}
+	iface, _ := kv.GetFromDB(db, "subnet/sn-1/local_iface")
+	if iface != "br-vms" {
+		t.Errorf("local_iface attendu br-vms, obtenu %q", iface)
+	}
+}
+
+func TestCreateSubnetCommand_Prepare_BridgeMode_NoVxlanID(t *testing.T) {
+	_, db := newTestDispatcher(t)
+	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	cmd := CreateSubnetCommand{
+		Name: "sn-1", VPC: "vpc-1", Mode: "bridge",
+		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+	}
+	cmd.Prepare(db, testCfg())
+	if _, err := kv.GetFromDB(db, "subnet/sn-1/vxlan_id"); err == nil {
+		t.Error("vxlan_id ne devrait pas être écrit en mode bridge")
+	}
+}
+
+func TestCreateSubnetCommand_Prepare_UnknownMode(t *testing.T) {
+	_, db := newTestDispatcher(t)
+	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	cmd := CreateSubnetCommand{
+		Name: "sn-1", VPC: "vpc-1", Mode: "vlan",
+		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+	}
+	if err := cmd.Prepare(db, testCfg()); err == nil {
+		t.Error("Prepare devrait échouer pour un mode inconnu")
+	}
+}
+
+func TestCreateSubnetCommand_Prepare_DefaultRouteStored(t *testing.T) {
+	_, db := newTestDispatcher(t)
+	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	cmd := CreateSubnetCommand{
+		Name: "sn-1", VPC: "vpc-1", VxlanID: 100,
+		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+		DefaultRoute: true,
+	}
+	if err := cmd.Prepare(db, testCfg()); err != nil {
+		t.Fatalf("Prepare a échoué : %v", err)
+	}
+	val, err := kv.GetFromDB(db, "subnet/sn-1/default_route")
+	if err != nil {
+		t.Fatalf("default_route non écrit en DB : %v", err)
+	}
+	if val != "true" {
+		t.Errorf("default_route attendu true, obtenu %q", val)
+	}
+}
+
+func TestCreateSubnetCommand_Prepare_DefaultRouteFalseByDefault(t *testing.T) {
+	_, db := newTestDispatcher(t)
+	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	cmd := CreateSubnetCommand{
+		Name: "sn-1", VPC: "vpc-1", VxlanID: 100,
+		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+	}
+	cmd.Prepare(db, testCfg())
+	val, _ := kv.GetFromDB(db, "subnet/sn-1/default_route")
+	if val != "false" {
+		t.Errorf("default_route attendu false, obtenu %q", val)
 	}
 }
 

@@ -294,13 +294,17 @@ components:
 
     VPCCreateRequest:
       type: object
-      required: [name]
+      required: [name, cidr]
       properties:
         name:
           type: string
           description: Unique name for the VPC, must follow the format vp-[id]
           pattern: '^vp-.+'
           example: vp-00001
+        cidr:
+          type: string
+          description: CIDR block for the entire VPC address space
+          example: "10.0.0.0/16"
 
     VPC:
       type: object
@@ -312,10 +316,13 @@ components:
           type: string
           enum: [creating, created, deleting, deleted]
           example: created
+        cidr:
+          type: string
+          example: "10.0.0.0/16"
 
     SubnetCreateRequest:
       type: object
-      required: [name, vpc, vxlan_id, gateway_ip, cidr]
+      required: [name, vpc, interface_ip, cidr]
       properties:
         name:
           type: string
@@ -325,15 +332,24 @@ components:
           type: string
           description: Parent VPC name
           example: vpc1
+        mode:
+          type: string
+          description: >
+            Subnet mode. "vxlan" (default): creates a VXLAN tunnel and a host bridge.
+            "bridge": attaches directly to an existing bridge resolved from iface_type in the agent config.
+            "vlan" is reserved for future use.
+          enum: [vxlan, bridge]
+          default: vxlan
+          example: vxlan
         vxlan_id:
           type: integer
-          description: VXLAN VNI identifier
+          description: VXLAN VNI identifier. Required when mode is "vxlan", ignored otherwise.
           example: 100
         iface_type:
           type: string
           description: Interface type key defined in the agent config (e.g. vms, internet, admin). Falls back to default_interface if omitted or unknown.
           example: vms
-        gateway_ip:
+        interface_ip:
           type: string
           format: ipv4
           description: Gateway IP for the subnet
@@ -342,6 +358,12 @@ components:
           type: string
           description: Subnet CIDR block
           example: "10.10.10.0/24"
+        default_route:
+          type: boolean
+          description: >
+            If true, advertise a default route via DHCP. For vxlan mode the gateway is the interface IP.
+            For bridge mode the gateway is read from the host routing table.
+          default: false
 
     Subnet:
       type: object
@@ -356,30 +378,35 @@ components:
         vpc:
           type: string
           example: vpc1
+        mode:
+          type: string
+          enum: [vxlan, bridge]
+          example: vxlan
         vxlan_id:
           type: integer
+          description: VXLAN VNI. Present only when mode is "vxlan".
           example: 100
         local_iface:
           type: string
-          description: Resolved interface name
+          description: Resolved interface name from agent config
           example: br-000000
-        gateway_ip:
+        interface_ip:
           type: string
           example: "10.10.10.1"
         cidr:
           type: string
           example: "10.10.10.0/24"
+        default_route:
+          type: boolean
+          example: false
 
     VMCreateRequest:
       type: object
-      required: [name, metadata_port, interfaces, storage]
+      required: [name, interfaces, storage]
       properties:
         name:
           type: string
           example: vm-00001
-        metadata_port:
-          type: string
-          example: "80"
         memory:
           type: integer
           description: Memory in MB (default 512)
@@ -403,6 +430,10 @@ components:
           minItems: 1
           items:
             $ref: "#/components/schemas/VMStorage"
+        uefi:
+          type: boolean
+          description: Boot with UEFI firmware (OVMF). Defaults to false (SeaBIOS).
+          example: false
 
     VMInterface:
       type: object
@@ -460,6 +491,9 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/VMStorage"
+        uefi:
+          type: boolean
+          example: false
 
     Error:
       type: object

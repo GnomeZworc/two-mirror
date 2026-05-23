@@ -2,6 +2,9 @@ package vm
 
 import (
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/iptables"
@@ -33,7 +36,7 @@ func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	}
 
 	if err := netns.Call(d.vpcName, func() error {
-		return iptables.AddMetadataRedirect(d.ip, d.gatewayIP, d.metadataPort)
+		return iptables.AddMetadataRedirect(d.ip, d.interfaceIP, d.metadataPort)
 	}); err != nil {
 		return fmt.Errorf("add metadata redirect: %w", err)
 	}
@@ -41,7 +44,7 @@ func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	if err := metadata.StartMetadata(metadata.NoCloudConfig{
 		Name:     name,
 		VpcName:  d.vpcName,
-		BindIP:   d.gatewayIP,
+		BindIP:   d.interfaceIP,
 		BindPort: d.metadataPort,
 		Password: d.password,
 		SSHKEY:   d.sshkey,
@@ -49,18 +52,54 @@ func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 		return fmt.Errorf("start metadata: %w", err)
 	}
 
+	qcfg := qemu.Config{
+		Name:       name,
+		TapID:      d.tapID,
+		Mac:        d.mac,
+		VolumePath: d.volumePath,
+		Memory:     d.memory,
+		CPUs:       d.cpus,
+		SerialDir:  cfg.QEMU.SerialDir,
+		MonitorDir: cfg.QEMU.MonitorDir,
+		QMPDir:     cfg.QEMU.QMPDir,
+	}
+
+	if d.uefi {
+		varsPath := filepath.Join(cfg.QEMU.UEFIVarsDir, name+"-uefi-vars.fd")
+		if err := copyFile(cfg.QEMU.OVMFVarsTemplate, varsPath); err != nil {
+			return fmt.Errorf("copy uefi vars: %w", err)
+		}
+		qcfg.UEFICodePath = cfg.QEMU.OVMFCodePath
+		qcfg.UEFIVarsPath = varsPath
+	}
+
 	if err := netns.Call(d.vpcName, func() error {
-		return qemu.Start(qemu.Config{
-			Name:       name,
-			TapID:      d.tapID,
-			Mac:        d.mac,
-			VolumePath: d.volumePath,
-			Memory:     d.memory,
-			CPUs:       d.cpus,
-		})
+		return qemu.Start(qcfg)
 	}); err != nil {
 		return fmt.Errorf("start qemu: %w", err)
 	}
 
 	return kv.AddInDB(db, "vm/"+name+"/state", "started")
+}
+
+func copyFile(src, dst string) error {
+	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+		return err
+	}
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	if _, err := io.Copy(out, in); err != nil {
+		return err
+	}
+	return out.Sync()
 }

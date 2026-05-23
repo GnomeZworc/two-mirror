@@ -79,6 +79,7 @@ func vmFromDB(name string, entries map[string]string) (VM, error) {
 	vm.MetadataPort = entries[prefix+"metadata_port"]
 	vm.Memory, _ = strconv.Atoi(entries[prefix+"memory"])
 	vm.CPUs, _ = strconv.Atoi(entries[prefix+"cpus"])
+	vm.UEFI = entries[prefix+"uefi"] == "true"
 
 	subnet := entries[prefix+"subnet"]
 	ip := entries[prefix+"ip"]

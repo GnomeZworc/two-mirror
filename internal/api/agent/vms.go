@@ -58,9 +58,9 @@ func (s *Server) startVM(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(ErrorResponse{Error: "invalid request body"})
 		return
 	}
-	if req.Name == "" || req.MetadataPort == "" || len(req.Interfaces) == 0 || len(req.Storage) == 0 {
+	if req.Name == "" || len(req.Interfaces) == 0 || len(req.Storage) == 0 {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrorResponse{Error: "name, metadata_port, interfaces and storage are required"})
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "name, interfaces and storage are required"})
 		return
 	}
 
@@ -78,15 +78,15 @@ func (s *Server) startVM(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cmd := dispatcher.StartVMCommand{
-		Name:         req.Name,
-		Subnet:       primary.Subnet,
-		IP:           primary.IP,
-		MetadataPort: req.MetadataPort,
-		VolumePath:   req.Storage[0].Path,
-		Memory:       req.Memory,
-		CPUs:         req.CPUs,
-		Password:     req.Password,
-		SSHKey:       req.SSHKey,
+		Name:       req.Name,
+		Subnet:     primary.Subnet,
+		IP:         primary.IP,
+		VolumePath: req.Storage[0].Path,
+		Memory:     req.Memory,
+		CPUs:       req.CPUs,
+		UEFI:       req.UEFI,
+		Password:   req.Password,
+		SSHKey:     req.SSHKey,
 	}
 
 	if err := s.dispatcher.Prepare(cmd); err != nil {
