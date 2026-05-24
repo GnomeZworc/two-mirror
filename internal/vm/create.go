@@ -52,11 +52,16 @@ func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 		return fmt.Errorf("start metadata: %w", err)
 	}
 
+	qDisks := make([]qemu.DiskConfig, len(d.disks))
+	for i, disk := range d.disks {
+		qDisks[i] = qemu.DiskConfig{Path: disk.path, Dev: disk.dev}
+	}
+
 	qcfg := qemu.Config{
 		Name:       name,
 		TapID:      d.tapID,
 		Mac:        d.mac,
-		VolumePath: d.disks[0].path,
+		Disks:      qDisks,
 		Memory:     d.memory,
 		CPUs:       d.cpus,
 		SerialDir:  cfg.QEMU.SerialDir,

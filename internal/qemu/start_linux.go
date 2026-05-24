@@ -7,20 +7,27 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
+	"strings"
 )
 
+type DiskConfig struct {
+	Path string
+	Dev  string
+}
+
 type Config struct {
-	Name       string
-	TapID      int
-	Mac        string
-	VolumePath string
-	Memory     int
-	CPUs       int
+	Name         string
+	TapID        int
+	Mac          string
+	Disks        []DiskConfig
+	Memory       int
+	CPUs         int
 	UEFICodePath string
 	UEFIVarsPath string
-	SerialDir  string
-	MonitorDir string
-	QMPDir     string
+	SerialDir    string
+	MonitorDir   string
+	QMPDir       string
 }
 
 func Start(cfg Config) error {
@@ -64,8 +71,36 @@ func Start(cfg Config) error {
 		)
 	}
 
+	hasScsi := false
+	for _, d := range cfg.Disks {
+		if strings.HasPrefix(d.Dev, "sd") {
+			hasScsi = true
+			break
+		}
+	}
+	if hasScsi {
+		args = append(args, "-device", "virtio-scsi-pci,id=scsi0")
+	}
+
+	sorted := make([]DiskConfig, len(cfg.Disks))
+	copy(sorted, cfg.Disks)
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Dev < sorted[j].Dev })
+
+	for _, d := range sorted {
+		if strings.HasPrefix(d.Dev, "sd") {
+			scsiID := int(d.Dev[2] - 'a')
+			args = append(args,
+				"-drive", fmt.Sprintf("file=%s,if=none,id=%s", d.Path, d.Dev),
+				"-device", fmt.Sprintf("scsi-hd,drive=%s,bus=scsi0.0,scsi-id=%d", d.Dev, scsiID),
+			)
+		} else {
+			args = append(args,
+				"-drive", fmt.Sprintf("file=%s,if=virtio,id=%s", d.Path, d.Dev),
+			)
+		}
+	}
+
 	args = append(args,
-		"-drive", fmt.Sprintf("file=%s,if=virtio", cfg.VolumePath),
 		"-netdev", fmt.Sprintf("tap,id=net0,ifname=tap%d,script=no,downscript=no", cfg.TapID),
 		"-device", fmt.Sprintf("virtio-net-pci,netdev=net0,mac=%s", cfg.Mac),
 		"-daemonize",
