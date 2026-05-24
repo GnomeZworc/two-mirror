@@ -13,16 +13,21 @@ import (
 	"github.com/dgraph-io/badger/v4"
 )
 
+type VMDisk struct {
+	Path string
+	Dev  string
+}
+
 type StartVMCommand struct {
-	Name       string
-	Subnet     string
-	IP         string
-	VolumePath string
-	Memory     int
-	CPUs       int
-	UEFI       bool
-	Password   string
-	SSHKey     string
+	Name     string
+	Subnet   string
+	IP       string
+	Disks    []VMDisk
+	Memory   int
+	CPUs     int
+	UEFI     bool
+	Password string
+	SSHKey   string
 }
 
 func (c StartVMCommand) Prepare(db *badger.DB, _ *configuration.Config) error {
@@ -44,7 +49,9 @@ func (c StartVMCommand) Prepare(db *badger.DB, _ *configuration.Config) error {
 	kv.AddInDB(db, "vm/"+c.Name+"/subnet", c.Subnet)
 	kv.AddInDB(db, "vm/"+c.Name+"/ip", c.IP)
 	kv.AddInDB(db, "vm/"+c.Name+"/metadata_port", strconv.Itoa(port))
-	kv.AddInDB(db, "vm/"+c.Name+"/volume_path", c.VolumePath)
+	for _, d := range c.Disks {
+		kv.AddInDB(db, "vm/"+c.Name+"/disk/"+d.Dev, d.Path)
+	}
 	kv.AddInDB(db, "vm/"+c.Name+"/memory", strconv.Itoa(c.Memory))
 	kv.AddInDB(db, "vm/"+c.Name+"/cpus", strconv.Itoa(c.CPUs))
 	if c.UEFI {

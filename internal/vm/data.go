@@ -11,6 +11,11 @@ import (
 	"github.com/dgraph-io/badger/v4"
 )
 
+type diskEntry struct {
+	path string
+	dev  string
+}
+
 type vmData struct {
 	subnetName   string
 	vpcName      string
@@ -20,7 +25,7 @@ type vmData struct {
 	ip           string
 	metadataPort string
 	mac          string
-	volumePath   string
+	disks        []diskEntry
 	memory       int
 	cpus         int
 	uefi         bool
@@ -82,11 +87,18 @@ func loadVM(db *badger.DB, name string) (vmData, error) {
 	}
 	d.mac = mac
 
-	volumePath, err := kv.GetFromDB(db, "vm/"+name+"/volume_path")
+	diskEntries, err := kv.ListByPrefix(db, "vm/"+name+"/disk/")
 	if err != nil {
-		return d, fmt.Errorf("get volume_path: %w", err)
+		return d, fmt.Errorf("list disks: %w", err)
 	}
-	d.volumePath = volumePath
+	if len(diskEntries) == 0 {
+		return d, fmt.Errorf("no disks found for vm %q", name)
+	}
+	diskPrefix := "vm/" + name + "/disk/"
+	for key, path := range diskEntries {
+		dev := strings.TrimPrefix(key, diskPrefix)
+		d.disks = append(d.disks, diskEntry{path: path, dev: dev})
+	}
 
 	memoryStr, err := kv.GetFromDB(db, "vm/"+name+"/memory")
 	if err != nil {

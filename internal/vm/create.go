@@ -56,7 +56,7 @@ func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 		Name:       name,
 		TapID:      d.tapID,
 		Mac:        d.mac,
-		VolumePath: d.volumePath,
+		VolumePath: d.disks[0].path,
 		Memory:     d.memory,
 		CPUs:       d.cpus,
 		SerialDir:  cfg.QEMU.SerialDir,
