@@ -65,18 +65,29 @@ func Start(cfg Config) error {
 
 	sorted := make([]DiskConfig, len(cfg.Disks))
 	copy(sorted, cfg.Disks)
-	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Dev < sorted[j].Dev })
+	// vd* avant sd* : les disques virtio-blk bootent en premier.
+	// À lettre égale de type, ordre alphabétique.
+	sort.Slice(sorted, func(i, j int) bool {
+		iVirtio := strings.HasPrefix(sorted[i].Dev, "vd")
+		jVirtio := strings.HasPrefix(sorted[j].Dev, "vd")
+		if iVirtio != jVirtio {
+			return iVirtio
+		}
+		return sorted[i].Dev < sorted[j].Dev
+	})
 
-	for _, d := range sorted {
+	for idx, d := range sorted {
+		bootindex := idx + 1
 		if strings.HasPrefix(d.Dev, "sd") {
 			scsiID := int(d.Dev[2] - 'a')
 			args = append(args,
 				"-drive", fmt.Sprintf("file=%s,if=none,id=%s", d.Path, d.Dev),
-				"-device", fmt.Sprintf("scsi-hd,drive=%s,bus=scsi0.0,scsi-id=%d", d.Dev, scsiID),
+				"-device", fmt.Sprintf("scsi-hd,drive=%s,bus=scsi0.0,scsi-id=%d,bootindex=%d", d.Dev, scsiID, bootindex),
 			)
 		} else {
 			args = append(args,
-				"-drive", fmt.Sprintf("file=%s,if=virtio,id=%s", d.Path, d.Dev),
+				"-drive", fmt.Sprintf("file=%s,if=none,id=%s", d.Path, d.Dev),
+				"-device", fmt.Sprintf("virtio-blk-pci,drive=%s,bootindex=%d", d.Dev, bootindex),
 			)
 		}
 	}
