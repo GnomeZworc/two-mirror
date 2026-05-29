@@ -1,0 +1,5 @@
+{
+  "tag": "logout-button",
+  "version": "0.1.0",
+  "description": "Drop-anywhere button that clears the session via login-gate.logout(). Reusable in header, members panel, etc."
+}

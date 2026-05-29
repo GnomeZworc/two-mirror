@@ -1,6 +1,7 @@
 // API service component.
 //
-// Declare once in the shell:
+// Declare after login-gate in the shell:
+//   <login-gate></login-gate>
 //   <api-client></api-client>
 //
 // Use from any other component:
@@ -11,10 +12,8 @@
 //   await api.agent.delete('/vpcs/vp-admin')
 //   await api.agent.waitFor('/vms/i-test1', 'started')
 //
-// Phase 2: swap this component for one that points to the orchestrator.
-// No other component changes.
-
-import { config } from '../../core/config.js'
+// Credentials come from <login-gate>.ready — no direct config.json dependency.
+// Phase 2: swap login-gate for oidc-gate → this component unchanged.
 
 export class ApiError extends Error {
   constructor(origin, status, message) {
@@ -25,10 +24,21 @@ export class ApiError extends Error {
 }
 
 class ApiClient extends HTMLElement {
-  connectedCallback() {
+  // Resolves once login-gate is ready (or immediately if no gate in DOM).
+  #credentials = null
+
+  async connectedCallback() {
     this.style.display = 'none'
+
+    const gate = document.querySelector('login-gate')
+    this.#credentials = gate ? await gate.ready : null
+
     this.netbox = this.#buildNetbox()
     this.agent  = this.#buildAgent()
+  }
+
+  get creds() {
+    return this.#credentials ?? {}
   }
 
   // ── Internal ──────────────────────────────────────────────────────────────
@@ -59,12 +69,12 @@ class ApiClient extends HTMLElement {
 
   #buildNetbox() {
     const headers = () => ({
-      'Authorization': `Token ${config.netbox_token}`,
+      'Authorization': `Token ${this.creds.netbox_token}`,
       'Accept': 'application/json',
     })
 
     const url = (path, params = {}) => {
-      const u = new URL(path, config.netbox_url + '/api/')
+      const u = new URL(path, this.creds.netbox_url + '/api/')
       Object.entries(params).forEach(([k, v]) => {
         if (v != null) u.searchParams.set(k, v)
       })
@@ -72,7 +82,6 @@ class ApiClient extends HTMLElement {
     }
 
     return {
-      // Returns results array. Netbox paginates; limit=1000 covers most cases.
       list: (path, params = {}) =>
         this.#request('netbox', url(path, { limit: 1000, ...params }), { headers: headers() })
             .then(d => d?.results ?? []),
@@ -90,7 +99,7 @@ class ApiClient extends HTMLElement {
       ...(body ? { 'Content-Type': 'application/json' } : {}),
     })
 
-    const url = path => new URL(path, config.agent_url + '/').toString()
+    const url = path => new URL(path, this.creds.agent_url + '/').toString()
 
     const req = (method, path, body) =>
       this.#request('agent', url(path), {
@@ -100,12 +109,11 @@ class ApiClient extends HTMLElement {
       })
 
     return {
-      get:    path       => req('GET',    path),
-      list:   path       => req('GET',    path),
-      post:   (path, b)  => req('POST',   path, b),
-      delete: path       => req('DELETE', path),
+      get:    path      => req('GET',    path),
+      list:   path      => req('GET',    path),
+      post:   (path, b) => req('POST',   path, b),
+      delete: path      => req('DELETE', path),
 
-      // Poll path until resource.state === desired or timeout.
       waitFor: async (path, desired, { timeout = 120_000, interval = 2_000 } = {}) => {
         const deadline = Date.now() + timeout
         while (Date.now() < deadline) {

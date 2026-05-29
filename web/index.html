@@ -39,6 +39,10 @@
       color: #6c7086;
     }
 
+    header .spacer {
+      flex: 1;
+    }
+
     .layout {
       display: flex;
       flex: 1;
@@ -70,12 +74,15 @@
 </head>
 <body>
 
+  <login-gate></login-gate>
+  <api-client></api-client>
+
   <header>
     <h1>two</h1>
     <span>network orchestrator</span>
+    <div class="spacer"></div>
+    <logout-button></logout-button>
   </header>
-
-  <api-client></api-client>
 
   <div class="layout">
     <side-nav></side-nav>

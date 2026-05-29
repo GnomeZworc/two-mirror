@@ -1,0 +1,5 @@
+{
+  "tag": "login-gate",
+  "version": "0.1.0",
+  "description": "Auth service component. Exposes a 'ready' Promise that resolves with credentials. Shows a login overlay if no session exists."
+}
