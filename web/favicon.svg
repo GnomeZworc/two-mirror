@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Background -->
+  <rect width="32" height="32" rx="6" fill="#1e1e2e"/>
+
+  <!-- Server rack unit 1 -->
+  <rect x="5" y="7" width="22" height="5" rx="1.5" fill="#313244"/>
+  <circle cx="23" cy="9.5" r="1.2" fill="#a6e3a1"/>
+  <rect x="8" y="9" width="10" height="1" rx="0.5" fill="#585b70"/>
+
+  <!-- Server rack unit 2 -->
+  <rect x="5" y="14" width="22" height="5" rx="1.5" fill="#313244"/>
+  <circle cx="23" cy="16.5" r="1.2" fill="#89b4fa"/>
+  <rect x="8" y="16" width="10" height="1" rx="0.5" fill="#585b70"/>
+
+  <!-- Server rack unit 3 -->
+  <rect x="5" y="21" width="22" height="5" rx="1.5" fill="#313244"/>
+  <circle cx="23" cy="23.5" r="1.2" fill="#89b4fa"/>
+  <rect x="8" y="23" width="6" height="1" rx="0.5" fill="#585b70"/>
+
+  <!-- Rack frame left -->
+  <rect x="3" y="5" width="2" height="23" rx="1" fill="#45475a"/>
+  <!-- Rack frame right -->
+  <rect x="27" y="5" width="2" height="23" rx="1" fill="#45475a"/>
+</svg>

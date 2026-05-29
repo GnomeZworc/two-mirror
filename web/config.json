@@ -1,0 +1,5 @@
+{
+  "netbox_url": "http://netbox.local",
+  "netbox_token": "your-token-here",
+  "agent_url": "http://127.0.0.1:8080"
+}

@@ -1,0 +1,5 @@
+{
+  "tag": "api-client",
+  "version": "0.1.0",
+  "description": "Service component. Provides Netbox and agent API access to all other components via document.querySelector('api-client')."
+}

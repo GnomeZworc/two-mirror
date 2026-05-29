@@ -1,0 +1,5 @@
+{
+  "tag": "side-nav",
+  "version": "0.1.0",
+  "description": "Left sidebar navigation, driven by navigation.json."
+}

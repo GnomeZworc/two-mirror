@@ -1,0 +1,22 @@
+[
+  {
+    "label": "Dashboard",
+    "href": "index.html",
+    "icon": "dashboard"
+  },
+  {
+    "label": "VPCs",
+    "href": "vpc.html",
+    "icon": "vpc"
+  },
+  {
+    "label": "Subnets",
+    "href": "subnet.html",
+    "icon": "subnet"
+  },
+  {
+    "label": "VMs",
+    "href": "vm.html",
+    "icon": "vm"
+  }
+]

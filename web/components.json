@@ -1,0 +1,5 @@
+[
+  "components/api-client/api-client.js",
+  "components/side-nav/side-nav.js",
+  "components/date-display/date-display.js"
+]

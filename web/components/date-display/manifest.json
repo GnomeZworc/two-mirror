@@ -1,0 +1,5 @@
+{
+  "tag": "date-display",
+  "version": "0.1.0",
+  "description": "Displays current date and time, refreshed every second."
+}
