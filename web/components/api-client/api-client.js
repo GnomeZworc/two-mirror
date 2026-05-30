@@ -30,12 +30,14 @@ class ApiClient extends HTMLElement {
   async connectedCallback() {
     this.style.display = 'none'
 
+    // Support login-gate (static token) and biscuit-gate (attenuated token).
     const gate = document.querySelector('login-gate')
     this.#credentials = gate ? await gate.ready : null
 
     this.netbox = this.#buildNetbox()
     this.agent  = this.#buildAgent()
   }
+
 
   get creds() {
     return this.#credentials ?? {}

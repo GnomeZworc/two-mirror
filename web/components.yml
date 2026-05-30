@@ -1,0 +1,25 @@
+# Component manifest — source of truth for the web UI.
+#
+# Edit this file, then run ./build.sh to:
+#   - download every remote component into components/<name>/
+#   - generate components.json (the runtime load list) in declared order
+#
+# Load order matters: service components (login-gate, api-client) must come
+# before the components that consume them.
+
+# Local components shipped inside this repo. Not downloaded — listed here only
+# so build.sh can place them in the generated load order.
+local:
+  - login-gate
+  - api-client
+  - side-nav
+  - logout-button
+  - date-display
+
+# Remote components fetched from git at build time.
+# Each is its own repo; its root must contain <name>.js and manifest.json.
+#
+#   - name: vpc-panel                                  # → components/vpc-panel/
+#     repo: https://git.g3e.fr/team-reseau/vpc-panel
+#     ref:  v1.2.0                                     # tag, branch or commit (default: main)
+components: []
