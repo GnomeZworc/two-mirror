@@ -1,0 +1,5 @@
+{
+  "tag": "form-vm",
+  "version": "0.1.0",
+  "description": "Create or edit a VM. Auto-detects mode via vm-name attribute."
+}

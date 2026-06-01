@@ -16,6 +16,7 @@ local_components:
   - logout-button
   - side-panel
   - date-display
+  - form-vm
 
 # Remote components fetched from git at build time.
 # Each is its own repo; its root must contain <name>.js and manifest.json.

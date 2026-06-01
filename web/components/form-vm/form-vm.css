@@ -1,0 +1,138 @@
+:host {
+  display: block;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #cdd6f4;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Sections ─────────────────────────────────────────────────────────────── */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #6c7086;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #313244;
+}
+
+/* ── Fields ───────────────────────────────────────────────────────────────── */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #a6adc8;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+input, select {
+  background: #181825;
+  border: 1px solid #313244;
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: #cdd6f4;
+  font-size: 13px;
+  font-family: monospace;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+
+input:focus, select:focus { border-color: #89b4fa; }
+input::placeholder         { color: #45475a; }
+input[readonly]            { color: #6c7086; cursor: not-allowed; }
+
+/* ── Disk list ────────────────────────────────────────────────────────────── */
+
+.disk-row {
+  display: grid;
+  grid-template-columns: 80px 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.disk-row input { min-width: 0; }
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s, opacity 0.12s;
+}
+
+.btn-primary   { background: #89b4fa; color: #1e1e2e; }
+.btn-primary:hover   { background: #b4d0fa; }
+.btn-danger    { background: transparent; border: 1px solid #f38ba8; color: #f38ba8; }
+.btn-danger:hover    { background: rgba(243,139,168,0.1); }
+.btn-ghost     { background: #313244; color: #a6adc8; padding: 6px 10px; font-size: 12px; }
+.btn-ghost:hover     { background: #45475a; }
+.btn:disabled  { opacity: 0.4; cursor: not-allowed; }
+
+.actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+/* ── Status ───────────────────────────────────────────────────────────────── */
+
+.status {
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  display: none;
+}
+.status.error   { background: #1e1e2e; border: 1px solid #f38ba8; color: #f38ba8; display: block; }
+.status.success { background: #1e1e2e; border: 1px solid #a6e3a1; color: #a6e3a1; display: block; }
+.status.loading { color: #6c7086; display: block; }
+
+/* ── Toggle ───────────────────────────────────────────────────────────────── */
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #89b4fa;
+  cursor: pointer;
+}
+
+.toggle-label { font-size: 13px; color: #a6adc8; text-transform: none; letter-spacing: 0; }
