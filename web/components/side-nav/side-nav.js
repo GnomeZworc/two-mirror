@@ -18,7 +18,8 @@ const ICONS = {
   vm:        `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>`,
 }
 
-const MQ      = window.matchMedia('(max-width: 768px)')
+const CSS = new URL('./side-nav.css', import.meta.url).href
+const MQ  = window.matchMedia('(max-width: 768px)')
 const NAV_W   = 220   // px
 
 function resolveIcon(name) {
@@ -67,44 +68,7 @@ class SideNav extends HTMLElement {
     }).join('')
 
     this.shadowRoot.innerHTML = `
-      <style>
-        :host {
-          /* Géométrie desktop définie ici ; mobile gérée par this.style en JS */
-          display: flex;
-          flex-direction: column;
-          width: ${NAV_W}px;
-          min-width: ${NAV_W}px;
-          background: #1e1e2e;
-          border-right: 1px solid #313244;
-          padding: 16px 12px;
-          gap: 4px;
-          height: 100%;
-          overflow: hidden;        /* empêche tout débordement */
-          box-sizing: border-box;
-        }
-
-        .item {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 11px 12px;
-          border-radius: 6px;
-          text-decoration: none;
-          color: #a6adc8;
-          font-size: 14px;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          min-height: 44px;
-          transition: background 0.1s, color 0.1s;
-        }
-        .item:hover         { background: #313244; color: #cdd6f4; }
-        .item.active        { background: #313244; color: #89b4fa; }
-        .item.active .icon  { color: #89b4fa; }
-        .icon {
-          display: flex; align-items: center;
-          color: #6c7086; flex-shrink: 0;
-        }
-        .item:hover .icon { color: #cdd6f4; }
-      </style>
+      <link rel="stylesheet" href="${CSS}">
       ${links}
     `
 

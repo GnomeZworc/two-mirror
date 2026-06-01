@@ -18,6 +18,7 @@
 // Phase 2: swap for <oidc-gate> that resolves ready with a JWT — api-client unchanged.
 
 const SESSION_KEY = 'two:credentials'
+const CSS         = new URL('./login-gate.css', import.meta.url).href
 
 class LoginGate extends HTMLElement {
   #resolve = null
@@ -57,107 +58,7 @@ class LoginGate extends HTMLElement {
     const overlay = document.createElement('div')
     overlay.attachShadow({ mode: 'open' })
     overlay.shadowRoot.innerHTML = `
-      <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
-        .overlay {
-          position: fixed;
-          inset: 0;
-          background: #181825;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 9999;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        }
-
-        .card {
-          background: #1e1e2e;
-          border: 1px solid #313244;
-          border-radius: 12px;
-          padding: 36px 40px;
-          width: 100%;
-          max-width: 420px;
-          display: flex;
-          flex-direction: column;
-          gap: 24px;
-        }
-
-        .header {
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-        }
-
-        .header h1 {
-          font-size: 20px;
-          font-weight: 600;
-          color: #89b4fa;
-          letter-spacing: 0.02em;
-        }
-
-        .header p {
-          font-size: 13px;
-          color: #6c7086;
-        }
-
-        .fields {
-          display: flex;
-          flex-direction: column;
-          gap: 14px;
-        }
-
-        .field {
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-        }
-
-        label {
-          font-size: 12px;
-          font-weight: 500;
-          color: #a6adc8;
-          text-transform: uppercase;
-          letter-spacing: 0.06em;
-        }
-
-        input {
-          background: #181825;
-          border: 1px solid #313244;
-          border-radius: 6px;
-          padding: 9px 12px;
-          color: #cdd6f4;
-          font-size: 14px;
-          font-family: monospace;
-          outline: none;
-          transition: border-color 0.15s;
-          width: 100%;
-        }
-
-        input:focus {
-          border-color: #89b4fa;
-        }
-
-        input::placeholder {
-          color: #45475a;
-        }
-
-        button {
-          background: #89b4fa;
-          color: #1e1e2e;
-          border: none;
-          border-radius: 6px;
-          padding: 10px 16px;
-          font-size: 14px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: background 0.15s, opacity 0.15s;
-          width: 100%;
-        }
-
-        button:hover { background: #b4d0fa; }
-      </style>
-
+      <link rel="stylesheet" href="${CSS}">
       <div class="overlay">
         <div class="card">
           <div class="header">

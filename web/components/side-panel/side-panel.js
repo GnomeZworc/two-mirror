@@ -25,6 +25,8 @@
 //   Clicking the backdrop closes only the topmost panel.
 //   ESC closes the topmost panel.
 
+const CSS = new URL('./side-panel.css', import.meta.url).href
+
 const CLOSE_ICON = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"
   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
   <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -103,95 +105,11 @@ export class SidePanel extends HTMLElement {
     const title = this.getAttribute('title') ?? ''
     const width = this.getAttribute('width') ?? '480px'
 
+    // Passe la largeur comme custom property — référencée dans le CSS via var(--width)
+    this.style.setProperty('--width', width)
+
     this.shadowRoot.innerHTML = `
-      <style>
-        :host {
-          --offset: 0px;
-          --width:  ${width};
-          --dur:    ${ANIM_DURATION}ms;
-          /* Cap width to viewport — never overflows on mobile */
-          --actual-width: min(var(--width), 100vw);
-
-          position: fixed;
-          top: 0;
-          right: calc(-1 * var(--actual-width));
-          width: var(--actual-width);
-          height: 100vh;
-          background: #1e1e2e;
-          border-left: 1px solid #313244;
-          box-shadow: -8px 0 32px rgba(0,0,0,0.4);
-          display: flex;
-          flex-direction: column;
-          z-index: calc(1000 + var(--stack, 0));
-          transition: right var(--dur) cubic-bezier(0.4, 0, 0.2, 1);
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-          color: #cdd6f4;
-        }
-
-        :host([data-open]) {
-          right: var(--offset);
-        }
-
-        /* On mobile: always full-width, no stack offset */
-        @media (max-width: 600px) {
-          :host {
-            --actual-width: 100vw;
-          }
-          :host([data-open]) {
-            right: 0;
-          }
-        }
-
-        .header {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 16px 20px;
-          border-bottom: 1px solid #313244;
-          flex-shrink: 0;
-        }
-
-        .title {
-          flex: 1;
-          font-size: 15px;
-          font-weight: 600;
-          color: #cdd6f4;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .close {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: transparent;
-          border: 1px solid transparent;
-          border-radius: 6px;
-          padding: 5px;
-          color: #6c7086;
-          cursor: pointer;
-          transition: background 0.12s, color 0.12s, border-color 0.12s;
-          flex-shrink: 0;
-        }
-
-        .close:hover {
-          background: #313244;
-          border-color: #45475a;
-          color: #f38ba8;
-        }
-
-        .body {
-          flex: 1;
-          overflow-y: auto;
-          padding: 20px;
-        }
-
-        .body::-webkit-scrollbar { width: 6px; }
-        .body::-webkit-scrollbar-track { background: transparent; }
-        .body::-webkit-scrollbar-thumb { background: #45475a; border-radius: 3px; }
-      </style>
-
+      <link rel="stylesheet" href="${CSS}">
       <div class="header">
         <span class="title">${title}</span>
         <button class="close" aria-label="Close">${CLOSE_ICON}</button>
