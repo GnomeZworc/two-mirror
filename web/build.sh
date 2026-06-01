@@ -109,8 +109,12 @@ download_path() {
 
 # ── Read manifest ────────────────────────────────────────────────────────────────
 
-mapfile -t LOCALS < <(yq '(.local // [])[]' "$MANIFEST")
-mapfile -t REMOTES < <(yq '(.components // [])[] | [.name, .repo, (.ref // "main")] | join("|")' "$MANIFEST")
+PAGES_DIR="${WEB_DIR}/pages"
+
+mapfile -t LOCALS       < <(yq '(.local_components // [])[]' "$MANIFEST")
+mapfile -t REMOTES      < <(yq '(.components   // [])[] | [.name, .repo, (.ref // "main")] | join("|")' "$MANIFEST")
+mapfile -t LOCAL_PAGES  < <(yq '(.local_pages  // [])[]' "$MANIFEST")
+mapfile -t REMOTE_PAGES < <(yq '(.remote_pages // [])[] | [.name, .repo, (.ref // "main")] | join("|")' "$MANIFEST")
 
 # Ordered list of load paths for components.json
 declare -a LOAD_PATHS=()
@@ -175,3 +179,92 @@ echo "$LOCK_ENTRIES" | jq '.' > "$LOCKFILE"
 
 log "wrote ${OUTPUT} (${#LOAD_PATHS[@]} components)"
 log "wrote ${LOCKFILE} ($(jq 'length' <<<"$LOCK_ENTRIES") remote pins)"
+
+# ── Process pages ────────────────────────────────────────────────────────────────
+
+PAGE_ENTRIES="[]"
+
+# Collect page metadata from a directory into PAGE_ENTRIES.
+# Detects css/js presence automatically — both are optional.
+add_page_entry() {
+    local name="$1" dir="$2"
+    local manifest="${dir}/manifest.json"
+    local html="${dir}/index.html"
+
+    [[ -f "$manifest" ]] || die "page '${name}' missing manifest.json in ${dir}"
+    [[ -f "$html"     ]] || die "page '${name}' missing index.html in ${dir}"
+
+    local route label icon css_arg js_arg
+    route=$(jq -r '.route' "$manifest")
+    label=$(jq -r '.label' "$manifest")
+    icon=$(jq -r  '.icon'  "$manifest")
+    css_arg="null"; js_arg="null"
+    [[ -f "${dir}/${name}.css" ]] && css_arg="\"pages/${name}/${name}.css\""
+    [[ -f "${dir}/${name}.js"  ]] && js_arg="\"pages/${name}/${name}.js\""
+
+    PAGE_ENTRIES="$(jq \
+        --arg route "$route" --arg label "$label" --arg icon "$icon" \
+        --arg html  "pages/${name}/index.html" \
+        --argjson css "$css_arg" --argjson js "$js_arg" \
+        '. + [{route:$route, label:$label, icon:$icon, html:$html, css:$css, js:$js}]' \
+        <<<"$PAGE_ENTRIES")"
+    info "  page '${name}' → /#/${route}$([ "$css_arg" != "null" ] && echo " +css")$([ "$js_arg" != "null" ] && echo " +js")"
+}
+
+# Local pages
+for name in "${LOCAL_PAGES[@]}"; do
+    [[ -z "$name" ]] && continue
+    add_page_entry "$name" "${PAGES_DIR}/${name}"
+done
+
+# Remote pages — download then register
+for spec in "${REMOTE_PAGES[@]}"; do
+    [[ -z "$spec" ]] && continue
+    IFS='|' read -r name repo ref <<<"$spec"
+    [[ -z "$name" || -z "$repo" ]] && die "remote_pages entry missing name or repo"
+
+    read -r server owner gitrepo <<<"$(parse_repo_url "$repo")"
+    dest="${PAGES_DIR}/${name}"
+
+    if [[ "$CHECK_ONLY" == true ]]; then
+        info "would fetch page ${name} from ${repo}@${ref}"
+        continue
+    fi
+
+    log "fetching page ${name} ← ${owner}/${gitrepo}@${ref}"
+    commit="$(resolve_commit "$server" "$owner" "$gitrepo" "$ref")"
+    [[ -z "$commit" ]] && die "cannot resolve ref '${ref}' in ${owner}/${gitrepo}"
+
+    rm -rf "$dest"
+    download_path "$server" "$owner" "$gitrepo" "$ref" "" "$dest"
+    add_page_entry "$name" "$dest"
+    info "  pinned ${commit:0:12}"
+done
+
+if [[ "$CHECK_ONLY" == false ]]; then
+    # Apply menu order if defined — reorder PAGE_ENTRIES and filter nav visibility
+    mapfile -t MENU_ORDER < <(yq '(.menu // [])[]' "$MANIFEST")
+
+    if [[ ${#MENU_ORDER[@]} -gt 0 ]]; then
+        ORDERED="[]"
+        for route in "${MENU_ORDER[@]}"; do
+            [[ -z "$route" ]] && continue
+            entry="$(echo "$PAGE_ENTRIES" | jq --arg r "$route" '.[] | select(.route == $r)')"
+            [[ -z "$entry" ]] && warn "menu: route '${route}' not found in pages, skipping"
+            [[ -n "$entry" ]] && ORDERED="$(echo "$ORDERED" | jq --argjson e "$entry" '. + [$e]')"
+        done
+        NAV_ENTRIES="$ORDERED"
+    else
+        NAV_ENTRIES="$PAGE_ENTRIES"
+    fi
+
+    # pages.json — full list (all pages, original discovery order)
+    echo "$PAGE_ENTRIES" | jq '.' > "${WEB_DIR}/pages.json"
+
+    # navigation.json — ordered + filtered by menu:
+    echo "$NAV_ENTRIES" | \
+        jq '[.[] | {label: .label, href: ("#/" + .route), icon: .icon}]' \
+        > "${WEB_DIR}/navigation.json"
+
+    log "wrote pages.json ($(echo "$PAGE_ENTRIES" | jq 'length') pages) + navigation.json ($(echo "$NAV_ENTRIES" | jq 'length') in menu)"
+fi

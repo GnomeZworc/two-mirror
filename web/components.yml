@@ -9,13 +9,13 @@
 
 # Local components shipped inside this repo. Not downloaded — listed here only
 # so build.sh can place them in the generated load order.
-local:
+local_components:
   - login-gate
   - api-client
   - side-nav
   - logout-button
-  - date-display
   - side-panel
+  - date-display
 
 # Remote components fetched from git at build time.
 # Each is its own repo; its root must contain <name>.js and manifest.json.
@@ -24,3 +24,34 @@ local:
 #     repo: https://git.g3e.fr/team-reseau/vpc-panel
 #     ref:  v1.2.0                                     # tag, branch or commit (default: main)
 components: []
+
+# Pages — each page is a self-contained directory (JS + CSS + manifest.json).
+# Same model as components: local pages ship in this repo, remote pages are
+# downloaded from git at build time. build.sh reads each manifest.json to
+# generate navigation.json and pages.json.
+#
+# Page manifest.json must contain: tag, route, label, icon.
+# Page JS must: customElements.define('<tag>', ...) and use display:contents.
+
+local_pages:
+  - dashboard
+  - vpcs
+  - subnets
+  - vms
+
+# Remote pages fetched from git — same mechanism as components.
+#
+#   - name: vpcs
+#     repo: https://git.g3e.fr/team-reseau/page-vpcs
+#     ref:  v1.0.0
+remote_pages: []
+
+# Menu — order and visibility in the side-nav.
+# List routes in desired display order.
+# A page not listed here is accessible via /#/route but hidden from the nav.
+menu:
+  - dashboard
+  - vpcs
+  - subnets
+  - vms
+

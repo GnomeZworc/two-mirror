@@ -1,22 +1,22 @@
 [
   {
     "label": "Dashboard",
-    "href": "index.html",
+    "href": "#/dashboard",
     "icon": "dashboard"
   },
   {
     "label": "VPCs",
-    "href": "vpc.html",
+    "href": "#/vpcs",
     "icon": "vpc"
   },
   {
     "label": "Subnets",
-    "href": "subnet.html",
+    "href": "#/subnets",
     "icon": "subnet"
   },
   {
     "label": "VMs",
-    "href": "vm.html",
+    "href": "#/vms",
     "icon": "vm"
   }
 ]

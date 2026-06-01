@@ -27,11 +27,12 @@ function resolveIcon(name) {
 }
 
 class SideNav extends HTMLElement {
-  #items     = []
-  #hamburger = null
-  #backdrop  = null
-  #mqHandler = null
-  #isMobile  = false
+  #items       = []
+  #hamburger   = null
+  #backdrop    = null
+  #mqHandler   = null
+  #hashHandler = null
+  #isMobile    = false
 
   async connectedCallback() {
     this.attachShadow({ mode: 'open' })
@@ -43,21 +44,36 @@ class SideNav extends HTMLElement {
 
     this.#render()
 
-    this.#mqHandler = () => this.#applyMode()
+    this.#mqHandler   = () => this.#applyMode()
+    this.#hashHandler = () => this.#updateActive()
     MQ.addEventListener('change', this.#mqHandler)
+    window.addEventListener('hashchange', this.#hashHandler)
     this.#applyMode()
   }
 
   disconnectedCallback() {
     MQ.removeEventListener('change', this.#mqHandler)
+    window.removeEventListener('hashchange', this.#hashHandler)
     this.#removeHamburger()
     this.#removeBackdrop()
   }
 
   // ── Rendu des items ─────────────────────────────────────────────────────────
 
+  #currentHref() {
+    return window.location.hash || `#/${this.#items[0]?.href?.replace(/^#\//, '') ?? 'dashboard'}`
+  }
+
+  // Update active class without re-rendering the whole nav.
+  #updateActive() {
+    const current = this.#currentHref()
+    this.shadowRoot?.querySelectorAll('.item').forEach(a =>
+      a.classList.toggle('active', a.getAttribute('href') === current)
+    )
+  }
+
   #render() {
-    const current = window.location.pathname.split('/').pop() || 'index.html'
+    const current = this.#currentHref()
 
     const links = this.#items.map(item => {
       const active = item.href === current

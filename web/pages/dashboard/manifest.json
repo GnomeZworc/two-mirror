@@ -1,0 +1,6 @@
+{
+  "route":   "dashboard",
+  "label":   "Dashboard",
+  "icon":    "dashboard",
+  "version": "0.1.0"
+}
