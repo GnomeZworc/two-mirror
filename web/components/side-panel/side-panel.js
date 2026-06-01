@@ -109,11 +109,13 @@ export class SidePanel extends HTMLElement {
           --offset: 0px;
           --width:  ${width};
           --dur:    ${ANIM_DURATION}ms;
+          /* Cap width to viewport — never overflows on mobile */
+          --actual-width: min(var(--width), 100vw);
 
           position: fixed;
           top: 0;
-          right: calc(-1 * var(--width));
-          width: var(--width);
+          right: calc(-1 * var(--actual-width));
+          width: var(--actual-width);
           height: 100vh;
           background: #1e1e2e;
           border-left: 1px solid #313244;
@@ -121,14 +123,23 @@ export class SidePanel extends HTMLElement {
           display: flex;
           flex-direction: column;
           z-index: calc(1000 + var(--stack, 0));
-          transition: right var(--dur) cubic-bezier(0.4, 0, 0.2, 1),
-                      transform var(--dur) cubic-bezier(0.4, 0, 0.2, 1);
+          transition: right var(--dur) cubic-bezier(0.4, 0, 0.2, 1);
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
           color: #cdd6f4;
         }
 
         :host([data-open]) {
           right: var(--offset);
+        }
+
+        /* On mobile: always full-width, no stack offset */
+        @media (max-width: 600px) {
+          :host {
+            --actual-width: 100vw;
+          }
+          :host([data-open]) {
+            right: 0;
+          }
         }
 
         .header {
