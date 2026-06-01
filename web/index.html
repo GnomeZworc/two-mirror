@@ -90,12 +90,39 @@
     <main>
       <div id="error"></div>
       <date-display></date-display>
-      <biscuit-debug></biscuit-debug>
+
+      <!-- Dev test: open stacked panels -->
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button onclick="openTestPanel('Panel A', '400px')"
+          style="background:#313244;border:1px solid #45475a;border-radius:6px;
+                 padding:7px 14px;color:#89b4fa;font-size:13px;cursor:pointer;">
+          Open panel A
+        </button>
+        <button onclick="openTestPanel('Panel B', '520px')"
+          style="background:#313244;border:1px solid #45475a;border-radius:6px;
+                 padding:7px 14px;color:#a6e3a1;font-size:13px;cursor:pointer;">
+          Open panel B
+        </button>
+      </div>
     </main>
   </div>
 
   <script type="module">
     import './core/registry.js'
+    import { SidePanel } from './components/side-panel/side-panel.js'
+
+    window.openTestPanel = (title, width) => {
+      SidePanel.open({
+        title,
+        width,
+        content: `<p style="color:#a6adc8;font-size:14px;line-height:1.6">
+          Contenu du panneau <strong style="color:#cdd6f4">${title}</strong>.<br>
+          Largeur : ${width}.<br><br>
+          Tu peux ouvrir plusieurs panneaux — ils s'empilent vers la gauche.
+          Ferme avec ✕, Échap, ou en cliquant le fond.
+        </p>`,
+      })
+    }
 
     window.addEventListener('unhandledrejection', e => {
       const el = document.getElementById('error')

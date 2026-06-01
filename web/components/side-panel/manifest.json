@@ -1,0 +1,5 @@
+{
+  "tag": "side-panel",
+  "version": "0.1.0",
+  "description": "Configurable right-side drawer. Multiple instances stack independently. Opens declaratively or via SidePanel.open()."
+}

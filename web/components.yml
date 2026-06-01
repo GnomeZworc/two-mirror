@@ -15,6 +15,7 @@ local:
   - side-nav
   - logout-button
   - date-display
+  - side-panel
 
 # Remote components fetched from git at build time.
 # Each is its own repo; its root must contain <name>.js and manifest.json.
