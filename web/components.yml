@@ -52,7 +52,10 @@ remote_pages: []
 # A page not listed here is accessible via /#/route but hidden from the nav.
 menu:
   - dashboard
+  - type: section
+    label: Réseau
   - vpcs
   - subnets
+  - type: separator
   - vms
 

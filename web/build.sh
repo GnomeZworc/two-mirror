@@ -242,29 +242,35 @@ for spec in "${REMOTE_PAGES[@]}"; do
 done
 
 if [[ "$CHECK_ONLY" == false ]]; then
-    # Apply menu order if defined — reorder PAGE_ENTRIES and filter nav visibility
-    mapfile -t MENU_ORDER < <(yq '(.menu // [])[]' "$MANIFEST")
+    # Build navigation.json from menu: section.
+    # Convert full manifest to JSON once (single yq call) then jq handles all logic.
+    # Menu items: string → page lookup, object → pass-through (separator/section).
+    manifest_json=$(yq -o json '.' "$MANIFEST")
+    menu_json=$(echo "$manifest_json" | jq -c '.menu // []')
+    menu_len=$(echo "$menu_json" | jq 'length')
 
-    if [[ ${#MENU_ORDER[@]} -gt 0 ]]; then
-        ORDERED="[]"
-        for route in "${MENU_ORDER[@]}"; do
-            [[ -z "$route" ]] && continue
-            entry="$(echo "$PAGE_ENTRIES" | jq --arg r "$route" '.[] | select(.route == $r)')"
-            [[ -z "$entry" ]] && warn "menu: route '${route}' not found in pages, skipping"
-            [[ -n "$entry" ]] && ORDERED="$(echo "$ORDERED" | jq --argjson e "$entry" '. + [$e]')"
-        done
-        NAV_ENTRIES="$ORDERED"
+    if [[ "$menu_len" -gt 0 ]]; then
+        NAV_ENTRIES=$(jq -n \
+            --argjson menu  "$menu_json" \
+            --argjson pages "$PAGE_ENTRIES" \
+            '[ $menu[] |
+               if type == "string"
+               then (. as $r | $pages[] | select(.route == $r) |
+                    { label, href: ("#/" + .route), icon })
+               else .
+               end
+             ]')
     else
-        NAV_ENTRIES="$PAGE_ENTRIES"
+        # No menu defined — use all pages in discovery order
+        NAV_ENTRIES=$(echo "$PAGE_ENTRIES" | \
+            jq '[.[] | { label, href: ("#/" + .route), icon }]')
     fi
 
     # pages.json — full list (all pages, original discovery order)
     echo "$PAGE_ENTRIES" | jq '.' > "${WEB_DIR}/pages.json"
 
-    # navigation.json — ordered + filtered by menu:
-    echo "$NAV_ENTRIES" | \
-        jq '[.[] | {label: .label, href: ("#/" + .route), icon: .icon}]' \
-        > "${WEB_DIR}/navigation.json"
+    # navigation.json — write NAV_ENTRIES as-is (already correctly shaped)
+    echo "$NAV_ENTRIES" | jq '.' > "${WEB_DIR}/navigation.json"
 
     log "wrote pages.json ($(echo "$PAGE_ENTRIES" | jq 'length') pages) + navigation.json ($(echo "$NAV_ENTRIES" | jq 'length') in menu)"
 fi

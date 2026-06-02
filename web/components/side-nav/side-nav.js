@@ -76,6 +76,14 @@ class SideNav extends HTMLElement {
     const current = this.#currentHref()
 
     const links = this.#items.map(item => {
+      if (item.type === 'separator') {
+        return `<div class="separator"></div>`
+      }
+      if (item.type === 'section') {
+        return `<div class="section-header">${item.label ?? ''}</div>`
+      }
+      // Skip malformed entries (missing href or label)
+      if (!item.href || !item.label) return ''
       const active = item.href === current
       return `<a href="${item.href}" class="item ${active ? 'active' : ''}">
         <span class="icon">${resolveIcon(item.icon)}</span>

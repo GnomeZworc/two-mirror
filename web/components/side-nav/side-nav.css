@@ -38,3 +38,18 @@
 }
 
 .item:hover .icon { color: #cdd6f4; }
+
+.section-header {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #45475a;
+  padding: 14px 12px 4px;
+}
+
+.separator {
+  height: 1px;
+  background: #313244;
+  margin: 6px 4px;
+}
