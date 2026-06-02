@@ -44,7 +44,6 @@ class LoginGate extends HTMLElement {
       return
     }
 
-    // Load config.json defaults to pre-fill the form
     let defaults = {}
     try {
       const r = await fetch('./config.json')

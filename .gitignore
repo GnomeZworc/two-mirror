@@ -30,3 +30,8 @@ go.work.sum
 
 # ignore local info
 data/
+
+
+web/components.json
+web/navigation.json
+web/pages.json

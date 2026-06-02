@@ -1,5 +1,3 @@
-import { config } from '../../core/config.js'
-
 const CSS = new URL('./date-display.css', import.meta.url).href
 
 class DateDisplay extends HTMLElement {
@@ -14,7 +12,6 @@ class DateDisplay extends HTMLElement {
       <div class="date" id="date"></div>
       <div class="agent">agent → <span id="agent-url"></span></div>
     `
-    this.shadowRoot.getElementById('agent-url').textContent = config.agent_url
     this.#tick()
     this.#interval = setInterval(() => this.#tick(), 1000)
   }

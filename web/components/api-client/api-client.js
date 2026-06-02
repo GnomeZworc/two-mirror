@@ -12,7 +12,6 @@
 //   await api.agent.delete('/vpcs/vp-admin')
 //   await api.agent.waitFor('/vms/i-test1', 'started')
 //
-// Credentials come from <login-gate>.ready — no direct config.json dependency.
 // Phase 2: swap login-gate for oidc-gate → this component unchanged.
 
 export class ApiError extends Error {

@@ -1,9 +1,0 @@
-[
-  "components/login-gate/login-gate.js",
-  "components/api-client/api-client.js",
-  "components/side-nav/side-nav.js",
-  "components/logout-button/logout-button.js",
-  "components/side-panel/side-panel.js",
-  "components/date-display/date-display.js",
-  "components/form-vm/form-vm.js"
-]
