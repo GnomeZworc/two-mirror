@@ -5,6 +5,10 @@
     "icon": "dashboard"
   },
   {
+    "type": "section",
+    "label": "Réseau"
+  },
+  {
     "label": "VPCs",
     "href": "#/vpcs",
     "icon": "vpc"
@@ -13,6 +17,9 @@
     "label": "Subnets",
     "href": "#/subnets",
     "icon": "subnet"
+  },
+  {
+    "type": "separator"
   },
   {
     "label": "VMs",
