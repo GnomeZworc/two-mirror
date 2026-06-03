@@ -17,7 +17,8 @@ const MODULE_CACHE = new Map()
 let activeCSS = null
 
 function currentRoute() {
-  return window.location.hash.replace(/^#\//, '') || PAGES[0]?.route || ''
+  const hash = window.location.hash.replace(/^#\//, '') || PAGES[0]?.route || ''
+  return hash.split('?')[0]
 }
 
 async function render(routeName) {

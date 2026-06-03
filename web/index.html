@@ -108,6 +108,9 @@
     // then router renders the current route.
     await import('./core/registry.js')
     await import('./core/router.js')
+
+    // Non-blocking: populates dynamic menu groups after routing.
+    import('./core/menu.js')
   </script>
 
 </body>

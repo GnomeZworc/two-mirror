@@ -1,0 +1,29 @@
+<div id="account-page">
+  <div id="account-header">
+    <div id="account-title">
+      <h2 id="account-name"></h2>
+      <span id="account-id"></span>
+    </div>
+    <div id="account-balance-block">
+      <span class="balance-label">Solde</span>
+      <span id="account-balance"></span>
+    </div>
+  </div>
+
+  <section id="account-transactions">
+    <h3>Transactions récentes</h3>
+    <table id="tx-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Libellé</th>
+          <th class="amount-col">Montant</th>
+        </tr>
+      </thead>
+      <tbody id="tx-body"></tbody>
+    </table>
+  </section>
+
+  <div id="account-error" style="display:none"></div>
+  <div id="account-loading">Chargement…</div>
+</div>

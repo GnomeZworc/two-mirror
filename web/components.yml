@@ -39,6 +39,7 @@ local_pages:
   - vpcs
   - subnets
   - vms
+  - account
 
 # Remote pages fetched from git — same mechanism as components.
 #
@@ -68,6 +69,10 @@ menu:
     icon: vm
     children:
       - vms
+  - type: group
+    label: Comptes
+    icon: account
+    children: []
   - type: separator
   - dashboard
   - type: section

@@ -32,13 +32,18 @@ function resolveIcon(name) {
 }
 
 class SideNav extends HTMLElement {
-  #items       = []
-  #expanded    = new Set()   // labels of open groups
-  #hamburger   = null
-  #backdrop    = null
-  #mqHandler   = null
-  #hashHandler = null
-  #isMobile    = false
+  #items          = []
+  #expanded       = new Set()
+  #hamburger      = null
+  #backdrop       = null
+  #mqHandler      = null
+  #hashHandler    = null
+  #isMobile       = false
+  #readyResolve   = null
+
+  // Resolves once navigation.json is loaded and the nav is rendered.
+  // Await this before calling setGroupChildren().
+  ready = new Promise(r => { this.#readyResolve = r })
 
   async connectedCallback() {
     this.attachShadow({ mode: 'open' })
@@ -57,6 +62,7 @@ class SideNav extends HTMLElement {
     }
 
     this.#render()
+    this.#readyResolve()
 
     this.#mqHandler   = () => this.#applyMode()
     this.#hashHandler = () => this.#updateActive()
@@ -70,6 +76,17 @@ class SideNav extends HTMLElement {
     window.removeEventListener('hashchange', this.#hashHandler)
     this.#removeHamburger()
     this.#removeBackdrop()
+  }
+
+  // ── Public API ──────────────────────────────────────────────────────────────
+
+  // Inject dynamic children into an existing group (identified by label).
+  // Call after awaiting nav.ready.
+  setGroupChildren(label, children) {
+    const group = this.#items.find(i => i.type === 'group' && i.label === label)
+    if (!group) return
+    group.children = children
+    this.#render()
   }
 
   // ── Rendu des items ─────────────────────────────────────────────────────────
