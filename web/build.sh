@@ -253,10 +253,15 @@ if [[ "$CHECK_ONLY" == false ]]; then
         NAV_ENTRIES=$(jq -n \
             --argjson menu  "$menu_json" \
             --argjson pages "$PAGE_ENTRIES" \
-            '[ $menu[] |
+            'def resolve($pages):
+               . as $r | $pages[] | select(.route == $r) | { label, href: ("#/" + .route), icon };
+             [ $menu[] |
                if type == "string"
-               then (. as $r | $pages[] | select(.route == $r) |
-                    { label, href: ("#/" + .route), icon })
+               then resolve($pages)
+               elif .type == "group"
+               then { type: "group", label: .label, icon: (.icon // ""),
+                      children: [ .children[]? |
+                        if type == "string" then resolve($pages) else . end ] }
                else .
                end
              ]')

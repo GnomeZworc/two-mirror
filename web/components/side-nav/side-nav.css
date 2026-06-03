@@ -54,3 +54,54 @@
   background: #313244;
   margin: 6px 4px;
 }
+
+/* ── Accordion group ────────────────────────────────────────────────────── */
+
+.group { display: flex; flex-direction: column; }
+
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 12px;
+  margin: 2px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #a6adc8;
+  font-size: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  min-height: 25px;
+  transition: background 0.1s, color 0.1s;
+  width: 100%;
+  text-align: left;
+}
+
+.group-header:hover              { background: #313244; color: #cdd6f4; }
+.group-header:hover .icon        { color: #cdd6f4; }
+.group-header.has-active         { color: #89b4fa; }
+.group-header.has-active .icon   { color: #89b4fa; }
+
+.chevron {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  color: #6c7086;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.chevron.open { transform: rotate(90deg); }
+
+.group-children {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.2s ease;
+}
+
+.group-children.open { grid-template-rows: 1fr; }
+
+.group-children > div { overflow: hidden; }
+
+.item.child { padding-left: 36px; }
