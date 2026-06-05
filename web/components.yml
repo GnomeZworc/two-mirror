@@ -17,6 +17,7 @@ local_components:
   - side-panel
   - date-display
   - form-vm
+  - vnc-viewer
 
 # Remote components fetched from git at build time.
 # Each is its own repo; its root must contain <name>.js and manifest.json.
@@ -25,6 +26,22 @@ local_components:
 #     repo: https://git.g3e.fr/team-reseau/vpc-panel
 #     ref:  v1.2.0                                     # tag, branch or commit (default: main)
 components: []
+
+# Vendor libraries — downloaded into web/vendor/ at build time (gitignored).
+# Components import them via relative paths, never via components.json.
+# path: restrict download to a subdirectory of the repo (optional).
+# dest: destination under web/ (default: vendor/<name>).
+vendors:
+  - name: novnc-core
+    repo: https://github.com/novnc/noVNC
+    ref:  v1.5.0
+    path: core
+    dest: vendor/novnc/core
+  - name: novnc-vendor
+    repo: https://github.com/novnc/noVNC
+    ref:  v1.5.0
+    path: vendor
+    dest: vendor/novnc/vendor
 
 # Pages — each page is a self-contained directory (JS + CSS + manifest.json).
 # Same model as components: local pages ship in this repo, remote pages are

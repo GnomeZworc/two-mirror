@@ -38,6 +38,17 @@ export function init(main) {
     })
   })
 
+  main.querySelectorAll('[data-action="console"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      SidePanel.open({
+        title: 'afficher une consol',
+        width: '700px',
+        content: `<vnc-viewer vm="i-test1"></vnc-viewer>`
+      })
+      // form-vm gère son propre submit et dispatche vm-saved — pas besoin de querySelector
+    })
+  })
+
   // vm-saved est attaché sur main (pas document) → nettoyé automatiquement
   // quand le router remplace le contenu de <main>
   main.addEventListener('vm-saved', e => {

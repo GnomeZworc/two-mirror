@@ -35,3 +35,4 @@ data/
 web/components.json
 web/navigation.json
 web/pages.json
+web/vendor/

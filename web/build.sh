@@ -68,9 +68,37 @@ parse_repo_url() {
     echo "${proto}://${host}" "$owner" "$repo"
 }
 
+# Build the commits API URL — handles GitHub (api.github.com) vs Gitea (/api/v1).
+forge_commits_url() {
+    local server="$1" owner="$2" repo="$3" ref="$4"
+    if [[ "$server" == "https://github.com" ]]; then
+        echo "https://api.github.com/repos/${owner}/${repo}/commits?sha=${ref}&per_page=1"
+    else
+        echo "${server}/api/v1/repos/${owner}/${repo}/commits?sha=${ref}&limit=1"
+    fi
+}
+
+# Build the contents API URL for a given path (empty = repo root).
+forge_contents_url() {
+    local server="$1" owner="$2" repo="$3" ref="$4" path="$5"
+    if [[ "$server" == "https://github.com" ]]; then
+        if [[ -z "$path" ]]; then
+            echo "https://api.github.com/repos/${owner}/${repo}/contents?ref=${ref}"
+        else
+            echo "https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${ref}"
+        fi
+    else
+        if [[ -z "$path" ]]; then
+            echo "${server}/api/v1/repos/${owner}/${repo}/contents?ref=${ref}"
+        else
+            echo "${server}/api/v1/repos/${owner}/${repo}/contents/${path}?ref=${ref}"
+        fi
+    fi
+}
+
 resolve_commit() {
     local server="$1" owner="$2" repo="$3" ref="$4"
-    api_get "${server}/api/v1/repos/${owner}/${repo}/commits?sha=${ref}&limit=1" \
+    api_get "$(forge_commits_url "$server" "$owner" "$repo" "$ref")" \
         | jq -r '.[0].sha // empty'
 }
 
@@ -79,11 +107,7 @@ download_path() {
     local server="$1" owner="$2" repo="$3" ref="$4" rpath="$5" dest="$6"
 
     local api
-    if [[ -z "$rpath" ]]; then
-        api="${server}/api/v1/repos/${owner}/${repo}/contents?ref=${ref}"
-    else
-        api="${server}/api/v1/repos/${owner}/${repo}/contents/${rpath}?ref=${ref}"
-    fi
+    api="$(forge_contents_url "$server" "$owner" "$repo" "$ref" "$rpath")"
 
     local listing
     listing="$(api_get "$api")"
@@ -105,8 +129,6 @@ download_path() {
     done < <(echo "$listing" | jq -c 'if type=="array" then .[] else . end')
 }
 
-# ── Download WASM libs ───────────────────────────────────────────────────────────
-
 # ── Read manifest ────────────────────────────────────────────────────────────────
 
 PAGES_DIR="${WEB_DIR}/pages"
@@ -115,6 +137,35 @@ mapfile -t LOCALS       < <(yq '(.local_components // [])[]' "$MANIFEST")
 mapfile -t REMOTES      < <(yq '(.components   // [])[] | [.name, .repo, (.ref // "main")] | join("|")' "$MANIFEST")
 mapfile -t LOCAL_PAGES  < <(yq '(.local_pages  // [])[]' "$MANIFEST")
 mapfile -t REMOTE_PAGES < <(yq '(.remote_pages // [])[] | [.name, .repo, (.ref // "main")] | join("|")' "$MANIFEST")
+mapfile -t VENDORS      < <(yq '(.vendors // [])[] | [.name, .repo, (.ref // "main"), (.path // ""), (.dest // "")] | join("|")' "$MANIFEST")
+
+# ── Download vendors ────────────────────────────────────────────────────────────
+# Vendors are third-party libraries downloaded into web/vendor/ at build time.
+# They are gitignored and never loaded by components.json — components import
+# them directly via relative paths (e.g. ../../vendor/novnc/core/rfb.js).
+
+for spec in "${VENDORS[@]}"; do
+    [[ -z "$spec" ]] && continue
+    IFS='|' read -r name repo ref vpath dest <<<"$spec"
+    [[ -z "$name" || -z "$repo" ]] && die "vendor entry missing name or repo: '$spec'"
+
+    read -r server owner gitrepo <<<"$(parse_repo_url "$repo")"
+    [[ -z "$dest" ]] && dest="vendor/${name}"
+    local_dest="${WEB_DIR}/${dest}"
+
+    if [[ "$CHECK_ONLY" == true ]]; then
+        info "would fetch vendor ${name} from ${repo}@${ref} path=${vpath:-/}"
+        continue
+    fi
+
+    log "fetching vendor ${name} ← ${owner}/${gitrepo}@${ref}${vpath:+ path=}${vpath}"
+    commit="$(resolve_commit "$server" "$owner" "$gitrepo" "$ref")"
+    [[ -z "$commit" ]] && die "cannot resolve ref '${ref}' in ${owner}/${gitrepo}"
+
+    rm -rf "$local_dest"
+    download_path "$server" "$owner" "$gitrepo" "$ref" "$vpath" "$local_dest"
+    info "  vendor '${name}' → ${dest} (${commit:0:12})"
+done
 
 # Ordered list of load paths for components.json
 declare -a LOAD_PATHS=()
