@@ -16,19 +16,17 @@ const CHEVRON_ICON = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none
   <polyline points="9 18 15 12 9 6"/>
 </svg>`
 
-const ICONS = {
-  dashboard: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>`,
-  vpc:       `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>`,
-  subnet:    `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M8 12h8M12 8v8"/></svg>`,
-  vm:        `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>`,
-}
+const CSS   = new URL('./side-nav.css', import.meta.url).href
+const MQ    = window.matchMedia('(max-width: 768px)')
+const NAV_W = 220   // px
 
-const CSS = new URL('./side-nav.css', import.meta.url).href
-const MQ  = window.matchMedia('(max-width: 768px)')
-const NAV_W   = 220   // px
+const ICON_FALLBACK = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>`
+
+const iconsRes = await fetch('./icons.json')
+const ICONS    = iconsRes.ok ? await iconsRes.json() : {}
 
 function resolveIcon(name) {
-  return ICONS[name] ?? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>`
+  return ICONS[name] ?? ICON_FALLBACK
 }
 
 class SideNav extends HTMLElement {

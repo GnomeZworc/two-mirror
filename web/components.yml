@@ -12,7 +12,6 @@
 local_components:
   - login-gate
   - api-client
-  - side-nav
   - logout-button
   - side-panel
   - date-display
@@ -25,7 +24,10 @@ local_components:
 #   - name: vpc-panel                                  # → components/vpc-panel/
 #     repo: https://git.g3e.fr/team-reseau/vpc-panel
 #     ref:  v1.2.0                                     # tag, branch or commit (default: main)
-components: []
+components:
+  - name: side-nav
+    repo: https://git.g3e.fr/syonad/syn-side-nav
+    ref: main
 
 # Vendor libraries — downloaded into web/vendor/ at build time (gitignored).
 # Components import them via relative paths, never via components.json.
