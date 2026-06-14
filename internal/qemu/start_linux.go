@@ -7,21 +7,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
+	"strings"
 )
-
-type Config struct {
-	Name       string
-	TapID      int
-	Mac        string
-	VolumePath string
-	Memory     int
-	CPUs       int
-	UEFICodePath string
-	UEFIVarsPath string
-	SerialDir  string
-	MonitorDir string
-	QMPDir     string
-}
 
 func Start(cfg Config) error {
 	memory := cfg.Memory
@@ -64,8 +52,47 @@ func Start(cfg Config) error {
 		)
 	}
 
+	hasScsi := false
+	for _, d := range cfg.Disks {
+		if strings.HasPrefix(d.Dev, "sd") {
+			hasScsi = true
+			break
+		}
+	}
+	if hasScsi {
+		args = append(args, "-device", "virtio-scsi-pci,id=scsi0")
+	}
+
+	sorted := make([]DiskConfig, len(cfg.Disks))
+	copy(sorted, cfg.Disks)
+	// vd* avant sd* : les disques virtio-blk bootent en premier.
+	// À lettre égale de type, ordre alphabétique.
+	sort.Slice(sorted, func(i, j int) bool {
+		iVirtio := strings.HasPrefix(sorted[i].Dev, "vd")
+		jVirtio := strings.HasPrefix(sorted[j].Dev, "vd")
+		if iVirtio != jVirtio {
+			return iVirtio
+		}
+		return sorted[i].Dev < sorted[j].Dev
+	})
+
+	for idx, d := range sorted {
+		bootindex := idx + 1
+		if strings.HasPrefix(d.Dev, "sd") {
+			scsiID := int(d.Dev[2] - 'a')
+			args = append(args,
+				"-drive", fmt.Sprintf("file=%s,if=none,id=%s", d.Path, d.Dev),
+				"-device", fmt.Sprintf("scsi-hd,drive=%s,bus=scsi0.0,scsi-id=%d,bootindex=%d", d.Dev, scsiID, bootindex),
+			)
+		} else {
+			args = append(args,
+				"-drive", fmt.Sprintf("file=%s,if=none,id=%s", d.Path, d.Dev),
+				"-device", fmt.Sprintf("virtio-blk-pci,drive=%s,bootindex=%d", d.Dev, bootindex),
+			)
+		}
+	}
+
 	args = append(args,
-		"-drive", fmt.Sprintf("file=%s,if=virtio", cfg.VolumePath),
 		"-netdev", fmt.Sprintf("tap,id=net0,ifname=tap%d,script=no,downscript=no", cfg.TapID),
 		"-device", fmt.Sprintf("virtio-net-pci,netdev=net0,mac=%s", cfg.Mac),
 		"-daemonize",

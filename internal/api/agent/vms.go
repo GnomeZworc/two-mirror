@@ -77,16 +77,21 @@ func (s *Server) startVM(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	disks := make([]dispatcher.VMDisk, len(req.Storage))
+	for i, s := range req.Storage {
+		disks[i] = dispatcher.VMDisk{Path: s.Path, Dev: s.Dev}
+	}
+
 	cmd := dispatcher.StartVMCommand{
-		Name:       req.Name,
-		Subnet:     primary.Subnet,
-		IP:         primary.IP,
-		VolumePath: req.Storage[0].Path,
-		Memory:     req.Memory,
-		CPUs:       req.CPUs,
-		UEFI:       req.UEFI,
-		Password:   req.Password,
-		SSHKey:     req.SSHKey,
+		Name:     req.Name,
+		Subnet:   primary.Subnet,
+		IP:       primary.IP,
+		Disks:    disks,
+		Memory:   req.Memory,
+		CPUs:     req.CPUs,
+		UEFI:     req.UEFI,
+		Password: req.Password,
+		SSHKey:   req.SSHKey,
 	}
 
 	if err := s.dispatcher.Prepare(cmd); err != nil {

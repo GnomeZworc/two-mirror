@@ -33,25 +33,18 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 
 	socketPath := filepath.Join(cfg.QEMU.QMPDir, name+".sock")
 
-	if _, err := qmp.Send(socketPath, []string{`{"execute":"system_powerdown"}`}); err != nil {
-		return fmt.Errorf("qmp system_powerdown: %w", err)
-	}
-
-	// attendre l'arrêt effectif de la VM ; forcer via quit après timeout
-	timeout := time.After(time.Duration(cfg.Dispatcher.TimeoutSeconds) * time.Second)
-	poll := time.Duration(cfg.Dispatcher.PollSeconds) * time.Second
-	stopped := false
-	for !stopped {
-		select {
-		case <-timeout:
-			qmp.Send(socketPath, []string{`{"execute":"quit"}`})
-			stopped = true
-		case <-time.After(poll):
-			if _, err := qmp.Send(socketPath, nil); err != nil {
-				stopped = true
-			}
+	if _, err := os.Stat(socketPath); err == nil {
+		// socket présent : tenter l'arrêt gracieux
+		if _, err := qmp.Send(socketPath, []string{`{"execute":"system_powerdown"}`}); err == nil {
+			waitQMPDead(socketPath,
+				time.Duration(cfg.Dispatcher.TimeoutSeconds)*time.Second,
+				time.Duration(cfg.Dispatcher.PollSeconds)*time.Second,
+			)
 		}
+		// connexion QMP échouée : QEMU déjà mort
 	}
+	// socket absent ou QEMU déjà arrêté : cleanup direct
+
 
 	if err := netns.Call(d.vpcName, func() error {
 		return iptables.DeleteMetadataRedirect(d.ip, d.interfaceIP, d.metadataPort)
@@ -73,4 +66,19 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	}
 
 	return kv.AddInDB(db, "vm/"+name+"/state", "stopped")
+}
+
+func waitQMPDead(socketPath string, timeout, poll time.Duration) {
+	timer := time.After(timeout)
+	for {
+		select {
+		case <-timer:
+			qmp.Send(socketPath, []string{`{"execute":"quit"}`})
+			return
+		case <-time.After(poll):
+			if _, err := qmp.Send(socketPath, nil); err != nil {
+				return
+			}
+		}
+	}
 }

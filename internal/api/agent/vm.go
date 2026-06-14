@@ -87,8 +87,11 @@ func vmFromDB(name string, entries map[string]string) (VM, error) {
 		vm.Interfaces = []VMInterface{{Subnet: subnet, IP: ip, Primary: true}}
 	}
 
-	if path := entries[prefix+"volume_path"]; path != "" {
-		vm.Storage = []VMStorage{{Path: path}}
+	diskPrefix := prefix + "disk/"
+	for key, path := range entries {
+		if dev := strings.TrimPrefix(key, diskPrefix); dev != key {
+			vm.Storage = append(vm.Storage, VMStorage{Path: path, Dev: dev})
+		}
 	}
 
 	return vm, nil
