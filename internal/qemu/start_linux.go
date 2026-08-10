@@ -65,7 +65,7 @@ func Start(cfg Config) error {
 		return fmt.Errorf("qemu: %d disques virtio-blk (vd*) déclarés, un seul est supporté — utiliser des disques sd* pour les disques additionnels", virtioBlk)
 	}
 	if hasScsi {
-		args = append(args, "-device", "virtio-scsi-pci,id=scsi0")
+		args = append(args, "-device", "virtio-scsi-pci,id=scsi0,bus=pci.0,addr=0x1e")
 	}
 
 	sorted := make([]DiskConfig, len(cfg.Disks))
@@ -92,14 +92,14 @@ func Start(cfg Config) error {
 		} else {
 			args = append(args,
 				"-drive", fmt.Sprintf("file=%s,if=none,id=%s", d.Path, d.Dev),
-				"-device", fmt.Sprintf("virtio-blk-pci,drive=%s,bootindex=%d", d.Dev, bootindex),
+				"-device", fmt.Sprintf("virtio-blk-pci,drive=%s,bus=pci.0,addr=0x1f,bootindex=%d", d.Dev, bootindex),
 			)
 		}
 	}
 
 	args = append(args,
 		"-netdev", fmt.Sprintf("tap,id=net0,ifname=tap%d,script=no,downscript=no", cfg.TapID),
-		"-device", fmt.Sprintf("virtio-net-pci,netdev=net0,mac=%s", cfg.Mac),
+		"-device", fmt.Sprintf("virtio-net-pci,netdev=net0,mac=%s,bus=pci.0,addr=0x03", cfg.Mac),
 		"-daemonize",
 	)
 
