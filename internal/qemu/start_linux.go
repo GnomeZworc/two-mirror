@@ -53,11 +53,16 @@ func Start(cfg Config) error {
 	}
 
 	hasScsi := false
+	virtioBlk := 0
 	for _, d := range cfg.Disks {
 		if strings.HasPrefix(d.Dev, "sd") {
 			hasScsi = true
-			break
+		} else {
+			virtioBlk++
 		}
+	}
+	if virtioBlk > 1 {
+		return fmt.Errorf("qemu: %d disques virtio-blk (vd*) déclarés, un seul est supporté — utiliser des disques sd* pour les disques additionnels", virtioBlk)
 	}
 	if hasScsi {
 		args = append(args, "-device", "virtio-scsi-pci,id=scsi0")
