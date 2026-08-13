@@ -42,6 +42,8 @@ func collect(t *testing.T, c *AgentCollector) map[string]map[string]float64 {
 			name = "vpcs"
 		case strings.Contains(desc, "syonad_subnets_total"):
 			name = "subnets"
+		case strings.Contains(desc, "syonad_vms_total"):
+			name = "vms"
 		default:
 			t.Fatalf("métrique inattendue : %s", desc)
 		}
@@ -64,6 +66,8 @@ func TestCollector_CountsByState(t *testing.T) {
 		"vpc/vpc-2":   state.Running,
 		"vpc/vpc-3":   state.Error,
 		"subnet/sn-1": state.Creating,
+		"vm/vm-1":     state.Running,
+		"vm/vm-2":     state.Error,
 	} {
 		if err := state.Set(db, resource, s); err != nil {
 			t.Fatalf("préparation du test : %v", err)
@@ -80,13 +84,34 @@ func TestCollector_CountsByState(t *testing.T) {
 	if got["subnets"]["creating"] != 1 {
 		t.Errorf("subnets{state=creating} = %v, attendu 1", got["subnets"]["creating"])
 	}
+	for s, want := range map[string]float64{"running": 1, "error": 1, "deleting": 0} {
+		if got["vms"][s] != want {
+			t.Errorf("vms{state=%q} = %v, attendu %v", s, got["vms"][s], want)
+		}
+	}
+}
+
+// Les clés vm/<name>/disk/<dev> ne portent pas de suffixe /state : elles ne
+// doivent pas être comptées comme des ressources.
+func TestCollector_IgnoresVMDiskKeys(t *testing.T) {
+	db := newTestDB(t)
+	if err := state.Set(db, "vm/vm-1", state.Running); err != nil {
+		t.Fatalf("préparation du test : %v", err)
+	}
+	kv.AddInDB(db, "vm/vm-1/disk/sda", "/data/sda.qcow2")
+	kv.AddInDB(db, "vm/vm-1/disk/vda", "/data/vda.qcow2")
+
+	got := collect(t, NewAgentCollector(db))
+	if got["vms"]["running"] != 1 {
+		t.Errorf("vms{state=running} = %v, attendu 1", got["vms"]["running"])
+	}
 }
 
 // Une série par état doit être émise même à zéro : une métrique qui disparaît
 // côté Prometheus casse les alertes qui s'en servent.
 func TestCollector_EmitsEveryState(t *testing.T) {
 	got := collect(t, NewAgentCollector(newTestDB(t)))
-	for _, family := range []string{"vpcs", "subnets"} {
+	for _, family := range []string{"vpcs", "subnets", "vms"} {
 		if len(got[family]) != len(state.All()) {
 			t.Errorf("%s : %d séries, attendu %d", family, len(got[family]), len(state.All()))
 		}
@@ -120,7 +145,7 @@ func TestCollector_Describe(t *testing.T) {
 	for range ch {
 		n++
 	}
-	if n != 2 {
-		t.Errorf("%d descripteurs, attendu 2", n)
+	if n != 3 {
+		t.Errorf("%d descripteurs, attendu 3", n)
 	}
 }
