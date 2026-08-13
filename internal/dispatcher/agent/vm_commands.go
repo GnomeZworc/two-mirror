@@ -8,6 +8,7 @@ import (
 	"time"
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
+	"git.g3e.fr/syonad/two/internal/state"
 	"git.g3e.fr/syonad/two/internal/vm"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 	"github.com/dgraph-io/badger/v4"
@@ -36,18 +37,18 @@ func (c StartVMCommand) Prepare(db *badger.DB, _ *configuration.Config) error {
 	if _, err := kv.GetFromDB(db, "vm/"+c.Name+"/state"); err == nil {
 		return fmt.Errorf("vm %q already exists", c.Name)
 	}
-	subnetState, err := kv.GetFromDB(db, "subnet/"+c.Subnet+"/state")
+	subnetState, err := state.Get(db, "subnet/"+c.Subnet)
 	if err != nil {
 		return fmt.Errorf("subnet %q not found", c.Subnet)
 	}
-	if subnetState == "deleting" || subnetState == "deleted" {
+	if subnetState != state.Creating && subnetState != state.Running {
 		return fmt.Errorf("subnet %q is %s", c.Subnet, subnetState)
 	}
 	port, err := allocateMetadataPort(db)
 	if err != nil {
 		return fmt.Errorf("allocate metadata port: %w", err)
 	}
-	kv.AddInDB(db, "vm/"+c.Name+"/state", "starting")
+	state.Set(db, c.Key(), state.Creating)
 	kv.AddInDB(db, "vm/"+c.Name+"/subnet", c.Subnet)
 	kv.AddInDB(db, "vm/"+c.Name+"/ip", c.IP)
 	kv.AddInDB(db, "vm/"+c.Name+"/metadata_port", strconv.Itoa(port))
@@ -93,16 +94,19 @@ func allocateMetadataPort(db *badger.DB) (int, error) {
 func (c StartVMCommand) Execute(db *badger.DB, cfg *configuration.Config) error {
 	timeout := time.After(time.Duration(cfg.Dispatcher.TimeoutSeconds) * time.Second)
 	for {
-		state, err := kv.GetFromDB(db, "subnet/"+c.Subnet+"/state")
+		subnetState, err := state.Get(db, "subnet/"+c.Subnet)
 		if err != nil {
 			return fmt.Errorf("subnet %q not found while waiting", c.Subnet)
 		}
-		if state == "created" {
+		if subnetState == state.Running {
 			break
+		}
+		if subnetState != state.Creating {
+			return fmt.Errorf("subnet %q is %s, cannot start vm %q", c.Subnet, subnetState, c.Name)
 		}
 		select {
 		case <-timeout:
-			return fmt.Errorf("timed out waiting for subnet %q to be created", c.Subnet)
+			return fmt.Errorf("timed out waiting for subnet %q to be running", c.Subnet)
 		case <-time.After(time.Duration(cfg.Dispatcher.PollSeconds) * time.Second):
 		}
 	}
@@ -116,21 +120,25 @@ type StopVMCommand struct {
 func (c StopVMCommand) Key() string { return "vm/" + c.Name }
 
 func (c StopVMCommand) Prepare(db *badger.DB, _ *configuration.Config) error {
-	if _, err := kv.GetFromDB(db, "vm/"+c.Name+"/state"); err != nil {
+	current, err := state.Get(db, c.Key())
+	if err != nil {
 		return fmt.Errorf("vm %q not found", c.Name)
 	}
-	return kv.AddInDB(db, "vm/"+c.Name+"/state", "stopping")
+	if !state.CanDelete(current) {
+		return fmt.Errorf("vm %q cannot be stopped while %s", c.Name, current)
+	}
+	return state.Set(db, c.Key(), state.Deleting)
 }
 
 func (c StopVMCommand) Execute(db *badger.DB, cfg *configuration.Config) error {
 	if err := vm.StopVM(db, c.Name, cfg); err != nil {
 		return err
 	}
-	state, err := kv.GetFromDB(db, "vm/"+c.Name+"/state")
+	current, err := state.Get(db, c.Key())
 	if err != nil {
 		return err
 	}
-	if state == "stopped" {
+	if current == state.Deleted {
 		kv.DeleteInDB(db, "vm/"+c.Name)
 	}
 	return nil

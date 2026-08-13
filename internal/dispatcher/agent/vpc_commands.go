@@ -7,6 +7,7 @@ import (
 	"time"
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
+	"git.g3e.fr/syonad/two/internal/state"
 	"git.g3e.fr/syonad/two/internal/vpc"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 	"github.com/dgraph-io/badger/v4"
@@ -29,7 +30,7 @@ func (c CreateVPCCommand) Prepare(db *badger.DB, _ *configuration.Config) error 
 	if err := kv.AddInDB(db, "vpc/"+c.Name+"/cidr", c.CIDR); err != nil {
 		return err
 	}
-	return kv.AddInDB(db, "vpc/"+c.Name+"/state", "creating")
+	return state.Set(db, c.Key(), state.Creating)
 }
 
 func (c CreateVPCCommand) Execute(db *badger.DB, _ *configuration.Config) error {
@@ -43,8 +44,12 @@ type DeleteVPCCommand struct {
 func (c DeleteVPCCommand) Key() string { return "vpc/" + c.Name }
 
 func (c DeleteVPCCommand) Prepare(db *badger.DB, _ *configuration.Config) error {
-	if _, err := kv.GetFromDB(db, "vpc/"+c.Name+"/state"); err != nil {
+	current, err := state.Get(db, c.Key())
+	if err != nil {
 		return fmt.Errorf("vpc %q not found", c.Name)
+	}
+	if !state.CanDelete(current) {
+		return fmt.Errorf("vpc %q cannot be deleted while %s", c.Name, current)
 	}
 	entries, err := kv.ListByPrefix(db, "subnet/")
 	if err != nil {
@@ -55,12 +60,12 @@ func (c DeleteVPCCommand) Prepare(db *badger.DB, _ *configuration.Config) error 
 			continue
 		}
 		subnetName := strings.Split(key, "/")[1]
-		state, err := kv.GetFromDB(db, "subnet/"+subnetName+"/state")
-		if err != nil || (state != "deleting" && state != "deleted") {
+		s, err := state.Get(db, "subnet/"+subnetName)
+		if err != nil || (s != state.Deleting && s != state.Deleted) {
 			return fmt.Errorf("subnet %q must be deleted before deleting vpc %q", subnetName, c.Name)
 		}
 	}
-	return kv.AddInDB(db, "vpc/"+c.Name+"/state", "deleting")
+	return state.Set(db, c.Key(), state.Deleting)
 }
 
 func (c DeleteVPCCommand) Execute(db *badger.DB, cfg *configuration.Config) error {
@@ -74,8 +79,8 @@ func (c DeleteVPCCommand) Execute(db *badger.DB, cfg *configuration.Config) erro
 		for key, value := range entries {
 			if strings.HasSuffix(key, "/vpc") && value == c.Name {
 				subnetName := strings.Split(key, "/")[1]
-				state, _ := kv.GetFromDB(db, "subnet/"+subnetName+"/state")
-				if state == "deleting" {
+				s, _ := state.Get(db, "subnet/"+subnetName)
+				if s == state.Deleting {
 					pending = true
 					break
 				}
@@ -93,11 +98,11 @@ func (c DeleteVPCCommand) Execute(db *badger.DB, cfg *configuration.Config) erro
 	if err := vpc.DeleteVPC(db, c.Name); err != nil {
 		return err
 	}
-	state, err := kv.GetFromDB(db, "vpc/"+c.Name+"/state")
+	current, err := state.Get(db, c.Key())
 	if err != nil {
 		return err
 	}
-	if state == "deleted" {
+	if current == state.Deleted {
 		kv.DeleteInDB(db, "vpc/"+c.Name)
 	}
 	return nil

@@ -17,7 +17,7 @@ func testCfg() *configuration.Config {
 
 func TestCreateSubnetCommand_Prepare_Success(t *testing.T) {
 	_, db := newTestDispatcher(t)
-	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	cmd := CreateSubnetCommand{
 		Name: "sn-1", VPC: "vpc-1", VxlanID: 100,
 		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
@@ -37,7 +37,7 @@ func TestCreateSubnetCommand_Prepare_Success(t *testing.T) {
 
 func TestCreateSubnetCommand_Prepare_UsesIfaceTypeMapping(t *testing.T) {
 	_, db := newTestDispatcher(t)
-	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	cmd := CreateSubnetCommand{
 		Name: "sn-1", VPC: "vpc-1", VxlanID: 100,
 		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
@@ -51,7 +51,7 @@ func TestCreateSubnetCommand_Prepare_UsesIfaceTypeMapping(t *testing.T) {
 
 func TestCreateSubnetCommand_Prepare_UsesDefaultIfaceWhenTypeUnknown(t *testing.T) {
 	_, db := newTestDispatcher(t)
-	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	cmd := CreateSubnetCommand{
 		Name: "sn-1", VPC: "vpc-1", VxlanID: 100,
 		IfaceType: "inconnu", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
@@ -65,8 +65,8 @@ func TestCreateSubnetCommand_Prepare_UsesDefaultIfaceWhenTypeUnknown(t *testing.
 
 func TestCreateSubnetCommand_Prepare_Duplicate(t *testing.T) {
 	_, db := newTestDispatcher(t)
-	kv.AddInDB(db, "vpc/vpc-1/state", "created")
-	kv.AddInDB(db, "subnet/sn-exist/state", "created")
+	kv.AddInDB(db, "vpc/vpc-1/state", "running")
+	kv.AddInDB(db, "subnet/sn-exist/state", "running")
 	cmd := CreateSubnetCommand{
 		Name: "sn-exist", VPC: "vpc-1", VxlanID: 100,
 		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
@@ -113,7 +113,7 @@ func TestCreateSubnetCommand_Prepare_VPCDeleted(t *testing.T) {
 
 func TestCreateSubnetCommand_Prepare_DefaultsToVxlanMode(t *testing.T) {
 	_, db := newTestDispatcher(t)
-	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	cmd := CreateSubnetCommand{
 		Name: "sn-1", VPC: "vpc-1", VxlanID: 100,
 		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
@@ -130,7 +130,7 @@ func TestCreateSubnetCommand_Prepare_DefaultsToVxlanMode(t *testing.T) {
 
 func TestCreateSubnetCommand_Prepare_BridgeMode_Success(t *testing.T) {
 	_, db := newTestDispatcher(t)
-	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	cmd := CreateSubnetCommand{
 		Name: "sn-1", VPC: "vpc-1", Mode: "bridge",
 		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
@@ -150,7 +150,7 @@ func TestCreateSubnetCommand_Prepare_BridgeMode_Success(t *testing.T) {
 
 func TestCreateSubnetCommand_Prepare_BridgeMode_NoVxlanID(t *testing.T) {
 	_, db := newTestDispatcher(t)
-	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	cmd := CreateSubnetCommand{
 		Name: "sn-1", VPC: "vpc-1", Mode: "bridge",
 		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
@@ -163,7 +163,7 @@ func TestCreateSubnetCommand_Prepare_BridgeMode_NoVxlanID(t *testing.T) {
 
 func TestCreateSubnetCommand_Prepare_UnknownMode(t *testing.T) {
 	_, db := newTestDispatcher(t)
-	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	cmd := CreateSubnetCommand{
 		Name: "sn-1", VPC: "vpc-1", Mode: "vlan",
 		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
@@ -175,7 +175,7 @@ func TestCreateSubnetCommand_Prepare_UnknownMode(t *testing.T) {
 
 func TestCreateSubnetCommand_Prepare_DefaultRouteStored(t *testing.T) {
 	_, db := newTestDispatcher(t)
-	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	cmd := CreateSubnetCommand{
 		Name: "sn-1", VPC: "vpc-1", VxlanID: 100,
 		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
@@ -195,7 +195,7 @@ func TestCreateSubnetCommand_Prepare_DefaultRouteStored(t *testing.T) {
 
 func TestCreateSubnetCommand_Prepare_DefaultRouteFalseByDefault(t *testing.T) {
 	_, db := newTestDispatcher(t)
-	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	cmd := CreateSubnetCommand{
 		Name: "sn-1", VPC: "vpc-1", VxlanID: 100,
 		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
@@ -211,7 +211,7 @@ func TestCreateSubnetCommand_Prepare_DefaultRouteFalseByDefault(t *testing.T) {
 
 func TestDeleteSubnetCommand_Prepare_Success(t *testing.T) {
 	_, db := newTestDispatcher(t)
-	kv.AddInDB(db, "subnet/sn-del/state", "created")
+	kv.AddInDB(db, "subnet/sn-del/state", "running")
 	cmd := DeleteSubnetCommand{Name: "sn-del"}
 	if err := cmd.Prepare(db, nil); err != nil {
 		t.Fatalf("Prepare a échoué : %v", err)
@@ -219,6 +219,32 @@ func TestDeleteSubnetCommand_Prepare_Success(t *testing.T) {
 	state, _ := kv.GetFromDB(db, "subnet/sn-del/state")
 	if state != "deleting" {
 		t.Errorf("state attendu deleting, obtenu %q", state)
+	}
+}
+
+func TestDeleteSubnetCommand_Prepare_RefusedWhileCreating(t *testing.T) {
+	_, db := newTestDispatcher(t)
+	kv.AddInDB(db, "subnet/sn-wip/state", "creating")
+	cmd := DeleteSubnetCommand{Name: "sn-wip"}
+	if err := cmd.Prepare(db, nil); err == nil {
+		t.Error("Prepare devrait refuser la suppression d'un subnet en creating")
+	}
+	s, _ := kv.GetFromDB(db, "subnet/sn-wip/state")
+	if s != "creating" {
+		t.Errorf("l'état ne devrait pas changer, obtenu %q", s)
+	}
+}
+
+func TestDeleteSubnetCommand_Prepare_AllowedFromError(t *testing.T) {
+	_, db := newTestDispatcher(t)
+	kv.AddInDB(db, "subnet/sn-ko/state", "error")
+	cmd := DeleteSubnetCommand{Name: "sn-ko"}
+	if err := cmd.Prepare(db, nil); err != nil {
+		t.Fatalf("Prepare devrait accepter un subnet en error : %v", err)
+	}
+	s, _ := kv.GetFromDB(db, "subnet/sn-ko/state")
+	if s != "deleting" {
+		t.Errorf("state attendu deleting, obtenu %q", s)
 	}
 }
 
