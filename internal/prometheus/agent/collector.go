@@ -3,12 +3,13 @@ package agentmetrics
 import (
 	"strings"
 
+	"git.g3e.fr/syonad/two/internal/state"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-var allStates = []string{"creating", "created", "deleting", "deleted"}
+var allStates = state.All()
 
 // AgentCollector implements prometheus.Collector and exposes agent metrics
 // by querying the BadgerDB on each scrape.
@@ -47,7 +48,7 @@ func (c *AgentCollector) Collect(ch chan<- prometheus.Metric) {
 // collectStates counts resources under the given DB prefix by their state value
 // and emits one gauge per state label.
 func (c *AgentCollector) collectStates(ch chan<- prometheus.Metric, prefix string, desc *prometheus.Desc) {
-	counts := make(map[string]float64, len(allStates))
+	counts := make(map[state.State]float64, len(allStates))
 	for _, s := range allStates {
 		counts[s] = 0
 	}
@@ -55,13 +56,18 @@ func (c *AgentCollector) collectStates(ch chan<- prometheus.Metric, prefix strin
 	items, err := kv.ListByPrefix(c.db, prefix)
 	if err == nil {
 		for key, val := range items {
-			if strings.HasSuffix(key, "/state") {
-				counts[val]++
+			if !strings.HasSuffix(key, "/state") {
+				continue
+			}
+			// Une valeur hors enum n'est pas comptée : la migration au
+			// démarrage les a toutes ramenées dans l'enum.
+			if s, err := state.Parse(val); err == nil {
+				counts[s]++
 			}
 		}
 	}
 
-	for _, state := range allStates {
-		ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, counts[state], state)
+	for _, s := range allStates {
+		ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, counts[s], string(s))
 	}
 }

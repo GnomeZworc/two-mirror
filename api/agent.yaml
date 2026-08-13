@@ -91,7 +91,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
-          description: VPC not in a deletable state
+          description: VPC not deletable — only running or error states can be deleted, and all its subnets must be deleted first
           content:
             application/json:
               schema:
@@ -146,7 +146,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "422":
-          description: Subnet not found or not in created state
+          description: Subnet not found, or not in creating/running state
           content:
             application/json:
               schema:
@@ -185,6 +185,12 @@ paths:
                 $ref: "#/components/schemas/VM"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          description: VM not stoppable — only running or error states can be stopped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -274,6 +280,12 @@ paths:
                 $ref: "#/components/schemas/Subnet"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          description: Subnet not deletable — only running or error states can be deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -314,8 +326,8 @@ components:
           example: vp-00001
         state:
           type: string
-          enum: [creating, created, deleting, deleted]
-          example: created
+          enum: [creating, running, error, deleting, deleted]
+          example: running
         cidr:
           type: string
           example: "10.0.0.0/16"
@@ -373,8 +385,8 @@ components:
           example: sn-00001
         state:
           type: string
-          enum: [creating, created, deleting, deleted]
-          example: created
+          enum: [creating, running, error, deleting, deleted]
+          example: running
         vpc:
           type: string
           example: vpc1
@@ -472,8 +484,8 @@ components:
           example: vm-00001
         state:
           type: string
-          enum: [starting, started, stopping, stopped]
-          example: started
+          enum: [creating, running, error, deleting, deleted]
+          example: running
         metadata_port:
           type: string
           example: "80"

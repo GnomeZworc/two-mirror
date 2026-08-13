@@ -275,6 +275,17 @@ func TestDeleteSubnet_Success(t *testing.T) {
 	}
 }
 
+func TestDeleteSubnet_ConflictWhileCreating(t *testing.T) {
+	s, db := newTestServer(t)
+	kv.AddInDB(db, "subnet/sn-wip/state", "creating")
+	req := httptest.NewRequest(http.MethodDelete, "/subnets/sn-wip", nil)
+	w := httptest.NewRecorder()
+	s.SubnetByNameHandler(w, req)
+	if w.Code != http.StatusConflict {
+		t.Errorf("attendu 409, obtenu %d: %s", w.Code, w.Body.String())
+	}
+}
+
 func TestDeleteSubnet_NotFound(t *testing.T) {
 	s, _ := newTestServer(t)
 	req := httptest.NewRequest(http.MethodDelete, "/subnets/inexistant", nil)
