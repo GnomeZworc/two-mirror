@@ -8,6 +8,7 @@ import (
 	agentapi "git.g3e.fr/syonad/two/internal/api/agent"
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	dispatcher "git.g3e.fr/syonad/two/internal/dispatcher/agent"
+	"git.g3e.fr/syonad/two/internal/migration"
 	agentmetrics "git.g3e.fr/syonad/two/internal/prometheus/agent"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 	"git.g3e.fr/syonad/two/pkg/logger"
@@ -30,6 +31,13 @@ func main() {
 
 	db := kv.InitDB(kv.Config{Path: cfg.Database.Path}, false)
 	defer db.Close()
+
+	// Avant tout démarrage de service : la DB peut porter l'ancien vocabulaire
+	// d'états, et des ressources transitoires orphelines d'un arrêt précédent.
+	if err := migration.MigrateStates(db, log.With(slog.String("component", "migration"))); err != nil {
+		log.Error("failed to migrate states", "error", err)
+		return
+	}
 
 	q := worker.New(cfg.Worker.BufferSize)
 	q.Start(cfg.Worker.Count)
