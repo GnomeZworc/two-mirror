@@ -17,6 +17,8 @@ type CreateVPCCommand struct {
 	CIDR string
 }
 
+func (c CreateVPCCommand) Key() string { return "vpc/" + c.Name }
+
 func (c CreateVPCCommand) Prepare(db *badger.DB, _ *configuration.Config) error {
 	if _, err := kv.GetFromDB(db, "vpc/"+c.Name+"/state"); err == nil {
 		return fmt.Errorf("vpc %q already exists", c.Name)
@@ -37,6 +39,8 @@ func (c CreateVPCCommand) Execute(db *badger.DB, _ *configuration.Config) error 
 type DeleteVPCCommand struct {
 	Name string
 }
+
+func (c DeleteVPCCommand) Key() string { return "vpc/" + c.Name }
 
 func (c DeleteVPCCommand) Prepare(db *badger.DB, _ *configuration.Config) error {
 	if _, err := kv.GetFromDB(db, "vpc/"+c.Name+"/state"); err != nil {

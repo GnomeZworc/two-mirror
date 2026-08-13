@@ -30,6 +30,8 @@ type StartVMCommand struct {
 	SSHKey   string
 }
 
+func (c StartVMCommand) Key() string { return "vm/" + c.Name }
+
 func (c StartVMCommand) Prepare(db *badger.DB, _ *configuration.Config) error {
 	if _, err := kv.GetFromDB(db, "vm/"+c.Name+"/state"); err == nil {
 		return fmt.Errorf("vm %q already exists", c.Name)
@@ -110,6 +112,8 @@ func (c StartVMCommand) Execute(db *badger.DB, cfg *configuration.Config) error 
 type StopVMCommand struct {
 	Name string
 }
+
+func (c StopVMCommand) Key() string { return "vm/" + c.Name }
 
 func (c StopVMCommand) Prepare(db *badger.DB, _ *configuration.Config) error {
 	if _, err := kv.GetFromDB(db, "vm/"+c.Name+"/state"); err != nil {

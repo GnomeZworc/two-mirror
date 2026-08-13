@@ -22,6 +22,8 @@ type CreateSubnetCommand struct {
 	DefaultRoute bool
 }
 
+func (c CreateSubnetCommand) Key() string { return "subnet/" + c.Name }
+
 func (c CreateSubnetCommand) Prepare(db *badger.DB, cfg *configuration.Config) error {
 	if c.Mode == "" {
 		c.Mode = "vxlan"
@@ -78,6 +80,8 @@ func (c CreateSubnetCommand) Execute(db *badger.DB, cfg *configuration.Config) e
 type DeleteSubnetCommand struct {
 	Name string
 }
+
+func (c DeleteSubnetCommand) Key() string { return "subnet/" + c.Name }
 
 func (c DeleteSubnetCommand) Prepare(db *badger.DB, _ *configuration.Config) error {
 	if _, err := kv.GetFromDB(db, "subnet/"+c.Name+"/state"); err != nil {

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
+	"git.g3e.fr/syonad/two/internal/state"
 	"git.g3e.fr/syonad/two/pkg/worker"
 	"github.com/dgraph-io/badger/v4"
 )
@@ -13,6 +14,7 @@ import (
 type Command interface {
 	Prepare(db *badger.DB, cfg *configuration.Config) error
 	Execute(db *badger.DB, cfg *configuration.Config) error
+	Key() string
 }
 
 type Dispatcher struct {
@@ -43,6 +45,10 @@ func (d *Dispatcher) Dispatch(cmd Command) {
 		}
 		if err != nil {
 			d.logger.Error("command failed", append(attrs, "error", err)...)
+			if setErr := state.Set(d.db, cmd.Key(), state.Error); setErr != nil {
+				d.logger.Error("failed to mark resource as errored",
+					"command", cmdType, "key", cmd.Key(), "error", setErr)
+			}
 		} else {
 			d.logger.Info("command done", attrs...)
 		}
