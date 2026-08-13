@@ -5,15 +5,15 @@ import (
 
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
-	"git.g3e.fr/syonad/two/pkg/db/kv"
+	"git.g3e.fr/syonad/two/internal/state"
 
 	"github.com/dgraph-io/badger/v4"
 )
 
 func DeleteVPC(db *badger.DB, name string) error {
-	if state, err := kv.GetFromDB(db, "vpc/"+name+"/state"); err != nil {
+	if current, err := state.Get(db, "vpc/"+name); err != nil {
 		return err
-	} else if state == "deleting" {
+	} else if current == state.Deleting {
 		vpcID := strings.SplitN(name, "-", 2)[1]
 
 		if err := netif.DeleteLink("vp-" + vpcID + "-e"); err != nil {
@@ -23,7 +23,7 @@ func DeleteVPC(db *badger.DB, name string) error {
 		if err := netns.Delete(name); err != nil {
 			return err
 		}
-		kv.AddInDB(db, "vpc/"+name+"/state", "deleted")
+		return state.Set(db, "vpc/"+name, state.Deleted)
 	}
 
 	return nil

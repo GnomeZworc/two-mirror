@@ -7,6 +7,7 @@ import (
 	"git.g3e.fr/syonad/two/internal/ebtables"
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
+	"git.g3e.fr/syonad/two/internal/state"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 	"git.g3e.fr/syonad/two/pkg/systemd"
 
@@ -14,11 +15,11 @@ import (
 )
 
 func DeleteSubnet(db *badger.DB, subnetName string) error {
-	state, err := kv.GetFromDB(db, "subnet/"+subnetName+"/state")
+	current, err := state.Get(db, "subnet/"+subnetName)
 	if err != nil {
 		return err
 	}
-	if state != "deleting" {
+	if current != state.Deleting {
 		return nil
 	}
 
@@ -44,7 +45,7 @@ func DeleteSubnet(db *badger.DB, subnetName string) error {
 		return fmt.Errorf("unknown subnet mode %q", d.mode)
 	}
 
-	return kv.AddInDB(db, "subnet/"+subnetName+"/state", "deleted")
+	return state.Set(db, "subnet/"+subnetName, state.Deleted)
 }
 
 func stopDHCP(db *badger.DB, subnetName string, d subnetData) error {

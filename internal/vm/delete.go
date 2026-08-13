@@ -12,17 +12,17 @@ import (
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
 	"git.g3e.fr/syonad/two/internal/qmp"
-	"git.g3e.fr/syonad/two/pkg/db/kv"
+	"git.g3e.fr/syonad/two/internal/state"
 
 	"github.com/dgraph-io/badger/v4"
 )
 
 func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
-	state, err := kv.GetFromDB(db, "vm/"+name+"/state")
+	current, err := state.Get(db, "vm/"+name)
 	if err != nil {
 		return err
 	}
-	if state != "stopping" {
+	if current != state.Deleting {
 		return nil
 	}
 
@@ -65,7 +65,7 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 		os.Remove(varsPath)
 	}
 
-	return kv.AddInDB(db, "vm/"+name+"/state", "stopped")
+	return state.Set(db, "vm/"+name, state.Deleted)
 }
 
 func waitQMPDead(socketPath string, timeout, poll time.Duration) {
