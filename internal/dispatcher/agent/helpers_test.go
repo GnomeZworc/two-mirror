@@ -25,8 +25,16 @@ func newTestDispatcher(t *testing.T) (*Dispatcher, *badger.DB) {
 
 // mockCmd implémente Command sans aucune dépendance système.
 type mockCmd struct {
+	key       string
 	prepareFn func(*badger.DB, *configuration.Config) error
 	executeFn func(*badger.DB, *configuration.Config) error
+}
+
+func (m mockCmd) Key() string {
+	if m.key == "" {
+		return "vpc/mock"
+	}
+	return m.key
 }
 
 func (m mockCmd) Prepare(db *badger.DB, cfg *configuration.Config) error {
