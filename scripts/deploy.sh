@@ -37,6 +37,43 @@ check_latest_script () {
     return 0
 }
 
+# Liste les units actives correspondant à un motif, une par ligne.
+# Sortie vide si aucune ne tourne — ce n'est pas une erreur.
+list_active_units () {
+    PATTERN="${1}"
+    systemctl list-units --state=active --no-legend --plain "${PATTERN}" 2>/dev/null \
+        | awk '{print $1}' || true
+}
+
+stop_services () {
+    DRY_RUN="${1}"
+    METADATA_UNITS="${2}"
+    DNSMASQ_UNITS="${3}"
+
+    # L'agent en premier : il pilote les autres units, on ne veut pas qu'il
+    # observe leur disparition.
+    exec_with_dry_run "${DRY_RUN}" "systemctl stop agent.service"
+
+    for unit in ${METADATA_UNITS} ${DNSMASQ_UNITS}
+    do
+        exec_with_dry_run "${DRY_RUN}" "systemctl stop '${unit}'"
+    done
+}
+
+start_services () {
+    DRY_RUN="${1}"
+    METADATA_UNITS="${2}"
+    DNSMASQ_UNITS="${3}"
+
+    # Ordre inverse de l'arrêt : les dépendances d'abord, l'agent en dernier.
+    for unit in ${DNSMASQ_UNITS} ${METADATA_UNITS}
+    do
+        exec_with_dry_run "${DRY_RUN}" "systemctl start '${unit}'"
+    done
+
+    exec_with_dry_run "${DRY_RUN}" "systemctl start agent.service"
+}
+
 download_binaries () {
     DRY_RUN="${1}"
     TAG="${2}"
@@ -53,16 +90,38 @@ download_binaries () {
     exec_with_dry_run "${DRY_RUN}" "mkdir -p \"${BIN_PATH}\""
     exec_with_dry_run "${DRY_RUN}" "mkdir -p \"${LN_PATH}\""
 
-    curl --silent "${GIT_SERVER}api/v1/repos/${REPO_PATH}releases/tags/${TAG}" | jq -c '.assets[]' | while read tmp
+    ASSETS=$(curl --silent "${GIT_SERVER}api/v1/repos/${REPO_PATH}releases/tags/${TAG}" | jq -c '.assets[]')
+
+    # Téléchargement d'abord, dans le répertoire versionné : aucun impact sur
+    # les services en cours, donc aucune raison de les arrêter pendant ce temps.
+    while read -r tmp
     do
+        [[ -z "${tmp}" ]] && continue
         BINARY_NAME=$(echo "${tmp}" | jq -r '.name')
-        BINARY_SHORT_NAME=$(echo "${BINARY_NAME}" | cut -d_ -f 1)
         BINARY_URL=$(echo "${tmp}" | jq -r '.browser_download_url')
         exec_with_dry_run "${DRY_RUN}" "curl --silent '${BINARY_URL}' -o '${BIN_PATH}${BINARY_NAME}'"
         exec_with_dry_run "${DRY_RUN}" "chmod +x '${BIN_PATH}${BINARY_NAME}'"
+    done <<< "${ASSETS}"
+
+    # Les units actives sont relevées avant l'arrêt : c'est la seule façon de
+    # savoir lesquelles redémarrer ensuite (instances dnsmasq@ et metadata@).
+    METADATA_UNITS=$(list_active_units 'metadata@*')
+    DNSMASQ_UNITS=$(list_active_units 'dnsmasq@*')
+
+    stop_services "${DRY_RUN}" "${METADATA_UNITS}" "${DNSMASQ_UNITS}"
+
+    # Bascule des liens symboliques, services arrêtés : c'est la seule fenêtre
+    # d'indisponibilité réelle.
+    while read -r tmp
+    do
+        [[ -z "${tmp}" ]] && continue
+        BINARY_NAME=$(echo "${tmp}" | jq -r '.name')
+        BINARY_SHORT_NAME=$(echo "${BINARY_NAME}" | cut -d_ -f 1)
         exec_with_dry_run "${DRY_RUN}" "rm -f '${LN_PATH}${BINARY_SHORT_NAME}'"
         exec_with_dry_run "${DRY_RUN}" "ln -s '${BIN_PATH}${BINARY_NAME}' '${LN_PATH}${BINARY_SHORT_NAME}'"
-    done
+    done <<< "${ASSETS}"
+
+    start_services "${DRY_RUN}" "${METADATA_UNITS}" "${DNSMASQ_UNITS}"
 }
 
 main () {
