@@ -19,8 +19,8 @@
 KVM_PACKAGES="qemu-system-x86 ovmf dnsmasq ebtables iptables nfs-common jq curl"
 
 kvm_packages () {
-    DRY_RUN="${1}"
-    WITH_PACKAGES="${2}"
+    local DRY_RUN="${1}"
+    local WITH_PACKAGES="${2}"
 
     [[ ${WITH_PACKAGES} -eq ${FLAGS_TRUE} ]] || { info "paquets : ignorés (--nopackages)"; return 0; }
 
@@ -35,7 +35,7 @@ kvm_packages () {
 }
 
 kvm_kernel () {
-    DRY_RUN="${1}"
+    local DRY_RUN="${1}"
 
     info "kernel"
 
@@ -53,8 +53,8 @@ kvm_kernel () {
 
 # Bridge vide, up, sans STP.
 kvm_ensure_bridge () {
-    DRY_RUN="${1}"
-    NAME="${2}"
+    local DRY_RUN="${1}"
+    local NAME="${2}"
 
     if ! ip link show dev "${NAME}" >/dev/null 2>&1
     then
@@ -65,12 +65,13 @@ kvm_ensure_bridge () {
 }
 
 kvm_network () {
-    DRY_RUN="${1}"
-    WITH_NETWORK="${2}"
-    UPLINK="${3}"
-    BRIDGE="${4}"
-    PUBLIC_BRIDGE="${5}"
-    ROLLBACK_DELAY="${6}"
+    local DRY_RUN="${1}"
+    local WITH_NETWORK="${2}"
+    local UPLINK="${3}"
+    local BRIDGE="${4}"
+    local PUBLIC_BRIDGE="${5}"
+    local ROLLBACK_DELAY="${6}"
+    local MASTER ADDR_JSON IP PREFIX GW MIGRATE MIGRATE_SCRIPT
 
     [[ ${WITH_NETWORK} -eq ${FLAGS_TRUE} ]] || { info "réseau : ignoré (--nonetwork)"; return 0; }
 
@@ -154,13 +155,13 @@ EOF
 
 # Point d'entrée appelé par deploy.sh --bootstrap.
 bootstrap_host () {
-    DRY_RUN="${1}"
-    WITH_PACKAGES="${2}"
-    WITH_NETWORK="${3}"
-    UPLINK="${4}"
-    BRIDGE="${5}"
-    PUBLIC_BRIDGE="${6}"
-    ROLLBACK_DELAY="${7}"
+    local DRY_RUN="${1}"
+    local WITH_PACKAGES="${2}"
+    local WITH_NETWORK="${3}"
+    local UPLINK="${4}"
+    local BRIDGE="${5}"
+    local PUBLIC_BRIDGE="${6}"
+    local ROLLBACK_DELAY="${7}"
 
     kvm_packages "${DRY_RUN}" "${WITH_PACKAGES}"
     kvm_kernel   "${DRY_RUN}"

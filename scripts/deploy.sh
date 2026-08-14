@@ -24,7 +24,7 @@ exec_with_dry_run () {
     eval "${2}" 2> /tmp/error || \
     {
       echo -e "failed with following error";
-      output=$(cat /tmp/error | sed -e "s/^/ error -> /g");
+      local output; output=$(cat /tmp/error | sed -e "s/^/ error -> /g");
       echo -e "${output}";
       return 1;
     }
@@ -37,18 +37,19 @@ run () {
 }
 
 check_latest_script () {
-    REMOTE_URL="${1}"
-    LOCAL_PATH="${2}"
+    local REMOTE_URL="${1}"
+    local LOCAL_PATH="${2}"
+    local REMOTE_SUM LOCAL_SUM
 
-    REMOTE=$(curl --silent "${REMOTE_URL}" | sha256sum)
-    LOCAL=$(cat ${LOCAL_PATH} | sha256sum)
+    REMOTE_SUM=$(curl --silent "${REMOTE_URL}" | sha256sum)
+    LOCAL_SUM=$(cat ${LOCAL_PATH} | sha256sum)
 
-    [[ "${REMOTE}" == "${LOCAL}" ]] || return 1
+    [[ "${REMOTE_SUM}" == "${LOCAL_SUM}" ]] || return 1
     return 0
 }
 
 list_active_units () {
-    PATTERN="${1}"
+    local PATTERN="${1}"
     systemctl list-units --state=active --no-legend --plain "${PATTERN}" 2>/dev/null \
         | awk '{print $1}' || true
 }
@@ -56,6 +57,7 @@ list_active_units () {
 # Units non instanciables du profil (agent.service) : celles qu'on arrête et
 # démarre nommément.
 profile_main_units () {
+    local unit
     for unit in $(profile_units "${1}")
     do
         case "${unit}" in
@@ -66,6 +68,7 @@ profile_main_units () {
 }
 
 active_instances () {
+    local unit
     for unit in $(profile_units "${1}")
     do
         case "${unit}" in
@@ -75,9 +78,10 @@ active_instances () {
 }
 
 stop_services () {
-    DRY_RUN="${1}"
-    PROFILE="${2}"
-    INSTANCES="${3}"
+    local DRY_RUN="${1}"
+    local PROFILE="${2}"
+    local INSTANCES="${3}"
+    local unit
 
     for unit in $(profile_main_units "${PROFILE}")
     do
@@ -91,9 +95,10 @@ stop_services () {
 }
 
 start_services () {
-    DRY_RUN="${1}"
-    PROFILE="${2}"
-    INSTANCES="${3}"
+    local DRY_RUN="${1}"
+    local PROFILE="${2}"
+    local INSTANCES="${3}"
+    local unit
 
     for unit in ${INSTANCES}
     do
@@ -132,11 +137,12 @@ profile_bootstrap () {
 }
 
 run_bootstrap () {
-    DRY_RUN="${1}"
-    PROFILE="${2}"
-    GIT_SERVER="${3}"
-    REPO_PATH="${4}"
-    BRANCH="${5}"
+    local DRY_RUN="${1}"
+    local PROFILE="${2}"
+    local GIT_SERVER="${3}"
+    local REPO_PATH="${4}"
+    local BRANCH="${5}"
+    local NAME BOOTSTRAP_URL
 
     NAME=$(profile_bootstrap "${PROFILE}") || die "profil inconnu : ${PROFILE}"
     [[ -n "${NAME}" ]] || { info "bootstrap : rien à préparer pour le profil ${PROFILE}"; return 0; }
@@ -155,18 +161,18 @@ run_bootstrap () {
 }
 
 resolve_tag () {
-    TAG="${1}"
-    GIT_SERVER="${2}"
-    REPO_PATH="${3}"
+    local TAG="${1}"
+    local GIT_SERVER="${2}"
+    local REPO_PATH="${3}"
 
     [[ -n "${TAG}" ]] && { echo "${TAG}"; return 0; }
     curl --silent "${GIT_SERVER}api/v1/repos/${REPO_PATH}releases/?limit=1" | jq -r '.[0].tag_name'
 }
 
 release_assets () {
-    GIT_SERVER="${1}"
-    REPO_PATH="${2}"
-    RELEASE_TAG="${3}"
+    local GIT_SERVER="${1}"
+    local REPO_PATH="${2}"
+    local RELEASE_TAG="${3}"
 
     curl --silent "${GIT_SERVER}api/v1/repos/${REPO_PATH}releases/tags/${RELEASE_TAG}" | jq -c '.assets[]'
 }
@@ -180,9 +186,10 @@ asset_url () {
 }
 
 fetch_assets () {
-    DRY_RUN="${1}"
-    PROFILE="${2}"
-    ASSETS="${3}"
+    local DRY_RUN="${1}"
+    local PROFILE="${2}"
+    local ASSETS="${3}"
+    local unit short UNIT_URL BIN_URL FULL_NAME
 
     info "assets de la release ${TAG} pour le profil ${PROFILE}"
 
@@ -208,8 +215,9 @@ fetch_assets () {
 }
 
 install_units () {
-    DRY_RUN="${1}"
-    PROFILE="${2}"
+    local DRY_RUN="${1}"
+    local PROFILE="${2}"
+    local UNITS unit
 
     UNITS=$(profile_units "${PROFILE}") || die "profil inconnu : ${PROFILE}"
     [[ -n "${UNITS}" ]] || { info "units : aucune pour le profil ${PROFILE}"; return 0; }
@@ -237,9 +245,10 @@ install_units () {
 }
 
 switch_binaries () {
-    DRY_RUN="${1}"
-    PROFILE="${2}"
-    ASSETS="${3}"
+    local DRY_RUN="${1}"
+    local PROFILE="${2}"
+    local ASSETS="${3}"
+    local BINARIES INSTANCES short FULL_NAME
 
     BINARIES=$(profile_binaries "${PROFILE}")
     [[ -n "${BINARIES}" ]] || { info "bascule : aucun exécutable pour le profil ${PROFILE}"; return 0; }
@@ -285,7 +294,7 @@ main () {
 
     if [[ ${FLAGS_up_script} -eq ${FLAGS_TRUE} ]]
     then
-        SCRIPT_URL="${FLAGS_git_server}${FLAGS_repo_path}raw/branch/${FLAGS_branch}${SCRIPT_PATH}"
+        local SCRIPT_URL="${FLAGS_git_server}${FLAGS_repo_path}raw/branch/${FLAGS_branch}${SCRIPT_PATH}"
         if ! check_latest_script "${SCRIPT_URL}" "${0}"
         then
             run "${FLAGS_dryrun}" "curl --silent '${SCRIPT_URL}' -o '${0}'"
@@ -295,6 +304,8 @@ main () {
 
     [[ ${FLAGS_bootstrap} -eq ${FLAGS_TRUE} ]] && \
         run_bootstrap "${FLAGS_dryrun}" "${FLAGS_profile}" "${FLAGS_git_server}" "${FLAGS_repo_path}" "${FLAGS_branch}"
+
+    local TAG BIN_PATH UNIT_PATH LN_PATH ASSETS
 
     TAG=$(resolve_tag "${FLAGS_tag}" "${FLAGS_git_server}" "${FLAGS_repo_path}")
     [[ -n "${TAG}" && "${TAG}" != "null" ]] || die "impossible de déterminer la release à déployer"
