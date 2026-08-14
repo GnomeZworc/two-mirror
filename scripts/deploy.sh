@@ -12,6 +12,8 @@ esac
 SCRIPT_PATH="scripts/deploy.sh"
 UNIT_DIR="/etc/systemd/system"
 SCRIPTS_DIR="/opt/two/scripts"
+# Asset listant les sommes de contrôle des autres, au format sha256sum.
+MANIFEST_NAME="SHA256SUMS"
 
 info () { echo "== ${1}"; }
 warn () { echo "!! ${1}" >&2; }
@@ -185,11 +187,63 @@ asset_url () {
     echo "${1}" | jq -r --arg n "${2}" 'select(.name == $n) | .browser_download_url' | head -1
 }
 
+release_manifest () {
+    local ASSETS="${1}"
+    local URL
+
+    URL=$(asset_url "${ASSETS}" "${MANIFEST_NAME}")
+    [[ -n "${URL}" ]] || return 1
+    curl --silent --fail "${URL}" || return 1
+}
+
+manifest_sum () {
+    awk -v n="${2}" '$2 == n { print $1 }' <<< "${1}" | head -1
+}
+
+sum_matches () {
+    local MANIFEST="${1}"
+    local NAME="${2}"
+    local FILE="${3}"
+    local EXPECTED ACTUAL
+
+    EXPECTED=$(manifest_sum "${MANIFEST}" "${NAME}")
+    [[ -n "${EXPECTED}" ]] || die "asset absent du manifeste ${MANIFEST_NAME} : ${NAME}"
+
+    [[ -f "${FILE}" ]] || return 1
+    ACTUAL=$(sha256sum < "${FILE}" | cut -d' ' -f1)
+    [[ "${ACTUAL}" == "${EXPECTED}" ]]
+}
+
+fetch_asset () {
+    local DRY_RUN="${1}"
+    local MANIFEST="${2}"
+    local ASSETS="${3}"
+    local NAME="${4}"
+    local DEST="${5}"
+    local URL
+
+    if [[ -n "${MANIFEST}" ]] && sum_matches "${MANIFEST}" "${NAME}" "${DEST}"
+    then
+        info "  ${NAME} déjà présent et conforme — téléchargement évité"
+        return 0
+    fi
+
+    URL=$(asset_url "${ASSETS}" "${NAME}")
+    [[ -n "${URL}" ]] || die "asset absent de la release ${TAG} : ${NAME}"
+    run "${DRY_RUN}" "curl --silent --fail '${URL}' -o '${DEST}'"
+
+    [[ ${DRY_RUN} -eq ${FLAGS_TRUE} ]] && return 0
+    [[ -n "${MANIFEST}" ]] || return 0
+    sum_matches "${MANIFEST}" "${NAME}" "${DEST}" \
+        || die "somme de contrôle incorrecte après téléchargement : ${NAME}"
+}
+
 fetch_assets () {
     local DRY_RUN="${1}"
     local PROFILE="${2}"
     local ASSETS="${3}"
-    local unit short UNIT_URL BIN_URL FULL_NAME
+    local MANIFEST="${4}"
+    local unit short FULL_NAME
 
     info "assets de la release ${TAG} pour le profil ${PROFILE}"
 
@@ -199,17 +253,14 @@ fetch_assets () {
 
     for unit in $(profile_units "${PROFILE}")
     do
-        UNIT_URL=$(asset_url "${ASSETS}" "${unit}")
-        [[ -n "${UNIT_URL}" ]] || die "unit absente de la release ${TAG} : ${unit}"
-        run "${DRY_RUN}" "curl --silent '${UNIT_URL}' -o '${UNIT_PATH}${unit}'"
+        fetch_asset "${DRY_RUN}" "${MANIFEST}" "${ASSETS}" "${unit}" "${UNIT_PATH}${unit}"
     done
 
     for short in $(profile_binaries "${PROFILE}")
     do
         FULL_NAME=$(asset_name "${ASSETS}" "${short}")
         [[ -n "${FULL_NAME}" ]] || die "exécutable absent de la release ${TAG} : ${short}"
-        BIN_URL=$(asset_url "${ASSETS}" "${FULL_NAME}")
-        run "${DRY_RUN}" "curl --silent '${BIN_URL}' -o '${BIN_PATH}${FULL_NAME}'"
+        fetch_asset "${DRY_RUN}" "${MANIFEST}" "${ASSETS}" "${FULL_NAME}" "${BIN_PATH}${FULL_NAME}"
         run "${DRY_RUN}" "chmod +x '${BIN_PATH}${FULL_NAME}'"
     done
 }
@@ -286,6 +337,7 @@ main () {
     DEFINE_string  'bridge'     'br-000000'           'Main bridge, uplink is enslaved to it'          'B'
     DEFINE_string  'pub_bridge' 'br-public'           'Reserved empty bridge'                          'P'
     DEFINE_integer 'rollback'   120                   'Rollback reboot delay in seconds'               'R'
+    DEFINE_boolean 'verify'     true                  'Check assets against SHA256SUMS'                'V'
 
     FLAGS "$@" || exit $?
     eval set -- "${FLAGS_ARGV}"
@@ -305,7 +357,7 @@ main () {
     [[ ${FLAGS_bootstrap} -eq ${FLAGS_TRUE} ]] && \
         run_bootstrap "${FLAGS_dryrun}" "${FLAGS_profile}" "${FLAGS_git_server}" "${FLAGS_repo_path}" "${FLAGS_branch}"
 
-    local TAG BIN_PATH UNIT_PATH LN_PATH ASSETS
+    local TAG BIN_PATH UNIT_PATH LN_PATH ASSETS MANIFEST
 
     TAG=$(resolve_tag "${FLAGS_tag}" "${FLAGS_git_server}" "${FLAGS_repo_path}")
     [[ -n "${TAG}" && "${TAG}" != "null" ]] || die "impossible de déterminer la release à déployer"
@@ -317,7 +369,19 @@ main () {
     ASSETS=$(release_assets "${FLAGS_git_server}" "${FLAGS_repo_path}" "${TAG}")
     [[ -n "${ASSETS}" ]] || die "aucun asset dans la release ${TAG}"
 
-    fetch_assets "${FLAGS_dryrun}" "${FLAGS_profile}" "${ASSETS}"
+    # Manifeste absent = release antérieure à sa mise en place, ou CI incomplète.
+    # C'est bloquant : une vérification qui se désactive d'elle-même ne vérifie
+    # rien. --noverify est la sortie explicite.
+    MANIFEST=""
+    if [[ ${FLAGS_verify} -eq ${FLAGS_TRUE} ]]
+    then
+        MANIFEST=$(release_manifest "${ASSETS}") \
+            || die "${MANIFEST_NAME} absent de la release ${TAG} — --noverify pour déployer sans vérification"
+    else
+        warn "vérification des sommes de contrôle désactivée (--noverify)"
+    fi
+
+    fetch_assets "${FLAGS_dryrun}" "${FLAGS_profile}" "${ASSETS}" "${MANIFEST}"
 
     install_units   "${FLAGS_dryrun}" "${FLAGS_profile}"
     switch_binaries "${FLAGS_dryrun}" "${FLAGS_profile}" "${ASSETS}"

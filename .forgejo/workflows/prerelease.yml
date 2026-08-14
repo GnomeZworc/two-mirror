@@ -70,12 +70,41 @@ jobs:
         with:
           name: ${{ matrix.name }}-${{ needs.set-release-target.outputs.release_cible }}
           path: dist/${{ matrix.name }}
+  # Manifeste des sommes de contrôle de tous les artefacts, au format sha256sum.
+  # Dépend de tous les jobs qui produisent des artefacts : ajouter un producteur
+  # sans l'ajouter ici donnerait un manifeste incomplet, donc un déploiement qui
+  # refuse des assets légitimes.
+  checksums:
+    runs-on: docker
+    needs: [set-release-target, build, upload-assets]
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts/
+      - name: Générer SHA256SUMS
+        run: |
+          mkdir -p dist
+          # download-artifact place chaque artefact dans son propre
+          # sous-répertoire : on aplatit pour que le manifeste porte les noms
+          # d'assets, tels que deploy.sh les demandera.
+          find artifacts/ -type f -exec cp {} dist/ \;
+          # Généré depuis dist/ pour que les noms soient nus, et hors de dist/
+          # pour que le manifeste ne se liste pas lui-même.
+          ( cd dist && sha256sum * ) > SHA256SUMS
+          cat SHA256SUMS
+      - name: Upload SHA256SUMS
+        uses: actions/upload-artifact@v3
+        with:
+          name: SHA256SUMS-${{ needs.set-release-target.outputs.release_cible }}
+          path: SHA256SUMS
   prerelease:
     runs-on: docker
-    # upload-assets est dans les needs : sans lui, le job release peut appeler
-    # download-artifact avant la fin des uploads et publier une release
-    # incomplète (scripts et units manquants de façon non déterministe).
-    needs: [set-release-target, build, upload-assets]
+    # Tous les producteurs d'artefacts sont dans les needs : sans ça, le job
+    # release peut appeler download-artifact avant la fin des uploads et publier
+    # une release incomplète (assets ou manifeste manquants de façon non
+    # déterministe).
+    needs: [set-release-target, build, upload-assets, checksums]
     uses: ./.forgejo/workflows/release.yml
     with:
       tag: ${{ needs.set-release-target.outputs.release_cible }}
