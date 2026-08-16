@@ -28,7 +28,7 @@ func TestListVpcs_Empty(t *testing.T) {
 
 func TestListVpcs_WithData(t *testing.T) {
 	s, db := newTestServer(t)
-	kv.AddInDB(db, "vpc/v1/state", "created")
+	kv.AddInDB(db, "vpc/v1/state", "running")
 	kv.AddInDB(db, "vpc/v2/state", "creating")
 	w := httptest.NewRecorder()
 	s.VpcsHandler(w, httptest.NewRequest(http.MethodGet, "/vpcs", nil))
@@ -104,7 +104,7 @@ func TestPostVpc_InvalidCIDR(t *testing.T) {
 
 func TestPostVpc_Duplicate(t *testing.T) {
 	s, db := newTestServer(t)
-	kv.AddInDB(db, "vpc/vpc-exist/state", "created")
+	kv.AddInDB(db, "vpc/vpc-exist/state", "running")
 	body, _ := json.Marshal(VPCCreateRequest{Name: "vpc-exist", CIDR: "10.0.0.0/16"})
 	w := httptest.NewRecorder()
 	s.VpcsHandler(w, httptest.NewRequest(http.MethodPost, "/vpcs", bytes.NewReader(body)))
@@ -126,7 +126,7 @@ func TestPostVpc_InvalidBody(t *testing.T) {
 
 func TestGetVpc_Found(t *testing.T) {
 	s, db := newTestServer(t)
-	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	req := httptest.NewRequest(http.MethodGet, "/vpcs/vpc-1", nil)
 	w := httptest.NewRecorder()
 	s.VpcByNameHandler(w, req)
@@ -135,7 +135,7 @@ func TestGetVpc_Found(t *testing.T) {
 	}
 	var result VPC
 	json.NewDecoder(w.Body).Decode(&result)
-	if result.Name != "vpc-1" || result.State != "created" {
+	if result.Name != "vpc-1" || result.State != "running" {
 		t.Errorf("résultat inattendu : %+v", result)
 	}
 }
@@ -162,7 +162,7 @@ func TestGetVpc_EmptyName(t *testing.T) {
 
 func TestDeleteVpc_Success(t *testing.T) {
 	s, db := newTestServer(t)
-	kv.AddInDB(db, "vpc/vpc-del/state", "created")
+	kv.AddInDB(db, "vpc/vpc-del/state", "running")
 	req := httptest.NewRequest(http.MethodDelete, "/vpcs/vpc-del", nil)
 	w := httptest.NewRecorder()
 	s.VpcByNameHandler(w, req)
@@ -186,10 +186,37 @@ func TestDeleteVpc_NotFound(t *testing.T) {
 	}
 }
 
+func TestDeleteVpc_ConflictWhileCreating(t *testing.T) {
+	s, db := newTestServer(t)
+	kv.AddInDB(db, "vpc/vpc-wip/state", "creating")
+	req := httptest.NewRequest(http.MethodDelete, "/vpcs/vpc-wip", nil)
+	w := httptest.NewRecorder()
+	s.VpcByNameHandler(w, req)
+	if w.Code != http.StatusConflict {
+		t.Errorf("attendu 409, obtenu %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestDeleteVpc_AllowedFromError(t *testing.T) {
+	s, db := newTestServer(t)
+	kv.AddInDB(db, "vpc/vpc-ko/state", "error")
+	req := httptest.NewRequest(http.MethodDelete, "/vpcs/vpc-ko", nil)
+	w := httptest.NewRecorder()
+	s.VpcByNameHandler(w, req)
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("attendu 202, obtenu %d: %s", w.Code, w.Body.String())
+	}
+	var result VPC
+	json.NewDecoder(w.Body).Decode(&result)
+	if result.State != "deleting" {
+		t.Errorf("state attendu deleting, obtenu %q", result.State)
+	}
+}
+
 func TestDeleteVpc_BlockedByActiveSubnet(t *testing.T) {
 	s, db := newTestServer(t)
-	kv.AddInDB(db, "vpc/vpc-busy/state", "created")
-	kv.AddInDB(db, "subnet/sn-1/state", "created")
+	kv.AddInDB(db, "vpc/vpc-busy/state", "running")
+	kv.AddInDB(db, "subnet/sn-1/state", "running")
 	kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-busy")
 	req := httptest.NewRequest(http.MethodDelete, "/vpcs/vpc-busy", nil)
 	w := httptest.NewRecorder()
@@ -201,7 +228,7 @@ func TestDeleteVpc_BlockedByActiveSubnet(t *testing.T) {
 
 func TestVpcByName_InvalidMethod(t *testing.T) {
 	s, db := newTestServer(t)
-	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	req := httptest.NewRequest(http.MethodPut, "/vpcs/vpc-1", nil)
 	w := httptest.NewRecorder()
 	s.VpcByNameHandler(w, req)

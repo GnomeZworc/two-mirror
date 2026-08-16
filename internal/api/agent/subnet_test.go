@@ -28,7 +28,7 @@ func TestListSubnets_Empty(t *testing.T) {
 
 func TestListSubnets_WithData(t *testing.T) {
 	s, db := newTestServer(t)
-	kv.AddInDB(db, "subnet/sn-1/state", "created")
+	kv.AddInDB(db, "subnet/sn-1/state", "running")
 	kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-1")
 	kv.AddInDB(db, "subnet/sn-2/state", "creating")
 	kv.AddInDB(db, "subnet/sn-2/vpc", "vpc-1")
@@ -55,7 +55,7 @@ func TestListSubnets_InvalidMethod(t *testing.T) {
 
 func TestPostSubnet_Created(t *testing.T) {
 	s, db := newTestServer(t)
-	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	req := SubnetCreateRequest{
 		Name:      "sn-new",
 		VPC:       "vpc-1",
@@ -91,7 +91,7 @@ func TestPostSubnet_MissingFields(t *testing.T) {
 
 func TestPostSubnet_IfaceTypeOptional(t *testing.T) {
 	s, db := newTestServer(t)
-	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	req := SubnetCreateRequest{
 		Name:      "sn-opt",
 		VPC:       "vpc-1",
@@ -126,8 +126,8 @@ func TestPostSubnet_VPCNotFound(t *testing.T) {
 
 func TestPostSubnet_Duplicate(t *testing.T) {
 	s, db := newTestServer(t)
-	kv.AddInDB(db, "vpc/vpc-1/state", "created")
-	kv.AddInDB(db, "subnet/sn-exist/state", "created")
+	kv.AddInDB(db, "vpc/vpc-1/state", "running")
+	kv.AddInDB(db, "subnet/sn-exist/state", "running")
 	req := SubnetCreateRequest{
 		Name:      "sn-exist",
 		VPC:       "vpc-1",
@@ -163,7 +163,7 @@ func TestPostSubnet_VPCDeleting(t *testing.T) {
 
 func TestPostSubnet_BridgeMode_Success(t *testing.T) {
 	s, db := newTestServer(t)
-	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	req := SubnetCreateRequest{
 		Name:      "sn-br",
 		VPC:       "vpc-1",
@@ -190,7 +190,7 @@ func TestPostSubnet_BridgeMode_Success(t *testing.T) {
 
 func TestPostSubnet_UnknownMode(t *testing.T) {
 	s, db := newTestServer(t)
-	kv.AddInDB(db, "vpc/vpc-1/state", "created")
+	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	req := SubnetCreateRequest{
 		Name:      "sn-1",
 		VPC:       "vpc-1",
@@ -219,7 +219,7 @@ func TestPostSubnet_InvalidBody(t *testing.T) {
 
 func TestGetSubnet_Found(t *testing.T) {
 	s, db := newTestServer(t)
-	kv.AddInDB(db, "subnet/sn-1/state", "created")
+	kv.AddInDB(db, "subnet/sn-1/state", "running")
 	kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-1")
 	kv.AddInDB(db, "subnet/sn-1/cidr", "10.0.0.0/24")
 	kv.AddInDB(db, "subnet/sn-1/interface_ip", "10.0.0.1")
@@ -231,7 +231,7 @@ func TestGetSubnet_Found(t *testing.T) {
 	}
 	var result Subnet
 	json.NewDecoder(w.Body).Decode(&result)
-	if result.Name != "sn-1" || result.State != "created" {
+	if result.Name != "sn-1" || result.State != "running" {
 		t.Errorf("résultat inattendu : %+v", result)
 	}
 	if result.VPC != "vpc-1" {
@@ -261,7 +261,7 @@ func TestGetSubnet_EmptyName(t *testing.T) {
 
 func TestDeleteSubnet_Success(t *testing.T) {
 	s, db := newTestServer(t)
-	kv.AddInDB(db, "subnet/sn-del/state", "created")
+	kv.AddInDB(db, "subnet/sn-del/state", "running")
 	req := httptest.NewRequest(http.MethodDelete, "/subnets/sn-del", nil)
 	w := httptest.NewRecorder()
 	s.SubnetByNameHandler(w, req)
@@ -272,6 +272,17 @@ func TestDeleteSubnet_Success(t *testing.T) {
 	json.NewDecoder(w.Body).Decode(&result)
 	if result.State != "deleting" {
 		t.Errorf("state attendu deleting, obtenu %q", result.State)
+	}
+}
+
+func TestDeleteSubnet_ConflictWhileCreating(t *testing.T) {
+	s, db := newTestServer(t)
+	kv.AddInDB(db, "subnet/sn-wip/state", "creating")
+	req := httptest.NewRequest(http.MethodDelete, "/subnets/sn-wip", nil)
+	w := httptest.NewRecorder()
+	s.SubnetByNameHandler(w, req)
+	if w.Code != http.StatusConflict {
+		t.Errorf("attendu 409, obtenu %d: %s", w.Code, w.Body.String())
 	}
 }
 
@@ -287,7 +298,7 @@ func TestDeleteSubnet_NotFound(t *testing.T) {
 
 func TestSubnetByName_InvalidMethod(t *testing.T) {
 	s, db := newTestServer(t)
-	kv.AddInDB(db, "subnet/sn-1/state", "created")
+	kv.AddInDB(db, "subnet/sn-1/state", "running")
 	req := httptest.NewRequest(http.MethodPut, "/subnets/sn-1", nil)
 	w := httptest.NewRecorder()
 	s.SubnetByNameHandler(w, req)

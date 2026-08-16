@@ -103,9 +103,16 @@ func Start(cfg Config) error {
 		"-daemonize",
 	)
 
-	cmd := exec.Command("qemu-system-x86_64", args...)
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("qemu-system-x86_64: %w", err)
+	scopeArgs := append([]string{
+		"--scope",
+		"--unit=" + ScopeName(cfg.Name),
+		"--collect",
+		"qemu-system-x86_64",
+	}, args...)
+
+	cmd := exec.Command("systemd-run", scopeArgs...)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("systemd-run qemu-system-x86_64: %w: %s", err, strings.TrimSpace(string(out)))
 	}
 	return nil
 }

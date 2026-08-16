@@ -12,17 +12,17 @@ import (
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
 	"git.g3e.fr/syonad/two/internal/qemu"
-	"git.g3e.fr/syonad/two/pkg/db/kv"
+	"git.g3e.fr/syonad/two/internal/state"
 
 	"github.com/dgraph-io/badger/v4"
 )
 
 func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
-	state, err := kv.GetFromDB(db, "vm/"+name+"/state")
+	current, err := state.Get(db, "vm/"+name)
 	if err != nil {
 		return err
 	}
-	if state != "starting" {
+	if current != state.Creating {
 		return nil
 	}
 
@@ -84,7 +84,7 @@ func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 		return fmt.Errorf("start qemu: %w", err)
 	}
 
-	return kv.AddInDB(db, "vm/"+name+"/state", "started")
+	return state.Set(db, "vm/"+name, state.Running)
 }
 
 func copyFile(src, dst string) error {

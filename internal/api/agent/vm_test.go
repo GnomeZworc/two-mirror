@@ -15,7 +15,7 @@ import (
 
 func TestVmFromDB_SingleDisk(t *testing.T) {
 	entries := map[string]string{
-		"vm/vm-1/state":         "started",
+		"vm/vm-1/state":         "running",
 		"vm/vm-1/subnet":        "sn-1",
 		"vm/vm-1/ip":            "10.0.0.5",
 		"vm/vm-1/metadata_port": "1234",
@@ -37,7 +37,7 @@ func TestVmFromDB_SingleDisk(t *testing.T) {
 
 func TestVmFromDB_MultiDisk(t *testing.T) {
 	entries := map[string]string{
-		"vm/vm-2/state":         "started",
+		"vm/vm-2/state":         "running",
 		"vm/vm-2/subnet":        "sn-1",
 		"vm/vm-2/ip":            "10.0.0.6",
 		"vm/vm-2/metadata_port": "1235",
@@ -62,7 +62,7 @@ func TestVmFromDB_MultiDisk(t *testing.T) {
 func TestVmFromDB_SlotGap(t *testing.T) {
 	// sdb absent — sda et sdc seulement
 	entries := map[string]string{
-		"vm/vm-3/state":         "started",
+		"vm/vm-3/state":         "running",
 		"vm/vm-3/subnet":        "sn-1",
 		"vm/vm-3/ip":            "10.0.0.7",
 		"vm/vm-3/metadata_port": "1236",
@@ -94,7 +94,7 @@ func TestVmFromDB_SlotGap(t *testing.T) {
 
 func TestStartVM_MultiDisk(t *testing.T) {
 	s, db := newTestServer(t)
-	kv.AddInDB(db, "subnet/sn-1/state", "created")
+	kv.AddInDB(db, "subnet/sn-1/state", "running")
 	kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-1")
 
 	body, _ := json.Marshal(VMCreateRequest{
@@ -128,7 +128,7 @@ func TestStartVM_MultiDisk(t *testing.T) {
 
 func TestStartVM_StorageReturnedInResponse(t *testing.T) {
 	s, db := newTestServer(t)
-	kv.AddInDB(db, "subnet/sn-1/state", "created")
+	kv.AddInDB(db, "subnet/sn-1/state", "running")
 	kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-1")
 
 	body, _ := json.Marshal(VMCreateRequest{

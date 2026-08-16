@@ -68,7 +68,13 @@ func (s *Server) getSubnet(w http.ResponseWriter, _ *http.Request, name string) 
 func (s *Server) deleteSubnet(w http.ResponseWriter, _ *http.Request, name string) {
 	cmd := dispatcher.DeleteSubnetCommand{Name: name}
 	if err := s.dispatcher.Prepare(cmd); err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		// 404 si la ressource n'existe pas, 409 si elle existe mais n'est pas
+		// dans un état supprimable — même convention que /vpcs et /vms.
+		if _, dbErr := kv.GetFromDB(s.db, "subnet/"+name+"/state"); dbErr != nil {
+			w.WriteHeader(http.StatusNotFound)
+		} else {
+			w.WriteHeader(http.StatusConflict)
+		}
 		json.NewEncoder(w).Encode(ErrorResponse{Error: err.Error()})
 		return
 	}

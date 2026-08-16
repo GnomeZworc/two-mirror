@@ -6,6 +6,7 @@ import (
 	"time"
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
+	"git.g3e.fr/syonad/two/internal/state"
 	"git.g3e.fr/syonad/two/internal/subnet"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 	"github.com/dgraph-io/badger/v4"
@@ -22,6 +23,8 @@ type CreateSubnetCommand struct {
 	DefaultRoute bool
 }
 
+func (c CreateSubnetCommand) Key() string { return "subnet/" + c.Name }
+
 func (c CreateSubnetCommand) Prepare(db *badger.DB, cfg *configuration.Config) error {
 	if c.Mode == "" {
 		c.Mode = "vxlan"
@@ -32,18 +35,18 @@ func (c CreateSubnetCommand) Prepare(db *badger.DB, cfg *configuration.Config) e
 	if _, err := kv.GetFromDB(db, "subnet/"+c.Name+"/state"); err == nil {
 		return fmt.Errorf("subnet %q already exists", c.Name)
 	}
-	vpcState, err := kv.GetFromDB(db, "vpc/"+c.VPC+"/state")
+	vpcState, err := state.Get(db, "vpc/"+c.VPC)
 	if err != nil {
 		return fmt.Errorf("vpc %q not found", c.VPC)
 	}
-	if vpcState == "deleting" || vpcState == "deleted" {
+	if vpcState != state.Creating && vpcState != state.Running {
 		return fmt.Errorf("vpc %q is %s", c.VPC, vpcState)
 	}
 	localIface, ok := cfg.Interfaces[c.IfaceType]
 	if !ok {
 		localIface = cfg.DefaultInterface
 	}
-	kv.AddInDB(db, "subnet/"+c.Name+"/state", "creating")
+	state.Set(db, c.Key(), state.Creating)
 	kv.AddInDB(db, "subnet/"+c.Name+"/vpc", c.VPC)
 	kv.AddInDB(db, "subnet/"+c.Name+"/mode", c.Mode)
 	kv.AddInDB(db, "subnet/"+c.Name+"/local_iface", localIface)
@@ -59,16 +62,19 @@ func (c CreateSubnetCommand) Prepare(db *badger.DB, cfg *configuration.Config) e
 func (c CreateSubnetCommand) Execute(db *badger.DB, cfg *configuration.Config) error {
 	timeout := time.After(time.Duration(cfg.Dispatcher.TimeoutSeconds) * time.Second)
 	for {
-		state, err := kv.GetFromDB(db, "vpc/"+c.VPC+"/state")
+		vpcState, err := state.Get(db, "vpc/"+c.VPC)
 		if err != nil {
 			return fmt.Errorf("vpc %q not found while waiting", c.VPC)
 		}
-		if state == "created" {
+		if vpcState == state.Running {
 			break
+		}
+		if vpcState != state.Creating {
+			return fmt.Errorf("vpc %q is %s, cannot create subnet %q", c.VPC, vpcState, c.Name)
 		}
 		select {
 		case <-timeout:
-			return fmt.Errorf("timed out waiting for vpc %q to be created", c.VPC)
+			return fmt.Errorf("timed out waiting for vpc %q to be running", c.VPC)
 		case <-time.After(time.Duration(cfg.Dispatcher.PollSeconds) * time.Second):
 		}
 	}
@@ -79,22 +85,28 @@ type DeleteSubnetCommand struct {
 	Name string
 }
 
+func (c DeleteSubnetCommand) Key() string { return "subnet/" + c.Name }
+
 func (c DeleteSubnetCommand) Prepare(db *badger.DB, _ *configuration.Config) error {
-	if _, err := kv.GetFromDB(db, "subnet/"+c.Name+"/state"); err != nil {
+	current, err := state.Get(db, c.Key())
+	if err != nil {
 		return fmt.Errorf("subnet %q not found", c.Name)
 	}
-	return kv.AddInDB(db, "subnet/"+c.Name+"/state", "deleting")
+	if !state.CanDelete(current) {
+		return fmt.Errorf("subnet %q cannot be deleted while %s", c.Name, current)
+	}
+	return state.Set(db, c.Key(), state.Deleting)
 }
 
 func (c DeleteSubnetCommand) Execute(db *badger.DB, _ *configuration.Config) error {
 	if err := subnet.DeleteSubnet(db, c.Name); err != nil {
 		return err
 	}
-	state, err := kv.GetFromDB(db, "subnet/"+c.Name+"/state")
+	current, err := state.Get(db, c.Key())
 	if err != nil {
 		return err
 	}
-	if state == "deleted" {
+	if current == state.Deleted {
 		kv.DeleteInDB(db, "subnet/"+c.Name)
 	}
 	return nil

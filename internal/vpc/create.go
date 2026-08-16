@@ -5,15 +5,15 @@ import (
 
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
-	"git.g3e.fr/syonad/two/pkg/db/kv"
+	"git.g3e.fr/syonad/two/internal/state"
 
 	"github.com/dgraph-io/badger/v4"
 )
 
 func CreateVPC(db *badger.DB, name string) error {
-	if state, err := kv.GetFromDB(db, "vpc/"+name+"/state"); err != nil {
+	if current, err := state.Get(db, "vpc/"+name); err != nil {
 		return err
-	} else if state == "creating" {
+	} else if current == state.Creating {
 		vpcID := strings.SplitN(name, "-", 2)[1]
 
 		if err := netns.Create(name); err != nil {
@@ -48,7 +48,7 @@ func CreateVPC(db *badger.DB, name string) error {
 		}); err != nil {
 			return err
 		}
-		kv.AddInDB(db, "vpc/"+name+"/state", "created")
+		return state.Set(db, "vpc/"+name, state.Running)
 	}
 	return nil
 }

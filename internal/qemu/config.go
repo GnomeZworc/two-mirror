@@ -1,5 +1,9 @@
 package qemu
 
+func ScopeName(vmName string) string {
+	return "two-vm-" + vmName + ".scope"
+}
+
 type DiskConfig struct {
 	Path string
 	Dev  string

@@ -10,7 +10,7 @@ import (
 
 func TestStartVMCommand_Prepare_SingleDisk(t *testing.T) {
 	_, db := newTestDispatcher(t)
-	kv.AddInDB(db, "subnet/sn-1/state", "created")
+	kv.AddInDB(db, "subnet/sn-1/state", "running")
 	kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-1")
 
 	cmd := StartVMCommand{
@@ -34,7 +34,7 @@ func TestStartVMCommand_Prepare_SingleDisk(t *testing.T) {
 
 func TestStartVMCommand_Prepare_MultiDisk(t *testing.T) {
 	_, db := newTestDispatcher(t)
-	kv.AddInDB(db, "subnet/sn-1/state", "created")
+	kv.AddInDB(db, "subnet/sn-1/state", "running")
 	kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-1")
 
 	cmd := StartVMCommand{
@@ -66,7 +66,7 @@ func TestStartVMCommand_Prepare_MultiDisk(t *testing.T) {
 
 func TestStartVMCommand_Prepare_SlotGap(t *testing.T) {
 	_, db := newTestDispatcher(t)
-	kv.AddInDB(db, "subnet/sn-1/state", "created")
+	kv.AddInDB(db, "subnet/sn-1/state", "running")
 	kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-1")
 
 	// sdb absent au boot — slot réservé pour hotplug
@@ -96,7 +96,7 @@ func TestStartVMCommand_Prepare_SlotGap(t *testing.T) {
 
 func TestStartVMCommand_Prepare_NoVolumePath(t *testing.T) {
 	_, db := newTestDispatcher(t)
-	kv.AddInDB(db, "subnet/sn-1/state", "created")
+	kv.AddInDB(db, "subnet/sn-1/state", "running")
 	kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-1")
 
 	cmd := StartVMCommand{
@@ -114,9 +114,54 @@ func TestStartVMCommand_Prepare_NoVolumePath(t *testing.T) {
 	}
 }
 
+// --- StopVMCommand.Prepare ---
+
+func TestStopVMCommand_Prepare_Success(t *testing.T) {
+	_, db := newTestDispatcher(t)
+	kv.AddInDB(db, "vm/vm-run/state", "running")
+	cmd := StopVMCommand{Name: "vm-run"}
+	if err := cmd.Prepare(db, nil); err != nil {
+		t.Fatalf("Prepare a échoué : %v", err)
+	}
+	s, _ := kv.GetFromDB(db, "vm/vm-run/state")
+	if s != "deleting" {
+		t.Errorf("state attendu deleting, obtenu %q", s)
+	}
+}
+
+func TestStopVMCommand_Prepare_RefusedWhileCreating(t *testing.T) {
+	_, db := newTestDispatcher(t)
+	kv.AddInDB(db, "vm/vm-wip/state", "creating")
+	cmd := StopVMCommand{Name: "vm-wip"}
+	if err := cmd.Prepare(db, nil); err == nil {
+		t.Error("Prepare devrait refuser l'arrêt d'une VM en creating")
+	}
+	s, _ := kv.GetFromDB(db, "vm/vm-wip/state")
+	if s != "creating" {
+		t.Errorf("l'état ne devrait pas changer, obtenu %q", s)
+	}
+}
+
+func TestStopVMCommand_Prepare_AllowedFromError(t *testing.T) {
+	_, db := newTestDispatcher(t)
+	kv.AddInDB(db, "vm/vm-ko/state", "error")
+	cmd := StopVMCommand{Name: "vm-ko"}
+	if err := cmd.Prepare(db, nil); err != nil {
+		t.Fatalf("Prepare devrait accepter une VM en error : %v", err)
+	}
+}
+
+func TestStopVMCommand_Prepare_NotFound(t *testing.T) {
+	_, db := newTestDispatcher(t)
+	cmd := StopVMCommand{Name: "vm-inexistante"}
+	if err := cmd.Prepare(db, nil); err == nil {
+		t.Error("Prepare devrait échouer si la VM n'existe pas")
+	}
+}
+
 func TestStartVMCommand_Prepare_Duplicate(t *testing.T) {
 	_, db := newTestDispatcher(t)
-	kv.AddInDB(db, "vm/vm-exist/state", "started")
+	kv.AddInDB(db, "vm/vm-exist/state", "running")
 
 	cmd := StartVMCommand{
 		Name:   "vm-exist",

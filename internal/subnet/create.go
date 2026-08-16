@@ -7,18 +7,18 @@ import (
 	"git.g3e.fr/syonad/two/internal/ebtables"
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
-	"git.g3e.fr/syonad/two/pkg/db/kv"
+	"git.g3e.fr/syonad/two/internal/state"
 	"git.g3e.fr/syonad/two/pkg/systemd"
 
 	"github.com/dgraph-io/badger/v4"
 )
 
 func CreateSubnet(db *badger.DB, subnetName string) error {
-	state, err := kv.GetFromDB(db, "subnet/"+subnetName+"/state")
+	current, err := state.Get(db, "subnet/"+subnetName)
 	if err != nil {
 		return err
 	}
-	if state != "creating" {
+	if current != state.Creating {
 		return nil
 	}
 
@@ -31,7 +31,7 @@ func CreateSubnet(db *badger.DB, subnetName string) error {
 		return err
 	}
 
-	return kv.AddInDB(db, "subnet/"+subnetName+"/state", "created")
+	return state.Set(db, "subnet/"+subnetName, state.Running)
 }
 
 func createSubnet(db *badger.DB, subnetName string, d subnetData) error {
