@@ -122,7 +122,7 @@ func TestCheckVPCs_EtatCorrompu(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("attendu 1 notification pour l'état corrompu, obtenu %d", len(got))
 	}
-	if !strings.Contains(got[0].problem, "état illisible") {
+	if !strings.Contains(got[0].problem, "state unreadable") {
 		t.Errorf("problem = %q, devrait mentionner un état illisible", got[0].problem)
 	}
 	if len(r.forName("vp-suivant")) == 0 {
@@ -143,7 +143,7 @@ func TestCheckVPCs_NomIndeductibleNePaniquePas(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("attendu 1 notification, obtenu %d : %v", len(got), got)
 	}
-	if !strings.Contains(got[0].problem, "indéductibles") {
+	if !strings.Contains(got[0].problem, "cannot be derived") {
 		t.Errorf("problem = %q, devrait porter sur les interfaces indéductibles", got[0].problem)
 	}
 }

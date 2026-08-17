@@ -86,7 +86,7 @@ func TestCheckVMs_SubnetManquantEnBase(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("attendu 1 notification, obtenu %d : %v", len(got), got)
 	}
-	if !strings.Contains(got[0].problem, "subnet illisible") {
+	if !strings.Contains(got[0].problem, "subnet unreadable") {
 		t.Errorf("problem = %q, devrait porter sur le subnet", got[0].problem)
 	}
 }
@@ -101,7 +101,7 @@ func TestCheckVMs_VPCDuSubnetManquant(t *testing.T) {
 		t.Fatalf("erreur inattendue: %v", err)
 	}
 
-	if !r.hasProblemContaining("vpc du subnet br-000042 illisible") {
+	if !r.hasProblemContaining("vpc of subnet br-000042 unreadable") {
 		t.Errorf("devrait signaler le vpc introuvable, obtenu %v", r.calls)
 	}
 }
@@ -115,7 +115,7 @@ func TestCheckVMs_TapIDManquant(t *testing.T) {
 		t.Fatalf("erreur inattendue: %v", err)
 	}
 
-	if !r.hasProblemContaining("tap_id illisible") {
+	if !r.hasProblemContaining("tap_id unreadable") {
 		t.Errorf("devrait signaler un tap_id illisible, obtenu %v", r.calls)
 	}
 }
@@ -129,7 +129,7 @@ func TestCheckVMs_TapIDInvalide(t *testing.T) {
 		t.Fatalf("erreur inattendue: %v", err)
 	}
 
-	if !r.hasProblemContaining("tap_id invalide") {
+	if !r.hasProblemContaining("invalid tap_id") {
 		t.Errorf("devrait signaler un tap_id invalide, obtenu %v", r.calls)
 	}
 }
@@ -144,7 +144,7 @@ func TestCheckVMs_QemuNeRepondPas(t *testing.T) {
 		t.Fatalf("erreur inattendue: %v", err)
 	}
 
-	if !r.hasProblemContaining("qemu ne répond pas") {
+	if !r.hasProblemContaining("qemu not responding") {
 		t.Errorf("devrait signaler que qemu ne répond pas, obtenu %v", r.calls)
 	}
 	if !r.hasProblemContaining("i-test1.sock") {
@@ -220,7 +220,7 @@ func TestCheckVMs_EtatCorrompuNInterrompPasLaBoucle(t *testing.T) {
 		t.Fatalf("un état corrompu ne doit pas faire échouer CheckVMs: %v", err)
 	}
 
-	if !strings.Contains(strings.Join(problems(r.forName("i-corrompu")), " "), "état illisible") {
+	if !strings.Contains(strings.Join(problems(r.forName("i-corrompu")), " "), "state unreadable") {
 		t.Errorf("devrait signaler l'état corrompu, obtenu %v", r.calls)
 	}
 	if len(r.forName("i-test1")) == 0 {

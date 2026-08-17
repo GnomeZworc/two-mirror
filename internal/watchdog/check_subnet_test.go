@@ -85,7 +85,7 @@ func TestCheckSubnets_VPCManquantEnBase(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("attendu 1 notification, obtenu %d : %v", len(got), got)
 	}
-	if !strings.Contains(got[0].problem, "vpc illisible") {
+	if !strings.Contains(got[0].problem, "vpc unreadable") {
 		t.Errorf("problem = %q, devrait porter sur le vpc", got[0].problem)
 	}
 }
@@ -100,7 +100,7 @@ func TestCheckSubnets_ModeManquantEnBase(t *testing.T) {
 		t.Fatalf("erreur inattendue: %v", err)
 	}
 
-	if !r.hasProblemContaining("mode illisible") {
+	if !r.hasProblemContaining("mode unreadable") {
 		t.Errorf("devrait signaler un mode illisible, obtenu %v", r.calls)
 	}
 }
@@ -114,7 +114,7 @@ func TestCheckSubnets_ModeInconnu(t *testing.T) {
 		t.Fatalf("erreur inattendue: %v", err)
 	}
 
-	if !r.hasProblemContaining(`mode inconnu "macvlan"`) {
+	if !r.hasProblemContaining(`unknown mode "macvlan"`) {
 		t.Errorf("devrait signaler un mode inconnu, obtenu %v", r.calls)
 	}
 }
@@ -147,7 +147,7 @@ func TestCheckSubnets_ModeVxlanSansVxlanID(t *testing.T) {
 		t.Fatalf("erreur inattendue: %v", err)
 	}
 
-	if !r.hasProblemContaining("vxlan_id illisible") {
+	if !r.hasProblemContaining("vxlan_id unreadable") {
 		t.Errorf("devrait signaler un vxlan_id illisible, obtenu %v", r.calls)
 	}
 }
@@ -162,7 +162,7 @@ func TestCheckSubnets_ModeVxlanVxlanIDInvalide(t *testing.T) {
 		t.Fatalf("erreur inattendue: %v", err)
 	}
 
-	if !r.hasProblemContaining("vxlan_id invalide") {
+	if !r.hasProblemContaining("invalid vxlan_id") {
 		t.Errorf("devrait signaler un vxlan_id invalide, obtenu %v", r.calls)
 	}
 }
@@ -191,7 +191,7 @@ func TestCheckSubnets_ConfigDnsmasqAbsente(t *testing.T) {
 		t.Fatalf("erreur inattendue: %v", err)
 	}
 
-	if !r.hasProblemContaining("config dnsmasq absente") {
+	if !r.hasProblemContaining("dnsmasq config missing") {
 		t.Errorf("devrait signaler la config dnsmasq absente, obtenu %v", r.calls)
 	}
 	if !r.hasProblemContaining("vp-admin_br-000042.conf") {
@@ -242,7 +242,7 @@ func TestCheckSubnets_UnitIllisible(t *testing.T) {
 		t.Fatalf("erreur inattendue: %v", err)
 	}
 
-	if !r.hasProblemContaining("unit dnsmasq@vp-admin_br-000042.service illisible") {
+	if !r.hasProblemContaining("unit dnsmasq@vp-admin_br-000042.service unreadable") {
 		t.Errorf("devrait signaler l'unit illisible, obtenu %v", r.calls)
 	}
 }
@@ -271,7 +271,7 @@ func TestCheckSubnets_EtatCorrompuNInterrompPasLaBoucle(t *testing.T) {
 		t.Fatalf("un état corrompu ne doit pas faire échouer CheckSubnets: %v", err)
 	}
 
-	if !strings.Contains(strings.Join(problems(r.forName("br-corrompu")), " "), "état illisible") {
+	if !strings.Contains(strings.Join(problems(r.forName("br-corrompu")), " "), "state unreadable") {
 		t.Errorf("devrait signaler l'état corrompu, obtenu %v", r.calls)
 	}
 	if len(r.forName("br-000042")) == 0 {

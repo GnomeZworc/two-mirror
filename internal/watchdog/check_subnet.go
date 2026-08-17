@@ -24,7 +24,7 @@ const (
 func subnetIfaceNames(subnetName string) (hostVeth, nsVeth, bridge string, err error) {
 	parts := strings.SplitN(subnetName, "-", 2)
 	if len(parts) < 2 || parts[1] == "" {
-		return "", "", "", fmt.Errorf("nom de subnet %q sans identifiant après le tiret, interfaces indéductibles", subnetName)
+		return "", "", "", fmt.Errorf("subnet name %q has no identifier after the dash, interface names cannot be derived", subnetName)
 	}
 	id := parts[1]
 	return "v-" + id + "-e", "v-" + id + "-i", "br-" + id, nil
@@ -37,13 +37,13 @@ func dnsmasqName(vpc, bridge string) string {
 func CheckSubnets(db *badger.DB, u unitChecker, n notify.Notifier) error {
 	pairs, err := kv.ListByPrefix(db, prefixSubnet)
 	if err != nil {
-		return fmt.Errorf("watchdog: lecture des subnets: %w", err)
+		return fmt.Errorf("watchdog: listing subnets: %w", err)
 	}
 
 	for _, name := range resourceNames(pairs, prefixSubnet) {
 		st, err := state.Get(db, prefixSubnet+name)
 		if err != nil {
-			n.Notify(kindSubnet, name, fmt.Sprintf("état illisible en base: %v", err))
+			n.Notify(kindSubnet, name, fmt.Sprintf("state unreadable in database: %v", err))
 			continue
 		}
 		if st != state.Running {
@@ -63,13 +63,13 @@ func checkSubnet(db *badger.DB, name string, u unitChecker, n notify.Notifier) {
 
 	vpc, err := kv.GetFromDB(db, prefixSubnet+name+"/vpc")
 	if err != nil {
-		n.Notify(kindSubnet, name, fmt.Sprintf("vpc illisible en base: %v", err))
+		n.Notify(kindSubnet, name, fmt.Sprintf("vpc unreadable in database: %v", err))
 		return
 	}
 
 	mode, err := kv.GetFromDB(db, prefixSubnet+name+"/mode")
 	if err != nil {
-		n.Notify(kindSubnet, name, fmt.Sprintf("mode illisible en base: %v", err))
+		n.Notify(kindSubnet, name, fmt.Sprintf("mode unreadable in database: %v", err))
 		return
 	}
 
@@ -85,7 +85,7 @@ func checkSubnet(db *badger.DB, name string, u unitChecker, n notify.Notifier) {
 		checkVxlanIface(db, name, n)
 	case modeBridge:
 	default:
-		n.Notify(kindSubnet, name, fmt.Sprintf("mode inconnu %q", mode))
+		n.Notify(kindSubnet, name, fmt.Sprintf("unknown mode %q", mode))
 	}
 
 	checkSubnetNetns(name, vpc, nsVeth, bridge, n)
@@ -93,7 +93,7 @@ func checkSubnet(db *badger.DB, name string, u unitChecker, n notify.Notifier) {
 	dnsName := dnsmasqName(vpc, bridge)
 	conf := filepath.Join(dhcp.DefaultConfDir, dnsName+".conf")
 	if _, err := os.Stat(conf); err != nil {
-		n.Notify(kindSubnet, name, fmt.Sprintf("config dnsmasq absente (%s): %v", conf, err))
+		n.Notify(kindSubnet, name, fmt.Sprintf("dnsmasq config missing (%s): %v", conf, err))
 	}
 
 	checkUnit(kindSubnet, name, "dnsmasq@"+dnsName+".service", u, n)
@@ -102,12 +102,12 @@ func checkSubnet(db *badger.DB, name string, u unitChecker, n notify.Notifier) {
 func checkVxlanIface(db *badger.DB, name string, n notify.Notifier) {
 	raw, err := kv.GetFromDB(db, prefixSubnet+name+"/vxlan_id")
 	if err != nil {
-		n.Notify(kindSubnet, name, fmt.Sprintf("vxlan_id illisible en base: %v", err))
+		n.Notify(kindSubnet, name, fmt.Sprintf("vxlan_id unreadable in database: %v", err))
 		return
 	}
 	id, err := strconv.Atoi(raw)
 	if err != nil {
-		n.Notify(kindSubnet, name, fmt.Sprintf("vxlan_id invalide %q: %v", raw, err))
+		n.Notify(kindSubnet, name, fmt.Sprintf("invalid vxlan_id %q: %v", raw, err))
 		return
 	}
 	if p := linkProblem(fmt.Sprintf("vxlan-%d", id)); p != "" {
@@ -117,18 +117,18 @@ func checkVxlanIface(db *badger.DB, name string, n notify.Notifier) {
 
 func checkSubnetNetns(name, vpc, nsVeth, bridge string, n notify.Notifier) {
 	if !netns.Exist(vpc) {
-		n.Notify(kindSubnet, name, "netns "+vpc+" absent (/var/run/netns/"+vpc+")")
+		n.Notify(kindSubnet, name, "netns "+vpc+" missing (/var/run/netns/"+vpc+")")
 		return
 	}
 
 	if err := netns.Call(vpc, func() error {
 		for _, iface := range []string{nsVeth, bridge} {
 			if p := linkProblem(iface); p != "" {
-				n.Notify(kindSubnet, name, p+" (dans le netns "+vpc+")")
+				n.Notify(kindSubnet, name, p+" (in netns "+vpc+")")
 			}
 		}
 		return nil
 	}); err != nil {
-		n.Notify(kindSubnet, name, fmt.Sprintf("entrée dans le netns %s impossible: %v", vpc, err))
+		n.Notify(kindSubnet, name, fmt.Sprintf("cannot enter netns %s: %v", vpc, err))
 	}
 }

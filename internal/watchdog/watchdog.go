@@ -28,7 +28,7 @@ func New(db *badger.DB, cfg *configuration.Config, n notify.Notifier, logger *sl
 		logger = slog.Default()
 	}
 	if interval <= 0 {
-		logger.Warn("watchdog: intervalle invalide, valeur par défaut appliquée",
+		logger.Warn("watchdog: invalid interval, default applied",
 			"interval", interval, "default", defaultInterval)
 		interval = defaultInterval
 	}
@@ -45,12 +45,12 @@ func (w *Watchdog) Run(ctx context.Context) {
 	ticker := time.NewTicker(w.interval)
 	defer ticker.Stop()
 
-	w.logger.Info("watchdog: démarrage", "interval", w.interval)
+	w.logger.Info("watchdog: starting", "interval", w.interval)
 
 	for {
 		select {
 		case <-ctx.Done():
-			w.logger.Info("watchdog: arrêt")
+			w.logger.Info("watchdog: stopping")
 			return
 		case <-ticker.C:
 			w.tick()
@@ -63,13 +63,13 @@ func (w *Watchdog) tick() {
 	defer closeUnits()
 
 	if err := CheckVPCs(w.db, w.notifier); err != nil {
-		w.logger.Error("watchdog: vérification des vpc", "err", err)
+		w.logger.Error("watchdog: vpc check failed", "err", err)
 	}
 	if err := CheckSubnets(w.db, u, w.notifier); err != nil {
-		w.logger.Error("watchdog: vérification des subnets", "err", err)
+		w.logger.Error("watchdog: subnet check failed", "err", err)
 	}
 	if err := CheckVMs(w.db, w.cfg, u, w.notifier); err != nil {
-		w.logger.Error("watchdog: vérification des vm", "err", err)
+		w.logger.Error("watchdog: vm check failed", "err", err)
 	}
 }
 
@@ -77,13 +77,13 @@ func (w *Watchdog) units() (unitChecker, func()) {
 	m, err := systemd.New()
 	if err != nil {
 		if !w.dbusDown {
-			w.logger.Warn("watchdog: connexion systemd impossible, vérification des units désactivée", "err", err)
+			w.logger.Warn("watchdog: systemd unreachable, unit checks disabled", "err", err)
 			w.dbusDown = true
 		}
 		return nil, func() {}
 	}
 	if w.dbusDown {
-		w.logger.Info("watchdog: connexion systemd rétablie")
+		w.logger.Info("watchdog: systemd connection restored")
 		w.dbusDown = false
 	}
 	return m, m.Close

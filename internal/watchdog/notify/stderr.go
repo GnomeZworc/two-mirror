@@ -16,7 +16,7 @@ func NewStderr(l *slog.Logger) *StderrNotifier {
 }
 
 func (n *StderrNotifier) Notify(kind, name, problem string) {
-	n.logger.Error("watchdog: incohérence détectée",
+	n.logger.Error("watchdog: inconsistency detected",
 		"kind", kind,
 		"name", name,
 		"problem", problem,

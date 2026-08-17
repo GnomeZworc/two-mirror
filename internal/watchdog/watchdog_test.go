@@ -61,7 +61,7 @@ func TestNew_IntervalleInvalideUtiliseLeDefaut(t *testing.T) {
 		}
 	}
 
-	if !strings.Contains(buf.String(), "intervalle invalide") {
+	if !strings.Contains(buf.String(), "invalid interval") {
 		t.Error("un intervalle invalide devrait être signalé dans les logs")
 	}
 }
@@ -143,11 +143,11 @@ func TestRun_ErreurDeBaseLogueeEtBoucleContinue(t *testing.T) {
 	for _, line := range logLines(t, buf) {
 		msg, _ := line["msg"].(string)
 		switch {
-		case strings.Contains(msg, "vérification des vpc"):
+		case strings.Contains(msg, "vpc check failed"):
 			vpc = true
-		case strings.Contains(msg, "vérification des subnets"):
+		case strings.Contains(msg, "subnet check failed"):
 			subnet = true
-		case strings.Contains(msg, "vérification des vm"):
+		case strings.Contains(msg, "vm check failed"):
 			vm = true
 		}
 	}
@@ -168,10 +168,10 @@ func TestRun_LogueDemarrageEtArret(t *testing.T) {
 	w.Run(ctx)
 
 	out := buf.String()
-	if !strings.Contains(out, "watchdog: démarrage") {
+	if !strings.Contains(out, "watchdog: starting") {
 		t.Error("le démarrage devrait être logué")
 	}
-	if !strings.Contains(out, "watchdog: arrêt") {
+	if !strings.Contains(out, "watchdog: stopping") {
 		t.Error("l'arrêt devrait être logué")
 	}
 }
@@ -190,7 +190,7 @@ func TestUnits_ConnexionSystemdIndisponibleSignaleeUneSeuleFois(t *testing.T) {
 
 	var warnings int
 	for _, line := range logLines(t, buf) {
-		if msg, _ := line["msg"].(string); strings.Contains(msg, "connexion systemd impossible") {
+		if msg, _ := line["msg"].(string); strings.Contains(msg, "systemd unreachable") {
 			warnings++
 		}
 	}

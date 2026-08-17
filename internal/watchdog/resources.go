@@ -52,7 +52,7 @@ func checkUnit(kind, name, unit string, u unitChecker, n notify.Notifier) {
 	}
 	st, err := u.Status(unit)
 	if err != nil {
-		n.Notify(kind, name, fmt.Sprintf("unit %s illisible: %v", unit, err))
+		n.Notify(kind, name, fmt.Sprintf("unit %s unreadable: %v", unit, err))
 		return
 	}
 	if st.ActiveState != "active" {
@@ -64,7 +64,7 @@ func linkProblem(iface string) string {
 	up, err := netif.LinkIsUp(iface)
 	switch {
 	case err != nil:
-		return fmt.Sprintf("interface %s introuvable: %v", iface, err)
+		return fmt.Sprintf("interface %s not found: %v", iface, err)
 	case !up:
 		return fmt.Sprintf("interface %s down", iface)
 	}

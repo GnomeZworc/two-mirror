@@ -17,7 +17,7 @@ const vpcBridge = "br-public"
 func vpcIfaceNames(vpcName string) (host, ns string, err error) {
 	parts := strings.SplitN(vpcName, "-", 2)
 	if len(parts) < 2 || parts[1] == "" {
-		return "", "", fmt.Errorf("nom de VPC %q sans identifiant après le tiret, interfaces indéductibles", vpcName)
+		return "", "", fmt.Errorf("vpc name %q has no identifier after the dash, interface names cannot be derived", vpcName)
 	}
 	return "vp-" + parts[1] + "-e", "vp-" + parts[1] + "-i", nil
 }
@@ -25,13 +25,13 @@ func vpcIfaceNames(vpcName string) (host, ns string, err error) {
 func CheckVPCs(db *badger.DB, n notify.Notifier) error {
 	pairs, err := kv.ListByPrefix(db, prefixVPC)
 	if err != nil {
-		return fmt.Errorf("watchdog: lecture des vpc: %w", err)
+		return fmt.Errorf("watchdog: listing vpcs: %w", err)
 	}
 
 	for _, name := range resourceNames(pairs, prefixVPC) {
 		st, err := state.Get(db, prefixVPC+name)
 		if err != nil {
-			n.Notify(kindVPC, name, fmt.Sprintf("état illisible en base: %v", err))
+			n.Notify(kindVPC, name, fmt.Sprintf("state unreadable in database: %v", err))
 			continue
 		}
 		if st != state.Running {
@@ -50,7 +50,7 @@ func checkVPC(name string, n notify.Notifier) {
 	}
 
 	if !netns.Exist(name) {
-		n.Notify(kindVPC, name, "netns absent (/var/run/netns/"+name+")")
+		n.Notify(kindVPC, name, "netns missing (/var/run/netns/"+name+")")
 		return
 	}
 
@@ -61,11 +61,11 @@ func checkVPC(name string, n notify.Notifier) {
 	if err := netns.Call(name, func() error {
 		for _, iface := range []string{nsVeth, vpcBridge} {
 			if p := linkProblem(iface); p != "" {
-				n.Notify(kindVPC, name, p+" (dans le netns)")
+				n.Notify(kindVPC, name, p+" (in netns)")
 			}
 		}
 		return nil
 	}); err != nil {
-		n.Notify(kindVPC, name, fmt.Sprintf("entrée dans le netns impossible: %v", err))
+		n.Notify(kindVPC, name, fmt.Sprintf("cannot enter netns: %v", err))
 	}
 }
