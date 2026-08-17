@@ -51,6 +51,13 @@ qemu:
   monitor_dir: "/run/two/vms/monitor"
   qmp_dir: "/run/two/vms/qmp"
 
+# Consistency watchdog: periodically checks that resources marked running in the
+# database still exist on the system, and reports the gaps. Read-only, never repairs.
+# A persisting gap is reported at every tick (no deduplication).
+watchdog:
+  enabled: true
+  interval_seconds: 60
+
 # Admin API (read-only DB inspection, loopback only)
 admin:
   enabled: false

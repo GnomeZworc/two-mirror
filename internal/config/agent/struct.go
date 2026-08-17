@@ -44,6 +44,10 @@ type Config struct {
 		MonitorDir       string `mapstructure:"monitor_dir"`
 		QMPDir           string `mapstructure:"qmp_dir"`
 	} `mapstructure:"qemu"`
+	Watchdog struct {
+		Enabled         bool `mapstructure:"enabled"`
+		IntervalSeconds int  `mapstructure:"interval_seconds"`
+	} `mapstructure:"watchdog"`
 	DefaultInterface string            `mapstructure:"default_interface"`
 	Interfaces       map[string]string `mapstructure:"interfaces"`
 }
@@ -69,6 +73,8 @@ func LoadConfig(path string) (*Config, error) {
 	v.SetDefault("qemu.serial_dir", "/run/two/vms/serial")
 	v.SetDefault("qemu.monitor_dir", "/run/two/vms/monitor")
 	v.SetDefault("qemu.qmp_dir", "/run/two/vms/qmp")
+	v.SetDefault("watchdog.enabled", false)
+	v.SetDefault("watchdog.interval_seconds", 60)
 	v.SetDefault("admin.enabled", false)
 	v.SetDefault("admin.address", "127.0.0.1")
 	v.SetDefault("admin.port", 9091)
