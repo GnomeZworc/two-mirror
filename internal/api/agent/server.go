@@ -1,8 +1,10 @@
 package agentapi
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"log/slog"
 	"net/http"
 	"time"
@@ -15,13 +17,11 @@ type Server struct {
 	dispatcher *dispatcher.Dispatcher
 	db         *badger.DB
 	logger     *slog.Logger
+	srv        *http.Server
 }
 
-func New(d *dispatcher.Dispatcher, db *badger.DB, logger *slog.Logger) *Server {
-	return &Server{dispatcher: d, db: db, logger: logger}
-}
-
-func (s *Server) Start(address string) {
+func New(d *dispatcher.Dispatcher, db *badger.DB, logger *slog.Logger, address string) *Server {
+	s := &Server{dispatcher: d, db: db, logger: logger}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/vpcs", s.VpcsHandler)
 	mux.HandleFunc("/vpcs/", s.VpcByNameHandler)
@@ -29,10 +29,19 @@ func (s *Server) Start(address string) {
 	mux.HandleFunc("/subnets/", s.SubnetByNameHandler)
 	mux.HandleFunc("/vms", s.VmsHandler)
 	mux.HandleFunc("/vms/", s.VmByNameHandler)
-	s.logger.Info("API server listening", "address", address)
-	if err := http.ListenAndServe(address, s.logMiddleware(mux)); err != nil {
+	s.srv = &http.Server{Addr: address, Handler: s.logMiddleware(mux)}
+	return s
+}
+
+func (s *Server) Start() {
+	s.logger.Info("API server listening", "address", s.srv.Addr)
+	if err := s.srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		s.logger.Error("API server stopped", "error", err)
 	}
+}
+
+func (s *Server) Shutdown(ctx context.Context) error {
+	return s.srv.Shutdown(ctx)
 }
 
 type statusWriter struct {

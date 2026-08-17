@@ -23,5 +23,5 @@ func newTestServer(t *testing.T) (*Server, *badger.DB) {
 	cfg := &configuration.Config{DefaultInterface: "br-test"}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	d := dispatcher.New(q, db, cfg, logger)
-	return New(d, db, logger), db
+	return New(d, db, logger, "127.0.0.1:0"), db
 }

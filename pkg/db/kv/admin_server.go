@@ -1,6 +1,8 @@
 package kv
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -12,19 +14,26 @@ import (
 type AdminServer struct {
 	db     *badger.DB
 	logger *slog.Logger
+	srv    *http.Server
 }
 
-func NewAdminServer(db *badger.DB, logger *slog.Logger) *AdminServer {
-	return &AdminServer{db: db, logger: logger}
-}
-
-func (s *AdminServer) Start(address string) {
+func NewAdminServer(db *badger.DB, logger *slog.Logger, address string) *AdminServer {
+	s := &AdminServer{db: db, logger: logger}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/db", s.dbHandler)
-	s.logger.Info("admin server listening", "address", address)
-	if err := http.ListenAndServe(address, mux); err != nil {
+	s.srv = &http.Server{Addr: address, Handler: mux}
+	return s
+}
+
+func (s *AdminServer) Start() {
+	s.logger.Info("admin server listening", "address", s.srv.Addr)
+	if err := s.srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		s.logger.Error("admin server stopped", "error", err)
 	}
+}
+
+func (s *AdminServer) Shutdown(ctx context.Context) error {
+	return s.srv.Shutdown(ctx)
 }
 
 func (s *AdminServer) dbHandler(w http.ResponseWriter, r *http.Request) {

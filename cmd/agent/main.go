@@ -5,6 +5,9 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	agentapi "git.g3e.fr/syonad/two/internal/api/agent"
@@ -21,6 +24,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const shutdownTimeout = 20 * time.Second
+
 func main() {
 	confFile := flag.String("config", "/etc/two/agent.yml", "config file path")
 	flag.Parse()
@@ -34,7 +39,12 @@ func main() {
 	log := logger.New(cfg.Logger.Level, cfg.Logger.Debug)
 
 	db := kv.InitDB(kv.Config{Path: cfg.Database.Path}, false)
-	defer db.Close()
+	closeDB := true
+	defer func() {
+		if closeDB {
+			db.Close()
+		}
+	}()
 
 	// Avant tout démarrage de service : la DB peut porter l'ancien vocabulaire
 	// d'états, et des ressources transitoires orphelines d'un arrêt précédent.
@@ -60,19 +70,69 @@ func main() {
 		"debug", cfg.Logger.Debug,
 	)
 
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	d := dispatcher.New(q, db, cfg, log.With(slog.String("component", "dispatcher")))
-	go agentapi.New(d, db, log.With(slog.String("component", "api"))).Start(apiAddr)
-	go promserver.Start(promAddr, registry)
+
+	apiSrv := agentapi.New(d, db, log.With(slog.String("component", "api")), apiAddr)
+	go apiSrv.Start()
+
+	promSrv := promserver.New(promAddr, registry)
+	go promSrv.Start()
+
+	var adminSrv *kv.AdminServer
 	if cfg.Admin.Enabled {
 		adminAddr := fmt.Sprintf("%s:%d", cfg.Admin.Address, cfg.Admin.Port)
-		go kv.NewAdminServer(db, log.With(slog.String("component", "admin"))).Start(adminAddr)
+		adminSrv = kv.NewAdminServer(db, log.With(slog.String("component", "admin")), adminAddr)
+		go adminSrv.Start()
 	}
+
 	if cfg.Watchdog.Enabled {
 		wlog := log.With(slog.String("component", "watchdog"))
 		go watchdog.New(db, cfg, notify.NewStderr(wlog), wlog,
 			time.Duration(cfg.Watchdog.IntervalSeconds)*time.Second,
-		).Run(context.Background())
+		).Run(ctx)
 	}
 
-	select {}
+	<-ctx.Done()
+	stop()
+
+	servers := map[string]httpShutdowner{"api": apiSrv, "prometheus": promSrv}
+	if adminSrv != nil {
+		servers["admin"] = adminSrv
+	}
+	closeDB = shutdown(log, q, servers, shutdownTimeout)
+}
+
+type httpShutdowner interface {
+	Shutdown(context.Context) error
+}
+
+func shutdown(log *slog.Logger, q *worker.Queue, servers map[string]httpShutdowner, timeout time.Duration) bool {
+	log.Info("shutting down", "timeout", timeout)
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	for name, srv := range servers {
+		if err := srv.Shutdown(ctx); err != nil {
+			log.Error("http server shutdown", "server", name, "error", err)
+		}
+	}
+
+	drained := make(chan struct{})
+	go func() {
+		q.Stop()
+		close(drained)
+	}()
+
+	select {
+	case <-drained:
+		log.Info("workers drained")
+		return true
+	case <-ctx.Done():
+		log.Error("workers still running after timeout, leaving database untouched")
+		return false
+	}
 }

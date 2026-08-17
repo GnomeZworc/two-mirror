@@ -5,6 +5,7 @@ After=network.target
 [Service]
 Type=simple
 ExecStart=/opt/two/bin/agent
+TimeoutStopSec=30
 
 [Install]
 WantedBy=multi-user.target
