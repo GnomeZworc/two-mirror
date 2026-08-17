@@ -4,6 +4,9 @@ on:
       tag:
         required: true
         type: string
+      prerelease:
+        required: true
+        type: string
 
 jobs:
   release:
@@ -11,7 +14,9 @@ jobs:
     env:
       TOKEN: ${{ secrets.RELEASE }}
       TAG: ${{ inputs.tag }}
+      PRERELEASE: ${{ inputs.prerelease }}
     steps:
+      - uses: actions/checkout@v3
       - name: Download all build artifacts
         uses: actions/download-artifact@v3
         with:
@@ -22,21 +27,68 @@ jobs:
         run: |
           apt-get update
           apt-get install -y jq
-      - name: Create prerelease
+      - name: Préparer les notes de version
         run: |
-          curl -X POST \
-            -H "Authorization: token $TOKEN" \
+          NOTES="release_notes/${TAG}.md"
+          # Titre par défaut : le tag seul. Un H1 en première ligne des notes le
+          # remplace par « <tag> — <nom de version> ».
+          RELEASE_NAME="${TAG}"
+
+          if [[ -f "${NOTES}" ]]
+          then
+            echo "notes trouvées : ${NOTES}"
+            FIRST_LINE=$(head -1 "${NOTES}")
+            if [[ "${FIRST_LINE}" =~ ^\#[[:space:]]+(.+)$ ]]
+            then
+              RELEASE_NAME="${TAG} — ${BASH_REMATCH[1]}"
+              # H1 retiré du corps : Forgejo affiche déjà le titre au-dessus, le
+              # garder l'afficherait deux fois. `/./,$!d` mange les lignes vides
+              # laissées en tête.
+              tail -n +2 "${NOTES}" | sed '/./,$!d' > body.md
+            else
+              cp "${NOTES}" body.md
+            fi
+          elif [[ "${PRERELEASE}" == "true" ]]
+          then
+            echo "aucune note pour ${TAG}, texte générique (préversion)"
+            echo "Prerelease automatique générée par la CI" > body.md
+          else
+            echo "release finale ${TAG} sans notes de version" >&2
+            echo "créer ${NOTES} avant de pousser le tag" >&2
+            exit 1
+          fi
+
+          echo "RELEASE_NAME=${RELEASE_NAME}" >> "${GITHUB_ENV}"
+          echo "--- titre --- ${RELEASE_NAME}"
+          echo "--- body ---"; cat body.md
+      - name: Create release
+        run: |
+          jq -n \
+            --arg tag "${TAG}" \
+            --arg name "${RELEASE_NAME}" \
+            --rawfile body body.md \
+            --argjson prerelease "${PRERELEASE}" \
+            '{
+               tag_name: $tag,
+               name: $name,
+               body: $body,
+               draft: false,
+               prerelease: $prerelease,
+               hide_archive_links: true
+             }' > payload.json
+          cat payload.json | jq -c '.body |= (.[0:60] + "…")'
+
+          # Code HTTP vérifié explicitement plutôt qu'avec --fail-with-body, qui
+          # exige curl >= 7.76 : sans ça un échec (409 tag déjà publié, 401 token
+          # invalide) passerait inaperçu et la release resterait sans assets.
+          HTTP=$(curl -sS -o resp.json -w '%{http_code}' -X POST \
+            -H "Authorization: token ${TOKEN}" \
             -H "Content-Type: application/json" \
             "https://git.g3e.fr/api/v1/repos/${{ github.repository }}/releases" \
-            -d @- <<EOF
-            {
-              "tag_name": "$TAG",
-              "name": "$TAG",
-              "body": "Prerelease automatique générée par la CI",
-              "draft": false,
-              "prerelease": true
-            }
-          EOF
+            -d @payload.json)
+          echo "HTTP ${HTTP}"
+          cat resp.json; echo
+          [[ "${HTTP}" == 2* ]] || { echo "création de la release échouée" >&2; exit 1; }
       - name: Upload asset
         run: |
           RELEASE_ID=$(curl -s \
@@ -44,6 +96,10 @@ jobs:
             https://git.g3e.fr/api/v1/repos/${{ github.repository }}/releases/tags/${TAG} \
             | jq -r .id)
           echo ${RELEASE_ID}
+          # Sans ce garde-fou, un id absent (null) enverrait chaque asset sur
+          # .../releases/null/assets : une cascade de 404 silencieux et une
+          # release publiée sans aucun binaire.
+          [[ "${RELEASE_ID}" =~ ^[0-9]+$ ]] || { echo "id de release introuvable pour ${TAG}" >&2; exit 1; }
           ls dist | while read tmp
           do
             FILE=$(ls "./dist/${tmp}")

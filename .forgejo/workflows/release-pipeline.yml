@@ -1,30 +1,47 @@
-name: Pre Release Workflow
+name: Release Pipeline
 
 on:
   push:
     tags:
-      - '*rc*'
+      - '[0-9]*.[0-9]*.[0-9]*'
 
 jobs:
   set-release-target:
     runs-on: docker
     outputs:
       release_cible: ${{ steps.setvar.outputs.release_cible }}
+      prerelease: ${{ steps.setvar.outputs.prerelease }}
     steps:
       - name: Déterminer la release cible
         id: setvar
         run: |
-          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-            TAG="${GITHUB_REF#refs/tags/}"
-            echo "release_cible=$TAG" >> $GITHUB_OUTPUT
-          elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
-            echo "release_cible=latest" >> $GITHUB_OUTPUT
+          TAG="${GITHUB_REF#refs/tags/}"
+
+          # Formes acceptées, et rien d'autre :
+          #   X.Y.Z         release finale  → prerelease=false, notes obligatoires
+          #   X.Y.ZrcNNN    préversion      → prerelease=true, notes optionnelles
+          #
+          # Le nombre de chiffres de rc est fixé à 3 (rc016, pas rc16) pour que
+          # le tri lexicographique des tags suive l'ordre chronologique.
+          if [[ "${TAG}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          then
+            PRERELEASE=false
+          elif [[ "${TAG}" =~ ^[0-9]+\.[0-9]+\.[0-9]+rc[0-9]{3}$ ]]
+          then
+            PRERELEASE=true
           else
-            echo "release_cible=unknown" >> $GITHUB_OUTPUT
+            echo "tag hors convention : ${TAG}" >&2
+            echo "formes acceptées : X.Y.Z (release) ou X.Y.ZrcNNN (préversion, rc sur 3 chiffres)" >&2
+            exit 1
           fi
 
+          echo "release_cible=${TAG}" >> $GITHUB_OUTPUT
+          echo "prerelease=${PRERELEASE}" >> $GITHUB_OUTPUT
+
       - name: Afficher la variable
-        run: echo "Release cible = ${{ steps.setvar.outputs.release_cible }}"
+        run: |
+          echo "Release cible = ${{ steps.setvar.outputs.release_cible }}"
+          echo "Prerelease    = ${{ steps.setvar.outputs.prerelease }}"
   build:
     needs: [set-release-target]
     strategy:
@@ -97,7 +114,7 @@ jobs:
         with:
           name: SHA256SUMS-${{ needs.set-release-target.outputs.release_cible }}
           path: SHA256SUMS
-  prerelease:
+  publish:
     # Tous les producteurs d'artefacts sont dans les needs : sans ça, le job
     # release peut appeler download-artifact avant la fin des uploads et publier
     # une release incomplète (assets ou manifeste manquants de façon non
@@ -106,4 +123,5 @@ jobs:
     uses: ./.forgejo/workflows/release.yml
     with:
       tag: ${{ needs.set-release-target.outputs.release_cible }}
+      prerelease: ${{ needs.set-release-target.outputs.prerelease }}
     secrets: inherit
