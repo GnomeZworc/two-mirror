@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"git.g3e.fr/syonad/two/internal/netif"
+	"git.g3e.fr/syonad/two/internal/watchdog/notify"
+	"git.g3e.fr/syonad/two/pkg/systemd"
 )
 
 const (
@@ -38,6 +40,24 @@ func resourceNames(pairs map[string]string, prefix string) []string {
 	}
 	sort.Strings(names)
 	return names
+}
+
+type unitChecker interface {
+	Status(unit string) (*systemd.ServiceStatus, error)
+}
+
+func checkUnit(kind, name, unit string, u unitChecker, n notify.Notifier) {
+	if u == nil {
+		return
+	}
+	st, err := u.Status(unit)
+	if err != nil {
+		n.Notify(kind, name, fmt.Sprintf("unit %s illisible: %v", unit, err))
+		return
+	}
+	if st.ActiveState != "active" {
+		n.Notify(kind, name, fmt.Sprintf("unit %s %s (%s)", unit, st.ActiveState, st.SubState))
+	}
 }
 
 func linkProblem(iface string) string {

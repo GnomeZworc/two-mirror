@@ -3,7 +3,9 @@ package subnet
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
+	"git.g3e.fr/syonad/two/internal/dhcp"
 	"git.g3e.fr/syonad/two/internal/ebtables"
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
@@ -62,7 +64,7 @@ func stopDHCP(db *badger.DB, subnetName string, d subnetData) error {
 		}
 	}
 
-	if err := os.Remove("/etc/dnsmasq.d/" + d.vpc + "_" + d.bridge + ".conf"); err != nil && !os.IsNotExist(err) {
+	if err := os.Remove(filepath.Join(dhcp.DefaultConfDir, d.vpc+"_"+d.bridge+".conf")); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("remove dnsmasq config: %w", err)
 	}
 

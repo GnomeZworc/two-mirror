@@ -4,6 +4,8 @@ import (
 	"net"
 )
 
+const DefaultConfDir = "/etc/dnsmasq.d"
+
 type Config struct {
 	Network        *net.IPNet
 	VPCGateway     net.IP     // next-hop for VPCRoute (option 121)
