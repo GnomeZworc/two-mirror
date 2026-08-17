@@ -1,15 +1,19 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log/slog"
+	"time"
 
 	agentapi "git.g3e.fr/syonad/two/internal/api/agent"
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	dispatcher "git.g3e.fr/syonad/two/internal/dispatcher/agent"
 	"git.g3e.fr/syonad/two/internal/migration"
 	agentmetrics "git.g3e.fr/syonad/two/internal/prometheus/agent"
+	"git.g3e.fr/syonad/two/internal/watchdog"
+	"git.g3e.fr/syonad/two/internal/watchdog/notify"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 	"git.g3e.fr/syonad/two/pkg/logger"
 	promserver "git.g3e.fr/syonad/two/pkg/prometheus"
@@ -62,6 +66,12 @@ func main() {
 	if cfg.Admin.Enabled {
 		adminAddr := fmt.Sprintf("%s:%d", cfg.Admin.Address, cfg.Admin.Port)
 		go kv.NewAdminServer(db, log.With(slog.String("component", "admin"))).Start(adminAddr)
+	}
+	if cfg.Watchdog.Enabled {
+		wlog := log.With(slog.String("component", "watchdog"))
+		go watchdog.New(db, cfg, notify.NewStderr(wlog), wlog,
+			time.Duration(cfg.Watchdog.IntervalSeconds)*time.Second,
+		).Run(context.Background())
 	}
 
 	select {}
