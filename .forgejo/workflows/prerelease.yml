@@ -26,7 +26,6 @@ jobs:
       - name: Afficher la variable
         run: echo "Release cible = ${{ steps.setvar.outputs.release_cible }}"
   build:
-    runs-on: docker
     needs: [set-release-target]
     strategy:
       matrix:
@@ -99,7 +98,6 @@ jobs:
           name: SHA256SUMS-${{ needs.set-release-target.outputs.release_cible }}
           path: SHA256SUMS
   prerelease:
-    runs-on: docker
     # Tous les producteurs d'artefacts sont dans les needs : sans ça, le job
     # release peut appeler download-artifact avant la fin des uploads et publier
     # une release incomplète (assets ou manifeste manquants de façon non
