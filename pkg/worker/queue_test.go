@@ -101,3 +101,79 @@ func TestQueue_SubmitBlocksWhenFull(t *testing.T) {
 		t.Error("Submit aurait dû se débloquer après démarrage d'un worker")
 	}
 }
+
+func TestStop_AttendLesTachesEnCours(t *testing.T) {
+	q := New(10)
+	q.Start(2)
+
+	var mu sync.Mutex
+	done := 0
+	for range 5 {
+		q.Submit(func() {
+			time.Sleep(20 * time.Millisecond)
+			mu.Lock()
+			done++
+			mu.Unlock()
+		})
+	}
+
+	q.Stop()
+
+	mu.Lock()
+	defer mu.Unlock()
+	if done != 5 {
+		t.Errorf("Stop devrait attendre les 5 tâches, %d terminées", done)
+	}
+}
+
+func TestStop_RejetteLesTachesSuivantes(t *testing.T) {
+	q := New(10)
+	q.Start(1)
+	q.Stop()
+
+	executed := make(chan struct{}, 1)
+	q.Submit(func() { executed <- struct{}{} })
+
+	select {
+	case <-executed:
+		t.Error("une tâche soumise après Stop ne doit pas être exécutée")
+	case <-time.After(100 * time.Millisecond):
+	}
+}
+
+func TestStop_Idempotent(t *testing.T) {
+	q := New(10)
+	q.Start(1)
+	q.Stop()
+	q.Stop()
+}
+
+func TestStop_SansTacheEnCours(t *testing.T) {
+	q := New(10)
+	q.Start(3)
+
+	done := make(chan struct{})
+	go func() { q.Stop(); close(done) }()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Stop n'a pas rendu la main sur une file vide")
+	}
+}
+
+func TestSubmit_ConcurrentAvecStop(t *testing.T) {
+	q := New(100)
+	q.Start(4)
+
+	var wg sync.WaitGroup
+	for range 20 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			q.Submit(func() {})
+		}()
+	}
+	q.Stop()
+	wg.Wait()
+}

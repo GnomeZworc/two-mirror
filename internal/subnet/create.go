@@ -138,7 +138,7 @@ func startDHCP(db *badger.DB, subnetName string, d subnetData) error {
 	conf := dhcp.Config{
 		Network: d.cidr,
 		Name:    d.vpc + "_" + d.bridge,
-		ConfDir: "/etc/dnsmasq.d",
+		ConfDir: dhcp.DefaultConfDir,
 	}
 	switch d.mode {
 	case "vxlan":

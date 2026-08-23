@@ -99,13 +99,17 @@ func (m *Manager) Status(service string) (*ServiceStatus, error) {
 		return nil, err
 	}
 
-	status := &ServiceStatus{
-		Name:        service,
-		LoadState:   props["LoadState"].(string),
-		ActiveState: props["ActiveState"].(string),
-		SubState:    props["SubState"].(string),
-	}
+	status := &ServiceStatus{Name: service}
 
+	if v, ok := props["LoadState"].(string); ok {
+		status.LoadState = v
+	}
+	if v, ok := props["ActiveState"].(string); ok {
+		status.ActiveState = v
+	}
+	if v, ok := props["SubState"].(string); ok {
+		status.SubState = v
+	}
 	if pid, ok := props["MainPID"].(uint32); ok {
 		status.MainPID = pid
 	}
