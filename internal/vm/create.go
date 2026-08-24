@@ -42,12 +42,13 @@ func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	}
 
 	if err := metadata.StartMetadata(metadata.NoCloudConfig{
-		Name:     name,
-		VpcName:  d.vpcName,
-		BindIP:   d.interfaceIP,
-		BindPort: d.metadataPort,
-		Password: d.password,
-		SSHKEY:   d.sshkey,
+		Name:      name,
+		VpcName:   d.vpcName,
+		BindIP:    d.interfaceIP,
+		BindPort:  d.metadataPort,
+		Password:  d.password,
+		SSHKEY:    d.sshkey,
+		Documents: d.documents,
 	}, cfg, false); err != nil {
 		return fmt.Errorf("start metadata: %w", err)
 	}

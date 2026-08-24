@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"git.g3e.fr/syonad/two/pkg/db/kv"
+	"github.com/dgraph-io/badger/v4"
 )
 
 // --- StartVMCommand.Prepare : écriture des disques en DB ---
@@ -171,5 +172,100 @@ func TestStartVMCommand_Prepare_Duplicate(t *testing.T) {
 	}
 	if err := cmd.Prepare(db, nil); err == nil {
 		t.Error("Prepare devrait échouer si la VM existe déjà")
+	}
+}
+
+// --- StartVMCommand.Prepare : documents cloud-init ---
+
+func prepareWithDocuments(t *testing.T, docs map[string]string) *badger.DB {
+	t.Helper()
+	_, db := newTestDispatcher(t)
+	kv.AddInDB(db, "subnet/sn-1/state", "running")
+	kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-1")
+
+	cmd := StartVMCommand{
+		Name:      "vm-doc",
+		Subnet:    "sn-1",
+		IP:        "10.0.0.5",
+		Disks:     []VMDisk{{Path: "/data/root.qcow2", Dev: "vda"}},
+		Documents: docs,
+	}
+	if err := cmd.Prepare(db, nil); err != nil {
+		t.Fatalf("Prepare a échoué : %v", err)
+	}
+	return db
+}
+
+func TestStartVMCommand_Prepare_StoresDocuments(t *testing.T) {
+	userData := "#cloud-config\npackages:\n  - nginx\n"
+	db := prepareWithDocuments(t, map[string]string{"user-data": userData})
+
+	got, err := kv.GetFromDB(db, "vm/vm-doc/metadata/user-data")
+	if err != nil {
+		t.Fatalf("clé metadata/user-data absente : %v", err)
+	}
+	if got != userData {
+		t.Errorf("user-data attendu %q, obtenu %q", userData, got)
+	}
+}
+
+func TestStartVMCommand_Prepare_NoDocumentsWritesNoKey(t *testing.T) {
+	db := prepareWithDocuments(t, nil)
+
+	entries, err := kv.ListByPrefix(db, "vm/vm-doc/metadata/")
+	if err != nil {
+		t.Fatalf("ListByPrefix : %v", err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("aucun document fourni, aucune clé ne doit être écrite : %v", entries)
+	}
+}
+
+func TestStartVMCommand_Prepare_EmptyDocumentIsStored(t *testing.T) {
+	db := prepareWithDocuments(t, map[string]string{"vendor-data": ""})
+
+	entries, err := kv.ListByPrefix(db, "vm/vm-doc/metadata/")
+	if err != nil {
+		t.Fatalf("ListByPrefix : %v", err)
+	}
+	if _, ok := entries["vm/vm-doc/metadata/vendor-data"]; !ok {
+		t.Error("un document explicitement vide doit être stocké : c'est une demande de ne rien servir, pas une absence de demande")
+	}
+}
+
+func TestStartVMCommand_Prepare_AllDocumentKinds(t *testing.T) {
+	docs := map[string]string{
+		"user-data":      "u",
+		"meta-data":      "m",
+		"network-config": "n",
+		"vendor-data":    "v",
+	}
+	db := prepareWithDocuments(t, docs)
+
+	for doc, want := range docs {
+		got, err := kv.GetFromDB(db, "vm/vm-doc/metadata/"+doc)
+		if err != nil {
+			t.Errorf("clé metadata/%s absente : %v", doc, err)
+			continue
+		}
+		if got != want {
+			t.Errorf("%s attendu %q, obtenu %q", doc, want, got)
+		}
+	}
+}
+
+func TestDeleteInDB_RemovesMetadataDocuments(t *testing.T) {
+	db := prepareWithDocuments(t, map[string]string{"user-data": "u", "vendor-data": "v"})
+
+	if err := kv.DeleteInDB(db, "vm/vm-doc"); err != nil {
+		t.Fatalf("DeleteInDB : %v", err)
+	}
+
+	entries, err := kv.ListByPrefix(db, "vm/vm-doc/")
+	if err != nil {
+		t.Fatalf("ListByPrefix : %v", err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("la suppression de la VM doit emporter ses documents : %v", entries)
 	}
 }
