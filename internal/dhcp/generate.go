@@ -19,6 +19,8 @@ func GenerateConfig(c Config) (string, map[string]string, error) {
 	}
 	if c.DefaultGateway != nil {
 		fmt.Fprintf(&sb, "dhcp-option=3,%s\n", c.DefaultGateway.String())
+	} else {
+		fmt.Fprintf(&sb, "dhcp-option=3\n")
 	}
 	fmt.Fprintf(&sb, "dhcp-option=6,1.1.1.1,8.8.8.8\n\n")
 
