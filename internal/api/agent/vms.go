@@ -1,11 +1,14 @@
 package agentapi
 
 import (
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
 	dispatcher "git.g3e.fr/syonad/two/internal/dispatcher/agent"
+	"git.g3e.fr/syonad/two/internal/metadata"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 )
 
@@ -82,16 +85,24 @@ func (s *Server) startVM(w http.ResponseWriter, r *http.Request) {
 		disks[i] = dispatcher.VMDisk{Path: s.Path, Dev: s.Dev}
 	}
 
+	documents, err := decodeDocuments(req.Metadata)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: err.Error()})
+		return
+	}
+
 	cmd := dispatcher.StartVMCommand{
-		Name:     req.Name,
-		Subnet:   primary.Subnet,
-		IP:       primary.IP,
-		Disks:    disks,
-		Memory:   req.Memory,
-		CPUs:     req.CPUs,
-		UEFI:     req.UEFI,
-		Password: req.Password,
-		SSHKey:   req.SSHKey,
+		Name:      req.Name,
+		Subnet:    primary.Subnet,
+		IP:        primary.IP,
+		Disks:     disks,
+		Memory:    req.Memory,
+		CPUs:      req.CPUs,
+		UEFI:      req.UEFI,
+		Password:  req.Metadata.Password,
+		SSHKey:    req.Metadata.SSHKey,
+		Documents: documents,
 	}
 
 	if err := s.dispatcher.Prepare(cmd); err != nil {
@@ -114,4 +125,15 @@ func (s *Server) startVM(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusAccepted)
 	json.NewEncoder(w).Encode(vm)
+}
+
+func decodeDocuments(m VMMetadata) (map[string]string, error) {
+	if m.UserData == "" {
+		return nil, nil
+	}
+	content, err := base64.StdEncoding.DecodeString(m.UserData)
+	if err != nil {
+		return nil, fmt.Errorf("metadata.user_data is not valid base64: %w", err)
+	}
+	return map[string]string{metadata.DocUserData: string(content)}, nil
 }
