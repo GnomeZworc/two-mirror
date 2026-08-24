@@ -427,11 +427,8 @@ components:
           type: integer
           description: Number of vCPUs (default 1)
           example: 2
-        password:
-          type: string
-        sshkey:
-          type: string
-          example: "ssh-ed25519 AAAA..."
+        metadata:
+          $ref: "#/components/schemas/VMMetadata"
         interfaces:
           type: array
           minItems: 1
@@ -446,6 +443,37 @@ components:
           type: boolean
           description: Boot with UEFI firmware (OVMF). Defaults to false (SeaBIOS).
           example: false
+
+    VMMetadata:
+      type: object
+      description: >
+        cloud-init inputs for this VM. Every field is optional. Documents not
+        supplied here fall back to the agent's built-in templates; a document
+        supplied as an empty string is served empty, which is not the same
+        thing.
+      properties:
+        password:
+          type: string
+          description: >
+            Password *hash* for the syonad account, as expected by the
+            cloud-config `passwd` key (e.g. `$6$...`) — not a plaintext
+            password. When omitted, the account is created locked
+            (`lock_passwd: true`); when neither password nor sshkey is given,
+            no account is created at all.
+          example: "$6$rounds=4096$saltsalt$hash..."
+        sshkey:
+          type: string
+          description: Public SSH key added to the syonad account. Sent as-is, not encoded.
+          example: "ssh-ed25519 AAAA..."
+        user_data:
+          type: string
+          format: byte
+          description: >
+            cloud-init user-data, **base64-encoded**. Encoding keeps multi-line
+            documents out of JSON escaping and allows gzip+base64 payloads.
+            Invalid base64 is rejected with 400 rather than silently serving an
+            empty document. The agent never interprets this content.
+          example: "I2Nsb3VkLWNvbmZpZwpwYWNrYWdlczoKICAtIG5naW54Cg=="
 
     VMInterface:
       type: object
