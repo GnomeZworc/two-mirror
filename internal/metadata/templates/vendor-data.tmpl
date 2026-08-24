@@ -1,9 +1,17 @@
+{{- if or .Password .SSHKEY -}}
 #cloud-config
 users:
   - name: syonad
-    lock_passwd: false
     sudo: ["ALL=(ALL) NOPASSWD:ALL"]
     shell: /bin/bash
+{{- if .Password }}
+    lock_passwd: false
     passwd: "{{ .Password }}"
+{{- else }}
+    lock_passwd: true
+{{- end }}
+{{- if .SSHKEY }}
     ssh_authorized_keys:
       - "{{ .SSHKEY }}"
+{{- end }}
+{{- end }}

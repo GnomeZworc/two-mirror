@@ -3,13 +3,26 @@ package metadata
 import (
 	"bytes"
 	"embed"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 )
 
 //go:embed templates/*.tmpl
 var templateFS embed.FS
+
+const (
+	DocMetaData      = "meta-data"
+	DocUserData      = "user-data"
+	DocNetworkConfig = "network-config"
+	DocVendorData    = "vendor-data"
+)
+
+func Documents() []string {
+	return []string{DocMetaData, DocUserData, DocNetworkConfig, DocVendorData}
+}
 
 func RenderConfig(path string, cfg NoCloudConfig) (string, error) {
 	tpl, err := template.ParseFS(templateFS, path)
@@ -25,25 +38,55 @@ func RenderConfig(path string, cfg NoCloudConfig) (string, error) {
 	return buf.String(), nil
 }
 
-func LoadNcCloudInDB(config NoCloudConfig, runDir string) {
-	meta_data, _ := RenderConfig("templates/meta-data.tmpl", config)
-	user_data, _ := RenderConfig("templates/user-data.tmpl", config)
-	network_config, _ := RenderConfig("templates/network-config.tmpl", config)
-	vendor_data, _ := RenderConfig("templates/vendor-data.tmpl", config)
-
-	dir := filepath.Join(runDir, config.Name)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return
+func renderDocument(name string, cfg NoCloudConfig) (string, error) {
+	if doc, ok := cfg.Documents[name]; ok {
+		return doc, nil
 	}
-	os.WriteFile(filepath.Join(dir, "meta-data"), []byte(meta_data), 0644)
-	os.WriteFile(filepath.Join(dir, "user-data"), []byte(user_data), 0644)
-	os.WriteFile(filepath.Join(dir, "network-config"), []byte(network_config), 0644)
-	os.WriteFile(filepath.Join(dir, "vendor-data"), []byte(vendor_data), 0644)
-	os.WriteFile(filepath.Join(dir, "vpc"), []byte(config.VpcName), 0644)
-	os.WriteFile(filepath.Join(dir, "bind_ip"), []byte(config.BindIP), 0644)
-	os.WriteFile(filepath.Join(dir, "bind_port"), []byte(config.BindPort), 0644)
+
+	out, err := RenderConfig("templates/"+name+".tmpl", cfg)
+	if err != nil {
+		return "", fmt.Errorf("render %s: %w", name, err)
+	}
+
+	out = strings.TrimSpace(out)
+	if out == "" {
+		return "", nil
+	}
+	return out + "\n", nil
 }
 
-func UnLoadNoCloudInDB(vmName string, runDir string) {
-	os.RemoveAll(filepath.Join(runDir, vmName))
+func WriteNoCloudFiles(config NoCloudConfig, runDir string) error {
+	dir := filepath.Join(runDir, config.Name)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("create %s: %w", dir, err)
+	}
+
+	files := map[string]string{
+		"vpc":       config.VpcName,
+		"bind_ip":   config.BindIP,
+		"bind_port": config.BindPort,
+	}
+	for _, name := range Documents() {
+		doc, err := renderDocument(name, config)
+		if err != nil {
+			return err
+		}
+		files[name] = doc
+	}
+
+	for name, content := range files {
+		path := filepath.Join(dir, name)
+		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+			return fmt.Errorf("write %s: %w", path, err)
+		}
+	}
+	return nil
+}
+
+func RemoveNoCloudFiles(vmName string, runDir string) error {
+	dir := filepath.Join(runDir, vmName)
+	if err := os.RemoveAll(dir); err != nil {
+		return fmt.Errorf("remove %s: %w", dir, err)
+	}
+	return nil
 }

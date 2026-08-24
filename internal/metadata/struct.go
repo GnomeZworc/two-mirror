@@ -16,10 +16,11 @@ type ServerConfig struct {
 }
 
 type NoCloudConfig struct {
-	VpcName  string
-	BindIP   string
-	BindPort string
-	Name     string
-	Password string
-	SSHKEY   string
+	VpcName   string
+	BindIP    string
+	BindPort  string
+	Name      string
+	Password  string
+	SSHKEY    string
+	Documents map[string]string
 }
