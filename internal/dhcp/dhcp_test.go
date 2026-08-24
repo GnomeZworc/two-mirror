@@ -109,6 +109,32 @@ func TestGenerateConfig_NoDefaultGateway(t *testing.T) {
 	}
 }
 
+func TestGenerateConfig_NoDefaultGatewaySuppressesRouterOption(t *testing.T) {
+	conf := newConf(t, "192.168.1.0/29")
+	conf.DefaultGateway = nil
+	path, _, _ := GenerateConfig(conf)
+	content, _ := os.ReadFile(path)
+
+	if !strings.Contains(string(content), "\ndhcp-option=3\n") {
+		t.Errorf("dhcp-option=3 nue absente : sans elle dnsmasq annonce sa propre adresse comme routeur\n%s", content)
+	}
+}
+
+func TestGenerateConfig_VxlanEmitsNoRouterOption(t *testing.T) {
+	conf := newConf(t, "192.168.1.0/29")
+	conf.DefaultGateway = nil
+
+	path, _, _ := GenerateConfig(conf)
+	content, _ := os.ReadFile(path)
+
+	if !strings.Contains(string(content), "dhcp-option=121,") {
+		t.Fatalf("dhcp-option=121 attendue pour un subnet vxlan :\n%s", content)
+	}
+	if strings.Contains(string(content), "dhcp-option=3,") {
+		t.Errorf("un subnet vxlan est privé : aucune route par défaut ne doit être émise\n%s", content)
+	}
+}
+
 func TestGenerateConfig_ContainsVPCRoute(t *testing.T) {
 	conf := newConf(t, "192.168.1.0/29")
 	path, _, _ := GenerateConfig(conf)
