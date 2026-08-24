@@ -1,5 +1,7 @@
 package metadata
 
+const ServiceIP = "169.254.169.254"
+
 type NoCloudData struct {
 	MetaData      string
 	UserData      string

@@ -136,13 +136,13 @@ func setupVxlanHost(d subnetData, vethE string) error {
 
 func startDHCP(db *badger.DB, subnetName string, d subnetData) error {
 	conf := dhcp.Config{
-		Network: d.cidr,
-		Name:    d.vpc + "_" + d.bridge,
-		ConfDir: dhcp.DefaultConfDir,
+		Network:     d.cidr,
+		Name:        d.vpc + "_" + d.bridge,
+		ConfDir:     dhcp.DefaultConfDir,
+		InterfaceIP: d.interfaceIP,
 	}
 	switch d.mode {
 	case "vxlan":
-		conf.VPCGateway = d.interfaceIP
 		conf.VPCRoute = d.vpcCIDR
 	case "bridge":
 		if d.defaultRoute {

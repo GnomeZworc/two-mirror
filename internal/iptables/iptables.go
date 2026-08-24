@@ -3,6 +3,8 @@ package iptables
 import (
 	"fmt"
 	"os/exec"
+
+	"git.g3e.fr/syonad/two/internal/metadata"
 )
 
 func addRule(args ...string) error {
@@ -16,7 +18,7 @@ func deleteRule(args ...string) error {
 func AddMetadataRedirect(vmIP, gatewayIP, metadataPort string) error {
 	if err := addRule("PREROUTING",
 		"-s", vmIP+"/32",
-		"-d", "169.254.169.254/32",
+		"-d", metadata.ServiceIP+"/32",
 		"-p", "tcp", "-m", "tcp",
 		"--dport", "80",
 		"-j", "DNAT",
@@ -30,7 +32,7 @@ func AddMetadataRedirect(vmIP, gatewayIP, metadataPort string) error {
 func DeleteMetadataRedirect(vmIP, gatewayIP, metadataPort string) error {
 	if err := deleteRule("PREROUTING",
 		"-s", vmIP+"/32",
-		"-d", "169.254.169.254/32",
+		"-d", metadata.ServiceIP+"/32",
 		"-p", "tcp", "-m", "tcp",
 		"--dport", "80",
 		"-j", "DNAT",

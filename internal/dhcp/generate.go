@@ -6,17 +6,20 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"git.g3e.fr/syonad/two/internal/metadata"
 )
 
 func GenerateConfig(c Config) (string, map[string]string, error) {
+	if c.InterfaceIP == nil {
+		return "", nil, fmt.Errorf("interface ip is required: guests would have no route to the metadata server")
+	}
 	mask := fmt.Sprintf("%d.%d.%d.%d", c.Network.Mask[0], c.Network.Mask[1], c.Network.Mask[2], c.Network.Mask[3])
 
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "no-resolv\n")
 	fmt.Fprintf(&sb, "dhcp-range=%s,static,%s,12h\n", c.Network.IP.String(), mask)
-	if c.VPCRoute != nil {
-		fmt.Fprintf(&sb, "dhcp-option=121,%s,%s\n", c.VPCRoute.String(), c.VPCGateway.String())
-	}
+	fmt.Fprintf(&sb, "dhcp-option=121,%s\n", strings.Join(classlessRoutes(c), ","))
 	if c.DefaultGateway != nil {
 		fmt.Fprintf(&sb, "dhcp-option=3,%s\n", c.DefaultGateway.String())
 	} else {
@@ -38,6 +41,19 @@ func GenerateConfig(c Config) (string, map[string]string, error) {
 		return "", nil, err
 	}
 	return outPath, entries, os.WriteFile(outPath, []byte(sb.String()), 0644)
+}
+
+func classlessRoutes(c Config) []string {
+	nextHop := c.InterfaceIP.String()
+
+	routes := []string{metadata.ServiceIP + "/32," + nextHop}
+	if c.VPCRoute != nil {
+		routes = append(routes, c.VPCRoute.String()+","+nextHop)
+	}
+	if c.DefaultGateway != nil {
+		routes = append(routes, "0.0.0.0/0,"+c.DefaultGateway.String())
+	}
+	return routes
 }
 
 func incrementIP(ip net.IP) {
