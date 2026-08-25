@@ -14,6 +14,7 @@ exec ip netns exec "${NETNS}" \
     --interface="${BRIDGE}" \
     --bind-interfaces \
     --pid-file="/run/dnsmasq-$arg.pid" \
+    --dhcp-leasefile="/run/dnsmasq-$arg.leases" \
     --conf-file="/etc/dnsmasq.d/$arg.conf" \
     --no-hosts \
     --no-resolv \
