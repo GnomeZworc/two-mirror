@@ -68,6 +68,10 @@ func stopDHCP(db *badger.DB, subnetName string, d subnetData) error {
 		return fmt.Errorf("remove dnsmasq config: %w", err)
 	}
 
+	if err := dhcp.RemoveSubnetDirs(dhcp.DefaultConfDir, d.vpc+"_"+d.bridge); err != nil {
+		return fmt.Errorf("remove dnsmasq dirs: %w", err)
+	}
+
 	if err := kv.DeleteInDB(db, "subnet/"+subnetName+"/dhcp"); err != nil {
 		return fmt.Errorf("delete dhcp entries: %w", err)
 	}

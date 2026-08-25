@@ -54,6 +54,11 @@ func (m *Manager) Stop(service string) error {
 	return m.job("StopUnit", service)
 }
 
+// Restart redémarre un service systemd
+func (m *Manager) Restart(service string) error {
+	return m.job("RestartUnit", service)
+}
+
 func (m *Manager) job(method, service string) error {
 	callCtx, callCancel := context.WithTimeout(context.Background(), defaultTimeout)
 	defer callCancel()
@@ -66,6 +71,8 @@ func (m *Manager) job(method, service string) error {
 		_, err = m.conn.StartUnitContext(callCtx, service, jobMode, ch)
 	case "StopUnit":
 		_, err = m.conn.StopUnitContext(callCtx, service, jobMode, ch)
+	case "RestartUnit":
+		_, err = m.conn.RestartUnitContext(callCtx, service, jobMode, ch)
 	default:
 		return errors.New("unsupported job method")
 	}

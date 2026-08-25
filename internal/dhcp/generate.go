@@ -25,21 +25,24 @@ func GenerateConfig(c Config) (string, map[string]string, error) {
 	} else {
 		fmt.Fprintf(&sb, "dhcp-option=3\n")
 	}
-	fmt.Fprintf(&sb, "dhcp-option=6,1.1.1.1,8.8.8.8\n\n")
+	fmt.Fprintf(&sb, "dhcp-option=6,1.1.1.1,8.8.8.8\n")
+	fmt.Fprintf(&sb, "dhcp-hostsdir=%s\n", HostsDir(c.ConfDir, c.Name))
+	fmt.Fprintf(&sb, "dhcp-optsdir=%s\n", OptsDir(c.ConfDir, c.Name))
 
 	entries := make(map[string]string)
 	i := 0
 	for ip := cloneIP(c.Network.IP); c.Network.Contains(ip); incrementIP(ip) {
-		mac := fmt.Sprintf("00:22:33:%02X:%02X:%02X", (i>>16)&0xFF, (i>>8)&0xFF, i&0xFF)
-		fmt.Fprintf(&sb, "dhcp-host=%s,%s\n", mac, ip)
-		entries[ip.String()] = mac
+		entries[ip.String()] = fmt.Sprintf("00:22:33:%02X:%02X:%02X", (i>>16)&0xFF, (i>>8)&0xFF, i&0xFF)
 		i++
 	}
 
-	outPath := filepath.Join(c.ConfDir, c.Name+".conf")
-	if err := os.MkdirAll(c.ConfDir, 0755); err != nil {
-		return "", nil, err
+	for _, dir := range []string{c.ConfDir, HostsDir(c.ConfDir, c.Name), OptsDir(c.ConfDir, c.Name)} {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return "", nil, fmt.Errorf("create %s: %w", dir, err)
+		}
 	}
+
+	outPath := filepath.Join(c.ConfDir, c.Name+".conf")
 	return outPath, entries, os.WriteFile(outPath, []byte(sb.String()), 0644)
 }
 

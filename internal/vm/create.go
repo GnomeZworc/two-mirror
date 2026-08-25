@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
+	"git.g3e.fr/syonad/two/internal/dhcp"
 	"git.g3e.fr/syonad/two/internal/iptables"
 	"git.g3e.fr/syonad/two/internal/metadata"
 	"git.g3e.fr/syonad/two/internal/netif"
@@ -39,6 +40,11 @@ func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 		return iptables.AddMetadataRedirect(d.ip, d.interfaceIP, d.metadataPort)
 	}); err != nil {
 		return fmt.Errorf("add metadata redirect: %w", err)
+	}
+
+	if err := dhcp.WriteReservations(dhcp.DefaultConfDir, d.vpcName+"_"+d.bridge, name,
+		[]dhcp.Reservation{{MAC: d.mac, IP: d.ip}}); err != nil {
+		return fmt.Errorf("write dhcp reservation: %w", err)
 	}
 
 	if err := metadata.StartMetadata(metadata.NoCloudConfig{
