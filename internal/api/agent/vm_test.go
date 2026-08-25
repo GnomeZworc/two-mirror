@@ -262,3 +262,89 @@ func TestStartVM_EmptyBase64MeansNoDocument(t *testing.T) {
 		t.Errorf("un base64 vide est indiscernable d'un champ absent : %v", entries)
 	}
 }
+
+// --- interfaces multiples ---
+
+func TestVmFromDB_MultipleInterfacesSortedByIndex(t *testing.T) {
+	vm, err := vmFromDB("vm-multi", map[string]string{
+		"vm/vm-multi/state":         "running",
+		"vm/vm-multi/nic/1/subnet":  "sn-2",
+		"vm/vm-multi/nic/1/ip":      "10.2.0.5",
+		"vm/vm-multi/nic/0/subnet":  "sn-1",
+		"vm/vm-multi/nic/0/ip":      "10.1.0.5",
+		"vm/vm-multi/nic/0/primary": "true",
+		"vm/vm-multi/disk/vda":      "/data/root.qcow2",
+	})
+	if err != nil {
+		t.Fatalf("vmFromDB : %v", err)
+	}
+	if len(vm.Interfaces) != 2 {
+		t.Fatalf("2 interfaces attendues, obtenu %d : %+v", len(vm.Interfaces), vm.Interfaces)
+	}
+	if vm.Interfaces[0].Subnet != "sn-1" || !vm.Interfaces[0].Primary {
+		t.Errorf("la première doit être l'index 0, primaire : %+v", vm.Interfaces[0])
+	}
+	if vm.Interfaces[1].Subnet != "sn-2" || vm.Interfaces[1].Primary {
+		t.Errorf("la seconde doit être l'index 1, non primaire : %+v", vm.Interfaces[1])
+	}
+}
+
+func TestStartVM_StoresAllInterfaces(t *testing.T) {
+	s, db := newTestServer(t)
+	for _, sn := range []string{"sn-1", "sn-2"} {
+		kv.AddInDB(db, "subnet/"+sn+"/state", "running")
+		kv.AddInDB(db, "subnet/"+sn+"/vpc", "vpc-1")
+	}
+
+	body, _ := json.Marshal(VMCreateRequest{
+		Name: "vm-multi",
+		Interfaces: []VMInterface{
+			{Subnet: "sn-1", IP: "10.1.0.5", Primary: true},
+			{Subnet: "sn-2", IP: "10.2.0.5"},
+		},
+		Storage: []VMStorage{{Path: "/data/root.qcow2", Dev: "vda"}},
+	})
+
+	w := httptest.NewRecorder()
+	s.VmsHandler(w, httptest.NewRequest(http.MethodPost, "/vms", bytes.NewReader(body)))
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("attendu 202, obtenu %d : %s", w.Code, w.Body.String())
+	}
+
+	if got, _ := kv.GetFromDB(db, "vm/vm-multi/nic/1/subnet"); got != "sn-2" {
+		t.Errorf("seconde interface non stockée : %q", got)
+	}
+	if got, _ := kv.GetFromDB(db, "vm/vm-multi/nic/0/primary"); got != "true" {
+		t.Errorf("primaire non marquée : %q", got)
+	}
+	if _, err := kv.GetFromDB(db, "vm/vm-multi/nic/1/primary"); err == nil {
+		t.Error("une interface non primaire ne doit pas porter la clé primary")
+	}
+}
+
+func TestStartVM_RejectsZeroOrTwoPrimaries(t *testing.T) {
+	cases := map[string][]VMInterface{
+		"aucune primaire": {{Subnet: "sn-1", IP: "10.1.0.5"}},
+		"deux primaires": {
+			{Subnet: "sn-1", IP: "10.1.0.5", Primary: true},
+			{Subnet: "sn-2", IP: "10.2.0.5", Primary: true},
+		},
+	}
+	for label, ifaces := range cases {
+		s, db := newTestServer(t)
+		for _, sn := range []string{"sn-1", "sn-2"} {
+			kv.AddInDB(db, "subnet/"+sn+"/state", "running")
+			kv.AddInDB(db, "subnet/"+sn+"/vpc", "vpc-1")
+		}
+		body, _ := json.Marshal(VMCreateRequest{
+			Name:       "vm-bad",
+			Interfaces: ifaces,
+			Storage:    []VMStorage{{Path: "/data/root.qcow2", Dev: "vda"}},
+		})
+		w := httptest.NewRecorder()
+		s.VmsHandler(w, httptest.NewRequest(http.MethodPost, "/vms", bytes.NewReader(body)))
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("%s : attendu 400, obtenu %d — %s", label, w.Code, w.Body.String())
+		}
+	}
+}

@@ -7,12 +7,14 @@ import (
 	"time"
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
+	"git.g3e.fr/syonad/two/internal/dhcp"
 	"git.g3e.fr/syonad/two/internal/iptables"
 	"git.g3e.fr/syonad/two/internal/metadata"
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
 	"git.g3e.fr/syonad/two/internal/qmp"
 	"git.g3e.fr/syonad/two/internal/state"
+	"git.g3e.fr/syonad/two/pkg/systemd"
 
 	"github.com/dgraph-io/badger/v4"
 )
@@ -30,6 +32,7 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	if err != nil {
 		return err
 	}
+	nic := d.primary()
 
 	socketPath := filepath.Join(cfg.QEMU.QMPDir, name+".sock")
 
@@ -45,9 +48,13 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	}
 	// socket absent ou QEMU déjà arrêté : cleanup direct
 
-
-	if err := netns.Call(d.vpcName, func() error {
-		return iptables.DeleteMetadataRedirect(d.ip, d.interfaceIP, d.metadataPort)
+	if err := netns.Call(nic.vpcName, func() error {
+		for _, n := range d.nics {
+			if err := iptables.DeleteMetadataRedirect(n.ip, nic.interfaceIP, d.metadataPort); err != nil {
+				return fmt.Errorf("interface %d: %w", n.index, err)
+			}
+		}
+		return nil
 	}); err != nil {
 		return fmt.Errorf("delete metadata redirect: %w", err)
 	}
@@ -56,8 +63,14 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 		return fmt.Errorf("stop metadata: %w", err)
 	}
 
-	if err := netif.DeleteTap(d.tapID, d.vpcName); err != nil {
-		return fmt.Errorf("delete tap: %w", err)
+	for _, n := range d.nics {
+		if err := netif.DeleteTap(n.tapID, n.vpcName); err != nil {
+			return fmt.Errorf("delete tap of interface %d: %w", n.index, err)
+		}
+	}
+
+	if err := removeDHCPFiles(d, name); err != nil {
+		return err
 	}
 
 	if d.uefi {
@@ -66,6 +79,52 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	}
 
 	return state.Set(db, "vm/"+name, state.Deleted)
+}
+
+// removeDHCPFiles retire les fichiers de la VM dans chaque subnet qu'elle
+// touche, puis redémarre les dnsmasq concernés : un fichier ajouté dans un
+// dhcp-hostsdir est relu à chaud, un fichier retiré ne l'est pas (vérifié sur
+// dnsmasq 2.90).
+func removeDHCPFiles(d vmData, name string) error {
+	seen := make(map[string]bool)
+	for _, n := range d.nics {
+		confName := n.vpcName + "_" + n.bridge
+		if seen[confName] {
+			continue
+		}
+		seen[confName] = true
+		if err := removeDHCPReservation(confName, name); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func removeDHCPReservation(confName, name string) error {
+	if err := dhcp.RemoveReservations(dhcp.DefaultConfDir, confName, name); err != nil {
+		return err
+	}
+
+	svc, err := systemd.New()
+	if err != nil {
+		return fmt.Errorf("connect to systemd: %w", err)
+	}
+	defer svc.Close()
+
+	unit := dhcp.UnitName(confName)
+	status, err := svc.Status(unit)
+	if err != nil || status.ActiveState != "active" {
+		return nil
+	}
+	if err := svc.Restart(unit); err != nil {
+		return fmt.Errorf("restart %s: %w", unit, err)
+	}
+	if status, err := svc.Status(unit); err != nil {
+		return fmt.Errorf("status %s after restart: %w", unit, err)
+	} else if status.ActiveState != "active" {
+		return fmt.Errorf("%s is %s after restart", unit, status.ActiveState)
+	}
+	return nil
 }
 
 func waitQMPDead(socketPath string, timeout, poll time.Duration) {

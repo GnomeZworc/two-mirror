@@ -20,10 +20,11 @@ func testCfg(t *testing.T) *configuration.Config {
 func seedVM(t *testing.T, db *badger.DB, name, subnetName, vpc, tapID string) {
 	t.Helper()
 	seedResource(t, db, prefixVM, name, state.Running)
-	seedKV(t, db, prefixVM+name+"/subnet", subnetName)
+	seedKV(t, db, prefixVM+name+"/nic/0/subnet", subnetName)
+	seedKV(t, db, prefixVM+name+"/nic/0/primary", "true")
 	seedKV(t, db, prefixSubnet+subnetName+"/vpc", vpc)
 	if tapID != "" {
-		seedKV(t, db, prefixVM+name+"/tap_id", tapID)
+		seedKV(t, db, prefixVM+name+"/nic/0/tap_id", tapID)
 	}
 }
 
@@ -73,7 +74,7 @@ func TestCheckVMs_IgnoreLesEtatsNonRunning(t *testing.T) {
 	}
 }
 
-func TestCheckVMs_SubnetManquantEnBase(t *testing.T) {
+func TestCheckVMs_AucuneInterfaceEnBase(t *testing.T) {
 	db := newTestDB(t)
 	seedResource(t, db, prefixVM, "i-test1", state.Running)
 	r := &recorder{}
@@ -86,15 +87,16 @@ func TestCheckVMs_SubnetManquantEnBase(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("attendu 1 notification, obtenu %d : %v", len(got), got)
 	}
-	if !strings.Contains(got[0].problem, "subnet unreadable") {
-		t.Errorf("problem = %q, devrait porter sur le subnet", got[0].problem)
+	if !strings.Contains(got[0].problem, "no interface") {
+		t.Errorf("problem = %q, devrait signaler l'absence d'interface", got[0].problem)
 	}
 }
 
 func TestCheckVMs_VPCDuSubnetManquant(t *testing.T) {
 	db := newTestDB(t)
 	seedResource(t, db, prefixVM, "i-test1", state.Running)
-	seedKV(t, db, prefixVM+"i-test1/subnet", "br-000042")
+	seedKV(t, db, prefixVM+"i-test1/nic/0/subnet", "br-000042")
+	seedKV(t, db, prefixVM+"i-test1/nic/0/primary", "true")
 	r := &recorder{}
 
 	if err := CheckVMs(db, testCfg(t), newFakeUnits(), r); err != nil {
@@ -115,8 +117,8 @@ func TestCheckVMs_TapIDManquant(t *testing.T) {
 		t.Fatalf("erreur inattendue: %v", err)
 	}
 
-	if !r.hasProblemContaining("tap_id unreadable") {
-		t.Errorf("devrait signaler un tap_id illisible, obtenu %v", r.calls)
+	if !r.hasProblemContaining("has no tap_id") {
+		t.Errorf("devrait signaler un tap_id absent, obtenu %v", r.calls)
 	}
 }
 

@@ -11,6 +11,12 @@ import (
 	"strings"
 )
 
+const (
+	firstNICSlot = 0x03
+	lastNICSlot  = 0x1d
+	maxNICs      = lastNICSlot - firstNICSlot + 1
+)
+
 func Start(cfg Config) error {
 	memory := cfg.Memory
 	if memory == 0 {
@@ -97,11 +103,24 @@ func Start(cfg Config) error {
 		}
 	}
 
-	args = append(args,
-		"-netdev", fmt.Sprintf("tap,id=net0,ifname=tap%d,script=no,downscript=no", cfg.TapID),
-		"-device", fmt.Sprintf("virtio-net-pci,netdev=net0,mac=%s,bus=pci.0,addr=0x03", cfg.Mac),
-		"-daemonize",
-	)
+	// Slots 0x03 à 0x1d réservés au réseau par la carte PCI (#36). Le slot est
+	// dérivé de l'index et non laissé à QEMU : c'est lui qui fixe le nom de
+	// l'interface dans le guest, et un slot flottant la renomme d'un démarrage
+	// à l'autre.
+	if len(cfg.NICs) == 0 {
+		return fmt.Errorf("vm %s has no network interface", cfg.Name)
+	}
+	if len(cfg.NICs) > maxNICs {
+		return fmt.Errorf("vm %s has %d interfaces, the pci map holds %d", cfg.Name, len(cfg.NICs), maxNICs)
+	}
+	for i, n := range cfg.NICs {
+		args = append(args,
+			"-netdev", fmt.Sprintf("tap,id=net%d,ifname=tap%d,script=no,downscript=no", i, n.TapID),
+			"-device", fmt.Sprintf("virtio-net-pci,netdev=net%d,mac=%s,bus=pci.0,addr=0x%02x", i, n.Mac, firstNICSlot+i),
+		)
+	}
+
+	args = append(args, "-daemonize")
 
 	scopeArgs := append([]string{
 		"--scope",

@@ -67,16 +67,17 @@ func (s *Server) startVM(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var primary *VMInterface
-	for i := range req.Interfaces {
-		if req.Interfaces[i].Primary {
-			primary = &req.Interfaces[i]
-			break
+	nics := make([]dispatcher.VMNIC, len(req.Interfaces))
+	primaries := 0
+	for i, iface := range req.Interfaces {
+		nics[i] = dispatcher.VMNIC{Subnet: iface.Subnet, IP: iface.IP, Primary: iface.Primary}
+		if iface.Primary {
+			primaries++
 		}
 	}
-	if primary == nil {
+	if primaries != 1 {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrorResponse{Error: "one interface must be primary"})
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "exactly one interface must be primary"})
 		return
 	}
 
@@ -94,8 +95,7 @@ func (s *Server) startVM(w http.ResponseWriter, r *http.Request) {
 
 	cmd := dispatcher.StartVMCommand{
 		Name:      req.Name,
-		Subnet:    primary.Subnet,
-		IP:        primary.IP,
+		NICs:      nics,
 		Disks:     disks,
 		Memory:    req.Memory,
 		CPUs:      req.CPUs,

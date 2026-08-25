@@ -171,32 +171,56 @@ func TestGenerateConfig_ContainsDhcpRange(t *testing.T) {
 	}
 }
 
-func TestGenerateConfig_OneHostEntryPerIP(t *testing.T) {
-	// /29 = réseau + broadcast + 6 hôtes → 8 adresses
-	conf := newConf(t, "10.0.0.0/29")
-	path, _, _ := GenerateConfig(conf)
-	content, _ := os.ReadFile(path)
+func TestGenerateConfig_OneEntryPerIP(t *testing.T) {
+	// /29 = 8 adresses. Les entrées ne vont plus dans le fichier dnsmasq mais
+	// dans la map retournée, que StoreDHCPEntries écrit en base pour GetMACForIP.
+	_, entries, err := GenerateConfig(newConf(t, "10.0.0.0/29"))
+	if err != nil {
+		t.Fatalf("GenerateConfig : %v", err)
+	}
+	if len(entries) != 8 {
+		t.Errorf("attendu 8 entrées ip->mac, obtenu %d", len(entries))
+	}
+}
 
-	lines := strings.Split(string(content), "\n")
-	count := 0
-	for _, l := range lines {
-		if strings.HasPrefix(l, "dhcp-host=") {
-			count++
+func TestGenerateConfig_NoPreGeneratedHosts(t *testing.T) {
+	// Une entrée dhcp-host pré-générée fait rejeter celle du dhcp-hostsdir
+	// (« duplicate dhcp-host IP address »), sans erreur : la VM reçoit alors
+	// les options non taggées. Vérifié sur dnsmasq 2.90.
+	content := confLines(t, newConf(t, "10.0.0.0/29"))
+	if strings.Contains(content, "dhcp-host=") {
+		t.Errorf("aucune entrée dhcp-host ne doit être pré-générée :\n%s", content)
+	}
+}
+
+func TestGenerateConfig_PointsToDirs(t *testing.T) {
+	conf := newConf(t, "10.0.0.0/29")
+	content := confLines(t, conf)
+
+	for _, want := range []string{
+		"dhcp-hostsdir=" + HostsDir(conf.ConfDir, conf.Name),
+		"dhcp-optsdir=" + OptsDir(conf.ConfDir, conf.Name),
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("%q absent :\n%s", want, content)
 		}
 	}
-	// /29 contient 8 adresses (0 à 7)
-	if count != 8 {
-		t.Errorf("attendu 8 entrées dhcp-host, obtenu %d", count)
+	for _, dir := range []string{HostsDir(conf.ConfDir, conf.Name), OptsDir(conf.ConfDir, conf.Name)} {
+		if fi, err := os.Stat(dir); err != nil || !fi.IsDir() {
+			t.Errorf("répertoire %q non créé : %v", dir, err)
+		}
 	}
 }
 
 func TestGenerateConfig_MACPrefix(t *testing.T) {
-	conf := newConf(t, "10.0.0.0/30") // 4 adresses
-	path, _, _ := GenerateConfig(conf)
-	content, _ := os.ReadFile(path)
-
-	if !strings.Contains(string(content), "00:22:33:") {
-		t.Errorf("préfixe MAC 00:22:33: absent :\n%s", content)
+	_, entries, err := GenerateConfig(newConf(t, "10.0.0.0/30"))
+	if err != nil {
+		t.Fatalf("GenerateConfig : %v", err)
+	}
+	for ip, mac := range entries {
+		if !strings.HasPrefix(mac, "00:22:33:") {
+			t.Errorf("mac de %s sans le préfixe 00:22:33: : %s", ip, mac)
+		}
 	}
 }
 

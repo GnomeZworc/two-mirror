@@ -15,10 +15,9 @@ func TestStartVMCommand_Prepare_SingleDisk(t *testing.T) {
 	kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-1")
 
 	cmd := StartVMCommand{
-		Name:   "vm-1",
-		Subnet: "sn-1",
-		IP:     "10.0.0.5",
-		Disks:  []VMDisk{{Path: "/data/root.qcow2", Dev: "sda"}},
+		Name:  "vm-1",
+		NICs:  []VMNIC{{Subnet: "sn-1", IP: "10.0.0.5", Primary: true}},
+		Disks: []VMDisk{{Path: "/data/root.qcow2", Dev: "sda"}},
 	}
 	if err := cmd.Prepare(db, nil); err != nil {
 		t.Fatalf("Prepare a échoué : %v", err)
@@ -39,9 +38,8 @@ func TestStartVMCommand_Prepare_MultiDisk(t *testing.T) {
 	kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-1")
 
 	cmd := StartVMCommand{
-		Name:   "vm-2",
-		Subnet: "sn-1",
-		IP:     "10.0.0.6",
+		Name: "vm-2",
+		NICs: []VMNIC{{Subnet: "sn-1", IP: "10.0.0.6", Primary: true}},
 		Disks: []VMDisk{
 			{Path: "/data/root.qcow2", Dev: "sda"},
 			{Path: "/data/data.qcow2", Dev: "sdb"},
@@ -72,9 +70,8 @@ func TestStartVMCommand_Prepare_SlotGap(t *testing.T) {
 
 	// sdb absent au boot — slot réservé pour hotplug
 	cmd := StartVMCommand{
-		Name:   "vm-3",
-		Subnet: "sn-1",
-		IP:     "10.0.0.7",
+		Name: "vm-3",
+		NICs: []VMNIC{{Subnet: "sn-1", IP: "10.0.0.7", Primary: true}},
 		Disks: []VMDisk{
 			{Path: "/data/root.qcow2", Dev: "sda"},
 			{Path: "/data/extra.qcow2", Dev: "sdc"},
@@ -101,10 +98,9 @@ func TestStartVMCommand_Prepare_NoVolumePath(t *testing.T) {
 	kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-1")
 
 	cmd := StartVMCommand{
-		Name:   "vm-4",
-		Subnet: "sn-1",
-		IP:     "10.0.0.8",
-		Disks:  []VMDisk{{Path: "/data/root.qcow2", Dev: "sda"}},
+		Name:  "vm-4",
+		NICs:  []VMNIC{{Subnet: "sn-1", IP: "10.0.0.8", Primary: true}},
+		Disks: []VMDisk{{Path: "/data/root.qcow2", Dev: "sda"}},
 	}
 	if err := cmd.Prepare(db, nil); err != nil {
 		t.Fatalf("Prepare a échoué : %v", err)
@@ -165,10 +161,9 @@ func TestStartVMCommand_Prepare_Duplicate(t *testing.T) {
 	kv.AddInDB(db, "vm/vm-exist/state", "running")
 
 	cmd := StartVMCommand{
-		Name:   "vm-exist",
-		Subnet: "sn-1",
-		IP:     "10.0.0.9",
-		Disks:  []VMDisk{{Path: "/data/root.qcow2", Dev: "sda"}},
+		Name:  "vm-exist",
+		NICs:  []VMNIC{{Subnet: "sn-1", IP: "10.0.0.9", Primary: true}},
+		Disks: []VMDisk{{Path: "/data/root.qcow2", Dev: "sda"}},
 	}
 	if err := cmd.Prepare(db, nil); err == nil {
 		t.Error("Prepare devrait échouer si la VM existe déjà")
@@ -185,8 +180,7 @@ func prepareWithDocuments(t *testing.T, docs map[string]string) *badger.DB {
 
 	cmd := StartVMCommand{
 		Name:      "vm-doc",
-		Subnet:    "sn-1",
-		IP:        "10.0.0.5",
+		NICs:      []VMNIC{{Subnet: "sn-1", IP: "10.0.0.5", Primary: true}},
 		Disks:     []VMDisk{{Path: "/data/root.qcow2", Dev: "vda"}},
 		Documents: docs,
 	}

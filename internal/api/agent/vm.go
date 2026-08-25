@@ -3,6 +3,7 @@ package agentapi
 import (
 	"encoding/json"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -71,6 +72,52 @@ func (s *Server) stopVM(w http.ResponseWriter, _ *http.Request, name string) {
 	json.NewEncoder(w).Encode(vm)
 }
 
+// interfacesFromDB reconstruit les interfaces depuis vm/<name>/nic/<index>/…,
+// triées par index — celui-ci détermine le slot PCI, donc le nom de l'interface
+// dans le guest.
+func interfacesFromDB(prefix string, entries map[string]string) []VMInterface {
+	nicPrefix := prefix + "nic/"
+	byIndex := make(map[int]*VMInterface)
+
+	for key, value := range entries {
+		rest := strings.TrimPrefix(key, nicPrefix)
+		if rest == key {
+			continue
+		}
+		parts := strings.Split(rest, "/")
+		if len(parts) != 2 {
+			continue
+		}
+		idx, err := strconv.Atoi(parts[0])
+		if err != nil {
+			continue
+		}
+		if byIndex[idx] == nil {
+			byIndex[idx] = &VMInterface{}
+		}
+		switch parts[1] {
+		case "subnet":
+			byIndex[idx].Subnet = value
+		case "ip":
+			byIndex[idx].IP = value
+		case "primary":
+			byIndex[idx].Primary = value == "true"
+		}
+	}
+
+	indexes := make([]int, 0, len(byIndex))
+	for idx := range byIndex {
+		indexes = append(indexes, idx)
+	}
+	sort.Ints(indexes)
+
+	ifaces := make([]VMInterface, 0, len(indexes))
+	for _, idx := range indexes {
+		ifaces = append(ifaces, *byIndex[idx])
+	}
+	return ifaces
+}
+
 func vmFromDB(name string, entries map[string]string) (VM, error) {
 	prefix := "vm/" + name + "/"
 	vm := VM{Name: name}
@@ -81,11 +128,7 @@ func vmFromDB(name string, entries map[string]string) (VM, error) {
 	vm.CPUs, _ = strconv.Atoi(entries[prefix+"cpus"])
 	vm.UEFI = entries[prefix+"uefi"] == "true"
 
-	subnet := entries[prefix+"subnet"]
-	ip := entries[prefix+"ip"]
-	if subnet != "" || ip != "" {
-		vm.Interfaces = []VMInterface{{Subnet: subnet, IP: ip, Primary: true}}
-	}
+	vm.Interfaces = interfacesFromDB(prefix, entries)
 
 	diskPrefix := prefix + "disk/"
 	for key, path := range entries {
