@@ -21,15 +21,16 @@ type CreateSubnetCommand struct {
 	InterfaceIP  string
 	CIDR         string
 	DefaultRoute bool
+	Gateway      string
 }
 
 func (c CreateSubnetCommand) Key() string { return "subnet/" + c.Name }
 
 func (c CreateSubnetCommand) Prepare(db *badger.DB, cfg *configuration.Config) error {
 	if c.Mode == "" {
-		c.Mode = "vxlan"
+		c.Mode = subnet.ModeVxlan
 	}
-	if c.Mode != "vxlan" && c.Mode != "bridge" {
+	if !subnet.ValidMode(c.Mode) {
 		return fmt.Errorf("unknown subnet mode %q", c.Mode)
 	}
 	if _, err := kv.GetFromDB(db, "subnet/"+c.Name+"/state"); err == nil {
@@ -53,8 +54,13 @@ func (c CreateSubnetCommand) Prepare(db *badger.DB, cfg *configuration.Config) e
 	kv.AddInDB(db, "subnet/"+c.Name+"/interface_ip", c.InterfaceIP)
 	kv.AddInDB(db, "subnet/"+c.Name+"/cidr", c.CIDR)
 	kv.AddInDB(db, "subnet/"+c.Name+"/default_route", strconv.FormatBool(c.DefaultRoute))
-	if c.Mode == "vxlan" {
+	if c.Mode == subnet.ModeVxlan {
 		kv.AddInDB(db, "subnet/"+c.Name+"/vxlan_id", strconv.Itoa(c.VxlanID))
+	}
+	if c.Gateway != "" {
+		if err := kv.AddInDB(db, "subnet/"+c.Name+"/gateway", c.Gateway); err != nil {
+			return fmt.Errorf("store gateway: %w", err)
+		}
 	}
 	return nil
 }

@@ -43,11 +43,13 @@ func createSubnet(db *badger.DB, subnetName string, d subnetData) error {
 	}
 
 	switch d.mode {
-	case "vxlan":
+	case ModeVxlan:
 		if err := setupVxlanHost(d, vethE); err != nil {
 			return err
 		}
-	case "bridge":
+	case ModePublicIP:
+		return fmt.Errorf("subnet mode %q: host network setup is not implemented yet", d.mode)
+	case ModeBridge:
 		if err := netif.BridgeSetMaster(vethE, d.localIface); err != nil {
 			return fmt.Errorf("add veth-e to bridge: %w", err)
 		}
@@ -141,18 +143,12 @@ func startDHCP(db *badger.DB, subnetName string, d subnetData) error {
 		ConfDir:     dhcp.DefaultConfDir,
 		InterfaceIP: d.interfaceIP,
 	}
-	switch d.mode {
-	case "vxlan":
-		conf.VPCRoute = d.vpcCIDR
-	case "bridge":
-		if d.defaultRoute {
-			gw, err := netif.GetDefaultGateway()
-			if err != nil {
-				return fmt.Errorf("get default gateway: %w", err)
-			}
-			conf.DefaultGateway = gw
-		}
+	defaultGateway, vpcRoute, err := dhcpRouting(d, netif.GetDefaultGateway)
+	if err != nil {
+		return err
 	}
+	conf.DefaultGateway = defaultGateway
+	conf.VPCRoute = vpcRoute
 	_, entries, err := dhcp.GenerateConfig(conf)
 	if err != nil {
 		return fmt.Errorf("generate dhcp config: %w", err)

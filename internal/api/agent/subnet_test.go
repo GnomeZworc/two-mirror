@@ -57,11 +57,11 @@ func TestPostSubnet_Created(t *testing.T) {
 	s, db := newTestServer(t)
 	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	req := SubnetCreateRequest{
-		Name:      "sn-new",
-		VPC:       "vpc-1",
-		IfaceType: "vms",
+		Name:        "sn-new",
+		VPC:         "vpc-1",
+		IfaceType:   "vms",
 		InterfaceIP: "10.0.0.1",
-		CIDR:      "10.0.0.0/24",
+		CIDR:        "10.0.0.0/24",
 	}
 	body, _ := json.Marshal(req)
 	w := httptest.NewRecorder()
@@ -93,10 +93,10 @@ func TestPostSubnet_IfaceTypeOptional(t *testing.T) {
 	s, db := newTestServer(t)
 	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	req := SubnetCreateRequest{
-		Name:      "sn-opt",
-		VPC:       "vpc-1",
+		Name:        "sn-opt",
+		VPC:         "vpc-1",
 		InterfaceIP: "10.0.0.1",
-		CIDR:      "10.0.0.0/24",
+		CIDR:        "10.0.0.0/24",
 		// IfaceType omis — doit utiliser default_interface
 	}
 	body, _ := json.Marshal(req)
@@ -110,11 +110,11 @@ func TestPostSubnet_IfaceTypeOptional(t *testing.T) {
 func TestPostSubnet_VPCNotFound(t *testing.T) {
 	s, _ := newTestServer(t)
 	req := SubnetCreateRequest{
-		Name:      "sn-1",
-		VPC:       "vpc-inexistant",
-		IfaceType: "vms",
+		Name:        "sn-1",
+		VPC:         "vpc-inexistant",
+		IfaceType:   "vms",
 		InterfaceIP: "10.0.0.1",
-		CIDR:      "10.0.0.0/24",
+		CIDR:        "10.0.0.0/24",
 	}
 	body, _ := json.Marshal(req)
 	w := httptest.NewRecorder()
@@ -129,11 +129,11 @@ func TestPostSubnet_Duplicate(t *testing.T) {
 	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	kv.AddInDB(db, "subnet/sn-exist/state", "running")
 	req := SubnetCreateRequest{
-		Name:      "sn-exist",
-		VPC:       "vpc-1",
-		IfaceType: "vms",
+		Name:        "sn-exist",
+		VPC:         "vpc-1",
+		IfaceType:   "vms",
 		InterfaceIP: "10.0.0.1",
-		CIDR:      "10.0.0.0/24",
+		CIDR:        "10.0.0.0/24",
 	}
 	body, _ := json.Marshal(req)
 	w := httptest.NewRecorder()
@@ -147,11 +147,11 @@ func TestPostSubnet_VPCDeleting(t *testing.T) {
 	s, db := newTestServer(t)
 	kv.AddInDB(db, "vpc/vpc-dying/state", "deleting")
 	req := SubnetCreateRequest{
-		Name:      "sn-1",
-		VPC:       "vpc-dying",
-		IfaceType: "vms",
+		Name:        "sn-1",
+		VPC:         "vpc-dying",
+		IfaceType:   "vms",
 		InterfaceIP: "10.0.0.1",
-		CIDR:      "10.0.0.0/24",
+		CIDR:        "10.0.0.0/24",
 	}
 	body, _ := json.Marshal(req)
 	w := httptest.NewRecorder()
@@ -165,12 +165,12 @@ func TestPostSubnet_BridgeMode_Success(t *testing.T) {
 	s, db := newTestServer(t)
 	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	req := SubnetCreateRequest{
-		Name:      "sn-br",
-		VPC:       "vpc-1",
-		Mode:      "bridge",
-		IfaceType: "vms",
+		Name:        "sn-br",
+		VPC:         "vpc-1",
+		Mode:        "bridge",
+		IfaceType:   "vms",
 		InterfaceIP: "10.0.0.1",
-		CIDR:      "10.0.0.0/24",
+		CIDR:        "10.0.0.0/24",
 	}
 	body, _ := json.Marshal(req)
 	w := httptest.NewRecorder()
@@ -192,11 +192,11 @@ func TestPostSubnet_UnknownMode(t *testing.T) {
 	s, db := newTestServer(t)
 	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	req := SubnetCreateRequest{
-		Name:      "sn-1",
-		VPC:       "vpc-1",
-		Mode:      "vlan",
+		Name:        "sn-1",
+		VPC:         "vpc-1",
+		Mode:        "vlan",
 		InterfaceIP: "10.0.0.1",
-		CIDR:      "10.0.0.0/24",
+		CIDR:        "10.0.0.0/24",
 	}
 	body, _ := json.Marshal(req)
 	w := httptest.NewRecorder()
@@ -304,5 +304,36 @@ func TestSubnetByName_InvalidMethod(t *testing.T) {
 	s.SubnetByNameHandler(w, req)
 	if w.Code != http.StatusMethodNotAllowed {
 		t.Errorf("attendu 405, obtenu %d", w.Code)
+	}
+}
+
+func TestCreateSubnet_GatewayRoundTrip(t *testing.T) {
+	s, db := newTestServer(t)
+	kv.AddInDB(db, "vpc/vpc-1/state", "running")
+
+	body, _ := json.Marshal(SubnetCreateRequest{
+		Name: "sn-gw", VPC: "vpc-1", Mode: "public_ip",
+		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+		DefaultRoute: true, Gateway: "203.0.113.1",
+	})
+
+	w := httptest.NewRecorder()
+	s.SubnetsHandler(w, httptest.NewRequest(http.MethodPost, "/subnets", bytes.NewReader(body)))
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("attendu 202, obtenu %d : %s", w.Code, w.Body.String())
+	}
+
+	if gw, _ := kv.GetFromDB(db, "subnet/sn-gw/gateway"); gw != "203.0.113.1" {
+		t.Errorf("gateway attendue en DB, obtenu %q", gw)
+	}
+
+	w = httptest.NewRecorder()
+	s.SubnetByNameHandler(w, httptest.NewRequest(http.MethodGet, "/subnets/sn-gw", nil))
+	var got Subnet
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatalf("réponse illisible : %v", err)
+	}
+	if got.Gateway != "203.0.113.1" {
+		t.Errorf("gateway absente de la réponse GET : %+v", got)
 	}
 }

@@ -349,8 +349,10 @@ components:
           description: >
             Subnet mode. "vxlan" (default): creates a VXLAN tunnel and a host bridge.
             "bridge": attaches directly to an existing bridge resolved from iface_type in the agent config.
+            "public_ip": accepted and routed like vxlan for DHCP purposes, but its host network
+            setup is not implemented yet — creating such a subnet currently fails in Execute.
             "vlan" is reserved for future use.
-          enum: [vxlan, bridge]
+          enum: [vxlan, bridge, public_ip]
           default: vxlan
           example: vxlan
         vxlan_id:
@@ -373,9 +375,20 @@ components:
         default_route:
           type: boolean
           description: >
-            If true, advertise a default route via DHCP. For vxlan mode the gateway is the interface IP.
-            For bridge mode the gateway is read from the host routing table.
+            A default route is always advertised via DHCP; this flag only chooses its next-hop.
+            When false, the next-hop is the subnet interface_ip. When true, it is the `gateway`
+            field if supplied, otherwise the gateway read from the host routing table.
+            The route to the VPC CIDR always keeps interface_ip as its next-hop (except in bridge
+            mode, which has no VPC route), so VPC traffic never leaves through a public gateway.
           default: false
+        gateway:
+          type: string
+          format: ipv4
+          description: >
+            Optional next-hop for the default route. Only used when default_route is true;
+            supplied with default_route false, it is ignored. Not validated by the agent:
+            reachability and coherence with the subnet CIDR are the caller's responsibility.
+          example: "10.10.10.254"
 
     Subnet:
       type: object
@@ -392,7 +405,7 @@ components:
           example: vpc1
         mode:
           type: string
-          enum: [vxlan, bridge]
+          enum: [vxlan, bridge, public_ip]
           example: vxlan
         vxlan_id:
           type: integer
@@ -411,6 +424,9 @@ components:
         default_route:
           type: boolean
           example: false
+        gateway:
+          type: string
+          example: "10.10.10.254"
 
     VMCreateRequest:
       type: object

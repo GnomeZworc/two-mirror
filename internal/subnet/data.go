@@ -21,6 +21,7 @@ type subnetData struct {
 	cidr         *net.IPNet
 	vpcCIDR      *net.IPNet
 	defaultRoute bool
+	gateway      net.IP
 }
 
 func loadSubnet(db *badger.DB, name string) (subnetData, error) {
@@ -84,6 +85,14 @@ func loadSubnet(db *badger.DB, name string) (subnetData, error) {
 		return d, fmt.Errorf("get default_route: %w", err)
 	}
 	d.defaultRoute = defaultRouteStr == "true"
+
+	if gatewayStr, err := kv.GetFromDB(db, "subnet/"+name+"/gateway"); err == nil && gatewayStr != "" {
+		gateway := net.ParseIP(gatewayStr)
+		if gateway == nil {
+			return d, fmt.Errorf("invalid gateway: %s", gatewayStr)
+		}
+		d.gateway = gateway
+	}
 
 	vpcCIDRStr, err := kv.GetFromDB(db, "vpc/"+d.vpc+"/cidr")
 	if err != nil {

@@ -5,6 +5,7 @@ import (
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
+	"github.com/dgraph-io/badger/v4"
 )
 
 func testCfg() *configuration.Config {
@@ -253,5 +254,76 @@ func TestDeleteSubnetCommand_Prepare_NotFound(t *testing.T) {
 	cmd := DeleteSubnetCommand{Name: "sn-inexistant"}
 	if err := cmd.Prepare(db, nil); err == nil {
 		t.Error("Prepare devrait échouer si le subnet n'existe pas")
+	}
+}
+
+// --- gateway optionnelle et mode public_ip ---
+
+func prepareSubnet(t *testing.T, cmd CreateSubnetCommand) (*badger.DB, error) {
+	t.Helper()
+	_, db := newTestDispatcher(t)
+	kv.AddInDB(db, "vpc/vpc-1/state", "running")
+	if cmd.VPC == "" {
+		cmd.VPC = "vpc-1"
+	}
+	return db, cmd.Prepare(db, testCfg())
+}
+
+func TestCreateSubnetCommand_Prepare_StoresGateway(t *testing.T) {
+	db, err := prepareSubnet(t, CreateSubnetCommand{
+		Name: "sn-gw", VxlanID: 100, IfaceType: "vms",
+		InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+		DefaultRoute: true, Gateway: "10.0.0.254",
+	})
+	if err != nil {
+		t.Fatalf("Prepare a échoué : %v", err)
+	}
+	gw, err := kv.GetFromDB(db, "subnet/sn-gw/gateway")
+	if err != nil {
+		t.Fatalf("clé gateway absente : %v", err)
+	}
+	if gw != "10.0.0.254" {
+		t.Errorf("gateway attendue 10.0.0.254, obtenu %q", gw)
+	}
+}
+
+func TestCreateSubnetCommand_Prepare_NoGatewayWritesNoKey(t *testing.T) {
+	db, err := prepareSubnet(t, CreateSubnetCommand{
+		Name: "sn-nogw", VxlanID: 100, IfaceType: "vms",
+		InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+	})
+	if err != nil {
+		t.Fatalf("Prepare a échoué : %v", err)
+	}
+	if _, err := kv.GetFromDB(db, "subnet/sn-nogw/gateway"); err == nil {
+		t.Error("aucune gateway fournie, aucune clé ne doit être écrite")
+	}
+}
+
+func TestCreateSubnetCommand_Prepare_AcceptsPublicIPMode(t *testing.T) {
+	db, err := prepareSubnet(t, CreateSubnetCommand{
+		Name: "sn-pub", Mode: "public_ip", IfaceType: "vms",
+		InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+		DefaultRoute: true, Gateway: "203.0.113.1",
+	})
+	if err != nil {
+		t.Fatalf("le mode public_ip doit être accepté : %v", err)
+	}
+	mode, _ := kv.GetFromDB(db, "subnet/sn-pub/mode")
+	if mode != "public_ip" {
+		t.Errorf("mode attendu public_ip, obtenu %q", mode)
+	}
+	if _, err := kv.GetFromDB(db, "subnet/sn-pub/vxlan_id"); err == nil {
+		t.Error("vxlan_id ne doit être écrit que pour le mode vxlan")
+	}
+}
+
+func TestCreateSubnetCommand_Prepare_RejectsUnknownMode(t *testing.T) {
+	_, err := prepareSubnet(t, CreateSubnetCommand{
+		Name: "sn-bad", Mode: "public", IfaceType: "vms",
+		InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+	})
+	if err == nil {
+		t.Error("un mode inconnu doit être refusé")
 	}
 }

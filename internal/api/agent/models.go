@@ -20,6 +20,7 @@ type SubnetCreateRequest struct {
 	InterfaceIP  string `json:"interface_ip"`
 	CIDR         string `json:"cidr"`
 	DefaultRoute bool   `json:"default_route"`
+	Gateway      string `json:"gateway"`
 }
 
 type Subnet struct {
@@ -32,6 +33,7 @@ type Subnet struct {
 	InterfaceIP  string `json:"interface_ip"`
 	CIDR         string `json:"cidr"`
 	DefaultRoute bool   `json:"default_route"`
+	Gateway      string `json:"gateway"`
 }
 
 type VMInterface struct {

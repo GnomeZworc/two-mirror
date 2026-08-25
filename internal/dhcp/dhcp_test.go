@@ -120,7 +120,10 @@ func TestGenerateConfig_NoDefaultGatewaySuppressesRouterOption(t *testing.T) {
 	}
 }
 
-func TestGenerateConfig_VxlanEmitsNoRouterOption(t *testing.T) {
+func TestGenerateConfig_NilDefaultGatewayEmitsNoRoute(t *testing.T) {
+	// Contrat du paquet, pas politique de subnet : depuis 2026-08-24 `startDHCP`
+	// renseigne toujours DefaultGateway, donc ce chemin n'est plus emprunté en
+	// production. Il reste valide — le générateur ne doit rien inventer.
 	conf := newConf(t, "192.168.1.0/29")
 	conf.DefaultGateway = nil
 
@@ -128,10 +131,10 @@ func TestGenerateConfig_VxlanEmitsNoRouterOption(t *testing.T) {
 	content, _ := os.ReadFile(path)
 
 	if !strings.Contains(string(content), "dhcp-option=121,") {
-		t.Fatalf("dhcp-option=121 attendue pour un subnet vxlan :\n%s", content)
+		t.Fatalf("dhcp-option=121 toujours attendue, ne serait-ce que pour la route metadata :\n%s", content)
 	}
 	if strings.Contains(string(content), "dhcp-option=3,") {
-		t.Errorf("un subnet vxlan est privé : aucune route par défaut ne doit être émise\n%s", content)
+		t.Errorf("DefaultGateway nulle : aucune route par défaut ne doit être émise\n%s", content)
 	}
 }
 
