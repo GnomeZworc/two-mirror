@@ -78,3 +78,9 @@ La spécification complète est dans [`api/agent.yaml`](api/agent.yaml).
 | `db` | inspection de la base clé-valeur en ligne de commande |
 
 L'agent prend `-config`, les deux autres `-conf`.
+
+## Versions
+
+Les notes de version sont dans [`release_notes/`](release_notes/). Chaque version porte un nom de
+code, dérivé du rang de sa publication : anges et démons alternés, listés dans
+[`release_notes/codenames.md`](release_notes/codenames.md).
