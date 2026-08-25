@@ -20,7 +20,7 @@ prochain nom disponible sans tenir de compteur ailleurs : c'est la première lig
 
 | # | Nom | Nature | Version | Date |
 |---|---|---|---|---|
-| 1 | Michael | ange | [0.1.0](0.1.0.md) |  |
+| 1 | Michael | ange | [0.1.0](0.1.0.md) | 2026-08-26 |
 | 2 | Bael | démon | 0.2.0 |  |
 | 3 | Gabriel | ange |  |  |
 | 4 | Agares | démon |  |  |
