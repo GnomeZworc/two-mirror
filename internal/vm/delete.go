@@ -32,6 +32,7 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	if err != nil {
 		return err
 	}
+	nic := d.primary()
 
 	socketPath := filepath.Join(cfg.QEMU.QMPDir, name+".sock")
 
@@ -47,8 +48,8 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	}
 	// socket absent ou QEMU déjà arrêté : cleanup direct
 
-	if err := netns.Call(d.vpcName, func() error {
-		return iptables.DeleteMetadataRedirect(d.ip, d.interfaceIP, d.metadataPort)
+	if err := netns.Call(nic.vpcName, func() error {
+		return iptables.DeleteMetadataRedirect(nic.ip, nic.interfaceIP, d.metadataPort)
 	}); err != nil {
 		return fmt.Errorf("delete metadata redirect: %w", err)
 	}
@@ -57,11 +58,11 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 		return fmt.Errorf("stop metadata: %w", err)
 	}
 
-	if err := netif.DeleteTap(d.tapID, d.vpcName); err != nil {
+	if err := netif.DeleteTap(nic.tapID, nic.vpcName); err != nil {
 		return fmt.Errorf("delete tap: %w", err)
 	}
 
-	if err := removeDHCPReservation(d, name); err != nil {
+	if err := removeDHCPReservation(nic, name); err != nil {
 		return err
 	}
 
@@ -76,8 +77,8 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 // removeDHCPReservation retire le fichier de réservation puis redémarre dnsmasq :
 // un fichier ajouté dans un dhcp-hostsdir est relu à chaud, un fichier retiré ne
 // l'est pas (vérifié sur dnsmasq 2.90).
-func removeDHCPReservation(d vmData, name string) error {
-	confName := d.vpcName + "_" + d.bridge
+func removeDHCPReservation(nic nicData, name string) error {
+	confName := nic.vpcName + "_" + nic.bridge
 
 	if err := dhcp.RemoveReservations(dhcp.DefaultConfDir, confName, name); err != nil {
 		return err

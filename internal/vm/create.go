@@ -31,26 +31,27 @@ func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	if err != nil {
 		return err
 	}
+	nic := d.primary()
 
-	if err := netif.CreateTap(d.tapID, d.bridge, d.vpcName); err != nil {
+	if err := netif.CreateTap(nic.tapID, nic.bridge, nic.vpcName); err != nil {
 		return fmt.Errorf("create tap: %w", err)
 	}
 
-	if err := netns.Call(d.vpcName, func() error {
-		return iptables.AddMetadataRedirect(d.ip, d.interfaceIP, d.metadataPort)
+	if err := netns.Call(nic.vpcName, func() error {
+		return iptables.AddMetadataRedirect(nic.ip, nic.interfaceIP, d.metadataPort)
 	}); err != nil {
 		return fmt.Errorf("add metadata redirect: %w", err)
 	}
 
-	if err := dhcp.WriteReservations(dhcp.DefaultConfDir, d.vpcName+"_"+d.bridge, name,
-		[]dhcp.Reservation{{MAC: d.mac, IP: d.ip}}); err != nil {
+	if err := dhcp.WriteReservations(dhcp.DefaultConfDir, nic.vpcName+"_"+nic.bridge, name,
+		[]dhcp.Reservation{{MAC: nic.mac, IP: nic.ip}}); err != nil {
 		return fmt.Errorf("write dhcp reservation: %w", err)
 	}
 
 	if err := metadata.StartMetadata(metadata.NoCloudConfig{
 		Name:      name,
-		VpcName:   d.vpcName,
-		BindIP:    d.interfaceIP,
+		VpcName:   nic.vpcName,
+		BindIP:    nic.interfaceIP,
 		BindPort:  d.metadataPort,
 		Password:  d.password,
 		SSHKEY:    d.sshkey,
@@ -66,8 +67,8 @@ func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 
 	qcfg := qemu.Config{
 		Name:       name,
-		TapID:      d.tapID,
-		Mac:        d.mac,
+		TapID:      nic.tapID,
+		Mac:        nic.mac,
 		Disks:      qDisks,
 		Memory:     d.memory,
 		CPUs:       d.cpus,
@@ -85,7 +86,7 @@ func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 		qcfg.UEFIVarsPath = varsPath
 	}
 
-	if err := netns.Call(d.vpcName, func() error {
+	if err := netns.Call(nic.vpcName, func() error {
 		return qemu.Start(qcfg)
 	}); err != nil {
 		return fmt.Errorf("start qemu: %w", err)

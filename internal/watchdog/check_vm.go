@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strconv"
+	"strings"
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/netns"
@@ -46,33 +48,65 @@ func CheckVMs(db *badger.DB, cfg *configuration.Config, u unitChecker, n notify.
 }
 
 func checkVM(db *badger.DB, cfg *configuration.Config, name string, u unitChecker, n notify.Notifier) {
-	subnetName, err := kv.GetFromDB(db, prefixVM+name+"/subnet")
+	entries, err := kv.ListByPrefix(db, prefixVM+name+"/nic/")
 	if err != nil {
-		n.Notify(kindVM, name, fmt.Sprintf("subnet unreadable in database: %v", err))
+		n.Notify(kindVM, name, fmt.Sprintf("interfaces unreadable in database: %v", err))
+		return
+	}
+	indexes := nicIndexes(entries, prefixVM+name+"/nic/")
+	if len(indexes) == 0 {
+		n.Notify(kindVM, name, "no interface in database")
 		return
 	}
 
-	vpc, err := kv.GetFromDB(db, prefixSubnet+subnetName+"/vpc")
-	if err != nil {
-		n.Notify(kindVM, name, fmt.Sprintf("vpc of subnet %s unreadable in database: %v", subnetName, err))
-		return
+	for _, idx := range indexes {
+		prefix := fmt.Sprintf("%s%s/nic/%d/", prefixVM, name, idx)
+		subnetName := entries[prefix+"subnet"]
+		if subnetName == "" {
+			n.Notify(kindVM, name, fmt.Sprintf("interface %d has no subnet in database", idx))
+			continue
+		}
+		vpc, err := kv.GetFromDB(db, prefixSubnet+subnetName+"/vpc")
+		if err != nil {
+			n.Notify(kindVM, name, fmt.Sprintf("vpc of subnet %s unreadable in database: %v", subnetName, err))
+			continue
+		}
+		checkVMTap(entries[prefix+"tap_id"], name, vpc, idx, n)
 	}
 
-	checkVMTap(db, name, vpc, n)
 	checkVMQemu(cfg, name, n)
 	checkUnit(kindVM, name, "metadata@"+name+".service", u, n)
 	checkUnit(kindVM, name, qemu.ScopeName(name), u, n)
 }
 
-func checkVMTap(db *badger.DB, name, vpc string, n notify.Notifier) {
-	raw, err := kv.GetFromDB(db, prefixVM+name+"/tap_id")
-	if err != nil {
-		n.Notify(kindVM, name, fmt.Sprintf("tap_id unreadable in database: %v", err))
+// nicIndexes retourne les index d'interface présents en base, triés.
+func nicIndexes(entries map[string]string, prefix string) []int {
+	seen := make(map[int]bool)
+	for key := range entries {
+		parts := strings.Split(strings.TrimPrefix(key, prefix), "/")
+		if len(parts) != 2 {
+			continue
+		}
+		if idx, err := strconv.Atoi(parts[0]); err == nil {
+			seen[idx] = true
+		}
+	}
+	indexes := make([]int, 0, len(seen))
+	for idx := range seen {
+		indexes = append(indexes, idx)
+	}
+	sort.Ints(indexes)
+	return indexes
+}
+
+func checkVMTap(raw, name, vpc string, idx int, n notify.Notifier) {
+	if raw == "" {
+		n.Notify(kindVM, name, fmt.Sprintf("interface %d has no tap_id in database", idx))
 		return
 	}
 	tapID, err := strconv.Atoi(raw)
 	if err != nil {
-		n.Notify(kindVM, name, fmt.Sprintf("invalid tap_id %q: %v", raw, err))
+		n.Notify(kindVM, name, fmt.Sprintf("interface %d has an invalid tap_id %q: %v", idx, raw, err))
 		return
 	}
 

@@ -53,6 +53,11 @@ func main() {
 		return
 	}
 
+	if err := migration.MigrateVMNICs(db, log.With(slog.String("component", "migration"))); err != nil {
+		log.Error("vm nic migration failed", "error", err)
+		return
+	}
+
 	q := worker.New(cfg.Worker.BufferSize)
 	q.Start(cfg.Worker.Count)
 
