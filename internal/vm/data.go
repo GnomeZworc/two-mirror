@@ -31,6 +31,7 @@ type vmData struct {
 	uefi         bool
 	password     string
 	sshkey       string
+	documents    map[string]string
 }
 
 func loadVM(db *badger.DB, name string) (vmData, error) {
@@ -123,6 +124,18 @@ func loadVM(db *badger.DB, name string) (vmData, error) {
 	}
 	d.password, _ = kv.GetFromDB(db, "vm/"+name+"/password")
 	d.sshkey, _ = kv.GetFromDB(db, "vm/"+name+"/sshkey")
+
+	docPrefix := "vm/" + name + "/metadata/"
+	docEntries, err := kv.ListByPrefix(db, docPrefix)
+	if err != nil {
+		return d, fmt.Errorf("list metadata documents: %w", err)
+	}
+	if len(docEntries) > 0 {
+		d.documents = make(map[string]string, len(docEntries))
+		for key, content := range docEntries {
+			d.documents[strings.TrimPrefix(key, docPrefix)] = content
+		}
+	}
 
 	return d, nil
 }

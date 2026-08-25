@@ -20,15 +20,16 @@ type VMDisk struct {
 }
 
 type StartVMCommand struct {
-	Name     string
-	Subnet   string
-	IP       string
-	Disks    []VMDisk
-	Memory   int
-	CPUs     int
-	UEFI     bool
-	Password string
-	SSHKey   string
+	Name      string
+	Subnet    string
+	IP        string
+	Disks     []VMDisk
+	Memory    int
+	CPUs      int
+	UEFI      bool
+	Password  string
+	SSHKey    string
+	Documents map[string]string
 }
 
 func (c StartVMCommand) Key() string { return "vm/" + c.Name }
@@ -65,6 +66,11 @@ func (c StartVMCommand) Prepare(db *badger.DB, _ *configuration.Config) error {
 	}
 	if c.SSHKey != "" {
 		kv.AddInDB(db, "vm/"+c.Name+"/sshkey", c.SSHKey)
+	}
+	for doc, content := range c.Documents {
+		if err := kv.AddInDB(db, "vm/"+c.Name+"/metadata/"+doc, content); err != nil {
+			return fmt.Errorf("store metadata %s: %w", doc, err)
+		}
 	}
 	return nil
 }

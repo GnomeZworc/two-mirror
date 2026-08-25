@@ -2,13 +2,16 @@ package agentapi
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"sort"
+	"strings"
 	"testing"
 
 	"git.g3e.fr/syonad/two/pkg/db/kv"
+	"github.com/dgraph-io/badger/v4"
 )
 
 // --- vmFromDB ---
@@ -154,5 +157,108 @@ func TestStartVM_StorageReturnedInResponse(t *testing.T) {
 	}
 	if vm.Storage[0].Dev != "sda" || vm.Storage[0].Path != "/data/root.qcow2" {
 		t.Errorf("disque inattendu dans la réponse : %+v", vm.Storage[0])
+	}
+}
+
+// --- POST /vms : objet metadata ---
+
+func postVM(t *testing.T, name string, meta VMMetadata) (*httptest.ResponseRecorder, *badger.DB) {
+	t.Helper()
+	s, db := newTestServer(t)
+	kv.AddInDB(db, "subnet/sn-1/state", "running")
+	kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-1")
+
+	body, _ := json.Marshal(VMCreateRequest{
+		Name:       name,
+		Interfaces: []VMInterface{{Subnet: "sn-1", IP: "10.0.0.20", Primary: true}},
+		Storage:    []VMStorage{{Path: "/data/root.qcow2", Dev: "vda"}},
+		Memory:     1024,
+		CPUs:       2,
+		Metadata:   meta,
+	})
+
+	w := httptest.NewRecorder()
+	s.VmsHandler(w, httptest.NewRequest(http.MethodPost, "/vms", bytes.NewReader(body)))
+	return w, db
+}
+
+func TestStartVM_UserDataIsDecodedFromBase64(t *testing.T) {
+	plain := "#cloud-config\npackages:\n  - nginx\n"
+	encoded := base64.StdEncoding.EncodeToString([]byte(plain))
+
+	w, db := postVM(t, "vm-md1", VMMetadata{UserData: encoded})
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("attendu 202, obtenu %d : %s", w.Code, w.Body.String())
+	}
+
+	got, err := kv.GetFromDB(db, "vm/vm-md1/metadata/user-data")
+	if err != nil {
+		t.Fatalf("user-data absent en DB : %v", err)
+	}
+	if got != plain {
+		t.Errorf("user-data décodé attendu %q, obtenu %q", plain, got)
+	}
+}
+
+func TestStartVM_InvalidBase64IsRejected(t *testing.T) {
+	w, db := postVM(t, "vm-md2", VMMetadata{UserData: "ceci n'est pas du base64 !!"})
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("un base64 invalide doit être refusé en 400, obtenu %d : %s", w.Code, w.Body.String())
+	}
+	if _, err := kv.GetFromDB(db, "vm/vm-md2/state"); err == nil {
+		t.Error("aucune VM ne doit être créée quand la requête est refusée")
+	}
+}
+
+func TestStartVM_InvalidBase64ErrorNamesTheField(t *testing.T) {
+	w, _ := postVM(t, "vm-md3", VMMetadata{UserData: "@@@"})
+
+	if !strings.Contains(w.Body.String(), "user_data") {
+		t.Errorf("le message doit nommer le champ fautif : %s", w.Body.String())
+	}
+}
+
+func TestStartVM_NoUserDataWritesNoDocument(t *testing.T) {
+	w, db := postVM(t, "vm-md4", VMMetadata{SSHKey: "ssh-ed25519 AAAA user@host"})
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("attendu 202, obtenu %d : %s", w.Code, w.Body.String())
+	}
+
+	entries, err := kv.ListByPrefix(db, "vm/vm-md4/metadata/")
+	if err != nil {
+		t.Fatalf("ListByPrefix : %v", err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("sans user_data, aucun document ne doit être stocké : %v", entries)
+	}
+}
+
+func TestStartVM_PasswordAndSSHKeyComeFromMetadata(t *testing.T) {
+	w, db := postVM(t, "vm-md5", VMMetadata{
+		Password: "$6$rounds$hash",
+		SSHKey:   "ssh-ed25519 AAAA user@host",
+	})
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("attendu 202, obtenu %d : %s", w.Code, w.Body.String())
+	}
+
+	if got, _ := kv.GetFromDB(db, "vm/vm-md5/password"); got != "$6$rounds$hash" {
+		t.Errorf("password attendu depuis metadata, obtenu %q", got)
+	}
+	if got, _ := kv.GetFromDB(db, "vm/vm-md5/sshkey"); got != "ssh-ed25519 AAAA user@host" {
+		t.Errorf("sshkey attendu depuis metadata, obtenu %q", got)
+	}
+}
+
+func TestStartVM_EmptyBase64MeansNoDocument(t *testing.T) {
+	w, db := postVM(t, "vm-md6", VMMetadata{UserData: base64.StdEncoding.EncodeToString([]byte(""))})
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("attendu 202, obtenu %d : %s", w.Code, w.Body.String())
+	}
+
+	entries, _ := kv.ListByPrefix(db, "vm/vm-md6/metadata/")
+	if len(entries) != 0 {
+		t.Errorf("un base64 vide est indiscernable d'un champ absent : %v", entries)
 	}
 }

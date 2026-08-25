@@ -87,6 +87,7 @@ func (s *Server) postSubnet(w http.ResponseWriter, r *http.Request) {
 		InterfaceIP:  req.InterfaceIP,
 		CIDR:         req.CIDR,
 		DefaultRoute: req.DefaultRoute,
+		Gateway:      req.Gateway,
 	}
 	if err := s.dispatcher.Prepare(cmd); err != nil {
 		if _, dbErr := kv.GetFromDB(s.db, "subnet/"+req.Name+"/state"); dbErr == nil {

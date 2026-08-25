@@ -20,6 +20,7 @@ type SubnetCreateRequest struct {
 	InterfaceIP  string `json:"interface_ip"`
 	CIDR         string `json:"cidr"`
 	DefaultRoute bool   `json:"default_route"`
+	Gateway      string `json:"gateway"`
 }
 
 type Subnet struct {
@@ -32,6 +33,7 @@ type Subnet struct {
 	InterfaceIP  string `json:"interface_ip"`
 	CIDR         string `json:"cidr"`
 	DefaultRoute bool   `json:"default_route"`
+	Gateway      string `json:"gateway"`
 }
 
 type VMInterface struct {
@@ -45,13 +47,18 @@ type VMStorage struct {
 	Dev  string `json:"dev"`
 }
 
+type VMMetadata struct {
+	Password string `json:"password"`
+	SSHKey   string `json:"sshkey"`
+	UserData string `json:"user_data"`
+}
+
 type VMCreateRequest struct {
 	Name       string        `json:"name"`
 	Memory     int           `json:"memory"`
 	CPUs       int           `json:"cpus"`
 	UEFI       bool          `json:"uefi"`
-	Password   string        `json:"password"`
-	SSHKey     string        `json:"sshkey"`
+	Metadata   VMMetadata    `json:"metadata"`
 	Interfaces []VMInterface `json:"interfaces"`
 	Storage    []VMStorage   `json:"storage"`
 }
