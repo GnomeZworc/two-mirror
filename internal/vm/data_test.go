@@ -18,6 +18,8 @@ func newVMInDB(t *testing.T) *badger.DB {
 	kv.AddInDB(db, "vm/vm-1/nic/0/primary", "true")
 	kv.AddInDB(db, "subnet/sn-000001/vpc", "vp-admin")
 	kv.AddInDB(db, "subnet/sn-000001/interface_ip", "10.1.1.1")
+	kv.AddInDB(db, "subnet/sn-000001/mode", "vxlan")
+	kv.AddInDB(db, "vpc/vp-admin/cidr", "192.168.0.0/16")
 	kv.AddInDB(db, "subnet/sn-000001/dhcp/10.1.1.2", "00:22:33:00:01:02")
 	kv.AddInDB(db, "vm/vm-1/nic/0/ip", "10.1.1.2")
 	kv.AddInDB(db, "vm/vm-1/metadata_port", "8081")
@@ -104,6 +106,8 @@ func addNIC(t *testing.T, db *badger.DB, idx int, subnet, ip, mac string, primar
 	}
 	kv.AddInDB(db, "subnet/"+subnet+"/vpc", "vp-admin")
 	kv.AddInDB(db, "subnet/"+subnet+"/interface_ip", "10.1.1.1")
+	kv.AddInDB(db, "subnet/"+subnet+"/mode", "vxlan")
+	kv.AddInDB(db, "vpc/vp-admin/cidr", "192.168.0.0/16")
 	kv.AddInDB(db, "subnet/"+subnet+"/dhcp/"+ip, mac)
 }
 
@@ -170,6 +174,7 @@ func TestLoadVM_NoPrimaryIsAnError(t *testing.T) {
 	kv.AddInDB(db, "vm/vm-1/memory", "2048")
 	kv.AddInDB(db, "vm/vm-1/cpus", "2")
 	addNIC(t, db, 0, "sn-000001", "10.1.1.2", "00:22:33:00:01:02", false)
+	kv.AddInDB(db, "subnet/sn-000001/mode", "vxlan")
 
 	if _, err := loadVM(db, "vm-1"); err == nil {
 		t.Error("aucune interface primaire : loadVM doit échouer plutôt que de laisser StartVM choisir au hasard")

@@ -3,6 +3,7 @@ package vm
 import (
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
 
@@ -33,19 +34,28 @@ func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	}
 	nic := d.primary()
 
-	if err := netif.CreateTap(nic.tapID, nic.bridge, nic.vpcName); err != nil {
-		return fmt.Errorf("create tap: %w", err)
+	for _, n := range d.nics {
+		if err := netif.CreateTap(n.tapID, n.bridge, n.vpcName); err != nil {
+			return fmt.Errorf("create tap of interface %d: %w", n.index, err)
+		}
 	}
 
+	// La redirection est posée pour chaque IP de la VM vers le serveur de
+	// métadonnées de l'interface primaire. Toutes les interfaces étant dans le
+	// même VPC, donc le même netns, il est joignable depuis n'importe laquelle.
 	if err := netns.Call(nic.vpcName, func() error {
-		return iptables.AddMetadataRedirect(nic.ip, nic.interfaceIP, d.metadataPort)
+		for _, n := range d.nics {
+			if err := iptables.AddMetadataRedirect(n.ip, nic.interfaceIP, d.metadataPort); err != nil {
+				return fmt.Errorf("interface %d: %w", n.index, err)
+			}
+		}
+		return nil
 	}); err != nil {
 		return fmt.Errorf("add metadata redirect: %w", err)
 	}
 
-	if err := dhcp.WriteReservations(dhcp.DefaultConfDir, nic.vpcName+"_"+nic.bridge, name,
-		[]dhcp.Reservation{{MAC: nic.mac, IP: nic.ip}}); err != nil {
-		return fmt.Errorf("write dhcp reservation: %w", err)
+	if err := writeDHCPFiles(d, name); err != nil {
+		return err
 	}
 
 	if err := metadata.StartMetadata(metadata.NoCloudConfig{
@@ -65,10 +75,14 @@ func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 		qDisks[i] = qemu.DiskConfig{Path: disk.path, Dev: disk.dev}
 	}
 
+	qNICs := make([]qemu.NICConfig, len(d.nics))
+	for i, n := range d.nics {
+		qNICs[i] = qemu.NICConfig{TapID: n.tapID, Mac: n.mac}
+	}
+
 	qcfg := qemu.Config{
 		Name:       name,
-		TapID:      nic.tapID,
-		Mac:        nic.mac,
+		NICs:       qNICs,
 		Disks:      qDisks,
 		Memory:     d.memory,
 		CPUs:       d.cpus,
@@ -93,6 +107,53 @@ func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	}
 
 	return state.Set(db, "vm/"+name, state.Running)
+}
+
+// writeDHCPFiles écrit, pour chaque subnet touché par la VM, les réservations
+// de ses interfaces et les options qui suppriment la route par défaut sur les
+// interfaces non primaires. Le subnet de l'interface primaire ne reçoit aucune
+// option : les options non taggées du subnet portent déjà la route par défaut.
+func writeDHCPFiles(d vmData, name string) error {
+	type subnetFiles struct {
+		nic          nicData
+		reservations []dhcp.Reservation
+		tags         []string
+	}
+	bySubnet := make(map[string]*subnetFiles)
+
+	for _, n := range d.nics {
+		confName := n.vpcName + "_" + n.bridge
+		if bySubnet[confName] == nil {
+			bySubnet[confName] = &subnetFiles{nic: n}
+		}
+		f := bySubnet[confName]
+		f.reservations = append(f.reservations, dhcp.Reservation{
+			MAC: n.mac, IP: n.ip, Tag: nicTag(name, n.index),
+		})
+		if !n.primary {
+			f.tags = append(f.tags, nicTag(name, n.index))
+		}
+	}
+
+	for confName, f := range bySubnet {
+		if err := dhcp.WriteReservations(dhcp.DefaultConfDir, confName, name, f.reservations); err != nil {
+			return fmt.Errorf("write dhcp reservations on %s: %w", confName, err)
+		}
+		if err := dhcp.WriteVMOptions(dhcp.DefaultConfDir, confName, name, f.tags, dhcp.Config{
+			InterfaceIP: net.ParseIP(f.nic.interfaceIP),
+			VPCRoute:    f.nic.vpcCIDR,
+		}); err != nil {
+			return fmt.Errorf("write dhcp options on %s: %w", confName, err)
+		}
+	}
+	return nil
+}
+
+// nicTag identifie une interface auprès de dnsmasq. Il est par interface et non
+// par VM : deux interfaces d'une même VM peuvent partager un subnet, et n'y
+// avoir pas le même rôle.
+func nicTag(vmName string, index int) string {
+	return fmt.Sprintf("%s-%d", vmName, index)
 }
 
 func copyFile(src, dst string) error {

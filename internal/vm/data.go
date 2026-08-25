@@ -3,6 +3,7 @@ package vm
 import (
 	"fmt"
 	"math/rand"
+	"net"
 	"sort"
 	"strconv"
 	"strings"
@@ -27,6 +28,8 @@ type nicData struct {
 	mac         string
 	tapID       int
 	primary     bool
+	mode        string
+	vpcCIDR     *net.IPNet
 }
 
 type vmData struct {
@@ -189,6 +192,23 @@ func loadNIC(db *badger.DB, name string, idx int, entries map[string]string) (ni
 		return n, fmt.Errorf("get interface_ip of subnet %s: %w", n.subnetName, err)
 	}
 	n.interfaceIP = interfaceIP
+
+	n.mode, err = kv.GetFromDB(db, "subnet/"+n.subnetName+"/mode")
+	if err != nil {
+		return n, fmt.Errorf("get mode of subnet %s: %w", n.subnetName, err)
+	}
+
+	if n.mode != "bridge" {
+		cidrStr, err := kv.GetFromDB(db, "vpc/"+n.vpcName+"/cidr")
+		if err != nil {
+			return n, fmt.Errorf("get cidr of vpc %s: %w", n.vpcName, err)
+		}
+		_, vpcCIDR, err := net.ParseCIDR(cidrStr)
+		if err != nil {
+			return n, fmt.Errorf("parse cidr of vpc %s: %w", n.vpcName, err)
+		}
+		n.vpcCIDR = vpcCIDR
+	}
 
 	n.ip = entries[prefix+"ip"]
 	if n.ip == "" {

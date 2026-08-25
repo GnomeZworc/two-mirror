@@ -49,7 +49,12 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	// socket absent ou QEMU déjà arrêté : cleanup direct
 
 	if err := netns.Call(nic.vpcName, func() error {
-		return iptables.DeleteMetadataRedirect(nic.ip, nic.interfaceIP, d.metadataPort)
+		for _, n := range d.nics {
+			if err := iptables.DeleteMetadataRedirect(n.ip, nic.interfaceIP, d.metadataPort); err != nil {
+				return fmt.Errorf("interface %d: %w", n.index, err)
+			}
+		}
+		return nil
 	}); err != nil {
 		return fmt.Errorf("delete metadata redirect: %w", err)
 	}
@@ -58,11 +63,13 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 		return fmt.Errorf("stop metadata: %w", err)
 	}
 
-	if err := netif.DeleteTap(nic.tapID, nic.vpcName); err != nil {
-		return fmt.Errorf("delete tap: %w", err)
+	for _, n := range d.nics {
+		if err := netif.DeleteTap(n.tapID, n.vpcName); err != nil {
+			return fmt.Errorf("delete tap of interface %d: %w", n.index, err)
+		}
 	}
 
-	if err := removeDHCPReservation(nic, name); err != nil {
+	if err := removeDHCPFiles(d, name); err != nil {
 		return err
 	}
 
@@ -74,12 +81,26 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	return state.Set(db, "vm/"+name, state.Deleted)
 }
 
-// removeDHCPReservation retire le fichier de réservation puis redémarre dnsmasq :
-// un fichier ajouté dans un dhcp-hostsdir est relu à chaud, un fichier retiré ne
-// l'est pas (vérifié sur dnsmasq 2.90).
-func removeDHCPReservation(nic nicData, name string) error {
-	confName := nic.vpcName + "_" + nic.bridge
+// removeDHCPFiles retire les fichiers de la VM dans chaque subnet qu'elle
+// touche, puis redémarre les dnsmasq concernés : un fichier ajouté dans un
+// dhcp-hostsdir est relu à chaud, un fichier retiré ne l'est pas (vérifié sur
+// dnsmasq 2.90).
+func removeDHCPFiles(d vmData, name string) error {
+	seen := make(map[string]bool)
+	for _, n := range d.nics {
+		confName := n.vpcName + "_" + n.bridge
+		if seen[confName] {
+			continue
+		}
+		seen[confName] = true
+		if err := removeDHCPReservation(confName, name); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
+func removeDHCPReservation(confName, name string) error {
 	if err := dhcp.RemoveReservations(dhcp.DefaultConfDir, confName, name); err != nil {
 		return err
 	}
