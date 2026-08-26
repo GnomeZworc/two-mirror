@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 500" width="900" height="500" role="img" aria-label="Topologie du cluster">
+  <style>
+    .lbl { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 14px; fill: #1f2328; }
+    .sub { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 11px; fill: #57606a; }
+    .grp { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 12px; font-weight: 600; fill: #57606a; letter-spacing: .04em; }
+    .box { fill: #ffffff; stroke: #8c959f; stroke-width: 1.5; }
+    .group { fill: #f6f8fa; stroke: #d0d7de; stroke-width: 1.5; stroke-dasharray: 0; }
+    .link { stroke: #57606a; stroke-width: 1.8; fill: none; }
+    .ctrl { stroke: #8250df; stroke-width: 1.6; fill: none; stroke-dasharray: 5 4; }
+  </style>
+
+  <rect class="group" x="250" y="24" width="400" height="96" rx="8"/>
+  <text class="grp" x="270" y="46">ROUTEURS DE CLUSTER</text>
+  <rect class="box" x="275" y="58" width="160" height="42" rx="6"/>
+  <text class="lbl" x="355" y="84" text-anchor="middle">routeur A</text>
+  <rect class="box" x="465" y="58" width="160" height="42" rx="6"/>
+  <text class="lbl" x="545" y="84" text-anchor="middle">routeur B</text>
+
+  <rect class="box" x="350" y="168" width="200" height="56" rx="6"/>
+  <text class="lbl" x="450" y="191" text-anchor="middle">VM route reflector</text>
+  <text class="sub" x="450" y="210" text-anchor="middle">plan de contrôle</text>
+
+  <rect class="group" x="40" y="278" width="370" height="196" rx="8"/>
+  <text class="grp" x="60" y="300">HYPERVISEUR 1</text>
+  <rect class="box" x="145" y="312" width="160" height="40" rx="6"/>
+  <text class="lbl" x="225" y="337" text-anchor="middle">br-000000</text>
+  <rect class="box" x="145" y="372" width="160" height="40" rx="6"/>
+  <text class="lbl" x="225" y="397" text-anchor="middle">FRR</text>
+  <rect class="box" x="145" y="424" width="160" height="40" rx="6"/>
+  <text class="lbl" x="225" y="449" text-anchor="middle">agent</text>
+  <path class="link" d="M225 352 L225 372"/>
+  <path class="link" d="M225 412 L225 424"/>
+
+  <rect class="group" x="490" y="278" width="370" height="196" rx="8"/>
+  <text class="grp" x="510" y="300">HYPERVISEUR 2</text>
+  <rect class="box" x="595" y="312" width="160" height="40" rx="6"/>
+  <text class="lbl" x="675" y="337" text-anchor="middle">br-000000</text>
+  <rect class="box" x="595" y="372" width="160" height="40" rx="6"/>
+  <text class="lbl" x="675" y="397" text-anchor="middle">FRR</text>
+  <rect class="box" x="595" y="424" width="160" height="40" rx="6"/>
+  <text class="lbl" x="675" y="449" text-anchor="middle">agent</text>
+  <path class="link" d="M675 352 L675 372"/>
+  <path class="link" d="M675 412 L675 424"/>
+
+  <path class="link" d="M225 312 L225 148 L330 148 L330 120"/>
+  <path class="link" d="M675 312 L675 148 L570 148 L570 120"/>
+  <text class="sub" x="232" y="266">uplink</text>
+  <text class="sub" x="682" y="266">uplink</text>
+
+  <path class="ctrl" d="M350 196 L322 196 L322 392 L305 392"/>
+  <path class="ctrl" d="M550 196 L578 196 L578 392 L595 392"/>
+</svg>
