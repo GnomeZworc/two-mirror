@@ -2,25 +2,31 @@ Déploiement d'un cluster
 ========================
 
 Le :doc:`/demarrage/index` couvre un hyperviseur isolé : un VPC, un subnet, une VM, tout sur le
-même nœud. Cette section couvre ce qu'il faut mettre en place pour qu'un **parc** d'hyperviseurs
-fonctionne ensemble — c'est-à-dire pour qu'un subnet s'étende à plusieurs nœuds.
+même nœud. Cette section couvre la mise en place d'un **cluster** complet, dans l'ordre où les
+étapes se font.
 
-Ce n'est pas une extension du quickstart : le réseau du cluster doit exister **avant** que
-l'agent serve à quelque chose au-delà d'un nœud.
+Cet ordre n'est pas indifférent : chaque étape a besoin de la précédente. L'image doit exister
+avant qu'on puisse démarrer quoi que ce soit ; le réseau doit être en place avant le premier
+hyperviseur ; le route reflector est lui-même une VM, il lui faut donc un hyperviseur qui
+fonctionne.
 
-Ordre de mise en place
-----------------------
+Étapes
+------
 
-#. :doc:`architecture-cluster` — la topologie cible et ce que l'agent suppose déjà en place
-#. :doc:`routeurs-cluster` — le routage entre hyperviseurs et vers l'extérieur
-#. :doc:`route-reflector` — la VM route reflector, point de rendez-vous du plan de contrôle
-#. :doc:`frr-hyperviseur` — FRR sur chaque hyperviseur, qui peuple le plan de données
+#. :doc:`architecture-cluster` — la topologie cible, à lire avant tout le reste
+#. :doc:`image-qcow2` — l'image golden dont dérivent toutes les VM du cluster
+#. :doc:`routeurs` — le matériel : routeurs de cluster, de datacentre et de bordure
+#. :doc:`premier-hyperviseur` — le premier nœud, agent et plan de contrôle
+#. :doc:`route-reflector` — les VM route reflector
+
+D'autres étapes viendront à mesure que les composants d'orchestration seront livrés.
 
 .. toctree::
    :hidden:
    :maxdepth: 1
 
    architecture-cluster
-   routeurs-cluster
+   image-qcow2
+   routeurs
+   premier-hyperviseur
    route-reflector
-   frr-hyperviseur

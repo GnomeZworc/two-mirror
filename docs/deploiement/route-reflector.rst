@@ -12,8 +12,9 @@ explicitement : la VM qui porte le plan de contrôle du cluster est hébergée p
 
    **À rédiger.** À documenter :
 
-   * la création de la VM : image de base, ressources, subnet et mode utilisés, s'il s'agit d'une
-     VM créée par l'agent comme les autres ou d'un cas particulier ;
+   * la création de la VM : ressources, subnet et mode utilisés, et s'il s'agit d'une VM créée
+     par l'agent comme les autres ou d'un cas particulier — l'image, elle, est l'image golden de
+     :doc:`image-qcow2` ;
    * son adressage, et comment les hyperviseurs le connaissent ;
    * la configuration du démon de routage qu'elle héberge ;
    * la redondance : une seule VM route reflector, ou deux, et sur quels hyperviseurs ;
@@ -21,7 +22,8 @@ explicitement : la VM qui porte le plan de contrôle du cluster est hébergée p
      absent — les tunnels déjà établis continuent-ils de fonctionner, et pendant combien de
      temps ;
    * la procédure d'amorçage : ce qui fonctionne, et dans quel ordre, quand on démarre un cluster
-     entier depuis zéro.
+     entier depuis zéro — le premier hyperviseur n'a pas de session FRR établie tant que cette VM
+     n'existe pas, cf. :doc:`premier-hyperviseur`.
 
 Points de vigilance
 -------------------

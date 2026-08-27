@@ -55,11 +55,7 @@ Par où commencer
    :hidden:
    :caption: Exploitation
 
-   exploitation/configuration
-   exploitation/services
-   exploitation/api-agent/index
-   exploitation/observabilite
-   exploitation/diagnostic
+   exploitation/index
 
 .. toctree::
    :hidden:
