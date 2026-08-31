@@ -11,22 +11,13 @@ import (
 func configuredStore(t *testing.T) *Store {
 	t.Helper()
 	s, _ := loadedStore(t)
-	if err := s.SetSubnet(testSubnetSnapshot()); err != nil {
+	if err := s.SetSubnet(fullConfig(t)); err != nil {
 		t.Fatalf("SetSubnet: %v", err)
 	}
-	if err := s.SetHost(testHostSnapshot()); err != nil {
+	if err := s.SetHost(testHost(t)); err != nil {
 		t.Fatalf("SetHost: %v", err)
 	}
 	return s
-}
-
-func mac(t *testing.T, s string) net.HardwareAddr {
-	t.Helper()
-	m, err := net.ParseMAC(s)
-	if err != nil {
-		t.Fatalf("ParseMAC(%q): %v", s, err)
-	}
-	return m
 }
 
 func TestHandle_KnownMACGetsAnOfferOnDiscover(t *testing.T) {
@@ -61,7 +52,7 @@ func TestHandle_UnknownMACIsAnsweredWithSilence(t *testing.T) {
 
 func TestHandle_UnconfiguredSubnetIsAnsweredWithSilence(t *testing.T) {
 	s, _ := loadedStore(t)
-	if err := s.SetHost(testHostSnapshot()); err != nil {
+	if err := s.SetHost(testHost(t)); err != nil {
 		t.Fatalf("SetHost: %v", err)
 	}
 
@@ -120,7 +111,7 @@ func TestHandle_NilRequestIsRejected(t *testing.T) {
 
 func TestHandle_DeletedHostStopsBeingAnswered(t *testing.T) {
 	s := configuredStore(t)
-	if err := s.DelHost("00:22:33:00:00:0a"); err != nil {
+	if err := s.DelHost(mac(t, "00:22:33:00:00:0a")); err != nil {
 		t.Fatalf("DelHost: %v", err)
 	}
 
@@ -136,7 +127,7 @@ func TestHandle_DeletedHostStopsBeingAnswered(t *testing.T) {
 func TestProbe_ReturnsWhatWouldBeSentToTheMAC(t *testing.T) {
 	s := configuredStore(t)
 
-	reply, err := s.Probe("00:22:33:00:00:0A")
+	reply, err := s.Probe(mac(t, "00:22:33:00:00:0A"))
 	if err != nil {
 		t.Fatalf("Probe: %v", err)
 	}
@@ -154,7 +145,7 @@ func TestProbe_ReturnsWhatWouldBeSentToTheMAC(t *testing.T) {
 func TestProbe_UnknownMACReturnsNothing(t *testing.T) {
 	s := configuredStore(t)
 
-	reply, err := s.Probe("00:22:33:ff:ff:ff")
+	reply, err := s.Probe(mac(t, "00:22:33:ff:ff:ff"))
 	if err != nil {
 		t.Fatalf("Probe: %v", err)
 	}
@@ -166,26 +157,26 @@ func TestProbe_UnknownMACReturnsNothing(t *testing.T) {
 func TestProbe_WithoutSubnetConfigurationIsRejected(t *testing.T) {
 	s, _ := loadedStore(t)
 
-	if _, err := s.Probe("00:22:33:00:00:0a"); !errors.Is(err, ErrNotConfigured) {
+	if _, err := s.Probe(mac(t, "00:22:33:00:00:0a")); !errors.Is(err, ErrNotConfigured) {
 		t.Fatalf("error = %v, want ErrNotConfigured", err)
 	}
 }
 
-func TestProbe_InvalidMACIsRejected(t *testing.T) {
+func TestProbe_EmptyMACIsRejected(t *testing.T) {
 	s := configuredStore(t)
 
-	if _, err := s.Probe("nope"); err == nil {
-		t.Fatal("an invalid mac must be reported")
+	if _, err := s.Probe(nil); !errors.Is(err, ErrNoMAC) {
+		t.Fatalf("error = %v, want ErrNoMAC", err)
 	}
 }
 
 func TestHandle_SecondaryInterfaceGetsNoDefaultRoute(t *testing.T) {
 	s := configuredStore(t)
-	snap := testHostSnapshot()
-	snap.MAC = "00:22:33:00:00:0b"
-	snap.IP = "10.0.5.11"
-	snap.DefaultRoute = false
-	if err := s.SetHost(snap); err != nil {
+	h := testHost(t)
+	h.MAC = mac(t, "00:22:33:00:00:0b")
+	h.IP = net.ParseIP("10.0.5.11")
+	h.DefaultRoute = false
+	if err := s.SetHost(h); err != nil {
 		t.Fatalf("SetHost: %v", err)
 	}
 

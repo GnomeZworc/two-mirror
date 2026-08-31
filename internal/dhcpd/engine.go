@@ -36,10 +36,9 @@ func (s *Store) Handle(req *dhcpv4.DHCPv4) (*dhcpv4.DHCPv4, error) {
 	return BuildReply(subnet, host, req)
 }
 
-func (s *Store) Probe(mac string) (*dhcpv4.DHCPv4, error) {
-	key, err := normalizeMAC(mac)
-	if err != nil {
-		return nil, err
+func (s *Store) Probe(mac net.HardwareAddr) (*dhcpv4.DHCPv4, error) {
+	if len(mac) == 0 {
+		return nil, ErrNoMAC
 	}
 
 	subnet, configured := s.Subnet()
@@ -47,17 +46,12 @@ func (s *Store) Probe(mac string) (*dhcpv4.DHCPv4, error) {
 		return nil, ErrNotConfigured
 	}
 
-	parsed, err := net.ParseMAC(key)
-	if err != nil {
-		return nil, err
-	}
-
-	host, known := s.Lookup(parsed)
+	host, known := s.Lookup(mac)
 	if !known {
 		return nil, nil
 	}
 
-	req, err := dhcpv4.New(dhcpv4.WithMessageType(dhcpv4.MessageTypeRequest), dhcpv4.WithHwAddr(parsed))
+	req, err := dhcpv4.New(dhcpv4.WithMessageType(dhcpv4.MessageTypeRequest), dhcpv4.WithHwAddr(mac))
 	if err != nil {
 		return nil, err
 	}

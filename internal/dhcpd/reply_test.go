@@ -28,13 +28,26 @@ func testConfig(t *testing.T) SubnetConfig {
 	}
 }
 
+func fullConfig(t *testing.T) SubnetConfig {
+	t.Helper()
+	c := testConfig(t)
+	c.VPCRoute = cidr(t, "10.0.0.0/16")
+	c.DefaultGateway = net.ParseIP("10.0.5.254")
+	return c
+}
+
+func mac(t *testing.T, s string) net.HardwareAddr {
+	t.Helper()
+	m, err := net.ParseMAC(s)
+	if err != nil {
+		t.Fatalf("ParseMAC(%q): %v", s, err)
+	}
+	return m
+}
+
 func testHost(t *testing.T) Host {
 	t.Helper()
-	mac, err := net.ParseMAC("00:22:33:00:00:0a")
-	if err != nil {
-		t.Fatalf("ParseMAC: %v", err)
-	}
-	return Host{MAC: mac, IP: net.ParseIP("10.0.5.10"), VM: "vm-test", DefaultRoute: true}
+	return Host{MAC: mac(t, "00:22:33:00:00:0a"), IP: net.ParseIP("10.0.5.10"), VM: "vm-test", DefaultRoute: true}
 }
 
 func request(t *testing.T, kind dhcpv4.MessageType, mac net.HardwareAddr) *dhcpv4.DHCPv4 {
