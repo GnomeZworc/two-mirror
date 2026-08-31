@@ -51,6 +51,7 @@ jobs:
         binaries:
           - metadata
           - agent
+          - dhcp
     uses: ./.forgejo/workflows/build.yml
     with:
       tag: ${{ needs.set-release-target.outputs.release_cible }}
@@ -69,10 +70,14 @@ jobs:
         include:
           - path: scripts/run-dnsmasq-in-netns.sh
             name: run-dnsmasq-in-netns.sh
+          - path: scripts/run-dhcp-in-netns.sh
+            name: run-dhcp-in-netns.sh
           - path: systemd/agent.service
             name: agent.service
           - path: systemd/dnsmasq@.service
             name: dnsmasq@.service
+          - path: systemd/dhcp@.service
+            name: dhcp@.service
           - path: systemd/metadata@.service
             name: metadata@.service
     steps:

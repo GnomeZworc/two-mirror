@@ -39,6 +39,16 @@ interfaces:
 metadata:
   run_dir: "/run/two/metadata"
 
+# DHCP backend used for the subnets created by this agent.
+#   dnsmasq : dnsmasq@ instances driven by generated config files
+#   two     : the built-in dhcp binary, driven over a unix socket
+# Switching backends is a manual operation: drain the hypervisor, change this
+# value, restart the agent. There is no hot migration.
+# The per-subnet control socket and state file live in /run/two/dhcp, which is
+# not configurable: the wrapper script hardcodes it too.
+dhcp:
+  backend: dnsmasq
+
 # QEMU runtime paths
 qemu:
   # UEFI firmware (requires apt install ovmf on Debian/Ubuntu)

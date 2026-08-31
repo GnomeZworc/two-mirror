@@ -1,0 +1,10 @@
+[Unit]
+Description=two dhcp server in netns %i
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/opt/two/bin/run-dhcp-in-netns.sh %i
+
+[Install]
+WantedBy=multi-user.target
