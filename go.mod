@@ -1,8 +1,8 @@
 module git.g3e.fr/syonad/two
 
-go 1.24.0
+go 1.25.0
 
-toolchain go1.24.11
+toolchain go1.25.14
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
