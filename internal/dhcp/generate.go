@@ -29,12 +29,7 @@ func GenerateConfig(c Config) (string, map[string]string, error) {
 	fmt.Fprintf(&sb, "dhcp-hostsdir=%s\n", HostsDir(c.ConfDir, c.Name))
 	fmt.Fprintf(&sb, "dhcp-optsdir=%s\n", OptsDir(c.ConfDir, c.Name))
 
-	entries := make(map[string]string)
-	i := 0
-	for ip := cloneIP(c.Network.IP); c.Network.Contains(ip); incrementIP(ip) {
-		entries[ip.String()] = fmt.Sprintf("00:22:33:%02X:%02X:%02X", (i>>16)&0xFF, (i>>8)&0xFF, i&0xFF)
-		i++
-	}
+	entries := Entries(c.Network)
 
 	for _, dir := range []string{c.ConfDir, HostsDir(c.ConfDir, c.Name), OptsDir(c.ConfDir, c.Name)} {
 		if err := os.MkdirAll(dir, 0755); err != nil {
@@ -44,6 +39,16 @@ func GenerateConfig(c Config) (string, map[string]string, error) {
 
 	outPath := filepath.Join(c.ConfDir, c.Name+".conf")
 	return outPath, entries, os.WriteFile(outPath, []byte(sb.String()), 0644)
+}
+
+func Entries(network *net.IPNet) map[string]string {
+	entries := make(map[string]string)
+	i := 0
+	for ip := cloneIP(network.IP); network.Contains(ip); incrementIP(ip) {
+		entries[ip.String()] = fmt.Sprintf("00:22:33:%02X:%02X:%02X", (i>>16)&0xFF, (i>>8)&0xFF, i&0xFF)
+		i++
+	}
+	return entries
 }
 
 func classlessRoutes(c Config) []string {

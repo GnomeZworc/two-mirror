@@ -85,8 +85,12 @@ func (f *File[T]) Save(value T) error {
 }
 
 func (f *File[T]) Remove() error {
-	if err := os.Remove(f.path); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("remove %s: %w", f.path, err)
+	return Remove(f.path)
+}
+
+func Remove(path string) error {
+	if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("remove %s: %w", path, err)
 	}
 	return nil
 }

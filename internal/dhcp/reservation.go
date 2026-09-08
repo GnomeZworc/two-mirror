@@ -117,3 +117,11 @@ func RemoveSubnetDirs(confDir, name string) error {
 	}
 	return nil
 }
+
+func RemoveConfig(confDir, name string) error {
+	path := filepath.Join(confDir, name+".conf")
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("remove %s: %w", path, err)
+	}
+	return nil
+}

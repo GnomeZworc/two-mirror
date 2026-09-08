@@ -84,7 +84,7 @@ func (c CreateSubnetCommand) Execute(db *badger.DB, cfg *configuration.Config) e
 		case <-time.After(time.Duration(cfg.Dispatcher.PollSeconds) * time.Second):
 		}
 	}
-	return subnet.CreateSubnet(db, c.Name)
+	return subnet.CreateSubnet(db, c.Name, cfg)
 }
 
 type DeleteSubnetCommand struct {
@@ -104,8 +104,8 @@ func (c DeleteSubnetCommand) Prepare(db *badger.DB, _ *configuration.Config) err
 	return state.Set(db, c.Key(), state.Deleting)
 }
 
-func (c DeleteSubnetCommand) Execute(db *badger.DB, _ *configuration.Config) error {
-	if err := subnet.DeleteSubnet(db, c.Name); err != nil {
+func (c DeleteSubnetCommand) Execute(db *badger.DB, cfg *configuration.Config) error {
+	if err := subnet.DeleteSubnet(db, c.Name, cfg); err != nil {
 		return err
 	}
 	current, err := state.Get(db, c.Key())

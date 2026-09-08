@@ -3,17 +3,18 @@ package subnet
 import (
 	"fmt"
 
+	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/dhcp"
+	"git.g3e.fr/syonad/two/internal/dhcpbackend"
 	"git.g3e.fr/syonad/two/internal/ebtables"
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
 	"git.g3e.fr/syonad/two/internal/state"
-	"git.g3e.fr/syonad/two/pkg/systemd"
 
 	"github.com/dgraph-io/badger/v4"
 )
 
-func CreateSubnet(db *badger.DB, subnetName string) error {
+func CreateSubnet(db *badger.DB, subnetName string, cfg *configuration.Config) error {
 	current, err := state.Get(db, "subnet/"+subnetName)
 	if err != nil {
 		return err
@@ -27,14 +28,19 @@ func CreateSubnet(db *badger.DB, subnetName string) error {
 		return err
 	}
 
-	if err := createSubnet(db, subnetName, d); err != nil {
+	backend, err := dhcpbackend.New(cfg)
+	if err != nil {
+		return err
+	}
+
+	if err := createSubnet(db, subnetName, d, backend); err != nil {
 		return err
 	}
 
 	return state.Set(db, "subnet/"+subnetName, state.Running)
 }
 
-func createSubnet(db *badger.DB, subnetName string, d subnetData) error {
+func createSubnet(db *badger.DB, subnetName string, d subnetData, backend dhcpbackend.Backend) error {
 	vethE := "v-" + d.subnetID + "-e"
 	vethI := "v-" + d.subnetID + "-i"
 
@@ -110,7 +116,7 @@ func createSubnet(db *badger.DB, subnetName string, d subnetData) error {
 		}
 	}
 
-	return startDHCP(db, subnetName, d)
+	return startDHCP(db, subnetName, d, backend)
 }
 
 func setupVxlanHost(d subnetData, vethE string) error {
@@ -136,35 +142,23 @@ func setupVxlanHost(d subnetData, vethE string) error {
 	return nil
 }
 
-func startDHCP(db *badger.DB, subnetName string, d subnetData) error {
-	conf := dhcp.Config{
-		Network:     d.cidr,
-		Name:        d.vpc + "_" + d.bridge,
-		ConfDir:     dhcp.DefaultConfDir,
-		InterfaceIP: d.interfaceIP,
-	}
+func startDHCP(db *badger.DB, subnetName string, d subnetData, backend dhcpbackend.Backend) error {
 	defaultGateway, vpcRoute, err := dhcpRouting(d, netif.GetDefaultGateway)
 	if err != nil {
 		return err
 	}
-	conf.DefaultGateway = defaultGateway
-	conf.VPCRoute = vpcRoute
-	_, entries, err := dhcp.GenerateConfig(conf)
-	if err != nil {
-		return fmt.Errorf("generate dhcp config: %w", err)
-	}
-	if err := dhcp.StoreDHCPEntries(db, subnetName, entries); err != nil {
+
+	if err := dhcp.StoreDHCPEntries(db, subnetName, dhcp.Entries(d.cidr)); err != nil {
 		return fmt.Errorf("store dhcp entries: %w", err)
 	}
 
-	svc, err := systemd.New()
-	if err != nil {
-		return fmt.Errorf("connect to systemd: %w", err)
-	}
-	defer svc.Close()
-
-	if err := svc.Start("dnsmasq@" + conf.Name + ".service"); err != nil {
-		return fmt.Errorf("start dnsmasq: %w", err)
-	}
-	return nil
+	return backend.ConfigureSubnet(dhcpbackend.Subnet{
+		Name:           subnetName,
+		VPC:            d.vpc,
+		Bridge:         d.bridge,
+		Network:        d.cidr,
+		InterfaceIP:    d.interfaceIP,
+		VPCRoute:       vpcRoute,
+		DefaultGateway: defaultGateway,
+	})
 }
