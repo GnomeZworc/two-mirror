@@ -54,3 +54,29 @@ func TestLoadConfig_ReadsTheTwoBackend(t *testing.T) {
 		t.Errorf("backend = %q, want two", cfg.DHCP.Backend)
 	}
 }
+
+func TestLoadConfig_MalformedFileIsReported(t *testing.T) {
+	path := writeConfig(t, "--\n\ndhcp:\n  backend: two\n")
+
+	if _, err := LoadConfig(path); err == nil {
+		t.Fatal("an unparseable config must be reported: silently falling back to defaults would run the wrong dhcp backend")
+	}
+}
+
+func TestLoadConfig_TabIndentedFileIsReported(t *testing.T) {
+	path := writeConfig(t, "dhcp:\n\tbackend: two\n")
+
+	if _, err := LoadConfig(path); err == nil {
+		t.Fatal("yaml forbids tabs for indentation: that must surface, not be swallowed")
+	}
+}
+
+func TestLoadConfig_MissingFileStillFallsBackToDefaults(t *testing.T) {
+	cfg, err := LoadConfig(filepath.Join(t.TempDir(), "absent.yml"))
+	if err != nil {
+		t.Fatalf("an absent file remains valid, only an unreadable one is an error: %v", err)
+	}
+	if cfg.DHCP.Backend != BackendDnsmasq {
+		t.Errorf("backend = %q, want %q", cfg.DHCP.Backend, BackendDnsmasq)
+	}
+}

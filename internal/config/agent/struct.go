@@ -1,6 +1,10 @@
 package configuration
 
 import (
+	"errors"
+	"fmt"
+	"os"
+
 	"github.com/spf13/viper"
 )
 
@@ -86,7 +90,9 @@ func LoadConfig(path string) (*Config, error) {
 	v.SetDefault("logger.level", "info")
 	v.SetDefault("logger.debug", false)
 
-	v.ReadInConfig()
+	if err := v.ReadInConfig(); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return nil, fmt.Errorf("read %s: %w", path, err)
+	}
 
 	var cfg Config
 	if err := v.Unmarshal(&cfg); err != nil {
