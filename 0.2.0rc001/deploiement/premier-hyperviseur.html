@@ -1,0 +1,533 @@
+
+<!DOCTYPE html>
+
+
+<html lang="fr" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Premier hyperviseur &#8212; Documentation two 0.1.0</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=4d0cb239"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script src="../_static/translations.js?v=e6b791cb"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'deploiement/premier-hyperviseur';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Recherche" href="../search.html" />
+    <link rel="next" title="VM route reflector" href="route-reflector.html" />
+    <link rel="prev" title="Routeurs" href="routeurs.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="fr"/>
+  <meta name="docsearch:version" content="0.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Passer au contenu principal</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Haut de page</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Alerte de version"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">Documentation two 0.1.0</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Recherche" aria-label="Recherche" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Recherche</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        
+        <ul class="nav bd-sidenav bd-sidenav__home-link">
+            <li class="toctree-l1">
+                <a class="reference internal" href="../index.html">
+                    two
+                </a>
+            </li>
+        </ul>
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Mise en œuvre</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../demarrage/index.html">Démarrage</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../demarrage/installation.html">Installation d’un hyperviseur</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../demarrage/premier-vpc.html">Premier VPC, premier subnet, première VM</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">Déploiement d’un cluster</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="architecture-cluster.html">Architecture du cluster</a></li>
+<li class="toctree-l2"><a class="reference internal" href="image-qcow2.html">Construction de l’image qcow2</a></li>
+<li class="toctree-l2"><a class="reference internal" href="routeurs.html">Routeurs</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Premier hyperviseur</a></li>
+<li class="toctree-l2"><a class="reference internal" href="route-reflector.html">VM route reflector</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Exploitation</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../exploitation/index.html">Exploitation</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../exploitation/configuration.html">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../exploitation/services.html">Services systemd</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../exploitation/api-agent/index.html">API de l’agent</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../exploitation/api-agent/asynchronisme.html">Modèle asynchrone et codes de retour</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../exploitation/api-agent/reference.html">Référence</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="../exploitation/observabilite.html">Observabilité</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../exploitation/diagnostic.html">Diagnostic</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Interne</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../concepts/index.html">Concepts</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/vpc-subnet-vm.html">VPC, subnet et VM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/modes-reseau.html">Modes réseau</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/cycle-de-vie.html">Cycle de vie des ressources</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/metadata-cloud-init.html">Metadata et cloud-init</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../architecture/index.html">Architecture</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../architecture/vue-densemble.html">Vue d’ensemble</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../architecture/stockage.html">Schéma des clés</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../architecture/contraintes.html">Invariants et pièges</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../versions/index.html">Versions</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../versions/0.1.0.html">Michael</a></li>
+</ul>
+</details></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Téléchargez cette page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../_sources/deploiement/premier-hyperviseur.rst" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Télécharger le fichier source"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.rst</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Imprimer au format PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Mode plein écran"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Thème" data-bs-title="Thème"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Clair"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Sombre"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="Paramètres système"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Recherche" aria-label="Recherche" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Premier hyperviseur</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contenu </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#installation">Installation</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#plan-de-controle-frr">Plan de contrôle — FRR</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#verifier-le-plan-de-donnees">Vérifier le plan de données</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#valider-le-noeud">Valider le nœud</a></li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="premier-hyperviseur">
+<h1>Premier hyperviseur<a class="headerlink" href="#premier-hyperviseur" title="Lien vers cette rubrique">#</a></h1>
+<p>Le premier nœud du cluster se déploie comme les suivants, mais il est le seul à devoir
+fonctionner <strong>avant</strong> que le plan de contrôle existe : c’est lui qui hébergera la première VM
+route reflector.</p>
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Lien vers cette rubrique">#</a></h2>
+<p>L’installation de l’agent est identique à celle d’un nœud isolé et n’est pas reprise ici :
+voir <a class="reference internal" href="../demarrage/installation.html"><span class="doc">Installation d’un hyperviseur</span></a> pour <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code>, ses options, la préparation de l’host et
+la migration réseau vers le bridge d’uplink.</p>
+<p>Deux points à relire avant de lancer un <code class="docutils literal notranslate"><span class="pre">-i</span></code> sur un nœud de production : la migration réseau
+coupe le réseau de l’host si elle échoue à mi-parcours, et l’hyperviseur est <strong>sans état</strong> —
+tout ce qui est posé doit l’être par un mécanisme rejoué à chaque démarrage.</p>
+</section>
+<section id="plan-de-controle-frr">
+<h2>Plan de contrôle — FRR<a class="headerlink" href="#plan-de-controle-frr" title="Lien vers cette rubrique">#</a></h2>
+<p>FRR tourne sur chaque hyperviseur et peuple la table de transfert (FDB) des interfaces VXLAN
+créées par l’agent. C’est ce qui rend un subnet utilisable au-delà d’un seul nœud, puisque
+l’agent désactive l’apprentissage et ne configure aucun voisin — cf.
+<a class="reference internal" href="architecture-cluster.html"><span class="doc">Architecture du cluster</span></a>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>À rédiger.</strong> À documenter :</p>
+<ul class="simple">
+<li><p>la version de FRR de référence et son mode d’installation, sachant que l’hyperviseur est
+sans état : le paquet et la configuration doivent être posés à chaque démarrage, par le
+bootstrap ou par un mécanisme équivalent ;</p></li>
+<li><p>les démons activés dans <code class="docutils literal notranslate"><span class="pre">/etc/frr/daemons</span></code> ;</p></li>
+<li><p>la configuration de référence : numéro d’AS, session vers le route reflector, famille
+d’adresses utilisée pour annoncer les MAC et les VNI ;</p></li>
+<li><p>l’articulation avec les interfaces créées par l’agent : comment FRR découvre une interface
+VXLAN qui apparaît à la création d’un subnet, et si une action est nécessaire ensuite ;</p></li>
+<li><p>ce qui se passe au démarrage à froid, quand FRR démarre avant ou après l’agent ;</p></li>
+<li><p>le cas particulier du <strong>premier</strong> hyperviseur, dont la session ne peut pas s’établir tant
+que le route reflector n’existe pas.</p></li>
+</ul>
+</div>
+</section>
+<section id="verifier-le-plan-de-donnees">
+<h2>Vérifier le plan de données<a class="headerlink" href="#verifier-le-plan-de-donnees" title="Lien vers cette rubrique">#</a></h2>
+<p>Ces deux vérifications restent valables quelle que soit la configuration retenue, et méritent
+d’être dans toute procédure de diagnostic :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># La FDB du VXLAN doit contenir des entrées vers les autres hyperviseurs.</span>
+<span class="c1"># Vide, c'est le plan de contrôle qui ne fonctionne pas, pas l'agent.</span>
+ip<span class="w"> </span>netns<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>&lt;vpc&gt;<span class="w"> </span>bridge<span class="w"> </span>fdb<span class="w"> </span>show<span class="w"> </span>dev<span class="w"> </span>&lt;interface-vxlan&gt;
+
+<span class="c1"># L'interface VXLAN telle que l'agent l'a créée : port 4789, learning off,</span>
+<span class="c1"># aucun groupe multicast, aucun remote.</span>
+ip<span class="w"> </span>netns<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>&lt;vpc&gt;<span class="w"> </span>ip<span class="w"> </span>-d<span class="w"> </span>link<span class="w"> </span>show<span class="w"> </span>&lt;interface-vxlan&gt;
+</pre></div>
+</div>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>Une FDB vide alors que le subnet est en <code class="docutils literal notranslate"><span class="pre">running</span></code> n’est <strong>pas</strong> un défaut de l’agent : il
+crée délibérément l’interface sans apprentissage ni voisin, et laisse le peuplement au plan
+de contrôle.</p>
+</div>
+</section>
+<section id="valider-le-noeud">
+<h2>Valider le nœud<a class="headerlink" href="#valider-le-noeud" title="Lien vers cette rubrique">#</a></h2>
+<p>Avant de passer à la suite, le nœud doit savoir créer une VM de bout en bout à partir de l’image
+golden — c’est exactement le parcours de <a class="reference internal" href="../demarrage/premier-vpc.html"><span class="doc">Premier VPC, premier subnet, première VM</span></a>, avec
+<code class="docutils literal notranslate"><span class="pre">storage[0].path</span></code> pointant sur une copie de l’image produite par <a class="reference internal" href="image-qcow2.html"><span class="doc">Construction de l’image qcow2</span></a>.</p>
+<p>Une VM qui démarre, obtient son adresse en DHCP et applique son user-data valide d’un coup
+l’agent, le DHCP, la route vers le serveur de metadata et l’image. C’est le prérequis de
+<a class="reference internal" href="route-reflector.html"><span class="doc">VM route reflector</span></a>.</p>
+</section>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="routeurs.html"
+       title="page précédente">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">précédent</p>
+        <p class="prev-next-title">Routeurs</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="route-reflector.html"
+       title="page suivante">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">suivant</p>
+        <p class="prev-next-title">VM route reflector</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contenu
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#installation">Installation</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#plan-de-controle-frr">Plan de contrôle — FRR</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#verifier-le-plan-de-donnees">Vérifier le plan de données</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#valider-le-noeud">Valider le nœud</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+Par Nicolas Boufidjeline
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2026, Nicolas Boufidjeline.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>
