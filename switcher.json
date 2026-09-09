@@ -1,5 +1,5 @@
 [
-  {"name": "dev (main)", "version": "main", "url": "https://syonad.g3e.fr/two/main/"},
-  {"name": "0.2.0rc002", "version": "0.2.0rc002", "url": "https://syonad.g3e.fr/two/0.2.0rc002/", "preferred": true},
-  {"name": "0.2.0rc001", "version": "0.2.0rc001", "url": "https://syonad.g3e.fr/two/0.2.0rc001/"}
+  {"name": "dev (main)", "version": "main", "url": "/main/"},
+  {"name": "0.2.0rc002", "version": "0.2.0rc002", "url": "/0.2.0rc002/", "preferred": true},
+  {"name": "0.2.0rc001", "version": "0.2.0rc001", "url": "/0.2.0rc001/"}
 ]
