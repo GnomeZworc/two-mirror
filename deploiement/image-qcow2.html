@@ -974,7 +974,7 @@ mount<span class="w"> </span><span class="si">${</span><span class="nv">work_dis
 <span class="nb">cd</span><span class="w"> </span>/work
 
 curl<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">os_link</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span>-O
-qemu-img<span class="w"> </span>convert<span class="w"> </span>./*.qcow2<span class="w"> </span>-O<span class="w"> </span>raw<span class="w"> </span><span class="si">${</span><span class="nv">os_disk</span><span class="si">}</span>
+qemu-img<span class="w"> </span>convert<span class="w"> </span>./*.qcow2<span class="w"> </span>-O<span class="w"> </span>raw<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">os_disk</span><span class="si">}</span><span class="s2">"</span>
 </pre></div>
 </div>
 <p>L’image du fournisseur est écrite <strong>en brut</strong> directement sur le disque cible : le qcow2 obtenu
@@ -984,7 +984,7 @@ côté host contient donc une image disque complète et amorçable, sans backing
 sleep<span class="w"> </span><span class="m">2</span>
 
 <span class="c1"># La partition racine est la plus grande du disque</span>
-<span class="nv">root_partition</span><span class="o">=</span><span class="k">$(</span>fdisk<span class="w"> </span>-lo<span class="w"> </span>device,size<span class="w"> </span>/dev/sda<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">'^\/dev\/'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span>-s<span class="w"> </span><span class="s1">' '</span><span class="w"> </span><span class="se">\</span>
+<span class="nv">root_partition</span><span class="o">=</span><span class="k">$(</span>fdisk<span class="w"> </span>-lo<span class="w"> </span>device,size<span class="w"> </span><span class="s2">"</span><span class="si">${</span><span class="nv">os_disk</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">'^/dev/'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span>-s<span class="w"> </span><span class="s1">' '</span><span class="w"> </span><span class="se">\</span>
 <span class="w">                 </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-rhk2<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-n1<span class="w"> </span><span class="p">|</span><span class="w"> </span>cut<span class="w"> </span>-d<span class="w"> </span><span class="s1">' '</span><span class="w"> </span>-f1<span class="k">)</span>
 
 mount<span class="w"> </span>-o<span class="w"> </span>nouuid<span class="w"> </span><span class="nv">$root_partition</span><span class="w"> </span>/mnt
