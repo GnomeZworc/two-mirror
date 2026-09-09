@@ -6,6 +6,7 @@ Chaque version porte un nom de code dérivé du rang de sa publication : anges e
 .. toctree::
    :maxdepth: 1
 
+   0.2.0
    0.1.0
 
 .. include:: ../../release_notes/codenames.md

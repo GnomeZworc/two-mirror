@@ -24,7 +24,8 @@ Subnet
 ------
 
 Un subnet appartient à un VPC et pose, dans son netns, un bridge qui porte ``interface_ip`` — la
-gateway vue par les VM. Il fournit aussi le DHCP (dnsmasq) et les routes annoncées aux guests.
+gateway vue par les VM. Il fournit aussi le DHCP — dnsmasq ou le serveur intégré selon
+``dhcp.backend`` — et les routes annoncées aux guests.
 
 ``iface_type`` est une clé **logique** (``vms``, ``internet``, ``admin``…), traduite en nom de
 bridge physique par la configuration de l'agent. Une clé absente ou inconnue retombe sur
