@@ -30,3 +30,6 @@ go.work.sum
 
 # ignore local info
 data/
+
+# Sphinx build output
+docs/_build/

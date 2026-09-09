@@ -1,0 +1,168 @@
+name: Documentation
+
+# Un tag de release ajoute une version au site : la publication est donc
+# déclenchée par les deux, sans filtre de chemin sur les tags — c'est le tag
+# lui-même qui est la nouveauté, pas un fichier modifié.
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - '[0-9]*.[0-9]*.[0-9]*'
+  workflow_dispatch:
+
+# Deux publications simultanées se pousseraient l'une sur l'autre.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: docker
+    env:
+      TOKEN: ${{ secrets.RELEASE }}
+      SITE_DIR: /tmp/site
+      # Préfixe de chemin sous lequel le site est servi. Vide = racine du
+      # domaine, ce qui couvre le cas courant et un serveur de test local.
+      # À renseigner (par exemple /two) seulement si les pages sont publiées
+      # sous un sous-chemin. Aucun nom d'hôte ici : les liens du menu de
+      # version sont relatifs à l'origine, donc le site fonctionne à
+      # l'identique en local et en production.
+      DOCS_BASE_PATH: ''
+    steps:
+      # fetch-depth: 0 — les tags et leur contenu sont nécessaires : chaque
+      # version est construite depuis son propre ref.
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Installer Sphinx
+        run: |
+          apt-get update
+          apt-get install -y python3 python3-venv git
+          python3 -m venv /tmp/venv
+          /tmp/venv/bin/pip install --quiet --upgrade pip
+          /tmp/venv/bin/pip install --quiet -r docs/requirements.txt
+
+      # Les versions publiables : main, plus les tags finaux qui contiennent
+      # déjà un répertoire docs/. 0.1.0 est antérieure à la documentation et
+      # n'est donc pas constructible — le filtre l'écarte de lui-même, sans
+      # liste à maintenir.
+      - name: Choisir les versions à publier
+        run: |
+          versions=""
+          for tag in $(git tag --sort=-v:refname)
+          do
+            case "${tag}" in *rc*) continue ;; esac
+            if git ls-tree --name-only "${tag}" | grep -qx docs
+            then
+              versions="${versions} ${tag}"
+            else
+              echo "ignoré : ${tag} n'a pas de docs/"
+            fi
+          done
+          echo "VERSIONS=${versions# }" >> "${GITHUB_ENV}"
+          echo "versions retenues : main${versions}"
+
+      # main est construite en premier et son échec est fatal : la doc courante
+      # doit toujours partir. L'échec d'une version figée est signalé mais ne
+      # bloque pas la publication — une vieille version qui ne se reconstruit
+      # plus ne doit pas empêcher de publier la doc du jour.
+      - name: Construire chaque version
+        run: |
+          build () {
+            local ref="$1" src="$2"
+            DOCS_VERSION="${ref}" \
+              /tmp/venv/bin/sphinx-build -b html -W --keep-going \
+                -d "/tmp/doctrees-${ref}" "${src}/docs" "${SITE_DIR}/${ref}"
+          }
+
+          build main .
+
+          for version in ${VERSIONS}
+          do
+            rm -rf "/tmp/src-${version}"
+            git worktree add --quiet --detach "/tmp/src-${version}" "${version}"
+            if build "${version}" "/tmp/src-${version}"
+            then
+              echo "construit : ${version}"
+            else
+              echo "::warning::la version ${version} ne se construit plus, elle est absente du site"
+              rm -rf "${SITE_DIR}/${version}"
+            fi
+            git worktree remove --force "/tmp/src-${version}"
+          done
+
+      # Les liens du menu de version sont relatifs à l'origine : le thème les
+      # concatène au chemin de la page courante avant de les poser en href, si
+      # bien qu'un chemin relatif y serait résolu depuis la page et casserait
+      # selon sa profondeur. Une barre initiale les ancre à la racine du site,
+      # sans jamais nommer d'hôte.
+      - name: Assembler la racine du site
+        run: |
+          preferred="$(echo ${VERSIONS} | tr ' ' '\n' | head -1)"
+          [ -n "${preferred}" ] || preferred="main"
+
+          {
+            echo '['
+            echo '  {"name": "dev (main)", "version": "main", "url": "'"${DOCS_BASE_PATH}"'/main/"},'
+            first=1
+            for version in ${VERSIONS}
+            do
+              [ -d "${SITE_DIR}/${version}" ] || continue
+              [ ${first} -eq 1 ] && suffix=', "preferred": true' || suffix=''
+              first=0
+              echo '  {"name": "'"${version}"'", "version": "'"${version}"'", "url": "'"${DOCS_BASE_PATH}"'/'"${version}"'/"'"${suffix}"'},'
+            done
+          } | sed '$ s/,$//' > "${SITE_DIR}/switcher.json"
+          echo ']' >> "${SITE_DIR}/switcher.json"
+
+          python3 -c "import json,sys; json.load(open('${SITE_DIR}/switcher.json'))"
+          cat "${SITE_DIR}/switcher.json"
+
+          # La racine ne sert qu'à rediriger : le contenu vit dans les
+          # sous-répertoires de version.
+          cat > "${SITE_DIR}/index.html" <<HTML
+          <!doctype html>
+          <html lang="fr">
+          <head>
+            <meta charset="utf-8">
+            <title>two — documentation</title>
+            <meta http-equiv="refresh" content="0; url=./${preferred}/">
+          </head>
+          <body><p><a href="./${preferred}/">Documentation de two</a></p></body>
+          </html>
+          HTML
+
+      - name: Alléger le site
+        run: |
+          find "${SITE_DIR}" -name '*.map' -delete
+          find "${SITE_DIR}" -name '.buildinfo' -delete
+          touch "${SITE_DIR}/.nojekyll"
+          du -sh "${SITE_DIR}"
+
+      - name: Publier sur la branche pages
+        run: |
+          cd "${SITE_DIR}"
+          git init --quiet --initial-branch=pages
+          git config user.name "forgejo-actions"
+          git config user.email "forgejo-actions@git.g3e.fr"
+          git remote add origin "https://${TOKEN}@git.g3e.fr/${{ github.repository }}.git"
+
+          if git fetch --quiet --depth=1 origin pages 2>/dev/null
+          then
+            git reset --soft FETCH_HEAD
+          else
+            echo "branche pages absente : premier build"
+          fi
+
+          git add -A
+          if git diff --cached --quiet
+          then
+            echo "site identique au précédent, rien à publier"
+            exit 0
+          fi
+
+          git commit --quiet -m "docs: build de ${GITHUB_SHA}"
+          git push --quiet origin pages
+          echo "publié : $(git rev-parse --short HEAD) — $(git ls-files | wc -l) fichiers"
