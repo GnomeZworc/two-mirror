@@ -1,0 +1,636 @@
+
+<!DOCTYPE html>
+
+
+<html lang="fr" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Installation d’un hyperviseur &#8212; Documentation two 0.1.0</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=57395fb6"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script src="../_static/translations.js?v=e6b791cb"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'demarrage/installation';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://syonad.g3e.fr/two/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'main';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Recherche" href="../search.html" />
+    <link rel="next" title="Premier VPC, premier subnet, première VM" href="premier-vpc.html" />
+    <link rel="prev" title="Démarrage" href="index.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="fr"/>
+  <meta name="docsearch:version" content="0.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Passer au contenu principal</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Haut de page</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Alerte de version"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">Documentation two 0.1.0</p>
+  
+</a></div>
+        <div class="sidebar-primary-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://git.g3e.fr/syonad/two" title="Dépôt" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-code-branch fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">Dépôt</span></a>
+        </li>
+</ul></div>
+        <div class="sidebar-primary-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Recherche" aria-label="Recherche" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Recherche</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        
+        <ul class="nav bd-sidenav bd-sidenav__home-link">
+            <li class="toctree-l1">
+                <a class="reference internal" href="../index.html">
+                    two
+                </a>
+            </li>
+        </ul>
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Mise en œuvre</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">Démarrage</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Installation d’un hyperviseur</a></li>
+<li class="toctree-l2"><a class="reference internal" href="premier-vpc.html">Premier VPC, premier subnet, première VM</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../deploiement/index.html">Déploiement d’un cluster</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../deploiement/architecture-cluster.html">Architecture du cluster</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../deploiement/image-qcow2.html">Construction de l’image qcow2</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../deploiement/routeurs.html">Routeurs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../deploiement/premier-hyperviseur.html">Premier hyperviseur</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../deploiement/route-reflector.html">VM route reflector</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Exploitation</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../exploitation/index.html">Exploitation</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../exploitation/configuration.html">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../exploitation/services.html">Services systemd</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../exploitation/api-agent/index.html">API de l’agent</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../exploitation/api-agent/asynchronisme.html">Modèle asynchrone et codes de retour</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../exploitation/api-agent/reference.html">Référence</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="../exploitation/observabilite.html">Observabilité</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../exploitation/diagnostic.html">Diagnostic</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Interne</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../concepts/index.html">Concepts</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/vpc-subnet-vm.html">VPC, subnet et VM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/modes-reseau.html">Modes réseau</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/cycle-de-vie.html">Cycle de vie des ressources</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/metadata-cloud-init.html">Metadata et cloud-init</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../architecture/index.html">Architecture</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../architecture/vue-densemble.html">Vue d’ensemble</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../architecture/stockage.html">Schéma des clés</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../architecture/contraintes.html">Invariants et pièges</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../versions/index.html">Versions</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../versions/0.2.0.html">Bael</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../versions/0.1.0.html">Michael</a></li>
+</ul>
+</details></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Mode plein écran"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Thème" data-bs-title="Thème"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Clair"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Sombre"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="Paramètres système"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Recherche" aria-label="Recherche" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Installation d’un hyperviseur</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contenu </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#prerequis">Prérequis</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#deploiement">Déploiement</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ce-que-fait-i">Ce que fait <code class="docutils literal notranslate"><span class="pre">-i</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#host-sans-etat">Host sans état</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#binaires-installes">Binaires installés</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mise-a-jour">Mise à jour</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#verifier-l-installation">Vérifier l’installation</a></li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="installation-d-un-hyperviseur">
+<h1>Installation d’un hyperviseur<a class="headerlink" href="#installation-d-un-hyperviseur" title="Lien vers cette rubrique">#</a></h1>
+<p>Cette page installe l’agent sur <strong>un</strong> hyperviseur. Le réseau du cluster — routage entre nœuds,
+plan de contrôle — est traité à part : voir <a class="reference internal" href="../deploiement/index.html"><span class="doc">Déploiement d’un cluster</span></a>.</p>
+<section id="prerequis">
+<h2>Prérequis<a class="headerlink" href="#prerequis" title="Lien vers cette rubrique">#</a></h2>
+<p>Un host Linux avec KVM, sur lequel vous avez <code class="docutils literal notranslate"><span class="pre">root</span></code>. Les opérations réseau (network
+namespaces, netlink, VXLAN, ebtables, iptables) et QEMU ne fonctionnent que sous Linux.</p>
+</section>
+<section id="deploiement">
+<h2>Déploiement<a class="headerlink" href="#deploiement" title="Lien vers cette rubrique">#</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-O<span class="w"> </span>https://git.g3e.fr/syonad/two/raw/branch/main/scripts/deploy.sh
+bash<span class="w"> </span>./deploy.sh<span class="w"> </span>-t<span class="w"> </span><span class="m">0</span>.1.0<span class="w"> </span>-i
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> se met à jour lui-même depuis la branche avant toute action — s’il diffère, il se
+réécrit et demande d’être relancé. Il télécharge ensuite binaires, units systemd et scripts
+depuis la release, et les vérifie contre le manifeste <code class="docutils literal notranslate"><span class="pre">SHA256SUMS</span></code>.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<colgroup>
+<col style="width: 26.0%" />
+<col style="width: 54.0%" />
+<col style="width: 20.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Option</p></th>
+<th class="head"><p>Effet</p></th>
+<th class="head"><p>Défaut</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">-t</span> <span class="pre">&lt;tag&gt;</span></code></p></td>
+<td><p>déployer une release donnée</p></td>
+<td><p>dernière</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">-b</span> <span class="pre">&lt;branche&gt;</span></code></p></td>
+<td><p>branche utilisée pour l’auto-mise à jour du script</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">main</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">-p</span> <span class="pre">&lt;profil&gt;</span></code></p></td>
+<td><p>profil d’host ; seul <code class="docutils literal notranslate"><span class="pre">kvm</span></code> installe les units de l’agent</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">kvm</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">-i</span></code></p></td>
+<td><p>préparer l’host : paquets, noyau, réseau</p></td>
+<td><p>désactivé</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">-u</span> <span class="pre">&lt;iface&gt;</span></code></p></td>
+<td><p>interface physique d’uplink</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">eno1</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">-B</span> <span class="pre">&lt;bridge&gt;</span></code></p></td>
+<td><p>bridge principal, auquel l’uplink est rattaché</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">br-000000</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">-P</span> <span class="pre">&lt;bridge&gt;</span></code></p></td>
+<td><p>bridge supplémentaire, créé vide et réservé</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">br-public</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">-R</span> <span class="pre">&lt;secondes&gt;</span></code></p></td>
+<td><p>délai avant le redémarrage de secours pendant la migration réseau</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">120</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">-d</span></code></p></td>
+<td><p>dry-run : affiche les commandes sans les exécuter</p></td>
+<td><p>désactivé</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Les options booléennes actives par défaut se <strong>désactivent</strong> par leur forme longue négative :
+<code class="docutils literal notranslate"><span class="pre">--nopackages</span></code>, <code class="docutils literal notranslate"><span class="pre">--nonetwork</span></code>, <code class="docutils literal notranslate"><span class="pre">--noverify</span></code>, <code class="docutils literal notranslate"><span class="pre">--noup_script</span></code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Avertissement</p>
+<p><code class="docutils literal notranslate"><span class="pre">--noverify</span></code> désactive la seule vérification d’intégrité des artefacts téléchargés. Ne
+l’utiliser que pour diagnostiquer un manifeste cassé, jamais en déploiement courant.</p>
+</div>
+</section>
+<section id="ce-que-fait-i">
+<h2>Ce que fait <code class="docutils literal notranslate"><span class="pre">-i</span></code><a class="headerlink" href="#ce-que-fait-i" title="Lien vers cette rubrique">#</a></h2>
+<p><strong>Paquets</strong> — <code class="docutils literal notranslate"><span class="pre">qemu-system-x86</span></code>, <code class="docutils literal notranslate"><span class="pre">ovmf</span></code>, <code class="docutils literal notranslate"><span class="pre">dnsmasq</span></code>, <code class="docutils literal notranslate"><span class="pre">ebtables</span></code>, <code class="docutils literal notranslate"><span class="pre">iptables</span></code>,
+<code class="docutils literal notranslate"><span class="pre">nfs-common</span></code>, <code class="docutils literal notranslate"><span class="pre">jq</span></code>, <code class="docutils literal notranslate"><span class="pre">curl</span></code>. Le service <code class="docutils literal notranslate"><span class="pre">dnsmasq</span></code> du système est ensuite désactivé et
+<strong>masqué</strong> : il prendrait le port 53 en concurrence des instances <code class="docutils literal notranslate"><span class="pre">dnsmasq&#64;</span></code> que l’agent lance
+dans les netns.</p>
+<p><code class="docutils literal notranslate"><span class="pre">dnsmasq</span></code> reste installé même avec <code class="docutils literal notranslate"><span class="pre">dhcp.backend:</span> <span class="pre">two</span></code> : le backend intégré ne le remplace que
+pour les subnets créés après la bascule, et le paquet est nécessaire tant qu’un hyperviseur peut
+revenir en arrière. Voir <a class="reference internal" href="../exploitation/configuration.html"><span class="doc">Configuration</span></a>.</p>
+<p><strong>Noyau</strong> — chargement de <code class="docutils literal notranslate"><span class="pre">br_netfilter</span></code>, puis <code class="docutils literal notranslate"><span class="pre">net.ipv4.ip_forward</span> <span class="pre">=</span> <span class="pre">1</span></code> et
+<code class="docutils literal notranslate"><span class="pre">net.bridge.bridge-nf-call-iptables</span> <span class="pre">=</span> <span class="pre">1</span></code>. Cette dernière clé est <strong>requise</strong> par la DNAT vers
+le serveur de metadata : sans elle, iptables ne voit pas le trafic bridgé des VM et cloud-init
+ne se provisionne pas. Contrepartie assumée : tout le trafic inter-VM traverse les tables NAT.</p>
+<p><strong>Réseau</strong> — création du bridge réservé, puis rattachement de l’uplink au bridge principal,
+l’adresse et la route par défaut étant déplacées de l’interface physique vers le bridge.</p>
+<div class="admonition danger">
+<p class="admonition-title">Danger</p>
+<p>La migration réseau <strong>coupe le réseau de l’host si elle échoue à mi-parcours</strong>, sans console
+de secours. Deux garde-fous sont en place : un redémarrage de secours armé avant l’opération
+(<code class="docutils literal notranslate"><span class="pre">-R</span></code>, 120 s par défaut) qui ramène la configuration d’origine puisque rien n’est écrit sur
+disque, et l’exécution de la séquence sous systemd plutôt que dans la session SSH, pour
+qu’une coupure de SSH ne l’interrompe pas.</p>
+<p>Le désarmement n’a lieu <strong>qu’après</strong> un ping réussi vers la passerelle. Prévoir un accès
+physique ou console avant de lancer un <code class="docutils literal notranslate"><span class="pre">-i</span></code> à distance sur un host de production.</p>
+</div>
+</section>
+<section id="host-sans-etat">
+<h2>Host sans état<a class="headerlink" href="#host-sans-etat" title="Lien vers cette rubrique">#</a></h2>
+<p>L’hyperviseur est <strong>stateless</strong> : sa racine est en tmpfs, rien de ce que pose <code class="docutils literal notranslate"><span class="pre">-i</span></code> ne survit à
+un redémarrage. <code class="docutils literal notranslate"><span class="pre">deploy.sh</span> <span class="pre">--bootstrap</span></code> est donc rejoué à chaque démarrage — c’est le
+mécanisme normal, pas une réparation.</p>
+</section>
+<section id="binaires-installes">
+<h2>Binaires installés<a class="headerlink" href="#binaires-installes" title="Lien vers cette rubrique">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="table">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 60.0%" />
+<col style="width: 20.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Binaire</p></th>
+<th class="head"><p>Rôle</p></th>
+<th class="head"><p>Drapeau de config</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">agent</span></code></p></td>
+<td><p>processus principal : API, dispatcher, exécution, watchdog</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">-config</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">metadata</span></code></p></td>
+<td><p>serveur de metadata cloud-init, une instance par VM dans le netns du VPC</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">-conf</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">db</span></code></p></td>
+<td><p>inspection de la base clé-valeur en ligne de commande</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">-conf</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">dhcp</span></code></p></td>
+<td><p>serveur DHCP intégré, une instance par subnet dans le netns du VPC ; démarré uniquement
+avec <code class="docutils literal notranslate"><span class="pre">dhcp.backend:</span> <span class="pre">two</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">-conf</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Les quatre partagent le même fichier, <code class="docutils literal notranslate"><span class="pre">/etc/two/agent.yml</span></code> — voir
+<a class="reference internal" href="../exploitation/configuration.html"><span class="doc">Configuration</span></a>. <code class="docutils literal notranslate"><span class="pre">dhcp</span></code> reçoit en plus son bridge et ses deux chemins de
+fichiers en paramètres, posés par son script d’enrobage.</p>
+</section>
+<section id="mise-a-jour">
+<h2>Mise à jour<a class="headerlink" href="#mise-a-jour" title="Lien vers cette rubrique">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> relève les instances <code class="docutils literal notranslate"><span class="pre">dnsmasq&#64;</span></code>, <code class="docutils literal notranslate"><span class="pre">dhcp&#64;</span></code> et <code class="docutils literal notranslate"><span class="pre">metadata&#64;</span></code> actives <strong>avant</strong>
+d’arrêter les services, et les redémarre ensuite : c’est la seule façon de savoir lesquelles
+relancer. Arrêter les services à la main avant de lancer le script fait perdre cette liste.</p>
+</section>
+<section id="verifier-l-installation">
+<h2>Vérifier l’installation<a class="headerlink" href="#verifier-l-installation" title="Lien vers cette rubrique">#</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>systemctl<span class="w"> </span>status<span class="w"> </span>agent
+curl<span class="w"> </span>-s<span class="w"> </span>http://127.0.0.1:8080/vpcs
+</pre></div>
+</div>
+<p>Une liste JSON — vide au premier démarrage — signifie que l’API répond. Passez à
+<a class="reference internal" href="premier-vpc.html"><span class="doc">Premier VPC, premier subnet, première VM</span></a>.</p>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p>L’API de l’agent <strong>n’a aucune authentification</strong>. Avant d’ouvrir le port au-delà de la boucle
+locale, lisez l’avertissement de <a class="reference internal" href="../exploitation/configuration.html"><span class="doc">Configuration</span></a> : quiconque atteint ce
+port pilote la totalité de l’hyperviseur.</p>
+</div>
+</section>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="index.html"
+       title="page précédente">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">précédent</p>
+        <p class="prev-next-title">Démarrage</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="premier-vpc.html"
+       title="page suivante">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">suivant</p>
+        <p class="prev-next-title">Premier VPC, premier subnet, première VM</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contenu
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#prerequis">Prérequis</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#deploiement">Déploiement</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ce-que-fait-i">Ce que fait <code class="docutils literal notranslate"><span class="pre">-i</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#host-sans-etat">Host sans état</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#binaires-installes">Binaires installés</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#mise-a-jour">Mise à jour</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#verifier-l-installation">Vérifier l’installation</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+Par Nicolas Boufidjeline
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2026, Nicolas Boufidjeline.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>
