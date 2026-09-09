@@ -1,6 +1,8 @@
 package dhcpapi
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -169,5 +171,15 @@ func TestCanonical_SortsHostsByMAC(t *testing.T) {
 	}
 	if got.Hosts[0].MAC != "00:22:33:00:00:0a" {
 		t.Errorf("hosts = %v, want sorted by mac", got.Hosts)
+	}
+}
+
+func TestResponse_ServedIsAlwaysOnTheWire(t *testing.T) {
+	raw, err := json.Marshal(Response{OK: true, Served: false})
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	if !strings.Contains(string(raw), `"served":false`) {
+		t.Errorf("response = %s, want an explicit served:false — omitting it makes \"not served\" indistinguishable from a missing field when probing by hand", raw)
 	}
 }

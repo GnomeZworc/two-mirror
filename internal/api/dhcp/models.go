@@ -54,5 +54,5 @@ type Response struct {
 	State  *State `json:"state,omitempty"`
 	Digest string `json:"digest,omitempty"`
 	Lease  *Lease `json:"lease,omitempty"`
-	Served bool   `json:"served,omitempty"`
+	Served bool   `json:"served"`
 }
