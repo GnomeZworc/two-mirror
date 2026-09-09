@@ -65,7 +65,7 @@ func (w *Watchdog) tick() {
 	if err := CheckVPCs(w.db, w.notifier); err != nil {
 		w.logger.Error("watchdog: vpc check failed", "err", err)
 	}
-	if err := CheckSubnets(w.db, u, w.notifier); err != nil {
+	if err := CheckSubnets(w.db, w.cfg, u, w.notifier); err != nil {
 		w.logger.Error("watchdog: subnet check failed", "err", err)
 	}
 	if err := CheckVMs(w.db, w.cfg, u, w.notifier); err != nil {

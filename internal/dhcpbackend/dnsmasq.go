@@ -2,6 +2,7 @@ package dhcpbackend
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"git.g3e.fr/syonad/two/internal/dhcp"
 	"git.g3e.fr/syonad/two/pkg/systemd"
@@ -124,4 +125,8 @@ func (b Dnsmasq) DelVM(s Subnet, vmName string, _ []Reservation) error {
 		return fmt.Errorf("%s is %s after restart", unit, status.ActiveState)
 	}
 	return nil
+}
+
+func (b Dnsmasq) ConfigPath(s Subnet) string {
+	return filepath.Join(b.confDir(), s.Instance()+".conf")
 }

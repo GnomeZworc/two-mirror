@@ -137,3 +137,11 @@ func (b Two) DelVM(s Subnet, vmName string, res []Reservation) error {
 	}
 	return nil
 }
+
+func (b Two) StatePath(s Subnet) string {
+	return b.statePath(s)
+}
+
+func (b Two) State(s Subnet) (dhcpapi.State, string, error) {
+	return b.client(s).GetState()
+}

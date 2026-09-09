@@ -39,17 +39,11 @@ func TestSubnetIfaceNames_TiretFinal(t *testing.T) {
 	}
 }
 
-func TestDnsmasqName(t *testing.T) {
-	if got := dnsmasqName("vp-admin", "br-000000"); got != "vp-admin_br-000000" {
-		t.Errorf("dnsmasqName = %q, attendu vp-admin_br-000000", got)
-	}
-}
-
 func TestCheckSubnets_BaseVide(t *testing.T) {
 	db := newTestDB(t)
 	r := &recorder{}
 
-	if err := CheckSubnets(db, newFakeUnits(), r); err != nil {
+	if err := CheckSubnets(db, dnsmasqConfig(), newFakeUnits(), r); err != nil {
 		t.Fatalf("erreur inattendue: %v", err)
 	}
 	if len(r.calls) != 0 {
@@ -64,7 +58,7 @@ func TestCheckSubnets_IgnoreLesEtatsNonRunning(t *testing.T) {
 	}
 	r := &recorder{}
 
-	if err := CheckSubnets(db, newFakeUnits(), r); err != nil {
+	if err := CheckSubnets(db, dnsmasqConfig(), newFakeUnits(), r); err != nil {
 		t.Fatalf("erreur inattendue: %v", err)
 	}
 	if len(r.calls) != 0 {
@@ -77,7 +71,7 @@ func TestCheckSubnets_VPCManquantEnBase(t *testing.T) {
 	seedResource(t, db, prefixSubnet, "br-000042", state.Running)
 	r := &recorder{}
 
-	if err := CheckSubnets(db, newFakeUnits(), r); err != nil {
+	if err := CheckSubnets(db, dnsmasqConfig(), newFakeUnits(), r); err != nil {
 		t.Fatalf("erreur inattendue: %v", err)
 	}
 
@@ -96,7 +90,7 @@ func TestCheckSubnets_ModeManquantEnBase(t *testing.T) {
 	seedKV(t, db, prefixSubnet+"br-000042/vpc", "vp-admin")
 	r := &recorder{}
 
-	if err := CheckSubnets(db, newFakeUnits(), r); err != nil {
+	if err := CheckSubnets(db, dnsmasqConfig(), newFakeUnits(), r); err != nil {
 		t.Fatalf("erreur inattendue: %v", err)
 	}
 
@@ -110,7 +104,7 @@ func TestCheckSubnets_ModeInconnu(t *testing.T) {
 	seedSubnet(t, db, "br-000042", "vp-admin", "macvlan")
 	r := &recorder{}
 
-	if err := CheckSubnets(db, newFakeUnits(), r); err != nil {
+	if err := CheckSubnets(db, dnsmasqConfig(), newFakeUnits(), r); err != nil {
 		t.Fatalf("erreur inattendue: %v", err)
 	}
 
@@ -124,7 +118,7 @@ func TestCheckSubnets_ModeBridgeNeVerifiePasDeVxlan(t *testing.T) {
 	seedSubnet(t, db, "br-000042", "vp-admin", modeBridge)
 	r := &recorder{}
 
-	if err := CheckSubnets(db, newFakeUnits(), r); err != nil {
+	if err := CheckSubnets(db, dnsmasqConfig(), newFakeUnits(), r); err != nil {
 		t.Fatalf("erreur inattendue: %v", err)
 	}
 
@@ -143,7 +137,7 @@ func TestCheckSubnets_ModeVxlanSansVxlanID(t *testing.T) {
 	seedSubnet(t, db, "br-000042", "vp-admin", modeVxlan)
 	r := &recorder{}
 
-	if err := CheckSubnets(db, newFakeUnits(), r); err != nil {
+	if err := CheckSubnets(db, dnsmasqConfig(), newFakeUnits(), r); err != nil {
 		t.Fatalf("erreur inattendue: %v", err)
 	}
 
@@ -158,7 +152,7 @@ func TestCheckSubnets_ModeVxlanVxlanIDInvalide(t *testing.T) {
 	seedKV(t, db, prefixSubnet+"br-000042/vxlan_id", "pas-un-nombre")
 	r := &recorder{}
 
-	if err := CheckSubnets(db, newFakeUnits(), r); err != nil {
+	if err := CheckSubnets(db, dnsmasqConfig(), newFakeUnits(), r); err != nil {
 		t.Fatalf("erreur inattendue: %v", err)
 	}
 
@@ -173,7 +167,7 @@ func TestCheckSubnets_ModeVxlanVerifieLInterfaceVxlan(t *testing.T) {
 	seedKV(t, db, prefixSubnet+"br-000042/vxlan_id", "42")
 	r := &recorder{}
 
-	if err := CheckSubnets(db, newFakeUnits(), r); err != nil {
+	if err := CheckSubnets(db, dnsmasqConfig(), newFakeUnits(), r); err != nil {
 		t.Fatalf("erreur inattendue: %v", err)
 	}
 
@@ -187,7 +181,7 @@ func TestCheckSubnets_ConfigDnsmasqAbsente(t *testing.T) {
 	seedSubnet(t, db, "br-000042", "vp-admin", modeBridge)
 	r := &recorder{}
 
-	if err := CheckSubnets(db, newFakeUnits(), r); err != nil {
+	if err := CheckSubnets(db, dnsmasqConfig(), newFakeUnits(), r); err != nil {
 		t.Fatalf("erreur inattendue: %v", err)
 	}
 
@@ -205,7 +199,7 @@ func TestCheckSubnets_UnitDnsmasqInterrogee(t *testing.T) {
 	u := newFakeUnits().active("dnsmasq@vp-admin_br-000042.service")
 	r := &recorder{}
 
-	if err := CheckSubnets(db, u, r); err != nil {
+	if err := CheckSubnets(db, dnsmasqConfig(), u, r); err != nil {
 		t.Fatalf("erreur inattendue: %v", err)
 	}
 
@@ -223,7 +217,7 @@ func TestCheckSubnets_UnitDnsmasqInactive(t *testing.T) {
 	u := newFakeUnits().inactive("dnsmasq@vp-admin_br-000042.service", "failed")
 	r := &recorder{}
 
-	if err := CheckSubnets(db, u, r); err != nil {
+	if err := CheckSubnets(db, dnsmasqConfig(), u, r); err != nil {
 		t.Fatalf("erreur inattendue: %v", err)
 	}
 
@@ -238,7 +232,7 @@ func TestCheckSubnets_UnitIllisible(t *testing.T) {
 	u := newFakeUnits().failing("dnsmasq@vp-admin_br-000042.service", errors.New("dbus indisponible"))
 	r := &recorder{}
 
-	if err := CheckSubnets(db, u, r); err != nil {
+	if err := CheckSubnets(db, dnsmasqConfig(), u, r); err != nil {
 		t.Fatalf("erreur inattendue: %v", err)
 	}
 
@@ -252,7 +246,7 @@ func TestCheckSubnets_SansUnitCheckerPasDeVerificationDUnit(t *testing.T) {
 	seedSubnet(t, db, "br-000042", "vp-admin", modeBridge)
 	r := &recorder{}
 
-	if err := CheckSubnets(db, nil, r); err != nil {
+	if err := CheckSubnets(db, dnsmasqConfig(), nil, r); err != nil {
 		t.Fatalf("erreur inattendue: %v", err)
 	}
 
@@ -267,7 +261,7 @@ func TestCheckSubnets_EtatCorrompuNInterrompPasLaBoucle(t *testing.T) {
 	seedSubnet(t, db, "br-000042", "vp-admin", modeBridge)
 	r := &recorder{}
 
-	if err := CheckSubnets(db, newFakeUnits(), r); err != nil {
+	if err := CheckSubnets(db, dnsmasqConfig(), newFakeUnits(), r); err != nil {
 		t.Fatalf("un état corrompu ne doit pas faire échouer CheckSubnets: %v", err)
 	}
 
