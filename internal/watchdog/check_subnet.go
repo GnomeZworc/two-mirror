@@ -2,12 +2,11 @@ package watchdog
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
-	"git.g3e.fr/syonad/two/internal/dhcp"
+	configuration "git.g3e.fr/syonad/two/internal/config/agent"
+	"git.g3e.fr/syonad/two/internal/dhcpbackend"
 	"git.g3e.fr/syonad/two/internal/netns"
 	"git.g3e.fr/syonad/two/internal/state"
 	"git.g3e.fr/syonad/two/internal/watchdog/notify"
@@ -30,15 +29,13 @@ func subnetIfaceNames(subnetName string) (hostVeth, nsVeth, bridge string, err e
 	return "v-" + id + "-e", "v-" + id + "-i", "br-" + id, nil
 }
 
-func dnsmasqName(vpc, bridge string) string {
-	return vpc + "_" + bridge
-}
-
-func CheckSubnets(db *badger.DB, u unitChecker, n notify.Notifier) error {
+func CheckSubnets(db *badger.DB, cfg *configuration.Config, u unitChecker, n notify.Notifier) error {
 	pairs, err := kv.ListByPrefix(db, prefixSubnet)
 	if err != nil {
 		return fmt.Errorf("watchdog: listing subnets: %w", err)
 	}
+
+	backend, backendErr := dhcpbackend.New(cfg)
 
 	for _, name := range resourceNames(pairs, prefixSubnet) {
 		st, err := state.Get(db, prefixSubnet+name)
@@ -49,12 +46,15 @@ func CheckSubnets(db *badger.DB, u unitChecker, n notify.Notifier) error {
 		if st != state.Running {
 			continue
 		}
-		checkSubnet(db, name, u, n)
+		checkSubnet(db, name, backend, u, n)
+		if backendErr != nil {
+			n.Notify(kindSubnet, name, fmt.Sprintf("dhcp checks skipped, backend unusable: %v", backendErr))
+		}
 	}
 	return nil
 }
 
-func checkSubnet(db *badger.DB, name string, u unitChecker, n notify.Notifier) {
+func checkSubnet(db *badger.DB, name string, backend dhcpbackend.Backend, u unitChecker, n notify.Notifier) {
 	hostVeth, nsVeth, bridge, err := subnetIfaceNames(name)
 	if err != nil {
 		n.Notify(kindSubnet, name, err.Error())
@@ -90,13 +90,7 @@ func checkSubnet(db *badger.DB, name string, u unitChecker, n notify.Notifier) {
 
 	checkSubnetNetns(name, vpc, nsVeth, bridge, n)
 
-	dnsName := dnsmasqName(vpc, bridge)
-	conf := filepath.Join(dhcp.DefaultConfDir, dnsName+".conf")
-	if _, err := os.Stat(conf); err != nil {
-		n.Notify(kindSubnet, name, fmt.Sprintf("dnsmasq config missing (%s): %v", conf, err))
-	}
-
-	checkUnit(kindSubnet, name, "dnsmasq@"+dnsName+".service", u, n)
+	checkDHCP(db, name, dhcpbackend.Subnet{Name: name, VPC: vpc, Bridge: bridge}, backend, u, n)
 }
 
 func checkVxlanIface(db *badger.DB, name string, n notify.Notifier) {

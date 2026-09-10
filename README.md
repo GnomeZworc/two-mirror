@@ -30,7 +30,7 @@ Options utiles :
 | `-d` | dry-run : affiche les commandes sans les exécuter |
 | `-V` | désactiver la vérification des sommes de contrôle |
 
-Un déploiement relève les instances `dnsmasq@` et `metadata@` actives **avant** l'arrêt des
+Un déploiement relève les instances `dnsmasq@`, `dhcp@` et `metadata@` actives **avant** l'arrêt des
 services, et les redémarre ensuite — c'est la seule façon de savoir lesquelles relancer.
 
 ## Configuration

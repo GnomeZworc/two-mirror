@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
-	"git.g3e.fr/syonad/two/internal/dhcp"
+	"git.g3e.fr/syonad/two/internal/dhcpbackend"
 	"git.g3e.fr/syonad/two/internal/iptables"
 	"git.g3e.fr/syonad/two/internal/metadata"
 	"git.g3e.fr/syonad/two/internal/netif"
@@ -34,6 +34,11 @@ func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	}
 	nic := d.primary()
 
+	backend, err := dhcpbackend.New(cfg)
+	if err != nil {
+		return err
+	}
+
 	for _, n := range d.nics {
 		if err := netif.CreateTap(n.tapID, n.bridge, n.vpcName); err != nil {
 			return fmt.Errorf("create tap of interface %d: %w", n.index, err)
@@ -54,7 +59,7 @@ func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 		return fmt.Errorf("add metadata redirect: %w", err)
 	}
 
-	if err := writeDHCPFiles(d, name); err != nil {
+	if err := writeDHCPFiles(d, name, backend); err != nil {
 		return err
 	}
 
@@ -109,51 +114,35 @@ func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	return state.Set(db, "vm/"+name, state.Running)
 }
 
-// writeDHCPFiles écrit, pour chaque subnet touché par la VM, les réservations
-// de ses interfaces et les options qui suppriment la route par défaut sur les
-// interfaces non primaires. Le subnet de l'interface primaire ne reçoit aucune
-// option : les options non taggées du subnet portent déjà la route par défaut.
-func writeDHCPFiles(d vmData, name string) error {
-	type subnetFiles struct {
-		nic          nicData
-		reservations []dhcp.Reservation
-		tags         []string
-	}
-	bySubnet := make(map[string]*subnetFiles)
+func dhcpReservations(d vmData) map[string]*subnetReservations {
+	bySubnet := make(map[string]*subnetReservations)
 
 	for _, n := range d.nics {
-		confName := n.vpcName + "_" + n.bridge
-		if bySubnet[confName] == nil {
-			bySubnet[confName] = &subnetFiles{nic: n}
+		key := n.vpcName + "_" + n.bridge
+		if bySubnet[key] == nil {
+			bySubnet[key] = &subnetReservations{subnet: dhcpbackend.Subnet{
+				Name:        n.subnetName,
+				VPC:         n.vpcName,
+				Bridge:      n.bridge,
+				InterfaceIP: net.ParseIP(n.interfaceIP),
+				VPCRoute:    n.vpcCIDR,
+			}}
 		}
-		f := bySubnet[confName]
-		f.reservations = append(f.reservations, dhcp.Reservation{
-			MAC: n.mac, IP: n.ip, Tag: nicTag(name, n.index),
+		f := bySubnet[key]
+		f.reservations = append(f.reservations, dhcpbackend.Reservation{
+			Index: n.index, MAC: n.mac, IP: n.ip, DefaultRoute: n.primary,
 		})
-		if !n.primary {
-			f.tags = append(f.tags, nicTag(name, n.index))
-		}
 	}
+	return bySubnet
+}
 
-	for confName, f := range bySubnet {
-		if err := dhcp.WriteReservations(dhcp.DefaultConfDir, confName, name, f.reservations); err != nil {
-			return fmt.Errorf("write dhcp reservations on %s: %w", confName, err)
-		}
-		if err := dhcp.WriteVMOptions(dhcp.DefaultConfDir, confName, name, f.tags, dhcp.Config{
-			InterfaceIP: net.ParseIP(f.nic.interfaceIP),
-			VPCRoute:    f.nic.vpcCIDR,
-		}); err != nil {
-			return fmt.Errorf("write dhcp options on %s: %w", confName, err)
+func writeDHCPFiles(d vmData, name string, backend dhcpbackend.Backend) error {
+	for _, f := range dhcpReservations(d) {
+		if err := backend.SetVM(f.subnet, name, f.reservations); err != nil {
+			return err
 		}
 	}
 	return nil
-}
-
-// nicTag identifie une interface auprès de dnsmasq. Il est par interface et non
-// par VM : deux interfaces d'une même VM peuvent partager un subnet, et n'y
-// avoir pas le même rôle.
-func nicTag(vmName string, index int) string {
-	return fmt.Sprintf("%s-%d", vmName, index)
 }
 
 func copyFile(src, dst string) error {

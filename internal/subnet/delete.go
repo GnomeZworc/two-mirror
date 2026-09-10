@@ -2,21 +2,19 @@ package subnet
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 
-	"git.g3e.fr/syonad/two/internal/dhcp"
+	configuration "git.g3e.fr/syonad/two/internal/config/agent"
+	"git.g3e.fr/syonad/two/internal/dhcpbackend"
 	"git.g3e.fr/syonad/two/internal/ebtables"
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
 	"git.g3e.fr/syonad/two/internal/state"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
-	"git.g3e.fr/syonad/two/pkg/systemd"
 
 	"github.com/dgraph-io/badger/v4"
 )
 
-func DeleteSubnet(db *badger.DB, subnetName string) error {
+func DeleteSubnet(db *badger.DB, subnetName string, cfg *configuration.Config) error {
 	current, err := state.Get(db, "subnet/"+subnetName)
 	if err != nil {
 		return err
@@ -30,7 +28,12 @@ func DeleteSubnet(db *badger.DB, subnetName string) error {
 		return err
 	}
 
-	if err := stopDHCP(db, subnetName, d); err != nil {
+	backend, err := dhcpbackend.New(cfg)
+	if err != nil {
+		return err
+	}
+
+	if err := stopDHCP(db, subnetName, d, backend); err != nil {
 		return err
 	}
 
@@ -50,26 +53,13 @@ func DeleteSubnet(db *badger.DB, subnetName string) error {
 	return state.Set(db, "subnet/"+subnetName, state.Deleted)
 }
 
-func stopDHCP(db *badger.DB, subnetName string, d subnetData) error {
-	svc, err := systemd.New()
-	if err != nil {
-		return fmt.Errorf("connect to systemd: %w", err)
-	}
-	defer svc.Close()
-
-	svcName := "dnsmasq@" + d.vpc + "_" + d.bridge + ".service"
-	if status, err := svc.Status(svcName); err == nil && status.ActiveState == "active" {
-		if err := svc.Stop(svcName); err != nil {
-			return fmt.Errorf("stop dnsmasq: %w", err)
-		}
-	}
-
-	if err := os.Remove(filepath.Join(dhcp.DefaultConfDir, d.vpc+"_"+d.bridge+".conf")); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("remove dnsmasq config: %w", err)
-	}
-
-	if err := dhcp.RemoveSubnetDirs(dhcp.DefaultConfDir, d.vpc+"_"+d.bridge); err != nil {
-		return fmt.Errorf("remove dnsmasq dirs: %w", err)
+func stopDHCP(db *badger.DB, subnetName string, d subnetData, backend dhcpbackend.Backend) error {
+	if err := backend.TeardownSubnet(dhcpbackend.Subnet{
+		Name:   subnetName,
+		VPC:    d.vpc,
+		Bridge: d.bridge,
+	}); err != nil {
+		return err
 	}
 
 	if err := kv.DeleteInDB(db, "subnet/"+subnetName+"/dhcp"); err != nil {

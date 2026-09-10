@@ -73,6 +73,10 @@ Ce que fait ``-i``
 **masqué** : il prendrait le port 53 en concurrence des instances ``dnsmasq@`` que l'agent lance
 dans les netns.
 
+``dnsmasq`` reste installé même avec ``dhcp.backend: two`` : le backend intégré ne le remplace que
+pour les subnets créés après la bascule, et le paquet est nécessaire tant qu'un hyperviseur peut
+revenir en arrière. Voir :doc:`/exploitation/configuration`.
+
 **Noyau** — chargement de ``br_netfilter``, puis ``net.ipv4.ip_forward = 1`` et
 ``net.bridge.bridge-nf-call-iptables = 1``. Cette dernière clé est **requise** par la DNAT vers
 le serveur de metadata : sans elle, iptables ne voit pas le trafic bridgé des VM et cloud-init
@@ -118,16 +122,21 @@ Binaires installés
    * - ``db``
      - inspection de la base clé-valeur en ligne de commande
      - ``-conf``
+   * - ``dhcp``
+     - serveur DHCP intégré, une instance par subnet dans le netns du VPC ; démarré uniquement
+       avec ``dhcp.backend: two``
+     - ``-conf``
 
-Les trois partagent le même fichier, ``/etc/two/agent.yml`` — voir
-:doc:`/exploitation/configuration`.
+Les quatre partagent le même fichier, ``/etc/two/agent.yml`` — voir
+:doc:`/exploitation/configuration`. ``dhcp`` reçoit en plus son bridge et ses deux chemins de
+fichiers en paramètres, posés par son script d'enrobage.
 
 Mise à jour
 -----------
 
-``deploy.sh`` relève les instances ``dnsmasq@`` et ``metadata@`` actives **avant** d'arrêter les
-services, et les redémarre ensuite : c'est la seule façon de savoir lesquelles relancer. Arrêter
-les services à la main avant de lancer le script fait perdre cette liste.
+``deploy.sh`` relève les instances ``dnsmasq@``, ``dhcp@`` et ``metadata@`` actives **avant**
+d'arrêter les services, et les redémarre ensuite : c'est la seule façon de savoir lesquelles
+relancer. Arrêter les services à la main avant de lancer le script fait perdre cette liste.
 
 Vérifier l'installation
 -----------------------

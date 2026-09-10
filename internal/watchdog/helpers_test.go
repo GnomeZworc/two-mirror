@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/state"
 	"git.g3e.fr/syonad/two/internal/watchdog/notify"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
@@ -107,4 +108,10 @@ func seedResource(t *testing.T, db *badger.DB, prefix, name string, s state.Stat
 	if err := state.Set(db, prefix+name, s); err != nil {
 		t.Fatalf("seedResource %s%s: %v", prefix, name, err)
 	}
+}
+
+func dnsmasqConfig() *configuration.Config {
+	cfg := &configuration.Config{}
+	cfg.DHCP.Backend = configuration.BackendDnsmasq
+	return cfg
 }

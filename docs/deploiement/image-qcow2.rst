@@ -182,7 +182,7 @@ disques : le disque de travail et le disque cible ne doivent pas être confondus
    cd /work
 
    curl "${os_link}" -O
-   qemu-img convert ./*.qcow2 -O raw ${os_disk}
+   qemu-img convert ./*.qcow2 -O raw "${os_disk}"
 
 L'image du fournisseur est écrite **en brut** directement sur le disque cible : le qcow2 obtenu
 côté host contient donc une image disque complète et amorçable, sans backing file.
@@ -194,7 +194,7 @@ côté host contient donc une image disque complète et amorçable, sans backing
    sleep 2
 
    # La partition racine est la plus grande du disque
-   root_partition=$(fdisk -lo device,size /dev/sda | grep -E '^\/dev\/' | tr -s ' ' \
+   root_partition=$(fdisk -lo device,size "${os_disk}" | grep -E '^/dev/' | tr -s ' ' \
                     | sort -rhk2 | head -n1 | cut -d ' ' -f1)
 
    mount -o nouuid $root_partition /mnt

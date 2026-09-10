@@ -50,7 +50,7 @@ Paquets
    * - ``internal/vm``
      - cycle de vie d'une VM : tap, iptables, metadata, qemu
    * - ``internal/dhcp``
-     - génération des configurations dnsmasq et entrées ip → mac
+     - plan d'adressage ip → mac, et configurations dnsmasq du backend historique
    * - ``internal/metadata``
      - serveur de metadata cloud-init et ses templates
    * - ``internal/watchdog``
