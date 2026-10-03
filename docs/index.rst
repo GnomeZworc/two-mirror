@@ -40,6 +40,9 @@ Par où commencer
 :doc:`/exploitation/index`
    Configuration, services, API de l'agent, métriques et diagnostic sur un nœud en service.
 
+:doc:`/developpement/index`
+   Outillage de développement de two, dont le lab de test multi-nœud sur serveur loué à l'heure.
+
 :doc:`/concepts/index`
    Comment les éléments fonctionnent entre eux : modèle de données, modes réseau, cycle de vie,
    metadata. À lire avant de diagnostiquer un comportement inattendu.
@@ -56,6 +59,12 @@ Par où commencer
    :caption: Exploitation
 
    exploitation/index
+
+.. toctree::
+   :hidden:
+   :caption: Développement
+
+   developpement/index
 
 .. toctree::
    :hidden:
