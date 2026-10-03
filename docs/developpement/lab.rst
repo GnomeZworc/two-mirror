@@ -13,10 +13,10 @@ comment s'en servir.
 
 .. note::
 
-   État actuel : étapes **E0** et **E1** livrées — le cycle de vie du serveur qui portera le lab
-   (``scripts/lab-host.sh``), puis la description de la topologie et le calcul de son plan
-   (``lab plan``). Le lancement des VM viendra avec les étapes suivantes, et cette page avec
-   elles.
+   État actuel : étapes **E0** à **E2** livrées — le cycle de vie du serveur qui portera le lab
+   (``scripts/lab-host.sh``), la description de la topologie et le calcul de son plan
+   (``lab plan``), puis la génération des arguments QEMU et des fichiers cloud-init de chaque VM
+   (``lab render``). Le lancement des VM viendra avec l'étape suivante, et cette page avec elle.
 
 Le serveur de lab
 -----------------
@@ -253,6 +253,111 @@ champs inconnus et les clés en double sont refusés aussi :
 
 Les plages d'adresses de l'exemple sont des valeurs de travail : le plan d'adressage du lab reste à
 définir (#50).
+
+Rendu des VM
+------------
+
+``lab render`` produit, pour chaque nœud, ce qu'il faut pour démarrer sa VM — sans rien lancer :
+
+.. code-block:: text
+
+   $ go run ./cmd/lab render -key ~/.config/two-lab/ssh/lab_ed25519.pub conf/lab/evpn-2hv.yml <répertoire>
+
+``<répertoire>/<nœud>/`` reçoit :
+
+``qemu.args``
+   Les arguments de ``qemu-system-x86_64``, **un par ligne** : rien à échapper, rien à
+   interpréter par un shell.
+
+``meta-data``, ``user-data``, ``network-config``
+   Les trois fichiers NoCloud de cloud-init, à mettre dans une image de volume ``cidata``.
+
+Les chemins de la VM (``disk.qcow2``, ``seed.iso``, ``console.log``, ``qmp.sock``, ``qemu.pid``)
+sont ceux du répertoire du nœud ; ``-key`` peut être répété, et accepte un fichier
+``authorized_keys`` (lignes vides et commentaires ignorés). Les fichiers sont créés en ``0600``.
+
+Ce que contiennent les arguments QEMU d'un hyperviseur — extrait réel, côté réseau :
+
+.. code-block:: text
+
+   -netdev
+   user,id=mgmt0,restrict=on,ipv6=off,hostfwd=tcp:127.0.0.1:2202-:22
+   -device
+   virtio-net-pci,netdev=mgmt0,mac=02:4d:00:02:00:00,romfile=
+   -netdev
+   dgram,id=underlay,local.type=inet,local.host=127.0.0.1,local.port=20002,remote.type=inet,remote.host=127.0.0.1,remote.port=20003
+   -device
+   virtio-net-pci,netdev=underlay,mac=02:4c:00:02:00:00,host_mtu=9000,romfile=
+
+Les choix qui s'y lisent :
+
+* **machine** ``q35``, ``-accel kvm -cpu host`` — le KVM imbriqué des hyperviseurs du lab en
+  dépend ; ``-nodefaults`` pour qu'aucun périphérique implicite ne s'ajoute ;
+* **administration** (``mgmt0``) : le NAT de QEMU, MAC ``02:4d:<nœud>:<nœud>:00:00``, SSH redirigé
+  sur la boucle locale de l'hôte. ``restrict=on`` pour tous les nœuds **sauf le switch** : un
+  nœud isolé ne joint ni l'hôte ni l'extérieur par là, seule la redirection SSH passe.
+  ``ipv6=off`` partout (voir plus bas) ;
+* **câbles** : ``dgram`` sur ``127.0.0.1``, les deux extrémités d'un câble se répondent
+  (port local de l'une = port distant de l'autre), ``host_mtu`` annonce le MTU du segment au
+  guest ;
+* ``romfile=`` vide sur toutes les cartes : pas de ROM de démarrage réseau, donc pas de repli
+  sur un démarrage PXE si le firmware ne trouve pas le disque. Pendant les essais de #50, une VM
+  restée bloquée sans rien écrire sur sa console, CPU au repos, avait toutes les apparences de
+  ce repli ; la cause n'a pas été isolée, l'option est une précaution.
+
+Ce que fait cloud-init :
+
+* **toutes les VM** : interfaces nommées d'après leur MAC (``mgmt0``, nom du segment, ``p<i>``),
+  ``dhcp4: false`` partout, ``mgmt0`` en ``10.0.2.15/24`` **sans passerelle** ; connexion SSH par
+  clé seulement, utilisateur ``debian``, ``root`` désactivé, mot de passe refusé ;
+* **un nœud** : adresse sur chaque segment, MTU du segment, route par défaut et DNS
+  (``1.1.1.1``, ``8.8.8.8``) sur son **premier** segment — la sortie Internet passe par le
+  switch ;
+* **le switch** : route par défaut par ``mgmt0`` ; un service ``lab-switch`` crée un bridge
+  ``br-<segment>`` par segment (STP désactivé, MTU du segment), y branche ses ports, porte la
+  passerelle, active le routage et masque (NAT nftables) les segments vers ``mgmt0``. Le
+  service est rejoué à chaque démarrage.
+
+Vérifié sur de vraies VM
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Le switch et le route reflector n'ont pas besoin de KVM imbriqué : ``sw1`` et ``rr1`` de
+l'exemple ont été démarrés **sur un Mac**, en émulation (TCG), avec Debian 12 ``generic`` et
+les fichiers produits par ``lab render``.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 60 40
+
+   * - Vérification
+     - Résultat
+   * - interfaces nommées et adressées, bridge ``br-underlay`` en ``10.250.0.1/24``
+     - conforme
+   * - service ``lab-switch`` actif, y compris après redémarrage
+     - conforme
+   * - ``ping -M do -s 8972`` de ``rr1`` vers le switch (MTU 9000, sans fragmentation)
+     - passe
+   * - ``ping -M do -s 8973`` (MTU 9001)
+     - refusé : ``message too long, mtu=9000``
+   * - Internet depuis ``rr1`` en IPv4
+     - passe, par ``10.250.0.1``
+   * - ``rr1`` vers un service TCP de l'hôte par ``mgmt0`` — le switch, témoin, y parvient
+     - bloqué
+   * - ``rr1`` vers Internet par ``mgmt0``
+     - bloqué
+
+Un défaut trouvé par cet essai, et corrigé : sans ``ipv6=off``, le NAT de QEMU annonce un
+préfixe IPv6 et ``mgmt0`` reçoit une **route IPv6 par défaut** — vers une impasse, puisque
+``restrict=on`` bloque tout. Pas de fuite, mais chaque programme qui tente l'IPv6 d'abord (le DNS
+renvoie d'abord des adresses IPv6) attend un délai avant de se rabattre sur l'IPv4.
+
+.. note::
+
+   Un ``ping`` vers ``10.0.2.2`` n'est pas un test d'isolation : c'est la passerelle virtuelle de
+   QEMU qui répond elle-même, ``restrict=on`` ou non. Seule une connexion vers un vrai service de
+   l'hôte, avec un témoin qui y parvient, le prouve.
+
+Reste à vérifier sur le serveur de lab : les hyperviseurs, qui exigent KVM imbriqué.
 
 Facturation
 -----------

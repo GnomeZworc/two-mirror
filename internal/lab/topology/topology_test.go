@@ -133,6 +133,7 @@ func TestValidate_Rejections(t *testing.T) {
 		{"segment switch unknown", strings.Replace(valid, "switch: sw, cidr", "switch: ghost, cidr", 1), "switch ghost is not a declared node"},
 		{"segment switch not a switch", strings.Replace(valid, "switch: sw, cidr", "switch: rr, cidr", 1), "rr is a rr, not a switch"},
 		{"segment name too long", strings.ReplaceAll(valid, "under", "underlayunder"), "segment underlayunder: name must match"},
+		{"segment named like the admin interface", strings.ReplaceAll(valid, "under", "mgmt0"), "segment mgmt0: name is reserved"},
 		{"segment name with dash", strings.ReplaceAll(valid, "under", "un-der"), "segment un-der: name must match"},
 		{"mtu too high", strings.Replace(valid, "cidr: 10.0.0.0/24", "cidr: 10.0.0.0/24, mtu: 9001", 1), "mtu 9001 out of range"},
 		{"mtu too low", strings.Replace(valid, "cidr: 10.0.0.0/24", "cidr: 10.0.0.0/24, mtu: 1279", 1), "mtu 1279 out of range"},

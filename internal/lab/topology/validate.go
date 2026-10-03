@@ -15,6 +15,8 @@ const (
 	MinMemory = 256
 	MaxPrefix = 30
 	MinPrefix = 8
+
+	ReservedInterface = "mgmt0"
 )
 
 var (
@@ -62,6 +64,9 @@ func (t *Topology) Validate() error {
 		segments[s.Name] = s
 		if !segmentPattern.MatchString(s.Name) {
 			add("segment %s: name must match %s", s.Name, segmentPattern)
+		}
+		if s.Name == ReservedInterface {
+			add("segment %s: name is reserved for the administration interface", s.Name)
 		}
 		sw, ok := nodes[s.Switch]
 		switch {
