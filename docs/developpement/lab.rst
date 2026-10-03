@@ -13,9 +13,10 @@ comment s'en servir.
 
 .. note::
 
-   État actuel : seule l'étape **E0** est livrée — le cycle de vie du serveur qui portera le lab,
-   avec ``scripts/lab-host.sh``. La description de la topologie et le lancement des VM viendront
-   avec les étapes suivantes, et cette page avec elles.
+   État actuel : étapes **E0** et **E1** livrées — le cycle de vie du serveur qui portera le lab
+   (``scripts/lab-host.sh``), puis la description de la topologie et le calcul de son plan
+   (``lab plan``). Le lancement des VM viendra avec les étapes suivantes, et cette page avec
+   elles.
 
 Le serveur de lab
 -----------------
@@ -162,6 +163,97 @@ environ 100 secondes la première fois — d'où l'attente intégrée à ``up``.
 ``up``, ``ssh`` et ``down`` séparément servent au debug interactif — et laissent la suppression
 à la charge de l'utilisateur.
 
+Topologie
+---------
+
+Un lab est décrit par un fichier YAML : des **nœuds** (les VM) et des **segments** (des réseaux L2
+portés par un switch). Exemple livré, ``conf/lab/evpn-2hv.yml`` :
+
+.. literalinclude:: ../../conf/lab/evpn-2hv.yml
+   :language: yaml
+
+Chaque nœud non-switch est relié au switch de chacun de ses segments par un câble virtuel QEMU ;
+le switch met ces câbles dans un bridge et porte la passerelle du segment.
+
+Ce que le fichier déclare :
+
+``images``
+   ``url`` de l'image qcow2 et ``sums`` du fichier de sommes à vérifier, tous deux en ``https://``.
+
+``segments``
+   ``switch`` (un nœud de rôle ``switch``), ``cidr`` IPv4 entre ``/8`` et ``/30``, ``mtu``
+   facultatif — 9000 par défaut, entre 1280 et 9000. Nom : 12 caractères au plus, minuscules et
+   chiffres, parce qu'il devient le nom d'interface dans les VM et, préfixé de ``br-``, celui du
+   bridge (15 caractères au plus sous Linux).
+
+``nodes``
+   ``role`` (``switch``, ``rr`` ou ``hypervisor``), ``image``, ``cpus``, ``memory`` en Mio
+   (256 au moins), ``segments`` auxquels le nœud est relié, et ``addresses`` pour fixer
+   l'adresse d'un nœud sur un segment (``addresses: {underlay: 10.250.0.50}``). Un switch ne
+   déclare ni ``segments`` ni ``addresses`` : il porte ceux dont il est le ``switch``.
+
+Ce que l'outil en déduit, de façon déterministe — même fichier, même plan :
+
+.. list-table::
+   :widths: 30 70
+
+   * - Passerelle d'un segment
+     - la première adresse du CIDR, portée par le switch sur ``br-<segment>``
+   * - Adresse d'un nœud
+     - les suivantes, **dans l'ordre de déclaration des nœuds** ; une adresse fixée par
+       ``addresses`` est réservée d'abord et sautée par l'attribution automatique
+   * - Câbles
+     - un par couple (segment, nœud), segments puis nœuds dans l'ordre de déclaration ; le
+       câble *i* utilise les ports UDP ``20000 + 2i`` (côté nœud) et ``20001 + 2i`` (côté switch)
+   * - MAC
+     - ``02:4c:<nœud>:<nœud>:<segment>:<côté>`` — préfixe localement administré, rang du nœud
+       sur deux octets, rang du segment, ``00`` côté nœud et ``01`` côté switch
+   * - Interfaces
+     - côté nœud, le nom du segment ; côté switch, ``p<i>``, du rang du câble
+   * - SSH d'administration
+     - ``127.0.0.1:<2200 + rang du nœud>`` sur l'hôte du lab
+
+.. warning::
+
+   Réordonner les nœuds ou les segments dans le fichier **change les adresses, les MAC et les
+   ports**. C'est assumé pour un lab ; ``lab plan`` montre le résultat avant tout lancement.
+
+Limites : 1000 nœuds, 256 segments, et autant de câbles que la plage UDP le permet (22 768).
+
+``lab plan`` valide le fichier et affiche le plan, sans rien lancer :
+
+.. code-block:: text
+
+   $ go run ./cmd/lab plan conf/lab/evpn-2hv.yml
+   lab evpn-2hv: nodes 4, segments 1, cables 3
+
+   nodes
+     name  role        image     cpus  memory     ssh
+     sw1   switch      debian12  2     1024 MiB   127.0.0.1:2200
+     rr1   rr          debian12  1     1024 MiB   127.0.0.1:2201
+     hv1   hypervisor  debian12  4     16384 MiB  127.0.0.1:2202
+     hv2   hypervisor  debian12  4     16384 MiB  127.0.0.1:2203
+
+   segment underlay: 10.250.0.0/24, mtu 9000, switch sw1, bridge br-underlay, gateway 10.250.0.1
+     node  interface  address        mac                udp         switch port  mac                udp
+     rr1   underlay   10.250.0.2/24  02:4c:00:01:00:00  20000  <->  sw1 p0       02:4c:00:01:00:01  20001
+     hv1   underlay   10.250.0.3/24  02:4c:00:02:00:00  20002  <->  sw1 p1       02:4c:00:02:00:01  20003
+     hv2   underlay   10.250.0.4/24  02:4c:00:03:00:00  20004  <->  sw1 p2       02:4c:00:03:00:01  20005
+
+Un fichier invalide est refusé avec **toutes** ses erreurs à la fois, et un code de sortie 1. Les
+champs inconnus et les clés en double sont refusés aussi :
+
+.. code-block:: text
+
+   $ lab plan cassee.yml
+   lab: cassee.yml:
+   segment underlay: rr1 is a rr, not a switch
+   segment underlay: cidr 10.250.0.0/31 prefix length out of range [/8, /30]
+   node sw1: switch carries no segment
+
+Les plages d'adresses de l'exemple sont des valeurs de travail : le plan d'adressage du lab reste à
+définir (#50).
+
 Facturation
 -----------
 
@@ -240,6 +332,7 @@ Tests
 .. code-block:: bash
 
    bash scripts/lab-host_test.sh
+   go test ./internal/lab/... ./cmd/lab/
 
 Environ une minute et demie, sans réseau : la suite remplace ``curl`` par une fausse API Scaleway
 qui se place dans le pire cas (offre mensuelle listée avant l'horaire, serveurs d'autres projets,
