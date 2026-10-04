@@ -315,3 +315,73 @@ func TestEnsureKey_WithTheRealSSHKeygen(t *testing.T) {
 		t.Errorf("private key mode = %v, %v", info.Mode().Perm(), err)
 	}
 }
+
+func TestReadFRR_ReadsOnlyTheNodesThatDeclareOne(t *testing.T) {
+	dir := t.TempDir()
+	conf := filepath.Join(dir, "rr1.conf")
+	if err := os.WriteFile(conf, []byte("hostname rr1\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	m := newMirror(t)
+	p := labPlan(t, m)
+	p.Nodes[1].FRR = conf
+
+	got, err := ReadFRR(p)
+
+	if err != nil || !reflect.DeepEqual(got, map[string]string{"rr1": "hostname rr1\n"}) {
+		t.Errorf("ReadFRR = %q, %v", got, err)
+	}
+}
+
+func TestReadFRR_NamesTheNodeOfAMissingFile(t *testing.T) {
+	m := newMirror(t)
+	p := labPlan(t, m)
+	p.Nodes[2].FRR = filepath.Join(t.TempDir(), "absent.conf")
+
+	if _, err := ReadFRR(p); err == nil || !strings.Contains(err.Error(), "node hv1: ") || !strings.Contains(err.Error(), "absent.conf") {
+		t.Errorf("error = %v", err)
+	}
+}
+
+func TestPrepare_PutsTheFRRConfigIntoTheSeed(t *testing.T) {
+	m := newMirror(t)
+	publish(m, []byte("qcow2 image"))
+	root := t.TempDir()
+	conf := filepath.Join(root, "hv1.conf")
+	if err := os.WriteFile(conf, []byte("hostname hv1\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	p := labPlan(t, m)
+	p.Nodes[2].FRR = conf
+
+	nodes, err := Prepare(context.Background(), p, Options{
+		RunDir:  filepath.Join(root, "run"),
+		Fetcher: Fetcher{Client: m.server.Client(), CacheDir: filepath.Join(root, "cache")},
+		Runner:  &fakeRunner{},
+	})
+	if err != nil {
+		t.Fatalf("Prepare: %v", err)
+	}
+	data, err := os.ReadFile(filepath.Join(nodes[2].Dir, "user-data"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cfg struct {
+		Files []struct {
+			Path    string `yaml:"path"`
+			Content string `yaml:"content"`
+		} `yaml:"write_files"`
+	}
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range cfg.Files {
+		if f.Path == "/etc/lab/frr.conf" {
+			if f.Content != "hostname hv1\n" {
+				t.Errorf("frr.conf = %q", f.Content)
+			}
+			return
+		}
+	}
+	t.Errorf("hv1 user-data has no /etc/lab/frr.conf:\n%s", data)
+}

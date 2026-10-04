@@ -17,6 +17,7 @@ const (
 	MinPrefix = 8
 
 	ReservedInterface = "mgmt0"
+	LoopbackInterface = "lo1"
 )
 
 var (
@@ -68,6 +69,9 @@ func (t *Topology) Validate() error {
 		if s.Name == ReservedInterface {
 			add("segment %s: name is reserved for the administration interface", s.Name)
 		}
+		if s.Name == LoopbackInterface {
+			add("segment %s: name is reserved for the loopback interface", s.Name)
+		}
 		sw, ok := nodes[s.Switch]
 		switch {
 		case s.Switch == "":
@@ -116,6 +120,7 @@ func (t *Topology) Validate() error {
 		if n.Memory < MinMemory {
 			add("node %s: memory must be at least %d MiB", n.Name, MinMemory)
 		}
+		validateExtras(n, segments, add)
 		if n.Role == RoleSwitch {
 			if len(n.Segments) > 0 || len(n.Addresses) > 0 {
 				add("node %s: a switch carries its segments through segments.<name>.switch, not through segments or addresses", n.Name)
@@ -163,6 +168,53 @@ func (t *Topology) Validate() error {
 		return errors.Join(errs...)
 	}
 	return nil
+}
+
+func validateExtras(n Node, segments map[string]Segment, add func(string, ...any)) {
+	carried := map[string]bool{}
+	if n.Role == RoleSwitch {
+		for name, s := range segments {
+			if s.Switch == n.Name {
+				carried[name] = true
+			}
+		}
+	} else {
+		for _, name := range n.Segments {
+			carried[name] = true
+		}
+	}
+	names := make([]string, 0, len(n.Secondary))
+	for name := range n.Secondary {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		if !carried[name] {
+			add("node %s: secondary address given for segment %s it is not attached to", n.Name, name)
+			continue
+		}
+		network, _ := netip.ParsePrefix(segments[name].CIDR)
+		for _, raw := range n.Secondary[name] {
+			prefix, err := netip.ParsePrefix(raw)
+			switch {
+			case err != nil:
+				add("node %s: secondary address %q on %s: %v", n.Name, raw, name, err)
+			case !prefix.Addr().Is4():
+				add("node %s: secondary address %s on %s is not IPv4", n.Name, raw, name)
+			case network.IsValid() && network.Contains(prefix.Addr()):
+				add("node %s: secondary address %s is inside segment %s (%s), use addresses instead", n.Name, raw, name, network)
+			}
+		}
+	}
+	if n.Loopback != "" {
+		prefix, err := netip.ParsePrefix(n.Loopback)
+		switch {
+		case err != nil:
+			add("node %s: loopback %q: %v", n.Name, n.Loopback, err)
+		case !prefix.Addr().Is4():
+			add("node %s: loopback %s is not IPv4", n.Name, n.Loopback)
+		}
+	}
 }
 
 func sortedKeys(m map[string]string) []string {

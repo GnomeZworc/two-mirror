@@ -116,8 +116,9 @@ Commandes
                        que si l'entrée standard en est un
      prepare           installe sur le serveur ce dont lab a besoin (qemu, genisoimage), vérifie
                        /dev/kvm et la virtualisation imbriquée ; lancé aussi par up
-     push <topologie>  compile cmd/lab pour linux/amd64 et dépose sur le serveur ~/lab et
-                       ~/<topologie> ; ensuite : ssh './lab up <topologie>'
+     push <topologie>  compile cmd/lab pour linux/amd64 et dépose sur le serveur ~/lab et le
+                       répertoire de la topologie dans ~/topology/ (avec les fichiers qu'elle
+                       référence) ; ensuite : ssh './lab up topology/<topologie>'
      down              supprime tous les serveurs de lab du projet et attend leur disparition
      session [cmd]     up, puis la commande distante (ou un shell), puis down quoi qu'il arrive
 
@@ -178,13 +179,15 @@ Une campagne sur le lab enchaîne ces commandes depuis le Mac ; ``lab`` s'exécu
 
    scripts/lab-host.sh up
    scripts/lab-host.sh push conf/lab/evpn-2hv.yml
-   scripts/lab-host.sh ssh './lab up evpn-2hv.yml'
+   scripts/lab-host.sh ssh './lab up topology/evpn-2hv.yml'
    scripts/lab-host.sh ssh './lab ssh hv1'          # shell interactif sur hv1
    scripts/lab-host.sh ssh './lab ssh hv1 ip -br a' # commande, code de retour propagé
    scripts/lab-host.sh down
 
-``push`` transfère par la connexion SSH du script (``cat`` côté serveur, fichier renommé une fois
-complet) : mêmes options, même clé, même ``known_hosts`` que ``ssh``.
+``push`` transfère par la connexion SSH du script — mêmes options, même clé, même
+``known_hosts`` que ``ssh`` : le binaire par ``cat``, le répertoire de la topologie par ``tar``
+(sans les métadonnées macOS), chacun renommé une fois complet. Tout le répertoire part, pour que
+les fichiers que la topologie référence (``frr/*.conf``) arrivent avec elle.
 
 Topologie
 ---------
@@ -212,8 +215,22 @@ Ce que le fichier déclare :
 ``nodes``
    ``role`` (``switch``, ``rr`` ou ``hypervisor``), ``image``, ``cpus``, ``memory`` en Mio
    (256 au moins), ``segments`` auxquels le nœud est relié, et ``addresses`` pour fixer
-   l'adresse d'un nœud sur un segment (``addresses: {underlay: 10.250.0.50}``). Un switch ne
+   l'adresse d'un nœud sur un segment (``addresses: {underlay: 192.168.14.50}``). Un switch ne
    déclare ni ``segments`` ni ``addresses`` : il porte ceux dont il est le ``switch``.
+
+   Champs de rôle, facultatifs :
+
+   * ``secondary`` — des adresses supplémentaires par segment, avec leur longueur de préfixe
+     (``secondary: {underlay: [169.254.0.3/28]}``), posées sur la même interface que l'adresse
+     principale : même L2, même MAC. Elles doivent être **hors** du CIDR du segment, pour ne
+     jamais croiser l'attribution automatique. Sur un switch, elles vont sur le bridge du
+     segment ;
+   * ``loopback`` — une adresse sur une interface ``dummy`` nommée ``lo1``
+     (``loopback: 10.255.255.1/32``) ;
+   * ``frr`` — le chemin d'un ``frr.conf``, relatif au fichier de topologie : FRR est installé
+     au démarrage et la configuration déposée **telle quelle** (voir `Rôles`_).
+
+   ``mgmt0`` et ``lo1`` sont réservés : aucun segment ne peut porter ces noms.
 
 Ce que l'outil en déduit, de façon déterministe — même fichier, même plan :
 
@@ -257,11 +274,18 @@ Limites : 1000 nœuds, 256 segments, et autant de câbles que la plage UDP le pe
      hv1   hypervisor  debian12  4     16384 MiB  127.0.0.1:2202
      hv2   hypervisor  debian12  4     16384 MiB  127.0.0.1:2203
 
-   segment underlay: 10.250.0.0/24, mtu 9000, switch sw1, bridge br-underlay, gateway 10.250.0.1
-     node  interface  address        mac                udp         switch port  mac                udp
-     rr1   underlay   10.250.0.2/24  02:4c:00:01:00:00  20000  <->  sw1 p0       02:4c:00:01:00:01  20001
-     hv1   underlay   10.250.0.3/24  02:4c:00:02:00:00  20002  <->  sw1 p1       02:4c:00:02:00:01  20003
-     hv2   underlay   10.250.0.4/24  02:4c:00:03:00:00  20004  <->  sw1 p2       02:4c:00:03:00:01  20005
+   roles
+     name  loopback             secondary                frr
+     sw1   -                    underlay 169.254.0.1/28  sw1.conf
+     rr1   lo1 10.255.255.1/32  underlay 169.254.0.3/28  rr1.conf
+     hv1   -                    -                        hv1.conf
+     hv2   -                    -                        hv2.conf
+
+   segment underlay: 192.168.14.0/24, mtu 9000, switch sw1, bridge br-underlay, gateway 192.168.14.1
+     node  interface  address           mac                udp         switch port  mac                udp
+     rr1   underlay   192.168.14.2/24   02:4c:00:01:00:00  20000  <->  sw1 p0       02:4c:00:01:00:01  20001
+     hv1   underlay   192.168.14.11/24  02:4c:00:02:00:00  20002  <->  sw1 p1       02:4c:00:02:00:01  20003
+     hv2   underlay   192.168.14.12/24  02:4c:00:03:00:00  20004  <->  sw1 p2       02:4c:00:03:00:01  20005
 
 Un fichier invalide est refusé avec **toutes** ses erreurs à la fois, et un code de sortie 1. Les
 champs inconnus et les clés en double sont refusés aussi :
@@ -274,8 +298,49 @@ champs inconnus et les clés en double sont refusés aussi :
    segment underlay: cidr 10.250.0.0/31 prefix length out of range [/8, /30]
    node sw1: switch carries no segment
 
-Les plages d'adresses de l'exemple sont des valeurs de travail : le plan d'adressage du lab reste à
-définir (#50).
+Les ASN, la loopback du route reflector, le lien ``169.254.0.0/28`` et le subnet des hyperviseurs
+de l'exemple sont **ceux de la production** (décision du 2026-10-04, #50) : les fichiers de
+``conf/lab/`` restent ainsi au plus près de ce qui tourne réellement. Toutes les adresses y sont
+**fixées** par ``addresses`` — le route reflector en ``.2``, les hyperviseurs à partir de ``.11`` —
+pour que le modèle se lise sans le plan et ne dépende pas de l'ordre de déclaration : le
+``frr.conf`` d'un hyperviseur, écrit à la main, porte son adresse en ``router-id``. Seul le switch
+n'en déclare pas : il porte toujours la passerelle, la première adresse du segment.
+
+Rôles
+~~~~~
+
+Les configurations FRR du lab vivent dans ``conf/lab/frr/``, une par nœud, **écrites à la main** :
+ce sont les mêmes fichiers que la documentation de déploiement inclut, pour que le lab qualifie
+exactement ce qu'elle prescrit. Celle du route reflector :
+
+.. literalinclude:: ../../conf/lab/frr/rr1.conf
+   :language: text
+
+Au premier démarrage, cloud-init installe FRR (``frr-stable`` de ``deb.frrouting.org``, sans les
+paquets recommandés), active ``bgpd`` — et ``bfdd`` sur le switch et le route reflector —, puis
+dépose le ``frr.conf`` du nœud et redémarre FRR. La mise à jour des index de paquets est réessayée
+pendant cinq minutes : un nœud peut démarrer avant que le switch, par lequel il sort, n'ait posé
+son NAT.
+
+La **clé du dépôt FRR** n'est pas téléchargée au démarrage : elle est enregistrée dans ``lab``
+(``internal/lab/render/frrouting.gpg``) et déposée par cloud-init. Elle a été récupérée le
+2026-10-04 sur ``deb.frrouting.org`` ; les empreintes de ses clés primaires sont publiées sous la
+même valeur sur ``keys.openpgp.org`` et ``keyserver.ubuntu.com`` :
+
+.. code-block:: text
+
+   3D99 68AC 9AE7 BE11 6928  8DDB 1FD5 8398 95F5 7FDA   David Lamparter
+   4A56 C773 8BB3 F815 95A8  05D2 A832 7699 08F1 3ED1   FRRouting Debian Repository
+   A90F C36D 9429 4097 98E9  C2D8 74DE ED43 AB19 4DBF   Jafar Al-Gharaibeh
+
+Une clé renouvelée par FRR fera échouer l'installation (signature inconnue) : remplacer le fichier
+après avoir vérifié les nouvelles empreintes.
+
+.. note::
+
+   La configuration du switch (``conf/lab/frr/sw1.conf``) **n'est pas celle des routeurs** : écrite
+   pour l'essai du 2026-10-04, elle se contente d'établir la session avec le route reflector et de
+   n'accepter que sa loopback. Elle sera remplacée par la configuration réelle des routeurs.
 
 Rendu des VM
 ------------

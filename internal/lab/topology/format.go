@@ -3,6 +3,9 @@ package topology
 import (
 	"fmt"
 	"io"
+	"path/filepath"
+	"sort"
+	"strings"
 	"text/tabwriter"
 )
 
@@ -15,6 +18,20 @@ func (p *Plan) Write(w io.Writer) error {
 	fmt.Fprintf(tw, "  name\trole\timage\tcpus\tmemory\tssh\n")
 	for _, n := range p.Nodes {
 		fmt.Fprintf(tw, "  %s\t%s\t%s\t%d\t%d MiB\t127.0.0.1:%d\n", n.Name, n.Role, n.Image, n.CPUs, n.Memory, n.SSHPort)
+	}
+
+	var extras []NodePlan
+	for _, n := range p.Nodes {
+		if len(n.Secondary) > 0 || n.Loopback.IsValid() || n.FRR != "" {
+			extras = append(extras, n)
+		}
+	}
+	if len(extras) > 0 {
+		fmt.Fprintf(tw, "\nroles\n")
+		fmt.Fprintf(tw, "  name\tloopback\tsecondary\tfrr\n")
+		for _, n := range extras {
+			fmt.Fprintf(tw, "  %s\t%s\t%s\t%s\n", n.Name, orDash(loopback(n)), orDash(secondary(n)), orDash(filepath.Base(n.FRR)))
+		}
 	}
 
 	for _, s := range p.Segments {
@@ -31,4 +48,33 @@ func (p *Plan) Write(w io.Writer) error {
 		}
 	}
 	return tw.Flush()
+}
+
+func loopback(n NodePlan) string {
+	if !n.Loopback.IsValid() {
+		return ""
+	}
+	return LoopbackInterface + " " + n.Loopback.String()
+}
+
+func secondary(n NodePlan) string {
+	segments := make([]string, 0, len(n.Secondary))
+	for s := range n.Secondary {
+		segments = append(segments, s)
+	}
+	sort.Strings(segments)
+	var parts []string
+	for _, s := range segments {
+		for _, prefix := range n.Secondary[s] {
+			parts = append(parts, s+" "+prefix.String())
+		}
+	}
+	return strings.Join(parts, ", ")
+}
+
+func orDash(s string) string {
+	if s == "" || s == "." {
+		return "-"
+	}
+	return s
 }

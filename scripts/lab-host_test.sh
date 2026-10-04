@@ -147,7 +147,7 @@ case "$*" in
     *"bash -s"*)
         cat > "${FAKE_DIR}/prepare.sh"
         exit "${FAKE_PREPARE_RC:-0}" ;;
-    *"cat > "*)
+    *"cat > "*|*"-xf -"*)
         N=$(ls "${FAKE_DIR}" | grep -c '^pushed\.')
         cat > "${FAKE_DIR}/pushed.$(( N + 1 ))"
         exit "${FAKE_PUSH_RC:-0}" ;;
@@ -659,18 +659,27 @@ test_prepare_without_known_server_is_refused () {
 }
 
 test_push_builds_for_linux_and_sends_binary_and_topology () {
-    setup "push : compile lab pour linux/amd64, envoie le binaire et la topologie"
+    setup "push : compile lab pour linux/amd64, envoie le binaire et le répertoire de la topologie"
     known_server
-    printf 'name: evpn-2hv\n' > "${WORK}/evpn-2hv.yml"
-    run_lab push "${WORK}/evpn-2hv.yml" || fail "code de sortie $?"
-    local REPO
+    mkdir -p "${WORK}/conf/frr"
+    printf 'name: evpn-2hv\n' > "${WORK}/conf/evpn-2hv.yml"
+    printf 'hostname rr1\n' > "${WORK}/conf/frr/rr1.conf"
+    xattr -w com.apple.test lab "${WORK}/conf/evpn-2hv.yml" 2>/dev/null || true
+    run_lab push "${WORK}/conf/evpn-2hv.yml" || fail "code de sortie $?"
+    local REPO LISTING
     REPO="$(cd "$(dirname "${SCRIPT}")/.." && pwd)"
     [[ $(cat "${WORK}/go.log") == "${REPO}|build -o ${WORK}/.cache/two-lab/lab ./cmd/lab|CGO_ENABLED=0 GOOS=linux GOARCH=amd64" ]] \
         || fail "compilation : $(cat "${WORK}/go.log")"
     grep -q "debian@203.0.113.7 cat > 'lab.part' && chmod 755 'lab.part' && mv 'lab.part' 'lab'" "${WORK}/ssh.log" || fail "envoi de lab absent"
-    grep -q "debian@203.0.113.7 cat > 'evpn-2hv.yml.part' && chmod 644 'evpn-2hv.yml.part' && mv 'evpn-2hv.yml.part' 'evpn-2hv.yml'" "${WORK}/ssh.log" || fail "envoi de la topologie absent"
+    grep -q "debian@203.0.113.7 rm -rf topology.part && mkdir topology.part && tar -C topology.part -xf - && rm -rf topology && mv topology.part topology" "${WORK}/ssh.log" \
+        || fail "envoi du répertoire absent"
     [[ $(cat "${WORK}/pushed.1") == "binaire-lab" ]] || fail "contenu de lab : $(cat "${WORK}/pushed.1")"
-    [[ $(cat "${WORK}/pushed.2") == "name: evpn-2hv" ]] || fail "contenu de la topologie : $(cat "${WORK}/pushed.2")"
+    LISTING=$(tar -tf "${WORK}/pushed.2" | sed 's|^\./||' | grep -v '/$' | grep -v '^$' | sort | tr '\n' ' ')
+    [[ "${LISTING}" == "evpn-2hv.yml frr/rr1.conf " ]] || fail "contenu de l'archive : ${LISTING}"
+    grep -aq 'LIBARCHIVE.xattr' "${WORK}/pushed.2" && fail "attributs étendus macOS dans l'archive"
+    mkdir "${WORK}/x" && tar -C "${WORK}/x" -xf "${WORK}/pushed.2"
+    [[ $(cat "${WORK}/x/frr/rr1.conf") == "hostname rr1" ]] || fail "frr/rr1.conf altéré"
+    grep -q "ssh './lab up topology/evpn-2hv.yml'" "${WORK}/out.log" || fail "consigne finale absente"
     teardown
 }
 

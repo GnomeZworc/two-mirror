@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"go.yaml.in/yaml/v3"
 )
@@ -45,6 +46,9 @@ type Node struct {
 	Memory    int
 	Segments  []string
 	Addresses map[string]string
+	Secondary map[string][]string
+	Loopback  string
+	FRR       string
 }
 
 type fileImage struct {
@@ -59,12 +63,15 @@ type fileSegment struct {
 }
 
 type fileNode struct {
-	Role      string            `yaml:"role"`
-	Image     string            `yaml:"image"`
-	CPUs      int               `yaml:"cpus"`
-	Memory    int               `yaml:"memory"`
-	Segments  []string          `yaml:"segments"`
-	Addresses map[string]string `yaml:"addresses"`
+	Role      string              `yaml:"role"`
+	Image     string              `yaml:"image"`
+	CPUs      int                 `yaml:"cpus"`
+	Memory    int                 `yaml:"memory"`
+	Segments  []string            `yaml:"segments"`
+	Addresses map[string]string   `yaml:"addresses"`
+	Secondary map[string][]string `yaml:"secondary"`
+	Loopback  string              `yaml:"loopback"`
+	FRR       string              `yaml:"frr"`
 }
 
 type file struct {
@@ -82,6 +89,11 @@ func Load(path string) (*Topology, error) {
 	t, err := Parse(data)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	for i, n := range t.Nodes {
+		if n.FRR != "" && !filepath.IsAbs(n.FRR) {
+			t.Nodes[i].FRR = filepath.Join(filepath.Dir(path), n.FRR)
+		}
 	}
 	return t, nil
 }
@@ -126,6 +138,9 @@ func Parse(data []byte) (*Topology, error) {
 			Memory:    n.Memory,
 			Segments:  n.Segments,
 			Addresses: n.Addresses,
+			Secondary: n.Secondary,
+			Loopback:  n.Loopback,
+			FRR:       n.FRR,
 		})
 	}
 	return t, nil

@@ -1,6 +1,8 @@
 package render
 
 import (
+	_ "embed"
+	"encoding/base64"
 	"fmt"
 	"strings"
 
@@ -13,7 +15,20 @@ const (
 	SwitchScript = "/usr/local/sbin/lab-switch"
 	SwitchNFT    = "/etc/lab-switch.nft"
 	SwitchUnit   = "/etc/systemd/system/lab-switch.service"
+
+	NodeScript = "/usr/local/sbin/lab-node"
+	NodeUnit   = "/etc/systemd/system/lab-node.service"
+
+	FRRKey      = "/usr/share/keyrings/frrouting.gpg"
+	FRRConfig   = "/etc/lab/frr.conf"
+	FRRScript   = "/usr/local/sbin/lab-frr"
+	FRRSuite    = "frr-stable"
+	FRRRepo     = "https://deb.frrouting.org/frr"
+	FRRPackages = "frr frr-pythontools"
 )
+
+//go:embed frrouting.gpg
+var frrKey []byte
 
 type metaDoc struct {
 	InstanceID    string `yaml:"instance-id"`
@@ -23,6 +38,7 @@ type metaDoc struct {
 type writeFile struct {
 	Path        string `yaml:"path"`
 	Permissions string `yaml:"permissions"`
+	Encoding    string `yaml:"encoding,omitempty"`
 	Content     string `yaml:"content"`
 }
 
@@ -68,30 +84,77 @@ func metaData(p *topology.Plan, n topology.NodePlan) ([]byte, error) {
 	return yaml.Marshal(metaDoc{InstanceID: p.Name + "-" + n.Name, LocalHostname: n.Name})
 }
 
-func userData(p *topology.Plan, n topology.NodePlan, keys []string) ([]byte, error) {
+func userData(p *topology.Plan, n topology.NodePlan, o Options) ([]byte, error) {
 	cfg := cloudConfig{
 		Hostname:          n.Name,
 		SSHPwauth:         false,
 		DisableRoot:       true,
-		SSHAuthorizedKeys: keys,
+		SSHAuthorizedKeys: o.AuthorizedKeys,
 	}
-	if n.Role == topology.RoleSwitch {
+	switch {
+	case n.Role == topology.RoleSwitch:
 		cfg.Packages = []string{"nftables"}
 		cfg.WriteFiles = []writeFile{
-			{Path: SwitchScript, Permissions: "0755", Content: switchScript(p, n.Name)},
+			{Path: SwitchScript, Permissions: "0755", Content: switchScript(p, n)},
 			{Path: SwitchNFT, Permissions: "0644", Content: switchNFT(p, n.Name)},
-			{Path: SwitchUnit, Permissions: "0644", Content: switchUnit()},
+			{Path: SwitchUnit, Permissions: "0644", Content: unit("Lab switch: bridges, gateways and NAT", SwitchScript)},
 		}
 		cfg.Runcmd = [][]string{
 			{"systemctl", "daemon-reload"},
 			{"systemctl", "enable", "--now", "lab-switch.service"},
 		}
+	case n.Loopback.IsValid():
+		cfg.WriteFiles = []writeFile{
+			{Path: NodeScript, Permissions: "0755", Content: "#!/bin/sh\nset -eu\n" + loopbackLines(n)},
+			{Path: NodeUnit, Permissions: "0644", Content: unit("Lab node: loopback", NodeScript)},
+		}
+		cfg.Runcmd = [][]string{
+			{"systemctl", "daemon-reload"},
+			{"systemctl", "enable", "--now", "lab-node.service"},
+		}
+	}
+	if n.FRR != "" {
+		cfg.WriteFiles = append(cfg.WriteFiles,
+			writeFile{Path: FRRKey, Permissions: "0644", Encoding: "b64", Content: base64.StdEncoding.EncodeToString(frrKey)},
+			writeFile{Path: FRRConfig, Permissions: "0640", Content: o.FRR[n.Name]},
+			writeFile{Path: FRRScript, Permissions: "0755", Content: frrScript(n)},
+		)
+		cfg.Runcmd = append(cfg.Runcmd, []string{FRRScript})
 	}
 	body, err := yaml.Marshal(cfg)
 	if err != nil {
 		return nil, err
 	}
 	return append([]byte("#cloud-config\n"), body...), nil
+}
+
+func frrDaemons(n topology.NodePlan) []string {
+	if n.Role == topology.RoleHypervisor {
+		return []string{"bgpd"}
+	}
+	return []string{"bgpd", "bfdd"}
+}
+
+func frrScript(n topology.NodePlan) string {
+	var b strings.Builder
+	b.WriteString("#!/bin/sh\nset -eu\nexport DEBIAN_FRONTEND=noninteractive\n. /etc/os-release\n")
+	fmt.Fprintf(&b, "echo \"deb [signed-by=%s] %s ${VERSION_CODENAME} %s\" > /etc/apt/sources.list.d/frr.list\n", FRRKey, FRRRepo, FRRSuite)
+	b.WriteString("n=0\nuntil apt-get update -qq --error-on=any; do\n    n=$((n + 1))\n    [ \"$n\" -lt 30 ] || exit 1\n    sleep 10\ndone\n")
+	fmt.Fprintf(&b, "apt-get install -y -qq --no-install-recommends %s\n", FRRPackages)
+	for _, d := range frrDaemons(n) {
+		fmt.Fprintf(&b, "sed -i 's/^%s=no/%s=yes/' /etc/frr/daemons\n", d, d)
+	}
+	fmt.Fprintf(&b, "install -o frr -g frr -m 0640 %s /etc/frr/frr.conf\n", FRRConfig)
+	b.WriteString("systemctl restart frr\n")
+	return b.String()
+}
+
+func loopbackLines(n topology.NodePlan) string {
+	if !n.Loopback.IsValid() {
+		return ""
+	}
+	return fmt.Sprintf("ip link add %s type dummy 2>/dev/null || true\nip addr replace %s dev %s\nip link set dev %s up\n",
+		topology.LoopbackInterface, n.Loopback, topology.LoopbackInterface, topology.LoopbackInterface)
 }
 
 func networkConfig(p *topology.Plan, n topology.NodePlan, index int) ([]byte, error) {
@@ -121,6 +184,9 @@ func networkConfig(p *topology.Plan, n topology.NodePlan, index int) ([]byte, er
 			MTU:       c.MTU,
 			Addresses: []string{c.NodeAddress.String()},
 		}
+		for _, prefix := range n.Secondary[c.Segment] {
+			e.Addresses = append(e.Addresses, prefix.String())
+		}
 		if i == 0 {
 			e.Routes = []route{{To: "0.0.0.0/0", Via: gatewayOf(p, c.Segment)}}
 			e.Nameservers = &nameservers{Addresses: Nameservers}
@@ -139,7 +205,8 @@ func gatewayOf(p *topology.Plan, segment string) string {
 	return ""
 }
 
-func switchScript(p *topology.Plan, name string) string {
+func switchScript(p *topology.Plan, n topology.NodePlan) string {
+	name := n.Name
 	var b strings.Builder
 	b.WriteString("#!/bin/sh\nset -eu\nsysctl -qw net.ipv4.ip_forward=1\n")
 	for _, s := range switchSegments(p, name) {
@@ -153,8 +220,12 @@ func switchScript(p *topology.Plan, name string) string {
 		}
 		fmt.Fprintf(&b, "ip link set dev %s mtu %d\n", s.Bridge, s.MTU)
 		fmt.Fprintf(&b, "ip addr replace %s/%d dev %s\n", s.Gateway, s.Network.Bits(), s.Bridge)
+		for _, prefix := range n.Secondary[s.Name] {
+			fmt.Fprintf(&b, "ip addr replace %s dev %s\n", prefix, s.Bridge)
+		}
 		fmt.Fprintf(&b, "ip link set dev %s up\n", s.Bridge)
 	}
+	b.WriteString(loopbackLines(n))
 	fmt.Fprintf(&b, "nft -f %s\n", SwitchNFT)
 	return b.String()
 }
@@ -175,9 +246,9 @@ table ip lab_nat {
 `, strings.Join(networks, ", "), AdminInterface)
 }
 
-func switchUnit() string {
+func unit(description, script string) string {
 	return fmt.Sprintf(`[Unit]
-Description=Lab switch: bridges, gateways and NAT
+Description=%s
 Wants=network-online.target
 After=network-online.target
 
@@ -188,5 +259,5 @@ ExecStart=%s
 
 [Install]
 WantedBy=multi-user.target
-`, SwitchScript)
+`, description, script)
 }

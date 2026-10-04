@@ -33,8 +33,9 @@ func TestRun_PlanOfTheShippedExampleTopology(t *testing.T) {
 	}
 	for _, want := range []string{
 		"lab evpn-2hv: nodes 4, segments 1, cables 3",
-		"gateway 10.250.0.1",
-		"hv2   underlay   10.250.0.4/24  02:4c:00:03:00:00  20004  <->  sw1 p2",
+		"gateway 192.168.14.1",
+		"hv2   underlay   192.168.14.12/24  02:4c:00:03:00:00  20004  <->  sw1 p2",
+		"rr1   lo1 10.255.255.1/32  underlay 169.254.0.3/28  rr1.conf",
 	} {
 		if !strings.Contains(stdout, want) {
 			t.Errorf("output does not contain %q:\n%s", want, stdout)
@@ -297,5 +298,57 @@ func TestRun_UpRefusesToReplaceARunningLab(t *testing.T) {
 	}
 	if after, _ := os.ReadFile(filepath.Join(run, "topology.yml")); string(after) != string(before) {
 		t.Error("the topology of a running lab was replaced")
+	}
+}
+
+func TestRun_RenderShipsTheExampleFRRConfigs(t *testing.T) {
+	dir := t.TempDir()
+	key := filepath.Join(dir, "lab.pub")
+	if err := os.WriteFile(key, []byte("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFG/JMmjfko96WkJV8DiL6rip/H/q/R++y8s27Z+Cj6O two-lab-automation\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(dir, "run")
+	code, _, stderr := runLab("render", "-key", key, filepath.Join("..", "..", "conf", "lab", "evpn-2hv.yml"), out)
+	if code != 0 {
+		t.Fatalf("code %d, stderr %s", code, stderr)
+	}
+	for node, want := range map[string]string{
+		"sw1": "router bgp 65100",
+		"rr1": "bgp listen range 192.168.14.0/24 peer-group fabric",
+		"hv1": "bgp router-id 192.168.14.11",
+		"hv2": "bgp router-id 192.168.14.12",
+	} {
+		data, err := os.ReadFile(filepath.Join(out, node, "user-data"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(data), want) {
+			t.Errorf("%s user-data does not carry %q", node, want)
+		}
+	}
+}
+
+func TestRun_RenderReportsAMissingFRRConfig(t *testing.T) {
+	dir := t.TempDir()
+	key := filepath.Join(dir, "lab.pub")
+	if err := os.WriteFile(key, []byte("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFG/JMmjfko96WkJV8DiL6rip/H/q/R++y8s27Z+Cj6O x\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	topo := filepath.Join(dir, "lab.yml")
+	doc := `name: x
+images:
+  deb: { url: https://example.invalid/deb.qcow2, sums: https://example.invalid/SHA512SUMS }
+segments:
+  underlay: { switch: sw1, cidr: 10.1.0.0/24 }
+nodes:
+  sw1: { role: switch, image: deb, cpus: 1, memory: 512, frr: frr/absent.conf }
+  hv1: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [underlay] }
+`
+	if err := os.WriteFile(topo, []byte(doc), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	code, _, stderr := runLab("render", "-key", key, topo, filepath.Join(dir, "run"))
+	if code != 1 || !strings.Contains(stderr, "node sw1: ") || !strings.Contains(stderr, filepath.Join(dir, "frr", "absent.conf")) {
+		t.Errorf("code %d, stderr %q", code, stderr)
 	}
 }

@@ -28,14 +28,16 @@ usage: ${0##*/} <commande> [arguments]
 
   plan              résout l'offre horaire, l'OS et les clés SSH, affiche la requête de création
                     et le prix ; ne crée rien
-  up                crée le serveur de lab, attend la fin de son installation et son SSH
+  up                crée le serveur de lab, attend la fin de son installation et son SSH,
+                    puis le prépare (voir prepare)
   status            liste les serveurs de lab du projet
   ssh [commande]    se connecte au serveur de lab ; avec une commande, un terminal n'est demandé
                     que si l'entrée standard en est un
   prepare           installe sur le serveur ce dont lab a besoin (qemu, genisoimage), vérifie
                     /dev/kvm et la virtualisation imbriquée ; lancé aussi par up
-  push <topologie>  compile cmd/lab pour linux/amd64 et dépose sur le serveur ~/lab et
-                    ~/<topologie> ; ensuite : ssh './lab up <topologie>'
+  push <topologie>  compile cmd/lab pour linux/amd64 et dépose sur le serveur ~/lab et le
+                    répertoire de la topologie dans ~/topology/ (avec les fichiers qu'elle
+                    référence) ; ensuite : ssh './lab up topology/<topologie>'
   down              supprime tous les serveurs de lab du projet et attend leur disparition
   session [cmd]     up, puis la commande distante (ou un shell), puis down quoi qu'il arrive
 
@@ -332,6 +334,12 @@ push_file () {
     ssh_run -- "cat > '${TARGET}.part' && chmod ${MODE} '${TARGET}.part' && mv '${TARGET}.part' '${TARGET}'" < "${SOURCE}"
 }
 
+push_dir () {
+    local SOURCE="${1}"
+    COPYFILE_DISABLE=1 tar --no-xattrs -C "${SOURCE}" -cf - . \
+        | ssh_run -- "rm -rf topology.part && mkdir topology.part && tar -C topology.part -xf - && rm -rf topology && mv topology.part topology"
+}
+
 cmd_push () {
     local TOPOLOGY="${1:-}"
     local NAME="${TOPOLOGY##*/}"
@@ -344,8 +352,8 @@ cmd_push () {
     (cd "${REPO_DIR}" && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "${BINARY}" ./cmd/lab) \
         || die "compilation de lab échouée"
     push_file "${BINARY}" lab 755 || die "envoi de lab échoué"
-    push_file "${TOPOLOGY}" "${NAME}" 644 || die "envoi de ${NAME} échoué"
-    info "déposés sur le serveur : ~/lab, ~/${NAME} — ensuite : ${0##*/} ssh './lab up ${NAME}'"
+    push_dir "$(dirname "${TOPOLOGY}")" || die "envoi du répertoire de ${NAME} échoué"
+    info "déposés sur le serveur : ~/lab, ~/topology/ — ensuite : ${0##*/} ssh './lab up topology/${NAME}'"
 }
 
 delete_server () {

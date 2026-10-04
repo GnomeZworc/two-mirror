@@ -72,7 +72,11 @@ func Prepare(ctx context.Context, p *topology.Plan, o Options) ([]render.Node, e
 	if err != nil {
 		return nil, err
 	}
-	nodes, err := render.Render(p, render.Options{RunDir: o.RunDir, AuthorizedKeys: []string{key}})
+	frr, err := ReadFRR(p)
+	if err != nil {
+		return nil, err
+	}
+	nodes, err := render.Render(p, render.Options{RunDir: o.RunDir, AuthorizedKeys: []string{key}, FRR: frr})
 	if err != nil {
 		return nil, err
 	}
@@ -82,6 +86,21 @@ func Prepare(ctx context.Context, p *topology.Plan, o Options) ([]render.Node, e
 		}
 	}
 	return nodes, nil
+}
+
+func ReadFRR(p *topology.Plan) (map[string]string, error) {
+	configs := map[string]string{}
+	for _, n := range p.Nodes {
+		if n.FRR == "" {
+			continue
+		}
+		data, err := os.ReadFile(n.FRR)
+		if err != nil {
+			return nil, fmt.Errorf("node %s: %w", n.Name, err)
+		}
+		configs[n.Name] = string(data)
+	}
+	return configs, nil
 }
 
 func EnsureKey(ctx context.Context, r Runner, dir string) (string, error) {
