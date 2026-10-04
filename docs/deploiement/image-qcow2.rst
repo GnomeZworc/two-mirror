@@ -250,7 +250,7 @@ champ ``password`` de l'API de l'agent ne sert donc **pas** à ouvrir une sessio
    datasource_list: [ NoCloud ]
    datasource:
      NoCloud:
-       seedfrom: 'http://169.254.169.254:80'
+       seedfrom: 'http://169.254.169.254:80/'
        timeout: 5
        max_wait: 10
    ENDFILE
@@ -315,12 +315,20 @@ Points de vigilance
    aucun espace à l'host : les qcow2 ne se rétractent pas. L'activation reste utile pour le jour
    où l'option sera ajoutée côté agent, mais ne pas compter dessus pour la place disque.
 
-.. note::
+.. warning::
 
-   **À vérifier** — ``seedfrom`` sans barre oblique finale. cloud-init construit l'URL des
-   documents en concaténant ``seedfrom`` avec ``meta-data`` et ``user-data``. Confirmer sur une
-   VM réelle que les deux documents sont bien récupérés, et corriger en
-   ``http://169.254.169.254:80/`` si ce n'est pas le cas.
+   **La barre oblique finale de** ``seedfrom`` **est indispensable avant cloud-init 23.1.**
+   cloud-init construit l'URL des documents en concaténant ``seedfrom`` avec ``meta-data``,
+   ``user-data`` et ``vendor-data`` (``util.read_seeded``). Jusqu'à la 22.4 — celle de Debian 12,
+   22.4.2 —, sans barre oblique finale il demande ``http://169.254.169.254:80meta-data`` : la
+   source échoue, la VM démarre en ``DataSourceNone``, sans nom d'hôte ni user-data. À partir de
+   23.1, un drapeau actif par défaut (``NOCLOUD_SEED_URL_APPEND_FORWARD_SLASH``) ajoute la barre
+   oblique manquante, ce qui explique qu'une image récente fonctionne sans elle.
+
+   Vérifié le 2026-10-04 dans le lab (#50), sur une VM Debian 12 lancée par l'agent : sans barre
+   oblique, ``Datasource DataSourceNone`` ; avec, ``DataSourceNoCloudNet
+   [seed=…http://169.254.169.254…]`` et le nom d'hôte de la VM. Avec la barre oblique, la
+   configuration fonctionne quelle que soit la version de cloud-init.
 
 .. note::
 

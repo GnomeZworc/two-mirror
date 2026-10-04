@@ -337,7 +337,7 @@ push_file () {
 push_dir () {
     local SOURCE="${1}"
     COPYFILE_DISABLE=1 tar --no-xattrs -C "${SOURCE}" -cf - . \
-        | ssh_run -- "rm -rf topology.part && mkdir topology.part && tar -C topology.part -xf - && rm -rf topology && mv topology.part topology"
+        | ssh_run -- "rm -rf topology.part && mkdir topology.part && tar -C topology.part --no-same-owner -xf - && rm -rf topology && mv topology.part topology"
 }
 
 cmd_push () {

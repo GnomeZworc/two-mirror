@@ -372,6 +372,46 @@ secours, et la VM redémarrée ne rejoue pas ``runcmd``.
    exécuté qu'au premier, et la migration réseau, qui n'est pas persistée, est perdue. Recréer le
    lab : ``lab down`` puis ``lab up``.
 
+Vérifié le 2026-10-04 sur le serveur de lab, topologie ``evpn-2hv``, release ``0.2.0rc002`` :
+
+.. code-block:: text
+
+   $ scripts/lab-host.sh ssh './lab up -timeout 25m topology/evpn-2hv.yml'
+   sw1: started
+   rr1: started
+   hv1: started
+   hv2: started
+   sw1: ready
+   rr1: ready
+   hv1: ready
+   hv2: ready
+
+.. list-table::
+   :header-rows: 1
+   :widths: 55 45
+
+   * - Vérification
+     - Résultat
+   * - ``lab up`` complet : FRR, ``deploy.sh`` et vérification des services de chaque rôle
+     - 6 min 15
+   * - session switch ↔ route reflector, IPv4 unicast, BFD
+     - Established, BFD up ; le switch reçoit la seule loopback du route reflector
+   * - sessions EVPN des deux hyperviseurs vers la loopback du route reflector
+     - Established, voisins dynamiques, stables
+   * - réseau d'un hyperviseur après ``deploy.sh``
+     - adresse sur ``br-000000``, MTU 9000, API de l'agent qui répond
+   * - VPC, subnet ``vxlan`` et VM Debian ``genericcloud`` créés par l'API de hv1
+     - ``login:`` en 20 s, en KVM imbriqué
+   * - DHCP et routes (option 121) servis par two à la VM
+     - conformes, route ``/32`` vers ``169.254.169.254`` comprise
+   * - métadonnées, image configurée selon :doc:`/deploiement/image-qcow2`
+     - ``DataSourceNoCloudNet``, nom d'hôte appliqué — avec la barre oblique finale de
+       ``seedfrom`` (voir cette page)
+   * - VM ↔ VM entre les deux hyperviseurs, même subnet ``vxlan``
+     - **échec** : les VXLAN de two n'ont pas d'adresse VTEP locale, rien n'est annoncé en EVPN —
+       `#51 <https://git.g3e.fr/syonad/two/issues/51>`_ ; avec l'adresse posée, ping et MTU 1500
+       passent
+
 .. note::
 
    La configuration du switch (``conf/lab/frr/sw1.conf``) **n'est pas celle des routeurs** : écrite

@@ -671,7 +671,7 @@ test_push_builds_for_linux_and_sends_binary_and_topology () {
     [[ $(cat "${WORK}/go.log") == "${REPO}|build -o ${WORK}/.cache/two-lab/lab ./cmd/lab|CGO_ENABLED=0 GOOS=linux GOARCH=amd64" ]] \
         || fail "compilation : $(cat "${WORK}/go.log")"
     grep -q "debian@203.0.113.7 cat > 'lab.part' && chmod 755 'lab.part' && mv 'lab.part' 'lab'" "${WORK}/ssh.log" || fail "envoi de lab absent"
-    grep -q "debian@203.0.113.7 rm -rf topology.part && mkdir topology.part && tar -C topology.part -xf - && rm -rf topology && mv topology.part topology" "${WORK}/ssh.log" \
+    grep -q "debian@203.0.113.7 rm -rf topology.part && mkdir topology.part && tar -C topology.part --no-same-owner -xf - && rm -rf topology && mv topology.part topology" "${WORK}/ssh.log" \
         || fail "envoi du répertoire absent"
     [[ $(cat "${WORK}/pushed.1") == "binaire-lab" ]] || fail "contenu de lab : $(cat "${WORK}/pushed.1")"
     LISTING=$(tar -tf "${WORK}/pushed.2" | sed 's|^\./||' | grep -v '/$' | grep -v '^$' | sort | tr '\n' ' ')
