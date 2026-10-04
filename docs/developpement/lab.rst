@@ -13,10 +13,12 @@ comment s'en servir.
 
 .. note::
 
-   État actuel : étapes **E0** à **E2** livrées — le cycle de vie du serveur qui portera le lab
-   (``scripts/lab-host.sh``), la description de la topologie et le calcul de son plan
-   (``lab plan``), puis la génération des arguments QEMU et des fichiers cloud-init de chaque VM
-   (``lab render``). Le lancement des VM viendra avec l'étape suivante, et cette page avec elle.
+   État actuel : étapes **E0** à **E2** livrées, **E3** en cours — le cycle de vie du serveur qui
+   portera le lab (``scripts/lab-host.sh``), la description de la topologie et le calcul de son
+   plan (``lab plan``), la génération des arguments QEMU et des fichiers cloud-init de chaque VM
+   (``lab render``), puis leur lancement (``lab up`` / ``status`` / ``down`` / ``ssh``). Reste à
+   apprendre à ``lab-host.sh`` à préparer le serveur et à y déposer ``lab``, puis à valider le
+   tout sur le serveur loué.
 
 Le serveur de lab
 -----------------
@@ -359,6 +361,60 @@ renvoie d'abord des adresses IPv6) attend un délai avant de se rabattre sur l'I
 
 Reste à vérifier sur le serveur de lab : les hyperviseurs, qui exigent KVM imbriqué.
 
+Lancement des VM
+----------------
+
+``lab`` s'exécute **sur le serveur de lab**. Il garde l'état du lab dans un répertoire
+(``-run``, par défaut ``~/lab-run``) : ``status``, ``down`` et ``ssh`` n'ont donc pas besoin de la
+topologie.
+
+.. code-block:: text
+
+   lab up [-run dir] [-cache dir] [-timeout 20m] <topologie.yml>
+   lab status [-run dir]
+   lab down [-run dir]
+   lab ssh [-run dir] <nœud> [commande…]
+
+``lab up``
+   1. refuse de continuer si un lab tourne déjà dans le répertoire ;
+   2. télécharge chaque image dans le cache (``-cache``, par défaut ``~/.cache/two-lab``) et la
+      vérifie contre ``SHA512SUMS`` ; une image déjà présente et toujours conforme n'est pas
+      retéléchargée, la liste des sommes est relue à chaque fois ;
+   3. génère une paire de clés SSH dans le répertoire du lab, si elle n'existe pas encore ;
+   4. pour chaque nœud : fichiers de ``lab render``, disque **neuf** en overlay qcow2 sur
+      l'image (``qemu-img create -b``, 20 Gio annoncés), image ``cidata`` (``genisoimage``) ;
+   5. démarre les QEMU, **switchs d'abord**, détachés (``-daemonize``) : ils survivent à la
+      session SSH qui les a lancés ;
+   6. attend sur chaque nœud la fin de cloud-init (``cloud-init status --wait`` par SSH),
+      jusqu'au délai ``-timeout``.
+
+   La topologie est copiée dans ``<run>/topology.yml``. Un échec laisse les nœuds démarrés en
+   place : ``lab status``, puis ``lab down``.
+
+``lab status``
+   Pour chaque nœud : rôle, état du processus QEMU, PID, port SSH sur la boucle locale.
+
+``lab down``
+   Arrête chaque QEMU par ``SIGTERM``, puis ``SIGKILL`` au bout de 30 s. Les disques sont
+   conservés jusqu'au prochain ``up``, qui les recrée.
+
+``lab ssh``
+   Ouvre un shell sur un nœud, ou y exécute une commande, avec la clé générée par ``up``. ``lab``
+   cède la place à ``ssh``, dont le code de retour est donc celui de la commande. Un terminal
+   n'est demandé (``-t``) que si l'entrée de ``lab`` en est un : depuis un script, ni
+   pseudo-terminal ni ``\r\n`` dans la sortie.
+
+Un processus n'est tenu pour celui d'un nœud que si son PID, lu dans ``qemu.pid``, désigne un
+processus vivant dont la ligne de commande (``/proc/<pid>/cmdline``) contient ``-name <nœud>``.
+Un PID réutilisé par un autre programme n'est donc jamais signalé.
+
+.. warning::
+
+   Le cache range une image sous son nom de fichier, et l'URL de Debian est ``latest`` : une
+   nouvelle publication remplace le fichier, et les overlays existants pointeraient sur une
+   base différente. ``up`` recrée toujours les disques, ce qui suffit avec un lab par serveur ;
+   **ne pas relancer un QEMU à la main** à partir d'un ``qemu.args`` après un ``up`` ultérieur.
+
 Facturation
 -----------
 
@@ -430,6 +486,15 @@ Sécurité
   production.
 * Une clé secrète qui a circulé ailleurs que dans ``scaleway.env`` (conversation, terminal
   partagé, capture d'écran) se régénère.
+* **Clé SSH des VM** : générée par ``lab up`` sur le serveur, c'est la seule clé autorisée dans
+  les VM. Elle ne quitte jamais le serveur, n'ouvre que les VM du lab — qui n'écoutent qu'en
+  boucle locale — et disparaît avec lui. La clé publique du Mac n'est jamais envoyée aux VM.
+* **Clés d'hôte des VM non vérifiées** par ``lab ssh`` (``known_hosts`` jetable) : elles changent
+  à chaque ``up``. Acceptable uniquement parce que la connexion reste sur la boucle locale d'un
+  serveur auquel on s'est authentifié.
+* **Image** : ``SHA512SUMS`` vient de la même origine que l'image, en HTTPS. La vérification
+  protège contre la corruption, pas contre une origine compromise ; la signature GPG de Debian
+  (``SHA512SUMS.sign``) n'est pas encore vérifiée.
 
 Tests
 -----
