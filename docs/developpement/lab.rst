@@ -13,12 +13,12 @@ comment s'en servir.
 
 .. note::
 
-   État actuel : étapes **E0** à **E2** livrées, **E3** en cours — le cycle de vie du serveur qui
-   portera le lab (``scripts/lab-host.sh``), la description de la topologie et le calcul de son
-   plan (``lab plan``), la génération des arguments QEMU et des fichiers cloud-init de chaque VM
-   (``lab render``), puis leur lancement (``lab up`` / ``status`` / ``down`` / ``ssh``). Reste à
-   apprendre à ``lab-host.sh`` à préparer le serveur et à y déposer ``lab``, puis à valider le
-   tout sur le serveur loué.
+   État actuel : étapes **E0** à **E3** livrées — le cycle de vie du serveur qui porte le lab
+   (``scripts/lab-host.sh``), la description de la topologie et le calcul de son plan
+   (``lab plan``), la génération des arguments QEMU et des fichiers cloud-init de chaque VM
+   (``lab render``), puis leur lancement sur le serveur (``lab up`` / ``status`` / ``down`` /
+   ``ssh``). Les rôles — FRR sur le switch et le route reflector, two sur les hyperviseurs —
+   viendront avec l'étape suivante.
 
 Le serveur de lab
 -----------------
@@ -109,9 +109,15 @@ Commandes
 
      plan              résout l'offre horaire, l'OS et les clés SSH, affiche la requête de création
                        et le prix ; ne crée rien
-     up                crée le serveur de lab, attend la fin de son installation et son SSH
+     up                crée le serveur de lab, attend la fin de son installation et son SSH,
+                       puis le prépare (voir prepare)
      status            liste les serveurs de lab du projet
-     ssh [commande]    se connecte au serveur de lab
+     ssh [commande]    se connecte au serveur de lab ; avec une commande, un terminal n'est demandé
+                       que si l'entrée standard en est un
+     prepare           installe sur le serveur ce dont lab a besoin (qemu, genisoimage), vérifie
+                       /dev/kvm et la virtualisation imbriquée ; lancé aussi par up
+     push <topologie>  compile cmd/lab pour linux/amd64 et dépose sur le serveur ~/lab et
+                       ~/<topologie> ; ensuite : ssh './lab up <topologie>'
      down              supprime tous les serveurs de lab du projet et attend leur disparition
      session [cmd]     up, puis la commande distante (ou un shell), puis down quoi qu'il arrive
 
@@ -164,6 +170,21 @@ environ 100 secondes la première fois — d'où l'attente intégrée à ``up``.
 
 ``up``, ``ssh`` et ``down`` séparément servent au debug interactif — et laissent la suppression
 à la charge de l'utilisateur.
+
+Une campagne sur le lab enchaîne ces commandes depuis le Mac ; ``lab`` s'exécute sur le serveur
+(voir `Lancement des VM`_) :
+
+.. code-block:: text
+
+   scripts/lab-host.sh up
+   scripts/lab-host.sh push conf/lab/evpn-2hv.yml
+   scripts/lab-host.sh ssh './lab up evpn-2hv.yml'
+   scripts/lab-host.sh ssh './lab ssh hv1'          # shell interactif sur hv1
+   scripts/lab-host.sh ssh './lab ssh hv1 ip -br a' # commande, code de retour propagé
+   scripts/lab-host.sh down
+
+``push`` transfère par la connexion SSH du script (``cat`` côté serveur, fichier renommé une fois
+complet) : mêmes options, même clé, même ``known_hosts`` que ``ssh``.
 
 Topologie
 ---------
@@ -404,6 +425,21 @@ topologie.
    n'est demandé (``-t``) que si l'entrée de ``lab`` en est un : depuis un script, ni
    pseudo-terminal ni ``\r\n`` dans la sortie.
 
+   Comme ``ssh``, ``lab ssh`` recolle ses arguments par des espaces et les confie à un shell
+   distant — et depuis le Mac, il y en a **deux** : celui du serveur, puis celui de la VM.
+   Une commande qui contient elle-même des guillemets se passe en une seule chaîne :
+
+   .. code-block:: text
+
+      $ echo | scripts/lab-host.sh ssh './lab ssh hv1 sh -c "exit 42"'; echo "rc 42=$?"
+      rc 42=0
+      $ echo | scripts/lab-host.sh ssh "./lab ssh hv1 'sh -c \"exit 42\"'"; echo "rc 42=$?"
+      rc 42=42
+
+   Dans le premier cas, la VM reçoit ``sh -c exit 42`` : ``exit`` sans argument, ``42`` en
+   ``$0``. Pour plus d'une commande, passer un script sur l'entrée standard :
+   ``scripts/lab-host.sh ssh "./lab ssh hv1 'sudo bash -s'" < script.sh``.
+
 Un processus n'est tenu pour celui d'un nœud que si son PID, lu dans ``qemu.pid``, désigne un
 processus vivant dont la ligne de commande (``/proc/<pid>/cmdline``) contient ``-name <nœud>``.
 Un PID réutilisé par un autre programme n'est donc jamais signalé.
@@ -414,6 +450,74 @@ Un PID réutilisé par un autre programme n'est donc jamais signalé.
    nouvelle publication remplace le fichier, et les overlays existants pointeraient sur une
    base différente. ``up`` recrée toujours les disques, ce qui suffit avec un lab par serveur ;
    **ne pas relancer un QEMU à la main** à partir d'un ``qemu.args`` après un ``up`` ultérieur.
+
+Une campagne réelle, de la création du serveur à la première commande sur une VM — sorties du
+2026-10-04 :
+
+.. code-block:: text
+
+   $ scripts/lab-host.sh up
+   == création de two-lab (EM-B212X-SSD, 0.321 EUR/h HT)
+   …
+   == préparation du serveur : qemu, genisoimage, KVM imbriqué
+   …
+   qemu QEMU emulator version 7.2.22 (Debian 1:7.2+dfsg-7+deb12u18+b3), nested=Y
+   == prêt : root@<adresse>
+   $ scripts/lab-host.sh push conf/lab/evpn-2hv.yml
+   == compilation de lab (linux/amd64)
+   == déposés sur le serveur : ~/lab, ~/evpn-2hv.yml — ensuite : lab-host.sh ssh './lab up evpn-2hv.yml'
+   $ scripts/lab-host.sh ssh './lab up evpn-2hv.yml'
+   sw1: started
+   rr1: started
+   hv1: started
+   hv2: started
+   sw1: ready
+   rr1: ready
+   hv1: ready
+   hv2: ready
+   $ scripts/lab-host.sh ssh './lab status'
+   node  role        state    pid   ssh
+   sw1   switch      running  5158  127.0.0.1:2200
+   rr1   rr          running  5171  127.0.0.1:2201
+   hv1   hypervisor  running  5182  127.0.0.1:2202
+   hv2   hypervisor  running  5196  127.0.0.1:2203
+
+``lab up`` a pris **49 secondes**, téléchargement et vérification de l'image (427 Mio) compris ;
+l'essentiel du temps d'une campagne est la livraison du serveur (environ 25 minutes avec
+``prepare``).
+
+Vérifié sur le serveur de lab
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Le 2026-10-04, sur un Xeon E5-2640 v3, Debian 12 et QEMU 7.2 sur le serveur, topologie
+``evpn-2hv`` :
+
+.. list-table::
+   :header-rows: 1
+   :widths: 60 40
+
+   * - Vérification
+     - Résultat
+   * - ``ping -M do -s 8972`` de hv1 à hv2 à travers le switch
+     - passe
+   * - ``ping -M do -s 8973``
+     - refusé : ``message too long, mtu=9000``
+   * - sortie Internet de hv1
+     - par ``10.250.0.1`` (le switch), HTTPS 200 ; aucune route IPv6 globale
+   * - hv1 vers un service TCP du serveur par ``mgmt0`` — sw1, témoin, y parvient (200)
+     - refusé
+   * - hv1 vers Internet par ``mgmt0``, route forcée via ``10.0.2.2`` — sw1 y parvient
+     - refusé
+   * - ``/dev/kvm`` et ``nested`` dans hv1
+     - présent, ``Y``
+   * - racine de hv1 (overlay de 20 Gio)
+     - 20 Go : ``growpart`` agrandit la partition au premier démarrage
+   * - code de retour à travers ``lab-host.sh ssh`` et ``lab ssh``, sans terminal
+     - propagé jusqu'au Mac
+   * - ``scripts/lab-host.sh ssh './lab ssh hv1'`` depuis un terminal
+     - shell interactif
+   * - ``lab down`` puis ``lab up`` d'une autre topologie
+     - conforme
 
 Facturation
 -----------

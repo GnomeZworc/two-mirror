@@ -144,11 +144,28 @@ case "$*" in
             exit 255
         fi
         exit 0 ;;
+    *"bash -s"*)
+        cat > "${FAKE_DIR}/prepare.sh"
+        exit "${FAKE_PREPARE_RC:-0}" ;;
+    *"cat > "*)
+        N=$(ls "${FAKE_DIR}" | grep -c '^pushed\.')
+        cat > "${FAKE_DIR}/pushed.$(( N + 1 ))"
+        exit "${FAKE_PUSH_RC:-0}" ;;
 esac
 [ -n "${FAKE_SSH_SLEEP:-}" ] && sleep "${FAKE_SSH_SLEEP}"
 exit "${FAKE_SSH_RC:-0}"
 SH
-    chmod +x "${DIR}/bin/curl" "${DIR}/bin/ssh"
+    cat > "${DIR}/bin/go" <<'SH'
+#!/usr/bin/env bash
+printf '%s|%s|CGO_ENABLED=%s GOOS=%s GOARCH=%s\n' "${PWD}" "$*" "${CGO_ENABLED:-}" "${GOOS:-}" "${GOARCH:-}" >> "${FAKE_DIR}/go.log"
+[ -n "${FAKE_GO_FAIL:-}" ] && exit 1
+while [ $# -gt 0 ]; do
+    [ "${1}" = "-o" ] && printf 'binaire-lab\n' > "${2}"
+    shift
+done
+exit 0
+SH
+    chmod +x "${DIR}/bin/curl" "${DIR}/bin/ssh" "${DIR}/bin/go"
 }
 
 base_state () {
@@ -200,7 +217,8 @@ lab_env () {
     [[ "${1}" == "exec" ]] && { EXEC="exec"; shift; }
     ${EXEC} env -i PATH="${WORK}/bin:${PATH}" HOME="${WORK}" TMPDIR="${TMPDIR:-/tmp}" \
         FAKE_DIR="${WORK}" FAKE_SECRET="${SECRET}" FAKE_SSH_RC="${FAKE_SSH_RC:-0}" \
-        FAKE_SSH_SLEEP="${FAKE_SSH_SLEEP:-}" \
+        FAKE_SSH_SLEEP="${FAKE_SSH_SLEEP:-}" FAKE_PREPARE_RC="${FAKE_PREPARE_RC:-0}" \
+        FAKE_PUSH_RC="${FAKE_PUSH_RC:-0}" FAKE_GO_FAIL="${FAKE_GO_FAIL:-}" \
         SCW_API_URL="https://api.example.invalid" SCW_SECRET_KEY="${SECRET}" \
         SCW_DEFAULT_PROJECT_ID="${PROJECT}" LAB_POLL_INTERVAL="${LAB_POLL_INTERVAL:-0}" \
         LAB_INSTALL_TIMEOUT="${LAB_INSTALL_TIMEOUT:-60}" LAB_DELETE_TIMEOUT="${LAB_DELETE_TIMEOUT:-60}" \
@@ -584,6 +602,119 @@ test_ssh_falls_back_to_agent_without_lab_key () {
     run_lab session uname || fail "code de sortie $?"
     grep -q -- "-i " "${WORK}/ssh.log" && fail "clé imposée alors qu'elle n'existe pas"
     grep -q "IdentityAgent=none" "${WORK}/ssh.log" && fail "agent désactivé sans clé dédiée"
+    teardown
+}
+
+known_server () {
+    mkdir -p "${WORK}/.cache/two-lab"
+    echo 203.0.113.7 > "${WORK}/.cache/two-lab/ip"
+    echo debian > "${WORK}/.cache/two-lab/user"
+    : > "${WORK}/.cache/two-lab/known_hosts"
+}
+
+test_up_prepares_the_server_after_ssh () {
+    setup "up : prépare le serveur (qemu, genisoimage, KVM imbriqué) une fois SSH joignable"
+    mutate '.progress = [["ready","completed"]]'
+    run_lab up || fail "code de sortie $?"
+    [[ $(tail -n 1 "${WORK}/ssh.log") == *"debian@203.0.113.7 bash -s" ]] || fail "préparation non lancée en dernier : $(tail -n 1 "${WORK}/ssh.log")"
+    grep -q "apt-get install -y -qq --no-install-recommends qemu-system-x86 qemu-utils genisoimage" "${WORK}/prepare.sh" || fail "paquets absents du script"
+    grep -q 'usermod -aG kvm' "${WORK}/prepare.sh" || fail "groupe kvm absent du script"
+    grep -q -- '-c /dev/kvm' "${WORK}/prepare.sh" || fail "contrôle de /dev/kvm absent"
+    grep -q 'kvm_intel/parameters/nested' "${WORK}/prepare.sh" || fail "contrôle de nested absent"
+    teardown
+}
+
+test_up_reports_a_billed_server_when_preparation_fails () {
+    setup "up : préparation échouée signalée, serveur toujours facturé"
+    mutate '.progress = [["ready","completed"]]'
+    FAKE_PREPARE_RC=1 run_lab up && fail "up a réussi"
+    grep -q "préparation du serveur échouée — il est toujours facturé" "${WORK}/out.log" || fail "message absent"
+    grep -q "prêt :" "${WORK}/out.log" && fail "serveur annoncé prêt"
+    teardown
+}
+
+test_session_deletes_server_when_preparation_fails () {
+    setup "session : serveur supprimé si la préparation échoue, commande jamais lancée"
+    mutate '.progress = [["ready","completed"]]'
+    FAKE_PREPARE_RC=1 run_lab session uname && fail "session a réussi"
+    grep -q " uname" "${WORK}/ssh.log" && fail "commande lancée malgré la préparation échouée"
+    [[ $(remaining) == "foreign-1,foreign-2" ]] || fail "restants : $(remaining)"
+    teardown
+}
+
+test_prepare_script_is_valid_shell () {
+    setup "prepare : le script distant est du shell valide"
+    known_server
+    run_lab prepare || fail "code de sortie $?"
+    bash -n "${WORK}/prepare.sh" || fail "bash -n refuse le script"
+    sh -n "${WORK}/prepare.sh" || fail "sh -n refuse le script"
+    teardown
+}
+
+test_prepare_without_known_server_is_refused () {
+    setup "prepare : refusé sans serveur connu"
+    run_lab prepare && fail "prepare a réussi"
+    [[ -s "${WORK}/ssh.log" ]] && fail "ssh lancé"
+    teardown
+}
+
+test_push_builds_for_linux_and_sends_binary_and_topology () {
+    setup "push : compile lab pour linux/amd64, envoie le binaire et la topologie"
+    known_server
+    printf 'name: evpn-2hv\n' > "${WORK}/evpn-2hv.yml"
+    run_lab push "${WORK}/evpn-2hv.yml" || fail "code de sortie $?"
+    local REPO
+    REPO="$(cd "$(dirname "${SCRIPT}")/.." && pwd)"
+    [[ $(cat "${WORK}/go.log") == "${REPO}|build -o ${WORK}/.cache/two-lab/lab ./cmd/lab|CGO_ENABLED=0 GOOS=linux GOARCH=amd64" ]] \
+        || fail "compilation : $(cat "${WORK}/go.log")"
+    grep -q "debian@203.0.113.7 cat > 'lab.part' && chmod 755 'lab.part' && mv 'lab.part' 'lab'" "${WORK}/ssh.log" || fail "envoi de lab absent"
+    grep -q "debian@203.0.113.7 cat > 'evpn-2hv.yml.part' && chmod 644 'evpn-2hv.yml.part' && mv 'evpn-2hv.yml.part' 'evpn-2hv.yml'" "${WORK}/ssh.log" || fail "envoi de la topologie absent"
+    [[ $(cat "${WORK}/pushed.1") == "binaire-lab" ]] || fail "contenu de lab : $(cat "${WORK}/pushed.1")"
+    [[ $(cat "${WORK}/pushed.2") == "name: evpn-2hv" ]] || fail "contenu de la topologie : $(cat "${WORK}/pushed.2")"
+    teardown
+}
+
+test_push_stops_when_the_build_fails () {
+    setup "push : rien n'est envoyé si la compilation échoue"
+    known_server
+    printf 'name: x\n' > "${WORK}/x.yml"
+    FAKE_GO_FAIL=1 run_lab push "${WORK}/x.yml" && fail "push a réussi"
+    [[ -s "${WORK}/ssh.log" ]] && fail "ssh lancé"
+    grep -q "compilation de lab échouée" "${WORK}/out.log" || fail "message absent"
+    teardown
+}
+
+test_push_fails_when_a_transfer_fails () {
+    setup "push : un envoi échoué fait échouer push"
+    known_server
+    printf 'name: x\n' > "${WORK}/x.yml"
+    FAKE_PUSH_RC=1 run_lab push "${WORK}/x.yml" && fail "push a réussi"
+    grep -q "envoi de lab échoué" "${WORK}/out.log" || fail "message absent"
+    teardown
+}
+
+test_push_refusals () {
+    local CASE
+    for CASE in absent quote nothing; do
+        setup "push : refus (${CASE})"
+        known_server
+        case "${CASE}" in
+            absent)  run_lab push "${WORK}/absent.yml" && fail "push a réussi" ;;
+            quote)   printf 'x\n' > "${WORK}/a'b.yml"; run_lab push "${WORK}/a'b.yml" && fail "push a réussi" ;;
+            nothing) run_lab push && fail "push a réussi" ;;
+        esac
+        [[ -s "${WORK}/go.log" ]] && fail "compilation lancée"
+        [[ -s "${WORK}/ssh.log" ]] && fail "ssh lancé"
+        teardown
+    done
+}
+
+test_ssh_without_terminal_does_not_ask_for_one () {
+    setup "ssh : pas de -t quand l'entrée n'est pas un terminal"
+    known_server
+    run_lab ssh './lab status' < /dev/null || fail "code de sortie $?"
+    [[ $(cat "${WORK}/ssh.log") == *"debian@203.0.113.7 ./lab status" ]] || fail "commande : $(cat "${WORK}/ssh.log")"
+    grep -q -- " -t " "${WORK}/ssh.log" && fail "-t demandé sans terminal"
     teardown
 }
 

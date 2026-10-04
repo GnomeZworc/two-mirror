@@ -15,6 +15,7 @@ HTTP_CONNECT_TIMEOUT="${LAB_HTTP_CONNECT_TIMEOUT:-10}"
 HTTP_TIMEOUT="${LAB_HTTP_TIMEOUT:-60}"
 STATE_DIR="${LAB_STATE_DIR:-${HOME}/.cache/two-lab}"
 SSH_KEY="${LAB_SSH_KEY:-${HOME}/.config/two-lab/ssh/lab_ed25519}"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CREATED_ID=""
 
 info () { echo "== ${1}" >&2; }
@@ -29,7 +30,12 @@ usage: ${0##*/} <commande> [arguments]
                     et le prix ; ne crée rien
   up                crée le serveur de lab, attend la fin de son installation et son SSH
   status            liste les serveurs de lab du projet
-  ssh [commande]    se connecte au serveur de lab
+  ssh [commande]    se connecte au serveur de lab ; avec une commande, un terminal n'est demandé
+                    que si l'entrée standard en est un
+  prepare           installe sur le serveur ce dont lab a besoin (qemu, genisoimage), vérifie
+                    /dev/kvm et la virtualisation imbriquée ; lancé aussi par up
+  push <topologie>  compile cmd/lab pour linux/amd64 et dépose sur le serveur ~/lab et
+                    ~/<topologie> ; ensuite : ssh './lab up <topologie>'
   down              supprime tous les serveurs de lab du projet et attend leur disparition
   session [cmd]     up, puis la commande distante (ou un shell), puis down quoi qu'il arrive
 
@@ -270,6 +276,7 @@ cmd_up () {
     printf '%s\n' "${SSH_USER:-root}" > "${STATE_DIR}/user"
     : > "${STATE_DIR}/known_hosts"
     wait_ssh || die "SSH injoignable après ${SSH_TIMEOUT}s — le serveur est toujours facturé : '${0##*/} down'"
+    cmd_prepare || die "préparation du serveur échouée — il est toujours facturé : '${0##*/} down'"
     info "prêt : ${SSH_USER:-root}@${IP}"
 }
 
@@ -283,9 +290,62 @@ cmd_status () {
     jq -r '.[] | "\(.id)  \(.name)  \(.offer_name)  \(.status)  installation \(.install.status // "none")  \(.created_at)  \([.ips[] | select(.version == "IPv4") | .address] | join(","))"' <<< "${SERVERS}"
 }
 
-cmd_ssh () {
+require_known_server () {
     [[ -s "${STATE_DIR}/ip" ]] || die "aucun serveur de lab connu ; '${0##*/} up' d'abord"
-    ssh_run -- "$@"
+}
+
+cmd_ssh () {
+    require_known_server
+    if [[ $# -gt 0 && -t 0 ]]; then
+        ssh_run -t -- "$@"
+    else
+        ssh_run -- "$@"
+    fi
+}
+
+prepare_script () {
+    cat <<'EOF'
+set -eu
+SUDO=
+[ "$(id -u)" -eq 0 ] || SUDO=sudo
+$SUDO env DEBIAN_FRONTEND=noninteractive apt-get update -qq
+$SUDO env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends qemu-system-x86 qemu-utils genisoimage
+[ "$(id -u)" -eq 0 ] || $SUDO usermod -aG kvm "$(id -un)"
+[ -c /dev/kvm ] || { echo "/dev/kvm absent" >&2; exit 1; }
+NESTED=$(cat /sys/module/kvm_intel/parameters/nested 2>/dev/null || cat /sys/module/kvm_amd/parameters/nested 2>/dev/null || true)
+case "${NESTED}" in
+    Y|1) ;;
+    *) echo "virtualisation imbriquée désactivée (nested=${NESTED:-absent})" >&2; exit 1 ;;
+esac
+echo "qemu $(qemu-system-x86_64 --version | head -n 1), nested=${NESTED}"
+EOF
+}
+
+cmd_prepare () {
+    require_known_server
+    info "préparation du serveur : qemu, genisoimage, KVM imbriqué"
+    prepare_script | ssh_run -- bash -s
+}
+
+push_file () {
+    local SOURCE="${1}" TARGET="${2}" MODE="${3}"
+    ssh_run -- "cat > '${TARGET}.part' && chmod ${MODE} '${TARGET}.part' && mv '${TARGET}.part' '${TARGET}'" < "${SOURCE}"
+}
+
+cmd_push () {
+    local TOPOLOGY="${1:-}"
+    local NAME="${TOPOLOGY##*/}"
+    local BINARY="${STATE_DIR}/lab"
+    [[ $# -eq 1 && -n "${TOPOLOGY}" ]] || usage
+    [[ -f "${TOPOLOGY}" ]] || die "topologie introuvable : ${TOPOLOGY}"
+    [[ "${NAME}" =~ ^[A-Za-z0-9._-]+$ ]] || die "nom de topologie refusé : ${NAME} (lettres, chiffres, '.', '_', '-')"
+    require_known_server
+    info "compilation de lab (linux/amd64)"
+    (cd "${REPO_DIR}" && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "${BINARY}" ./cmd/lab) \
+        || die "compilation de lab échouée"
+    push_file "${BINARY}" lab 755 || die "envoi de lab échoué"
+    push_file "${TOPOLOGY}" "${NAME}" 644 || die "envoi de ${NAME} échoué"
+    info "déposés sur le serveur : ~/lab, ~/${NAME} — ensuite : ${0##*/} ssh './lab up ${NAME}'"
 }
 
 delete_server () {
@@ -385,6 +445,8 @@ main () {
         up)      require_env; cmd_up ;;
         status)  require_env; cmd_status ;;
         ssh)     cmd_ssh "$@" ;;
+        prepare) cmd_prepare || die "préparation du serveur échouée" ;;
+        push)    cmd_push "$@" ;;
         down)    require_env; cmd_down ;;
         session) require_env; cmd_session "$@" ;;
         *)       usage ;;
