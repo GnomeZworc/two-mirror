@@ -387,5 +387,6 @@ main () {
     switch_binaries "${FLAGS_dryrun}" "${FLAGS_profile}" "${ASSETS}"
 }
 
-[[ "${BASH_SOURCE[0]}" == "${0}" ]] && (main "$@" || exit 1)
-[[ "${BASH_SOURCE[0]}" == "" ]] && (main "$@"  || exit 1)
+if [[ "${BASH_SOURCE[0]}" == "${0}" || -z "${BASH_SOURCE[0]}" ]]; then
+    (main "$@" || exit 1)
+fi
