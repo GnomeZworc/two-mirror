@@ -107,6 +107,14 @@ func TestCompute_TwoHypervisorsPlan(t *testing.T) {
 	}
 }
 
+func TestCompute_CarriesTheDeclaredImages(t *testing.T) {
+	p := compute(t, twoHypervisors)
+	want := []Image{{Name: "deb", URL: "https://example.invalid/deb.qcow2", Sums: "https://example.invalid/SHA512SUMS"}}
+	if !reflect.DeepEqual(p.Images, want) {
+		t.Errorf("images = %+v, want %+v", p.Images, want)
+	}
+}
+
 func TestCompute_IsStableAcrossRuns(t *testing.T) {
 	first := compute(t, twoHypervisors)
 	for i := 0; i < 20; i++ {

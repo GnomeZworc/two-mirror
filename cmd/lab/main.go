@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"git.g3e.fr/syonad/two/internal/lab/provision"
 	"git.g3e.fr/syonad/two/internal/lab/render"
 	"git.g3e.fr/syonad/two/internal/lab/topology"
 )
@@ -111,7 +112,7 @@ func renderCmd(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	for _, n := range nodes {
-		if err := writeNode(n); err != nil {
+		if err := provision.WriteFiles(n); err != nil {
 			fmt.Fprintf(stderr, "lab: %v\n", err)
 			return 1
 		}
@@ -136,22 +137,4 @@ func readKeys(files []string) ([]string, error) {
 		}
 	}
 	return keys, nil
-}
-
-func writeNode(n render.Node) error {
-	if err := os.MkdirAll(n.Dir, 0o700); err != nil {
-		return err
-	}
-	files := map[string][]byte{
-		"qemu.args":      []byte(strings.Join(n.QEMU, "\n") + "\n"),
-		"meta-data":      n.MetaData,
-		"user-data":      n.UserData,
-		"network-config": n.NetworkConfig,
-	}
-	for name, content := range files {
-		if err := os.WriteFile(filepath.Join(n.Dir, name), content, 0o600); err != nil {
-			return err
-		}
-	}
-	return nil
 }

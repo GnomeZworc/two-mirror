@@ -18,6 +18,7 @@ const (
 
 type Plan struct {
 	Name     string
+	Images   []Image
 	Segments []SegmentPlan
 	Nodes    []NodePlan
 	Cables   []Cable
@@ -62,7 +63,7 @@ func Compute(t *Topology) (*Plan, error) {
 		return nil, err
 	}
 
-	p := &Plan{Name: t.Name}
+	p := &Plan{Name: t.Name, Images: append([]Image(nil), t.Images...)}
 	for i, n := range t.Nodes {
 		p.Nodes = append(p.Nodes, NodePlan{
 			Name:    n.Name,
