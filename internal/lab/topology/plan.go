@@ -43,6 +43,7 @@ type NodePlan struct {
 	Secondary map[string][]netip.Prefix
 	Loopback  netip.Prefix
 	FRR       string
+	Release   string
 }
 
 type Cable struct {
@@ -76,6 +77,7 @@ func Compute(t *Topology) (*Plan, error) {
 			Memory:  n.Memory,
 			SSHPort: SSHBasePort + i,
 			FRR:     n.FRR,
+			Release: n.Release,
 		}
 		for segment, raws := range n.Secondary {
 			for _, raw := range raws {

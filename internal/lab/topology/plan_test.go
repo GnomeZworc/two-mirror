@@ -55,8 +55,8 @@ segments:
 nodes:
   sw1: { role: switch,     image: deb, cpus: 2, memory: 1024 }
   rr1: { role: rr,         image: deb, cpus: 1, memory: 1024, segments: [underlay] }
-  hv1: { role: hypervisor, image: deb, cpus: 4, memory: 16384, segments: [underlay] }
-  hv2: { role: hypervisor, image: deb, cpus: 4, memory: 16384, segments: [underlay] }
+  hv1: { role: hypervisor, image: deb, cpus: 4, memory: 16384, segments: [underlay], release: 0.2.0rc002 }
+  hv2: { role: hypervisor, image: deb, cpus: 4, memory: 16384, segments: [underlay], release: 0.2.0rc002 }
 `
 
 func TestCompute_TwoHypervisorsPlan(t *testing.T) {
@@ -165,7 +165,7 @@ segments:
   blue: { switch: sw, cidr: 10.2.0.0/24, mtu: 1500 }
 nodes:
   sw: { role: switch, image: deb, cpus: 1, memory: 512 }
-  hv: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [blue, red] }
+  hv: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [blue, red], release: 0.2.0rc002 }
   rr: { role: rr, image: deb, cpus: 1, memory: 512, segments: [red] }
 `)
 	got := make([]string, 0, len(p.Cables))
@@ -193,7 +193,7 @@ nodes:
   sw: { role: switch, image: deb, cpus: 1, memory: 512 }
   n1: { role: rr, image: deb, cpus: 1, memory: 512, segments: [a, b] }
   n2: { role: rr, image: deb, cpus: 1, memory: 512, segments: [a, b] }
-  n3: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [b, a] }
+  n3: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [b, a], release: 0.2.0rc002 }
 `)
 	macs := map[string]bool{}
 	ports := map[int]bool{}
@@ -313,6 +313,11 @@ nodes
   rr1   rr          deb    1     1024 MiB   127.0.0.1:2201
   hv1   hypervisor  deb    4     16384 MiB  127.0.0.1:2202
   hv2   hypervisor  deb    4     16384 MiB  127.0.0.1:2203
+
+roles
+  name  loopback  secondary  frr  release
+  hv1   -         -          -    0.2.0rc002
+  hv2   -         -          -    0.2.0rc002
 
 segment underlay: 10.250.0.0/24, mtu 9000, switch sw1, bridge br-underlay, gateway 10.250.0.1
   node  interface  address        mac                udp         switch port  mac                udp

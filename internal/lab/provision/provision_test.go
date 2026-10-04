@@ -60,8 +60,8 @@ segments:
 nodes:
   sw1: { role: switch,     image: debian12, cpus: 2, memory: 1024 }
   rr1: { role: rr,         image: debian12, cpus: 1, memory: 1024, segments: [underlay] }
-  hv1: { role: hypervisor, image: debian12, cpus: 4, memory: 16384, segments: [underlay] }
-  hv2: { role: hypervisor, image: debian12, cpus: 4, memory: 16384, segments: [underlay] }
+  hv1: { role: hypervisor, image: debian12, cpus: 4, memory: 16384, segments: [underlay], release: 0.2.0rc002 }
+  hv2: { role: hypervisor, image: debian12, cpus: 4, memory: 16384, segments: [underlay], release: 0.2.0rc002 }
 `
 	topo, err := topology.Parse([]byte(doc))
 	if err != nil {

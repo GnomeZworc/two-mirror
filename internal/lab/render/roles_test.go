@@ -1,9 +1,11 @@
 package render
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -19,8 +21,8 @@ segments:
 nodes:
   sw1: { role: switch, image: deb, cpus: 2, memory: 1024, secondary: { underlay: [169.254.0.1/28] }, frr: sw1.conf }
   rr1: { role: rr, image: deb, cpus: 1, memory: 1024, segments: [underlay], secondary: { underlay: [169.254.0.3/28] }, loopback: 10.255.255.1/32, frr: rr1.conf }
-  hv1: { role: hypervisor, image: deb, cpus: 4, memory: 16384, segments: [underlay], frr: hv1.conf }
-  hv2: { role: hypervisor, image: deb, cpus: 4, memory: 16384, segments: [underlay] }
+  hv1: { role: hypervisor, image: deb, cpus: 4, memory: 16384, segments: [underlay], frr: hv1.conf, release: 0.2.0rc002 }
+  hv2: { role: hypervisor, image: deb, cpus: 4, memory: 16384, segments: [underlay], release: 0.2.0rc002 }
 `
 
 var frrConfigs = map[string]string{
@@ -95,9 +97,9 @@ func TestRoles_LoopbackOnADummyInterfaceReplayedAtBoot(t *testing.T) {
 	if !strings.Contains(unit, "ExecStart=/usr/local/sbin/lab-node\n") || !strings.Contains(unit, "WantedBy=multi-user.target\n") {
 		t.Errorf("lab-node.service:\n%s", unit)
 	}
-	wantCmds := []string{"systemctl daemon-reload", "systemctl enable --now lab-node.service", "/usr/local/sbin/lab-frr"}
-	if got := runcmd(t, rr1); !reflect.DeepEqual(got, wantCmds) {
-		t.Errorf("runcmd = %q, want %q", got, wantCmds)
+	want = "#!/bin/sh\nset -eu\nsystemctl daemon-reload\nsystemctl enable --now lab-node.service\n/usr/local/sbin/lab-frr\n"
+	if got := fileAt(t, cfg, "/usr/local/sbin/lab-provision").Content; got != want {
+		t.Errorf("lab-provision:\n%s\nwant:\n%s", got, want)
 	}
 }
 
@@ -141,22 +143,96 @@ func TestRoles_FRRKeyIsThePinnedRepositoryKey(t *testing.T) {
 	}
 }
 
-func TestRoles_FRRInstallRunsLast(t *testing.T) {
+func TestRoles_ProvisioningIsOneScriptThatStopsAtTheFirstFailure(t *testing.T) {
 	nodes := renderRoles(t)
-	for name, want := range map[string][]string{
-		"sw1": {"systemctl daemon-reload", "systemctl enable --now lab-switch.service", "/usr/local/sbin/lab-frr"},
-		"hv1": {"/usr/local/sbin/lab-frr"},
+	for name, steps := range map[string]string{
+		"sw1": "systemctl daemon-reload\nsystemctl enable --now lab-switch.service\n/usr/local/sbin/lab-frr\n",
+		"hv1": "/usr/local/sbin/lab-deploy\n/usr/local/sbin/lab-frr\n",
+		"hv2": "/usr/local/sbin/lab-deploy\n",
 	} {
-		if got := runcmd(t, nodeNamed(t, nodes, name)); !reflect.DeepEqual(got, want) {
-			t.Errorf("%s runcmd = %q, want %q", name, got, want)
+		cfg := user(t, nodeNamed(t, nodes, name))
+		if !reflect.DeepEqual(cfg.Runcmd, [][]string{{"/usr/local/sbin/lab-provision"}}) {
+			t.Errorf("%s runcmd = %q", name, cfg.Runcmd)
+		}
+		f := fileAt(t, cfg, "/usr/local/sbin/lab-provision")
+		if f.Content != "#!/bin/sh\nset -eu\n"+steps || f.Permissions != "0755" {
+			t.Errorf("%s lab-provision (%s):\n%s", name, f.Permissions, f.Content)
 		}
 	}
 }
 
-func TestRoles_NodeWithoutRoleFieldsGetsNothingExtra(t *testing.T) {
-	cfg := user(t, nodeNamed(t, renderRoles(t), "hv2"))
-	if len(cfg.WriteFiles) != 0 || len(cfg.Runcmd) != 0 {
-		t.Errorf("hv2 write_files %d, runcmd %q", len(cfg.WriteFiles), cfg.Runcmd)
+func TestRoles_HypervisorDeploysTheReleaseThroughTheRepositoryScripts(t *testing.T) {
+	cfg := user(t, nodeNamed(t, renderRoles(t), "hv1"))
+
+	f := fileAt(t, cfg, "/usr/local/sbin/lab-deploy")
+	want := `#!/bin/sh
+set -eu
+n=0
+until curl -fsS -o /dev/null https://git.g3e.fr/; do
+    n=$((n + 1))
+    [ "$n" -lt 30 ] || exit 1
+    sleep 10
+done
+cd /opt/two/scripts
+bash ./deploy.sh --noup_script -i -u underlay -t 0.2.0rc002
+`
+	if f.Content != want || f.Permissions != "0755" {
+		t.Errorf("lab-deploy (%s):\n%s\nwant:\n%s", f.Permissions, f.Content, want)
+	}
+
+	for path, source := range map[string]string{
+		"/opt/two/scripts/deploy.sh":        "../../../scripts/deploy.sh",
+		"/opt/two/scripts/bootstrap_kvm.sh": "../../../scripts/bootstrap_kvm.sh",
+	} {
+		f := fileAt(t, cfg, path)
+		got, err := base64.StdEncoding.DecodeString(f.Content)
+		if err != nil {
+			t.Fatal(err)
+		}
+		repo, err := os.ReadFile(source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if f.Encoding != "b64" || f.Permissions != "0755" || !bytes.Equal(got, repo) {
+			t.Errorf("%s: encoding %q, permissions %q, identical to %s: %v", path, f.Encoding, f.Permissions, source, bytes.Equal(got, repo))
+		}
+	}
+}
+
+func TestRoles_UplinkIsTheInterfaceCarryingTheDefaultRoute(t *testing.T) {
+	hv := nodeNamed(t, renderAll(t, twoSegments), "hv")
+	var withDefault []string
+	for name, e := range network(t, hv).Ethernets {
+		for _, r := range e.Routes {
+			if r.To == "0.0.0.0/0" {
+				withDefault = append(withDefault, name)
+			}
+		}
+	}
+	if !reflect.DeepEqual(withDefault, []string{"red"}) {
+		t.Fatalf("default route on %v, want [red]", withDefault)
+	}
+	if got := fileAt(t, user(t, hv), "/usr/local/sbin/lab-deploy").Content; !strings.HasSuffix(got, "bash ./deploy.sh --noup_script -i -u red -t 0.2.0rc002\n") {
+		t.Errorf("lab-deploy:\n%s", got)
+	}
+}
+
+func TestRoles_OnlyHypervisorsDeployTwo(t *testing.T) {
+	nodes := renderRoles(t)
+	for _, name := range []string{"sw1", "rr1"} {
+		for _, f := range user(t, nodeNamed(t, nodes, name)).WriteFiles {
+			if strings.HasPrefix(f.Path, "/opt/two/") || f.Path == "/usr/local/sbin/lab-deploy" {
+				t.Errorf("%s receives %s", name, f.Path)
+			}
+		}
+	}
+}
+
+func TestRoles_NodeWithoutRoleFieldsGetsNoFRR(t *testing.T) {
+	for _, f := range user(t, nodeNamed(t, renderRoles(t), "hv2")).WriteFiles {
+		if strings.Contains(f.Path, "frr") {
+			t.Errorf("hv2 receives %s", f.Path)
+		}
 	}
 }
 

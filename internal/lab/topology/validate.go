@@ -23,6 +23,7 @@ const (
 var (
 	namePattern    = regexp.MustCompile(`^[a-z][a-z0-9-]{0,14}$`)
 	segmentPattern = regexp.MustCompile(`^[a-z][a-z0-9]{0,11}$`)
+	releasePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`)
 )
 
 func (t *Topology) Validate() error {
@@ -205,6 +206,14 @@ func validateExtras(n Node, segments map[string]Segment, add func(string, ...any
 				add("node %s: secondary address %s is inside segment %s (%s), use addresses instead", n.Name, raw, name, network)
 			}
 		}
+	}
+	switch {
+	case n.Role == RoleHypervisor && n.Release == "":
+		add("node %s: a hypervisor needs the release of two to deploy (release: <tag>)", n.Name)
+	case n.Role == RoleHypervisor && !releasePattern.MatchString(n.Release):
+		add("node %s: release %q must match %s", n.Name, n.Release, releasePattern)
+	case n.Role != RoleHypervisor && n.Release != "":
+		add("node %s: release is only for hypervisors", n.Name)
 	}
 	if n.Loopback != "" {
 		prefix, err := netip.ParsePrefix(n.Loopback)

@@ -229,6 +229,9 @@ Ce que le fichier déclare :
      (``loopback: 10.255.255.1/32``) ;
    * ``frr`` — le chemin d'un ``frr.conf``, relatif au fichier de topologie : FRR est installé
      au démarrage et la configuration déposée **telle quelle** (voir `Rôles`_).
+   * ``release`` — **obligatoire pour un hyperviseur**, refusé ailleurs : le tag de la release de
+     two que ``deploy.sh`` installe (``release: 0.2.0rc002``). Sans lui, ``deploy.sh`` prendrait la
+     dernière release, et le lab ne serait plus reproductible.
 
    ``mgmt0`` et ``lo1`` sont réservés : aucun segment ne peut porter ces noms.
 
@@ -275,11 +278,11 @@ Limites : 1000 nœuds, 256 segments, et autant de câbles que la plage UDP le pe
      hv2   hypervisor  debian12  4     16384 MiB  127.0.0.1:2203
 
    roles
-     name  loopback             secondary                frr
-     sw1   -                    underlay 169.254.0.1/28  sw1.conf
-     rr1   lo1 10.255.255.1/32  underlay 169.254.0.3/28  rr1.conf
-     hv1   -                    -                        hv1.conf
-     hv2   -                    -                        hv2.conf
+     name  loopback             secondary                frr       release
+     sw1   -                    underlay 169.254.0.1/28  sw1.conf  -
+     rr1   lo1 10.255.255.1/32  underlay 169.254.0.3/28  rr1.conf  -
+     hv1   -                    -                        hv1.conf  0.2.0rc002
+     hv2   -                    -                        hv2.conf  0.2.0rc002
 
    segment underlay: 192.168.14.0/24, mtu 9000, switch sw1, bridge br-underlay, gateway 192.168.14.1
      node  interface  address           mac                udp         switch port  mac                udp
@@ -335,6 +338,39 @@ même valeur sur ``keys.openpgp.org`` et ``keyserver.ubuntu.com`` :
 
 Une clé renouvelée par FRR fera échouer l'installation (signature inconnue) : remplacer le fichier
 après avoir vérifié les nouvelles empreintes.
+
+**Hyperviseurs.** Ils se déploient comme en production, par ``deploy.sh`` — celui **du dépôt**,
+embarqué dans ``lab`` avec ``bootstrap_kvm.sh`` (paquet ``scripts``) et déposé dans
+``/opt/two/scripts/``, où ``deploy.sh`` cherche d'abord ``bootstrap_kvm.sh`` :
+
+.. code-block:: text
+
+   deploy.sh --noup_script -i -u <segment> -t <release>
+
+``--noup_script`` empêche l'auto-mise à jour de remplacer le script par celui de ``main`` : le lab
+teste les scripts de sa branche. L'uplink ``-u`` est l'interface qui porte la route par défaut —
+celle du premier segment de l'hyperviseur dans l'ordre de déclaration des segments — parce que
+``deploy.sh`` y lit l'adresse et la passerelle qu'il déplace sur ``br-000000``. ``deploy.sh``
+télécharge la release sur ``git.g3e.fr`` sans réessayer : le lancement attend d'abord que le serveur
+réponde, à travers le switch. FRR est installé **après** : il démarre sur le réseau final.
+
+**Un seul script de provisionnement par nœud.** cloud-init exécute ``runcmd`` comme un script
+``sh`` sans ``set -e`` : seule la dernière commande compte, et un ``deploy.sh`` en échec suivi d'un
+FRR installé avec succès passerait pour un démarrage réussi. Chaque nœud reçoit donc
+``/usr/local/sbin/lab-provision``, en ``set -eu``, qui enchaîne ses étapes ; ``runcmd`` n'appelle
+que lui, et la première étape en échec met cloud-init en erreur.
+
+**Ce que vérifie** ``lab up``, une fois cloud-init terminé sans erreur : ``agent.service`` actif
+sur chaque hyperviseur, ``frr`` actif sur chaque nœud qui en a un. Ce contrôle couvre ce que
+cloud-init ne voit pas — si la migration réseau échoue, ``deploy.sh`` arme un redémarrage de
+secours, et la VM redémarrée ne rejoue pas ``runcmd``.
+
+.. warning::
+
+   **Un hyperviseur du lab ne survit pas à un redémarrage.** En production, la racine est en
+   tmpfs et ``deploy.sh --bootstrap`` est rejoué à chaque démarrage ; dans le lab, ``-i`` n'est
+   exécuté qu'au premier, et la migration réseau, qui n'est pas persistée, est perdue. Recréer le
+   lab : ``lab down`` puis ``lab up``.
 
 .. note::
 
@@ -661,6 +697,10 @@ Sécurité
 * **Clés d'hôte des VM non vérifiées** par ``lab ssh`` (``known_hosts`` jetable) : elles changent
   à chaque ``up``. Acceptable uniquement parce que la connexion reste sur la boucle locale d'un
   serveur auquel on s'est authentifié.
+* **Code exécuté sans épinglage par** ``deploy.sh`` : la bibliothèque ``shflags`` est récupérée
+  par ``curl`` sur la branche ``main`` d'un autre dépôt (``H6N/tools``) et exécutée par ``eval``,
+  sans vérification d'intégrité — dans le lab comme en production. Les artefacts de la release
+  sont, eux, vérifiés contre ``SHA256SUMS``.
 * **Image** : ``SHA512SUMS`` vient de la même origine que l'image, en HTTPS. La vérification
   protège contre la corruption, pas contre une origine compromise ; la signature GPG de Debian
   (``SHA512SUMS.sign``) n'est pas encore vérifiée.

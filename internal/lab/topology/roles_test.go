@@ -15,7 +15,7 @@ segments:
 nodes:
   sw1: { role: switch, image: deb, cpus: 2, memory: 1024, secondary: { underlay: [169.254.0.1/28] }, frr: frr/sw1.conf }
   rr1: { role: rr, image: deb, cpus: 1, memory: 1024, segments: [underlay], secondary: { underlay: [169.254.0.3/28] }, loopback: 10.255.255.1/32, frr: frr/rr1.conf }
-  hv1: { role: hypervisor, image: deb, cpus: 4, memory: 16384, segments: [underlay], frr: /etc/lab/hv1.conf }
+  hv1: { role: hypervisor, image: deb, cpus: 4, memory: 16384, segments: [underlay], frr: /etc/lab/hv1.conf, release: 0.2.0rc002 }
 `
 
 func TestCompute_CarriesTheRoleFields(t *testing.T) {
@@ -99,7 +99,7 @@ segments:
   blue: { switch: sw, cidr: 10.2.0.0/24 }
 nodes:
   sw: { role: switch, image: deb, cpus: 1, memory: 512 }
-  hv: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [red, blue] }
+  hv: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [red, blue], release: 0.2.0rc002 }
   ` + c.node + `
 `
 			requireContains(t, validationError(t, doc), c.want)
@@ -115,7 +115,7 @@ segments:
 nodes:
   sw:    { role: switch, image: deb, cpus: 1, memory: 512, secondary: { red: [169.254.0.1/28], blue: [169.254.1.1/28] } }
   other: { role: switch, image: deb, cpus: 1, memory: 512 }
-  hv:    { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [red, blue] }
+  hv:    { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [red, blue], release: 0.2.0rc002 }
 `
 	msg := validationError(t, doc)
 	requireContains(t, msg, "node sw: secondary address given for segment blue it is not attached to")
@@ -130,7 +130,7 @@ segments:
   lo1: { switch: sw, cidr: 10.1.0.0/24 }
 nodes:
   sw: { role: switch, image: deb, cpus: 1, memory: 512 }
-  hv: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [lo1] }
+  hv: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [lo1], release: 0.2.0rc002 }
 `
 	requireContains(t, validationError(t, doc), "segment lo1: name is reserved for the loopback interface")
 }
@@ -142,10 +142,10 @@ func TestWrite_ShowsTheRoles(t *testing.T) {
 	}
 	want := `
 roles
-  name  loopback             secondary                frr
-  sw1   -                    underlay 169.254.0.1/28  sw1.conf
-  rr1   lo1 10.255.255.1/32  underlay 169.254.0.3/28  rr1.conf
-  hv1   -                    -                        hv1.conf
+  name  loopback             secondary                frr       release
+  sw1   -                    underlay 169.254.0.1/28  sw1.conf  -
+  rr1   lo1 10.255.255.1/32  underlay 169.254.0.3/28  rr1.conf  -
+  hv1   -                    -                        hv1.conf  0.2.0rc002
 `
 	if !bytes.Contains(buf.Bytes(), []byte(want)) {
 		t.Errorf("plan:\n%s\ndoes not contain:\n%s", buf.String(), want)
@@ -154,10 +154,63 @@ roles
 
 func TestWrite_NoRolesSectionWithoutRoleFields(t *testing.T) {
 	var buf bytes.Buffer
-	if err := compute(t, twoHypervisors).Write(&buf); err != nil {
+	doc := header + `
+segments:
+  underlay: { switch: sw1, cidr: 10.250.0.0/24 }
+nodes:
+  sw1: { role: switch, image: deb, cpus: 1, memory: 512 }
+  rr1: { role: rr, image: deb, cpus: 1, memory: 512, segments: [underlay] }
+`
+	if err := compute(t, doc).Write(&buf); err != nil {
 		t.Fatalf("Write: %v", err)
 	}
 	if bytes.Contains(buf.Bytes(), []byte("roles")) {
 		t.Errorf("plan shows a roles section:\n%s", buf.String())
+	}
+}
+
+func TestValidate_ReleaseRejections(t *testing.T) {
+	cases := map[string]struct {
+		node string
+		want string
+	}{
+		"hypervisor without release": {
+			`hv: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [red] }`,
+			"node hv: a hypervisor needs the release of two to deploy (release: <tag>)",
+		},
+		"release with shell characters": {
+			`hv: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [red], release: "0.2.0; reboot" }`,
+			`node hv: release "0.2.0; reboot" must match`,
+		},
+		"release on a route reflector": {
+			`hv: { role: rr, image: deb, cpus: 1, memory: 512, segments: [red], release: 0.2.0rc002 }`,
+			"node hv: release is only for hypervisors",
+		},
+		"release on a switch": {
+			`hv: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [red], release: 0.2.0rc002 }
+  sw2: { role: switch, image: deb, cpus: 1, memory: 512, release: 0.2.0rc002 }`,
+			"node sw2: release is only for hypervisors",
+		},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			doc := header + `
+segments:
+  red: { switch: sw, cidr: 10.1.0.0/24 }
+nodes:
+  sw: { role: switch, image: deb, cpus: 1, memory: 512 }
+  ` + c.node + `
+`
+			requireContains(t, validationError(t, doc), c.want)
+		})
+	}
+}
+
+func TestCompute_CarriesTheRelease(t *testing.T) {
+	if got := nodeOf(t, compute(t, withRoles), "hv1").Release; got != "0.2.0rc002" {
+		t.Errorf("hv1 release = %q", got)
+	}
+	if got := nodeOf(t, compute(t, withRoles), "rr1").Release; got != "" {
+		t.Errorf("rr1 release = %q", got)
 	}
 }

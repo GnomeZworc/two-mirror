@@ -34,9 +34,10 @@ func (e exitErr) ExitCode() int { return int(e) }
 type fakeRunner struct {
 	mu     sync.Mutex
 	calls  [][]string
-	fail   string
-	ssh    map[string][]error
-	always map[string]error
+	fail     string
+	ssh      map[string][]error
+	always   map[string]error
+	inactive string
 }
 
 func (f *fakeRunner) Run(_ context.Context, name string, args ...string) error {
@@ -55,6 +56,9 @@ func (f *fakeRunner) Run(_ context.Context, name string, args ...string) error {
 		return os.WriteFile(private+".pub", []byte(labKey+"\n"), 0o644)
 	case "ssh":
 		port := args[indexOf(args, "-p")+1]
+		if args[len(args)-1] == f.inactive {
+			return exitErr(3)
+		}
 		answers := f.ssh[port]
 		if len(answers) == 0 {
 			return f.always[port]
@@ -124,7 +128,7 @@ nodes:
 }
 
 const switchLast = `  rr1: { role: rr,         image: deb, cpus: 1, memory: 1024, segments: [underlay] }
-  hv1: { role: hypervisor, image: deb, cpus: 4, memory: 16384, segments: [underlay] }
+  hv1: { role: hypervisor, image: deb, cpus: 4, memory: 16384, segments: [underlay], release: 0.2.0rc002 }
   sw1: { role: switch,     image: deb, cpus: 2, memory: 1024 }
 `
 
@@ -409,8 +413,8 @@ func TestUp_StartsSwitchesFirstAndWaitsForEveryNode(t *testing.T) {
 	}
 
 	ssh := f.runner.commands("ssh")
-	if len(ssh) != 3 {
-		t.Fatalf("%d ssh calls, want 3", len(ssh))
+	if len(ssh) != 4 {
+		t.Fatalf("%d ssh calls, want 4", len(ssh))
 	}
 	want := []string{"ssh",
 		"-i", filepath.Join(f.lab.RunDir, "lab_ed25519"),
@@ -440,8 +444,8 @@ func TestUp_RetriesWhileSSHIsUnreachable(t *testing.T) {
 	if err := f.lab.Up(context.Background(), f.fetcher, time.Second); err != nil {
 		t.Fatalf("Up: %v", err)
 	}
-	if n := len(f.runner.commands("ssh")); n != 5 {
-		t.Errorf("%d ssh calls, want 5", n)
+	if n := len(f.runner.commands("ssh")); n != 6 {
+		t.Errorf("%d ssh calls, want 6", n)
 	}
 }
 
@@ -539,5 +543,46 @@ func TestStop_RefusesPidsThatTargetAGroup(t *testing.T) {
 		if err := f.lab.stop(context.Background(), "hv1", pid); err == nil || err.Error() != fmt.Sprintf("refusing to signal pid %d", pid) {
 			t.Errorf("pid %d: error = %v", pid, err)
 		}
+	}
+}
+
+func TestUp_ChecksTheServicesOfEachRole(t *testing.T) {
+	f := newFixture(t, switchLast)
+	conf := filepath.Join(t.TempDir(), "sw1.conf")
+	if err := os.WriteFile(conf, []byte("hostname sw1\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	f.lab.Plan.Nodes[2].FRR = conf
+
+	if err := f.lab.Up(context.Background(), f.fetcher, time.Second); err != nil {
+		t.Fatalf("Up: %v", err)
+	}
+
+	var checks []string
+	for _, c := range f.runner.commands("ssh") {
+		if c[len(c)-4] == "systemctl" {
+			checks = append(checks, c[indexOf(c, "-p")+1]+" "+strings.Join(c[len(c)-4:], " "))
+		}
+	}
+	want := []string{
+		"2201 systemctl is-active --quiet agent.service",
+		"2202 systemctl is-active --quiet frr.service",
+	}
+	if !reflect.DeepEqual(checks, want) {
+		t.Errorf("checks = %q, want %q", checks, want)
+	}
+}
+
+func TestUp_ReportsAnInactiveServiceAndWaitsForTheOthers(t *testing.T) {
+	f := newFixture(t, switchLast)
+	f.runner.inactive = "agent.service"
+
+	err := f.lab.Up(context.Background(), f.fetcher, time.Second)
+
+	if err == nil || err.Error() != "node hv1: agent.service is not active: exit status 3" {
+		t.Errorf("error = %v", err)
+	}
+	if !strings.Contains(f.out.String(), "rr1: ready\n") || !strings.Contains(f.out.String(), "sw1: ready\n") || strings.Contains(f.out.String(), "hv1: ready") {
+		t.Errorf("output = %q", f.out.String())
 	}
 }

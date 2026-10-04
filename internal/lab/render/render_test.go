@@ -22,8 +22,8 @@ segments:
 nodes:
   sw1: { role: switch,     image: deb, cpus: 2, memory: 1024 }
   rr1: { role: rr,         image: deb, cpus: 1, memory: 1024, segments: [underlay] }
-  hv1: { role: hypervisor, image: deb, cpus: 4, memory: 16384, segments: [underlay] }
-  hv2: { role: hypervisor, image: deb, cpus: 4, memory: 16384, segments: [underlay] }
+  hv1: { role: hypervisor, image: deb, cpus: 4, memory: 16384, segments: [underlay], release: 0.2.0rc002 }
+  hv2: { role: hypervisor, image: deb, cpus: 4, memory: 16384, segments: [underlay], release: 0.2.0rc002 }
 `
 
 const twoSegments = `name: two-seg
@@ -36,7 +36,7 @@ segments:
   blue: { switch: sw, cidr: 10.2.0.0/24, mtu: 1500 }
 nodes:
   sw: { role: switch, image: deb, cpus: 1, memory: 512 }
-  hv: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [blue, red] }
+  hv: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [blue, red], release: 0.2.0rc002 }
 `
 
 func plan(t *testing.T, doc string) *topology.Plan {
@@ -317,7 +317,7 @@ func TestNetworkConfig_DefaultRouteOnlyOnFirstSegment(t *testing.T) {
 
 func TestUserData_Hypervisor(t *testing.T) {
 	cfg := user(t, nodeNamed(t, renderAll(t, twoHypervisors), "hv1"))
-	if cfg.Hostname != "hv1" || !cfg.DisableRoot || len(cfg.WriteFiles) != 0 || len(cfg.Runcmd) != 0 || len(cfg.Packages) != 0 {
+	if cfg.Hostname != "hv1" || !cfg.DisableRoot || len(cfg.Packages) != 0 || !reflect.DeepEqual(cfg.Runcmd, [][]string{{"/usr/local/sbin/lab-provision"}}) {
 		t.Errorf("hv1 user-data = %+v", cfg)
 	}
 	if !reflect.DeepEqual(cfg.SSHAuthorizedKeys, []string{labKey}) {
@@ -376,8 +376,11 @@ nft -f /etc/lab-switch.nft
 			t.Errorf("unit misses %q", want)
 		}
 	}
-	if !reflect.DeepEqual(cfg.Runcmd, [][]string{{"systemctl", "daemon-reload"}, {"systemctl", "enable", "--now", "lab-switch.service"}}) {
+	if !reflect.DeepEqual(cfg.Runcmd, [][]string{{"/usr/local/sbin/lab-provision"}}) {
 		t.Errorf("runcmd = %v", cfg.Runcmd)
+	}
+	if got := fileAt(t, cfg, "/usr/local/sbin/lab-provision").Content; got != "#!/bin/sh\nset -eu\nsystemctl daemon-reload\nsystemctl enable --now lab-switch.service\n" {
+		t.Errorf("lab-provision:\n%s", got)
 	}
 }
 

@@ -342,7 +342,7 @@ segments:
   underlay: { switch: sw1, cidr: 10.1.0.0/24 }
 nodes:
   sw1: { role: switch, image: deb, cpus: 1, memory: 512, frr: frr/absent.conf }
-  hv1: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [underlay] }
+  hv1: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [underlay], release: 0.2.0rc002 }
 `
 	if err := os.WriteFile(topo, []byte(doc), 0o600); err != nil {
 		t.Fatal(err)

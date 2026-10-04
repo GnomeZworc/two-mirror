@@ -125,6 +125,10 @@ func (l Lab) Up(ctx context.Context, fetcher provision.Fetcher, timeout time.Dur
 			errs = append(errs, fmt.Errorf("node %s: %w", n.Name, err))
 			continue
 		}
+		if err := l.checkServices(ctx, n); err != nil {
+			errs = append(errs, fmt.Errorf("node %s: %w", n.Name, err))
+			continue
+		}
 		fmt.Fprintf(l.Out, "%s: ready\n", n.Name)
 	}
 	return errors.Join(errs...)
@@ -161,6 +165,26 @@ func (l Lab) waitReady(ctx context.Context, n topology.NodePlan) error {
 		case <-time.After(l.Poll):
 		}
 	}
+}
+
+func services(n topology.NodePlan) []string {
+	var units []string
+	if n.Role == topology.RoleHypervisor {
+		units = append(units, "agent.service")
+	}
+	if n.FRR != "" {
+		units = append(units, "frr.service")
+	}
+	return units
+}
+
+func (l Lab) checkServices(ctx context.Context, n topology.NodePlan) error {
+	for _, unit := range services(n) {
+		if err := l.Runner.Run(ctx, "ssh", l.sshArgs(n, true, []string{"systemctl", "is-active", "--quiet", unit})...); err != nil {
+			return fmt.Errorf("%s is not active: %w", unit, err)
+		}
+	}
+	return nil
 }
 
 func exitCode(err error) int {

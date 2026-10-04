@@ -49,6 +49,7 @@ type Node struct {
 	Secondary map[string][]string
 	Loopback  string
 	FRR       string
+	Release   string
 }
 
 type fileImage struct {
@@ -72,6 +73,7 @@ type fileNode struct {
 	Secondary map[string][]string `yaml:"secondary"`
 	Loopback  string              `yaml:"loopback"`
 	FRR       string              `yaml:"frr"`
+	Release   string              `yaml:"release"`
 }
 
 type file struct {
@@ -141,6 +143,7 @@ func Parse(data []byte) (*Topology, error) {
 			Secondary: n.Secondary,
 			Loopback:  n.Loopback,
 			FRR:       n.FRR,
+			Release:   n.Release,
 		})
 	}
 	return t, nil
