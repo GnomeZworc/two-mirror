@@ -110,8 +110,8 @@ l'adresse du lien en secondaire et la loopback sur ``lo1`` :
    même hyperviseur n'est pas concerné. La redondance (deux route reflectors) ou
    ``graceful-restart`` sont les deux leviers ; ni l'un ni l'autre n'est encore qualifié.
 
-Le routeur du lab n'est qu'une configuration minimale écrite pour l'essai, pas celle des routeurs
-de cluster (:doc:`routeurs`).
+Le routeur du lab est un Linux avec FRR, par choix : il joue le rôle générique de routeur de
+cluster, l'équipement réel n'ayant besoin que de BGP et d'EVPN (:doc:`routeurs`).
 
 .. note::
 

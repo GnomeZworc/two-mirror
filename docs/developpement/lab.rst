@@ -13,12 +13,13 @@ comment s'en servir.
 
 .. note::
 
-   État actuel : étapes **E0** à **E3** livrées — le cycle de vie du serveur qui porte le lab
-   (``scripts/lab-host.sh``), la description de la topologie et le calcul de son plan
-   (``lab plan``), la génération des arguments QEMU et des fichiers cloud-init de chaque VM
-   (``lab render``), puis leur lancement sur le serveur (``lab up`` / ``status`` / ``down`` /
-   ``ssh``). Les rôles — FRR sur le switch et le route reflector, two sur les hyperviseurs —
-   viendront avec l'étape suivante.
+   État actuel : le lab de #50 est livré — serveur loué à l'heure (``scripts/lab-host.sh``),
+   topologie déclarative et plan déterministe (``lab plan``), VM rendues et lancées sur le
+   serveur (``lab render``, ``lab up`` / ``status`` / ``down`` / ``ssh``), rôles installés au
+   démarrage (FRR sur le switch et le route reflector, two par ``deploy.sh`` sur les
+   hyperviseurs) et scénarios versionnés (``scripts/lab/scenario.sh``). La redondance du plan de
+   contrôle — deux route reflectors, deux switchs — est l'objet de
+   `#54 <https://git.g3e.fr/syonad/two/issues/54>`_.
 
 Le serveur de lab
 -----------------
@@ -418,9 +419,11 @@ Vérifié le 2026-10-04 sur le serveur de lab, topologie ``evpn-2hv``, release `
 
 .. note::
 
-   La configuration du switch (``conf/lab/frr/sw1.conf``) **n'est pas celle des routeurs** : écrite
-   pour l'essai du 2026-10-04, elle se contente d'établir la session avec le route reflector et de
-   n'accepter que sa loopback. Elle sera remplacée par la configuration réelle des routeurs.
+   **Le switch du lab est un routeur Linux avec FRR, par choix.** Il joue le rôle générique de
+   routeur de cluster : passerelle des hyperviseurs, session eBGP avec BFD vers le route reflector,
+   dont il n'accepte que la loopback (``conf/lab/frr/sw1.conf``). L'équipement réel dépend de qui
+   déploie l'infrastructure (MikroTik aujourd'hui ; Cisco, Juniper, Arista… demain) : il n'a besoin
+   que de BGP et d'EVPN, et sa configuration propre au constructeur n'a pas sa place dans le lab.
 
 Rendu des VM
 ------------
@@ -754,6 +757,47 @@ Les VM sont accessibles depuis le netns de leur VPC, sur l'hyperviseur, avec l'u
 .. code-block:: text
 
    scripts/lab-host.sh ssh "./lab ssh hv1 'sudo ip netns exec vp-s4 ssh -i /root/.ssh/lab-vm syonad@10.240.1.10'"
+
+Écrire un scénario
+~~~~~~~~~~~~~~~~~~
+
+Le lab sert à qualifier des comportements qui ne se voient qu'à plusieurs hyperviseurs — la
+campagne L3VNI de `#41 <https://git.g3e.fr/syonad/two/issues/41>`_ en est le prochain exemple. Un
+scénario est un fichier ``scripts/lab/scenarios/<n>-<nom>.sh``, exécuté par ``scenario.sh`` sur le
+Mac ; il envoie des blocs aux nœuds :
+
+.. code-block:: bash
+
+   on hv1 <<'NODE'
+   two_image || { echo "ÉCHOUÉ: image compatible two"; exit 0; }
+   KEY=$(vm_key)
+   check "VPC vp-x" vpc_create vp-x 10.250.0.0/16
+   check "subnet sn-x" subnet_create sn-x vp-x 2601 10.250.1.1 10.250.1.0/24
+   check "VM x1" vm_create x1 sn-x 10.250.1.10 "${KEY}"
+   check "x1 joignable" vm_wait vp-x 10.250.1.10
+   check "x1 joint sa passerelle" vm_ssh vp-x 10.250.1.10 'ping -c 2 -W 2 10.250.1.1'
+   check "x1 ne joint pas 10.251.1.10" vm_fails vp-x 10.250.1.10 'ping -c 2 -W 2 10.251.1.10'
+   info "mesure : $(vtysh -c 'show evpn vni 2601' | grep -c 'flood')"
+   NODE
+
+Les règles qui ont fait leurs preuves en E5 :
+
+* **une vérification par ligne**, avec ``check`` — jamais un ``echo RÉUSSI`` écrit à la main ;
+* **toute vérification négative a son témoin** : avant « ne joint pas », une ligne qui prouve que
+  la cible est vivante et que le chemin du test fonctionne ;
+* **``vm_fails`` pour le négatif**, jamais ``!`` devant un ``vm_ssh`` : un SSH en panne doit
+  échouer, pas passer pour une isolation ;
+* **une donnée qui distingue réellement les cas** : two dérivant la MAC du rang de l'IP, deux
+  subnets ont les mêmes MAC — comparer des couples MAC/IP, pas des MAC ;
+* **les mesures en ``INFO``**, les attentes en ``check`` : un temps de reconvergence se mesure,
+  il ne se décrète pas ;
+* chaque scénario crée ses propres VPC, plages et VNI, distinctes de celles des autres, pour que
+  ``all`` les enchaîne sur le même lab ; un scénario qui dépend d'un autre le vérifie en tête
+  (``check "prérequis : …"``) ;
+* variables vers un nœud : ``on hv1 NOM=valeur <<'NODE'`` (valeurs échappées par
+  ``scenario.sh``) ;
+* ``bash scripts/lab/scenario_test.sh`` vérifie la syntaxe de chaque bloc réellement envoyé — à
+  lancer avant toute session.
 
 Facturation
 -----------
