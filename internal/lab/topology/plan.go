@@ -44,6 +44,7 @@ type NodePlan struct {
 	Loopback  netip.Prefix
 	FRR       string
 	Release   string
+	Agent     string
 }
 
 type Cable struct {
@@ -78,6 +79,7 @@ func Compute(t *Topology) (*Plan, error) {
 			SSHPort: SSHBasePort + i,
 			FRR:     n.FRR,
 			Release: n.Release,
+			Agent:   n.Agent,
 		}
 		for segment, raws := range n.Secondary {
 			for _, raw := range raws {

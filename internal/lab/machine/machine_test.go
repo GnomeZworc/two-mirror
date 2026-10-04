@@ -32,8 +32,8 @@ func (e exitErr) Error() string { return "exit status " + strconv.Itoa(int(e)) }
 func (e exitErr) ExitCode() int { return int(e) }
 
 type fakeRunner struct {
-	mu     sync.Mutex
-	calls  [][]string
+	mu       sync.Mutex
+	calls    [][]string
 	fail     string
 	ssh      map[string][]error
 	always   map[string]error

@@ -230,8 +230,12 @@ Ce que le fichier déclare :
    * ``frr`` — le chemin d'un ``frr.conf``, relatif au fichier de topologie : FRR est installé
      au démarrage et la configuration déposée **telle quelle** (voir `Rôles`_).
    * ``release`` — **obligatoire pour un hyperviseur**, refusé ailleurs : le tag de la release de
-     two que ``deploy.sh`` installe (``release: 0.2.0rc002``). Sans lui, ``deploy.sh`` prendrait la
+     two que ``deploy.sh`` installe (``release: 0.2.0rc003``). Sans lui, ``deploy.sh`` prendrait la
      dernière release, et le lab ne serait plus reproductible.
+   * ``agent`` — pour un hyperviseur seulement : le chemin d'un ``agent.yml``, relatif au fichier
+     de topologie, déposé dans ``/etc/two/agent.yml`` avant ``deploy.sh``. Sans lui, l'agent tourne
+     avec sa configuration par défaut. L'exemple met hv1 sur le serveur DHCP intégré
+     (``conf/lab/agent/two.yml`` : ``dhcp.backend: two``) et laisse hv2 sur dnsmasq.
 
    ``mgmt0`` et ``lo1`` sont réservés : aucun segment ne peut porter ces noms.
 
@@ -278,11 +282,11 @@ Limites : 1000 nœuds, 256 segments, et autant de câbles que la plage UDP le pe
      hv2   hypervisor  debian12  4     16384 MiB  127.0.0.1:2203
 
    roles
-     name  loopback             secondary                frr       release
-     sw1   -                    underlay 169.254.0.1/28  sw1.conf  -
-     rr1   lo1 10.255.255.1/32  underlay 169.254.0.3/28  rr1.conf  -
-     hv1   -                    -                        hv1.conf  0.2.0rc002
-     hv2   -                    -                        hv2.conf  0.2.0rc002
+     name  loopback             secondary                frr       release     agent
+     sw1   -                    underlay 169.254.0.1/28  sw1.conf  -           -
+     rr1   lo1 10.255.255.1/32  underlay 169.254.0.3/28  rr1.conf  -           -
+     hv1   -                    -                        hv1.conf  0.2.0rc003  two.yml
+     hv2   -                    -                        hv2.conf  0.2.0rc003  -
 
    segment underlay: 192.168.14.0/24, mtu 9000, switch sw1, bridge br-underlay, gateway 192.168.14.1
      node  interface  address           mac                udp         switch port  mac                udp
@@ -660,6 +664,74 @@ Le 2026-10-04, sur un Xeon E5-2640 v3, Debian 12 et QEMU 7.2 sur le serveur, top
    * - ``lab down`` puis ``lab up`` d'une autre topologie
      - conforme
 
+Scénarios
+---------
+
+Les scénarios se lancent **depuis le Mac**, sur un lab démarré (``up``, ``push``, ``./lab up``) :
+
+.. code-block:: text
+
+   scripts/lab/scenario.sh s1          # un scénario
+   scripts/lab/scenario.sh s1 s3       # plusieurs
+   scripts/lab/scenario.sh all         # tous, dans l'ordre
+
+Chacun affiche une ligne ``RÉUSSI`` ou ``ÉCHOUÉ`` par vérification — un échec porte la dernière
+ligne de la commande en cause —, des lignes ``INFO`` pour les mesures, puis son bilan. Le code de
+sortie vaut 1 si une vérification échoue **ou si aucune n'a été faite**.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 22 58 20
+
+   * - Scénario
+     - Ce qui doit être vrai
+     - Hyperviseurs
+   * - ``s1-dhcp-two``
+     - backend DHCP ``two``, une VPC et deux subnets : chaque VM reçoit l'adresse de **son**
+       subnet, démarrée seule ou en même temps qu'une autre ; le bail est tenu par
+       systemd-networkd ; route par défaut, route vers la VPC et ``/32`` vers les métadonnées
+       via ``interface_ip`` ; l'état de chaque serveur DHCP ne connaît que les MAC de son subnet
+       (#46)
+     - hv1
+   * - ``s2-gateway``
+     - route par défaut via ``interface_ip``, ou via ``gateway`` avec ``default_route`` ; route
+       vers la VPC toujours via ``interface_ip`` ; même résultat après recréation du subnet (#31)
+     - hv1
+   * - ``s3-isolation-local``
+     - deux VPC sur le même hyperviseur ne se joignent pas, en ICMP comme en TCP ; chaque VM
+       joint sa passerelle (témoin)
+     - hv1
+   * - ``s4-evpn``
+     - adresse VTEP locale sur les VXLAN (#51), VTEP distant appris par EVPN, ping VM ↔ VM
+       entre hyperviseurs, trame de 1472 octets en ``-M do``, 1473 refusés
+     - hv1, hv2
+   * - ``s5-isolation-evpn``
+     - deux VPC de même plage, VNI différentes, sur deux hyperviseurs : la VM joint celle de sa
+       VPC sur l'autre hyperviseur (témoin) et pas celle de l'autre VPC — aucune résolution ARP
+     - hv1, hv2
+   * - ``s6-rr-loss``
+     - FRR arrêté sur le route reflector, ping continu entre les VM de ``s4`` : la session tombe,
+       le trafic restant est **mesuré** (``INFO``) à 30 et 90 s ; au retour du route reflector, le
+       VTEP distant est réappris et le trafic repasse — délai mesuré
+     - hv1, hv2, rr1
+
+``s6`` réutilise les VM de ``s4`` : le lancer après.
+
+**Comment c'est fait.** ``scripts/lab/scenario.sh`` exécute chaque scénario sur le Mac ; un
+scénario envoie des blocs de shell aux nœuds par ``on <nœud> [VAR=valeur…] <<'NODE'``, précédés de
+``scripts/lab/node.sh`` — appels à l'API de l'agent, attente des états, image Debian compatible two
+(préparée une fois par hyperviseur, ``seedfrom`` avec barre oblique finale), clé SSH des VM,
+``check`` et ``vm_fails``. Une vérification négative (« ne joint pas ») passe par ``vm_fails`` :
+elle n'est réussie que si le SSH vers la VM a fonctionné **et** que la commande y a échoué — un
+SSH en panne ne passe jamais pour une isolation.
+
+Les VM sont accessibles depuis le netns de leur VPC, sur l'hyperviseur, avec l'utilisateur
+``syonad`` créé par les métadonnées de two :
+
+.. code-block:: text
+
+   scripts/lab-host.sh ssh "./lab ssh hv1 'sudo ip netns exec vp-s4 ssh -i /root/.ssh/lab-vm syonad@10.240.1.10'"
+
 Facturation
 -----------
 
@@ -751,6 +823,7 @@ Tests
 .. code-block:: bash
 
    bash scripts/lab-host_test.sh
+   bash scripts/lab/scenario_test.sh
    go test ./internal/lab/... ./cmd/lab/
 
 Environ une minute et demie, sans réseau : la suite remplace ``curl`` par une fausse API Scaleway

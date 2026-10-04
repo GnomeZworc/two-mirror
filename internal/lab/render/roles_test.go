@@ -262,3 +262,37 @@ func TestRoles_SwitchLoopbackIsCreatedByTheSwitchScript(t *testing.T) {
 		t.Errorf("lab-switch:\n%s\ndoes not end with:\n%s", script, want)
 	}
 }
+
+func TestRoles_HypervisorAgentConfigIsWrittenBeforeTheDeployment(t *testing.T) {
+	doc := strings.Replace(withRoles, "frr: hv1.conf, release: 0.2.0rc002 }", "frr: hv1.conf, release: 0.2.0rc002, agent: two.yml }", 1)
+	nodes, err := Render(plan(t, doc), Options{RunDir: "/srv/lab", AuthorizedKeys: []string{labKey}, FRR: frrConfigs, Agent: map[string]string{"hv1": "dhcp:\n  backend: two\n"}})
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	var hv1, hv2 Node
+	for _, n := range nodes {
+		switch n.Name {
+		case "hv1":
+			hv1 = n
+		case "hv2":
+			hv2 = n
+		}
+	}
+	f := fileAt(t, user(t, hv1), "/etc/two/agent.yml")
+	if f.Content != "dhcp:\n  backend: two\n" || f.Permissions != "0640" {
+		t.Errorf("agent.yml (%s) = %q", f.Permissions, f.Content)
+	}
+	for _, w := range user(t, hv2).WriteFiles {
+		if w.Path == "/etc/two/agent.yml" {
+			t.Error("hv2 receives an agent.yml it does not declare")
+		}
+	}
+}
+
+func TestRoles_RefusesAnUnreadAgentConfig(t *testing.T) {
+	doc := strings.Replace(withRoles, "frr: hv1.conf, release: 0.2.0rc002 }", "frr: hv1.conf, release: 0.2.0rc002, agent: two.yml }", 1)
+	_, err := Render(plan(t, doc), Options{RunDir: "/srv/lab", AuthorizedKeys: []string{labKey}, FRR: frrConfigs})
+	if err == nil || err.Error() != "node hv1: agent configuration two.yml was not read" {
+		t.Errorf("error = %v", err)
+	}
+}

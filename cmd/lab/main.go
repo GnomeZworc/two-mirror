@@ -135,7 +135,12 @@ func renderCmd(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "lab: %v\n", err)
 		return 1
 	}
-	nodes, err := render.Render(p, render.Options{RunDir: dir, AuthorizedKeys: authorized, FRR: frr})
+	agent, err := provision.ReadAgent(p)
+	if err != nil {
+		fmt.Fprintf(stderr, "lab: %v\n", err)
+		return 1
+	}
+	nodes, err := render.Render(p, render.Options{RunDir: dir, AuthorizedKeys: authorized, FRR: frr, Agent: agent})
 	if err != nil {
 		fmt.Fprintf(stderr, "lab: %v\n", err)
 		return 1

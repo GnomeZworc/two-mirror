@@ -76,7 +76,11 @@ func Prepare(ctx context.Context, p *topology.Plan, o Options) ([]render.Node, e
 	if err != nil {
 		return nil, err
 	}
-	nodes, err := render.Render(p, render.Options{RunDir: o.RunDir, AuthorizedKeys: []string{key}, FRR: frr})
+	agent, err := ReadAgent(p)
+	if err != nil {
+		return nil, err
+	}
+	nodes, err := render.Render(p, render.Options{RunDir: o.RunDir, AuthorizedKeys: []string{key}, FRR: frr, Agent: agent})
 	if err != nil {
 		return nil, err
 	}
@@ -89,18 +93,26 @@ func Prepare(ctx context.Context, p *topology.Plan, o Options) ([]render.Node, e
 }
 
 func ReadFRR(p *topology.Plan) (map[string]string, error) {
-	configs := map[string]string{}
+	return readNodeFiles(p, func(n topology.NodePlan) string { return n.FRR })
+}
+
+func ReadAgent(p *topology.Plan) (map[string]string, error) {
+	return readNodeFiles(p, func(n topology.NodePlan) string { return n.Agent })
+}
+
+func readNodeFiles(p *topology.Plan, path func(topology.NodePlan) string) (map[string]string, error) {
+	files := map[string]string{}
 	for _, n := range p.Nodes {
-		if n.FRR == "" {
+		if path(n) == "" {
 			continue
 		}
-		data, err := os.ReadFile(n.FRR)
+		data, err := os.ReadFile(path(n))
 		if err != nil {
 			return nil, fmt.Errorf("node %s: %w", n.Name, err)
 		}
-		configs[n.Name] = string(data)
+		files[n.Name] = string(data)
 	}
-	return configs, nil
+	return files, nil
 }
 
 func EnsureKey(ctx context.Context, r Runner, dir string) (string, error) {

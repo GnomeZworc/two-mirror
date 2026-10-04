@@ -31,6 +31,7 @@ const (
 	DeployScript    = "/usr/local/sbin/lab-deploy"
 	TwoScriptsDir   = "/opt/two/scripts"
 	TwoGitServer    = "https://git.g3e.fr/"
+	AgentConfig     = "/etc/two/agent.yml"
 )
 
 //go:embed frrouting.gpg
@@ -113,6 +114,9 @@ func userData(p *topology.Plan, n topology.NodePlan, o Options) ([]byte, error) 
 			{Path: NodeUnit, Permissions: "0644", Content: unit("Lab node: loopback", NodeScript)},
 		}
 		steps = append(steps, "systemctl daemon-reload", "systemctl enable --now lab-node.service")
+	}
+	if n.Agent != "" {
+		cfg.WriteFiles = append(cfg.WriteFiles, writeFile{Path: AgentConfig, Permissions: "0640", Content: o.Agent[n.Name]})
 	}
 	if n.Role == topology.RoleHypervisor {
 		cfg.WriteFiles = append(cfg.WriteFiles,

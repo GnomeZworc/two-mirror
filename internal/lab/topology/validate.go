@@ -215,6 +215,9 @@ func validateExtras(n Node, segments map[string]Segment, add func(string, ...any
 	case n.Role != RoleHypervisor && n.Release != "":
 		add("node %s: release is only for hypervisors", n.Name)
 	}
+	if n.Role != RoleHypervisor && n.Agent != "" {
+		add("node %s: agent is only for hypervisors", n.Name)
+	}
 	if n.Loopback != "" {
 		prefix, err := netip.ParsePrefix(n.Loopback)
 		switch {

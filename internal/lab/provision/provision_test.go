@@ -385,3 +385,23 @@ func TestPrepare_PutsTheFRRConfigIntoTheSeed(t *testing.T) {
 	}
 	t.Errorf("hv1 user-data has no /etc/lab/frr.conf:\n%s", data)
 }
+
+func TestReadAgent_ReadsOnlyTheNodesThatDeclareOne(t *testing.T) {
+	conf := filepath.Join(t.TempDir(), "two.yml")
+	if err := os.WriteFile(conf, []byte("dhcp:\n  backend: two\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	m := newMirror(t)
+	p := labPlan(t, m)
+	p.Nodes[2].Agent = conf
+
+	got, err := ReadAgent(p)
+
+	if err != nil || !reflect.DeepEqual(got, map[string]string{"hv1": "dhcp:\n  backend: two\n"}) {
+		t.Errorf("ReadAgent = %q, %v", got, err)
+	}
+	p.Nodes[3].Agent = filepath.Join(t.TempDir(), "absent.yml")
+	if _, err := ReadAgent(p); err == nil || !strings.Contains(err.Error(), "node hv2: ") {
+		t.Errorf("error = %v", err)
+	}
+}

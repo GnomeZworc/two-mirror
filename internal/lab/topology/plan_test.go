@@ -315,9 +315,9 @@ nodes
   hv2   hypervisor  deb    4     16384 MiB  127.0.0.1:2203
 
 roles
-  name  loopback  secondary  frr  release
-  hv1   -         -          -    0.2.0rc002
-  hv2   -         -          -    0.2.0rc002
+  name  loopback  secondary  frr  release     agent
+  hv1   -         -          -    0.2.0rc002  -
+  hv2   -         -          -    0.2.0rc002  -
 
 segment underlay: 10.250.0.0/24, mtu 9000, switch sw1, bridge br-underlay, gateway 10.250.0.1
   node  interface  address        mac                udp         switch port  mac                udp

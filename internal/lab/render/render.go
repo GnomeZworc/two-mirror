@@ -31,6 +31,7 @@ type Options struct {
 	RunDir         string
 	AuthorizedKeys []string
 	FRR            map[string]string
+	Agent          map[string]string
 }
 
 type Node struct {
@@ -49,6 +50,9 @@ func Render(p *topology.Plan, o Options) ([]Node, error) {
 	for _, n := range p.Nodes {
 		if _, ok := o.FRR[n.Name]; n.FRR != "" && !ok {
 			return nil, fmt.Errorf("node %s: frr configuration %s was not read", n.Name, n.FRR)
+		}
+		if _, ok := o.Agent[n.Name]; n.Agent != "" && !ok {
+			return nil, fmt.Errorf("node %s: agent configuration %s was not read", n.Name, n.Agent)
 		}
 	}
 	var nodes []Node

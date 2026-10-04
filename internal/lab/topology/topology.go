@@ -50,6 +50,7 @@ type Node struct {
 	Loopback  string
 	FRR       string
 	Release   string
+	Agent     string
 }
 
 type fileImage struct {
@@ -74,6 +75,7 @@ type fileNode struct {
 	Loopback  string              `yaml:"loopback"`
 	FRR       string              `yaml:"frr"`
 	Release   string              `yaml:"release"`
+	Agent     string              `yaml:"agent"`
 }
 
 type file struct {
@@ -95,6 +97,9 @@ func Load(path string) (*Topology, error) {
 	for i, n := range t.Nodes {
 		if n.FRR != "" && !filepath.IsAbs(n.FRR) {
 			t.Nodes[i].FRR = filepath.Join(filepath.Dir(path), n.FRR)
+		}
+		if n.Agent != "" && !filepath.IsAbs(n.Agent) {
+			t.Nodes[i].Agent = filepath.Join(filepath.Dir(path), n.Agent)
 		}
 	}
 	return t, nil
@@ -144,6 +149,7 @@ func Parse(data []byte) (*Topology, error) {
 			Loopback:  n.Loopback,
 			FRR:       n.FRR,
 			Release:   n.Release,
+			Agent:     n.Agent,
 		})
 	}
 	return t, nil

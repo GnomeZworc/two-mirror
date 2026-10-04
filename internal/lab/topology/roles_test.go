@@ -142,10 +142,10 @@ func TestWrite_ShowsTheRoles(t *testing.T) {
 	}
 	want := `
 roles
-  name  loopback             secondary                frr       release
-  sw1   -                    underlay 169.254.0.1/28  sw1.conf  -
-  rr1   lo1 10.255.255.1/32  underlay 169.254.0.3/28  rr1.conf  -
-  hv1   -                    -                        hv1.conf  0.2.0rc002
+  name  loopback             secondary                frr       release     agent
+  sw1   -                    underlay 169.254.0.1/28  sw1.conf  -           -
+  rr1   lo1 10.255.255.1/32  underlay 169.254.0.3/28  rr1.conf  -           -
+  hv1   -                    -                        hv1.conf  0.2.0rc002  -
 `
 	if !bytes.Contains(buf.Bytes(), []byte(want)) {
 		t.Errorf("plan:\n%s\ndoes not contain:\n%s", buf.String(), want)
@@ -212,5 +212,54 @@ func TestCompute_CarriesTheRelease(t *testing.T) {
 	}
 	if got := nodeOf(t, compute(t, withRoles), "rr1").Release; got != "" {
 		t.Errorf("rr1 release = %q", got)
+	}
+}
+
+func TestValidate_AgentOnlyForHypervisors(t *testing.T) {
+	doc := header + `
+segments:
+  red: { switch: sw, cidr: 10.1.0.0/24 }
+nodes:
+  sw: { role: switch, image: deb, cpus: 1, memory: 512 }
+  rr: { role: rr, image: deb, cpus: 1, memory: 512, segments: [red], agent: agent.yml }
+  hv: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [red], release: 0.2.0rc003, agent: agent.yml }
+`
+	msg := validationError(t, doc)
+	requireContains(t, msg, "node rr: agent is only for hypervisors")
+	if bytes.Contains([]byte(msg), []byte("node hv: agent")) {
+		t.Errorf("a hypervisor agent was refused:\n%s", msg)
+	}
+}
+
+func TestLoad_ResolvesTheAgentPathAgainstTheTopologyFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "lab.yml")
+	doc := header + `
+segments:
+  red: { switch: sw, cidr: 10.1.0.0/24 }
+nodes:
+  sw:  { role: switch, image: deb, cpus: 1, memory: 512 }
+  hv1: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [red], release: 0.2.0rc003, agent: agent/two.yml }
+  hv2: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [red], release: 0.2.0rc003, agent: /etc/lab/agent.yml }
+`
+	if err := os.WriteFile(path, []byte(doc), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	topo, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	want := map[string]string{"sw": "", "hv1": filepath.Join(dir, "agent", "two.yml"), "hv2": "/etc/lab/agent.yml"}
+	for _, n := range topo.Nodes {
+		if n.Agent != want[n.Name] {
+			t.Errorf("%s agent = %q, want %q", n.Name, n.Agent, want[n.Name])
+		}
+	}
+	p, err := Compute(topo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := nodeOf(t, p, "hv1").Agent; got != filepath.Join(dir, "agent", "two.yml") {
+		t.Errorf("plan hv1 agent = %q", got)
 	}
 }

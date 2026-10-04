@@ -22,15 +22,15 @@ func (p *Plan) Write(w io.Writer) error {
 
 	var extras []NodePlan
 	for _, n := range p.Nodes {
-		if len(n.Secondary) > 0 || n.Loopback.IsValid() || n.FRR != "" || n.Release != "" {
+		if len(n.Secondary) > 0 || n.Loopback.IsValid() || n.FRR != "" || n.Release != "" || n.Agent != "" {
 			extras = append(extras, n)
 		}
 	}
 	if len(extras) > 0 {
 		fmt.Fprintf(tw, "\nroles\n")
-		fmt.Fprintf(tw, "  name\tloopback\tsecondary\tfrr\trelease\n")
+		fmt.Fprintf(tw, "  name\tloopback\tsecondary\tfrr\trelease\tagent\n")
 		for _, n := range extras {
-			fmt.Fprintf(tw, "  %s\t%s\t%s\t%s\t%s\n", n.Name, orDash(loopback(n)), orDash(secondary(n)), orDash(filepath.Base(n.FRR)), orDash(n.Release))
+			fmt.Fprintf(tw, "  %s\t%s\t%s\t%s\t%s\t%s\n", n.Name, orDash(loopback(n)), orDash(secondary(n)), orDash(filepath.Base(n.FRR)), orDash(n.Release), orDash(filepath.Base(n.Agent)))
 		}
 	}
 
