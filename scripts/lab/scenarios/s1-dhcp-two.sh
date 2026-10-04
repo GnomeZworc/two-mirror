@@ -25,10 +25,10 @@ for vm in 10.210.1.10:10.210.1.1 10.210.1.11:10.210.1.1 10.210.2.10:10.210.2.1 1
     check "${ip} : route vers la VPC via ${gw}" route_via vp-s1 "${ip}" 10.210.0.0/16 "${gw}"
     check "${ip} : route /32 vers les métadonnées via ${gw}" route_via vp-s1 "${ip}" 169.254.169.254 "${gw}"
 done
-mac () { vm_ssh vp-s1 "${1}" 'cat /sys/class/net/ens3/address'; }
-A_MACS=$(printf '%s\n' "$(mac 10.210.1.10)" "$(mac 10.210.1.11)" | sort | tr '\n' ' ' | sed 's/ $//')
-B_MACS=$(printf '%s\n' "$(mac 10.210.2.10)" "$(mac 10.210.2.11)" | sort | tr '\n' ' ' | sed 's/ $//')
-info "MAC de sn-s1a : ${A_MACS} ; de sn-s1b : ${B_MACS}"
-check "probe sn-s1a : uniquement les MAC de sn-s1a" test "$(dhcp_hosts vp-s1_br-s1a)" = "${A_MACS}"
-check "probe sn-s1b : uniquement les MAC de sn-s1b" test "$(dhcp_hosts vp-s1_br-s1b)" = "${B_MACS}"
+vm_host () { echo "$(vm_ssh vp-s1 "${1}" 'cat /sys/class/net/ens3/address')=${1}"; }
+A_HOSTS=$(printf '%s\n' "$(vm_host 10.210.1.10)" "$(vm_host 10.210.1.11)" | sort | tr '\n' ' ' | sed 's/ $//')
+B_HOSTS=$(printf '%s\n' "$(vm_host 10.210.2.10)" "$(vm_host 10.210.2.11)" | sort | tr '\n' ' ' | sed 's/ $//')
+info "sn-s1a : ${A_HOSTS} ; sn-s1b : ${B_HOSTS}"
+check "probe sn-s1a : uniquement les couples MAC/IP de sn-s1a" test "$(dhcp_hosts vp-s1_br-s1a)" = "${A_HOSTS}"
+check "probe sn-s1b : uniquement les couples MAC/IP de sn-s1b" test "$(dhcp_hosts vp-s1_br-s1b)" = "${B_HOSTS}"
 NODE

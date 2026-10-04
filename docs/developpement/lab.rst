@@ -725,6 +725,29 @@ scénario envoie des blocs de shell aux nœuds par ``on <nœud> [VAR=valeur…] 
 elle n'est réussie que si le SSH vers la VM a fonctionné **et** que la commande y a échoué — un
 SSH en panne ne passe jamais pour une isolation.
 
+Résultats du 2026-10-04 sur le serveur de lab, release ``0.2.0rc003``, hv1 sur le DHCP intégré et
+hv2 sur dnsmasq — toute la série en 8 minutes :
+
+.. code-block:: text
+
+   $ scripts/lab/scenario.sh all | grep -E '^(=== s[0-9].* : |INFO)'
+   INFO: MAC de sn-s1a : 00:22:33:00:00:0a 00:22:33:00:00:0b ; de sn-s1b : 00:22:33:00:00:0a 00:22:33:00:00:0b
+   === s1-dhcp-two : 37 réussi(s), 0 échoué(s)
+   === s2-gateway : 22 réussi(s), 0 échoué(s)
+   === s3-isolation-local : 12 réussi(s), 0 échoué(s)
+   === s4-evpn : 14 réussi(s), 0 échoué(s)
+   === s5-isolation-evpn : 13 réussi(s), 0 échoué(s)
+   INFO: 30 s après l'arrêt du route reflector : 0 réponses dans les 10 dernières secondes (50 si le trafic passe intégralement)
+   INFO: VTEP distant encore connu : 0 ; entrée d'inondation : 0
+   INFO: 90 s après l'arrêt : 0 réponses dans les 10 dernières secondes
+   INFO: retour du VTEP distant et du trafic 31 s après le redémarrage de FRR
+   === s6-rr-loss : 8 réussi(s), 0 échoué(s)
+
+Dans ce run, le contrôle « uniquement les MAC de son subnet » de ``s1`` ne prouvait rien : two
+dérive la MAC du rang de l'IP, et les VM ``.10``/``.11`` des deux subnets avaient les mêmes MAC.
+Vérifié à la main sur le lab, chaque serveur DHCP ne connaissait que les couples MAC/IP de son
+subnet ; le scénario compare désormais ces couples.
+
 Les VM sont accessibles depuis le netns de leur VPC, sur l'hyperviseur, avec l'utilisateur
 ``syonad`` créé par les métadonnées de two :
 

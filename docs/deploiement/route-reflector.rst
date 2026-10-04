@@ -94,9 +94,21 @@ l'adresse du lien en secondaire et la loopback sur ``lo1`` :
      - up des deux côtés
    * - sessions des deux hyperviseurs vers ``10.255.255.1``
      - Established, voisins dynamiques, iBGP AS 64600, famille L2VPN EVPN négociée
-   * - routes EVPN échangées
-     - aucune : rien à annoncer tant que two n'a pas créé de VXLAN — voir
-       :doc:`premier-hyperviseur`
+   * - routes EVPN échangées, VM ↔ VM entre deux hyperviseurs
+     - routes de type 3 échangées, ping et MTU 1500 de bout en bout — à partir de la release
+       ``0.2.0rc003``, qui pose l'adresse VTEP locale des VXLAN
+       (`#51 <https://git.g3e.fr/syonad/two/issues/51>`_)
+
+.. warning::
+
+   **Les tunnels ne survivent pas à la perte du route reflector.** Mesuré dans le lab
+   (2026-10-04, FRR 10.7.1, un seul route reflector, sans ``graceful-restart``) : à l'arrêt de
+   FRR sur le route reflector, la session EVPN des hyperviseurs tombe aussitôt, FRR retire les
+   routes apprises et, avec elles, le VTEP distant et l'entrée d'inondation du VXLAN — **plus
+   aucun paquet ne passe** entre hyperviseurs, à 30 s comme à 90 s. Au redémarrage de FRR sur le
+   route reflector, VTEP distant et trafic reviennent **31 s** plus tard. Le trafic entre VM d'un
+   même hyperviseur n'est pas concerné. La redondance (deux route reflectors) ou
+   ``graceful-restart`` sont les deux leviers ; ni l'un ni l'autre n'est encore qualifié.
 
 Le routeur du lab n'est qu'une configuration minimale écrite pour l'essai, pas celle des routeurs
 de cluster (:doc:`routeurs`).
@@ -109,9 +121,8 @@ de cluster (:doc:`routeurs`).
      lancer sur n'importe quel hyperviseur), et s'il s'agit d'une VM créée par l'agent comme les
      autres ou d'un cas particulier — l'image, elle, est l'image golden de :doc:`image-qcow2` ;
    * la redondance : une seule VM route reflector, ou deux, et sur quels hyperviseurs ;
-   * la procédure de reconstruction, et l'état du cluster pendant que le route reflector est
-     absent — les tunnels déjà établis continuent-ils de fonctionner, et pendant combien de
-     temps ;
+   * la procédure de reconstruction — l'état du cluster pendant l'absence du route reflector est
+     mesuré ci-dessus : plus de trafic entre hyperviseurs ;
    * la procédure d'amorçage : ce qui fonctionne, et dans quel ordre, quand on démarre un cluster
      entier depuis zéro — le premier hyperviseur n'a pas de session FRR établie tant que cette VM
      n'existe pas, cf. :doc:`premier-hyperviseur`.

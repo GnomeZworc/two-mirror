@@ -146,6 +146,6 @@ while not buf.endswith(b"\n"):
         break
     buf += c
 state = json.loads(buf).get("state") or {}
-print(" ".join(sorted(h["mac"].lower() for h in state.get("hosts") or [])))
+print(" ".join(sorted(h["mac"].lower() + "=" + h["ip"] for h in state.get("hosts") or [])))
 PY
 }
