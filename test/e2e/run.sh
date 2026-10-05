@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 LAB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LAB_HOST="${LAB_HOST:-${LAB_DIR}/../lab-host.sh}"
+LAB_HOST="${LAB_HOST:-${LAB_DIR}/../../scripts/lab-host.sh}"
 SCENARIO_DIR="${SCENARIO_DIR:-${LAB_DIR}/scenarios}"
 SCENARIO_LOG=""
 
@@ -25,7 +25,7 @@ on () {
         for assignment in "$@"; do
             printf 'export %q=%q\n' "${assignment%%=*}" "${assignment#*=}"
         done
-        cat "${LAB_DIR}/node.sh"
+        cat "${LAB_DIR}/lib/node.sh"
         cat
     } | "${LAB_HOST}" ssh "./lab ssh ${node} 'sudo bash -s'" 2>&1 | tee -a "${SCENARIO_LOG}"
 }

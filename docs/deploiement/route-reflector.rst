@@ -57,10 +57,10 @@ Configuration de FRR
 --------------------
 
 ``bgpd`` et ``bfdd`` activés dans ``/etc/frr/daemons``. La configuration ci-dessous est **celle du
-lab** (``conf/lab/frr/rr1.conf``) : ASN, loopback et plages sont ceux de la production, seul le nom
+lab** (``test/e2e/topologies/frr/rr1.conf``) : ASN, loopback et plages sont ceux de la production, seul le nom
 d'hôte diffère. Le lab qualifie donc exactement ce fichier.
 
-.. literalinclude:: ../../conf/lab/frr/rr1.conf
+.. literalinclude:: ../../test/e2e/topologies/frr/rr1.conf
    :language: text
 
 Ce qu'elle établit :

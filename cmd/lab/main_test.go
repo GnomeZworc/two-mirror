@@ -27,7 +27,7 @@ func TestRun_UsageOnMissingArguments(t *testing.T) {
 }
 
 func TestRun_PlanOfTheShippedExampleTopology(t *testing.T) {
-	code, stdout, stderr := runLab("plan", filepath.Join("..", "..", "conf", "lab", "evpn-2hv.yml"))
+	code, stdout, stderr := runLab("plan", filepath.Join("..", "..", "test", "e2e", "topologies", "evpn-2hv.yml"))
 	if code != 0 {
 		t.Fatalf("code %d, stderr %s", code, stderr)
 	}
@@ -82,7 +82,7 @@ func TestRun_RenderWritesEveryNodeFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := filepath.Join(dir, "run")
-	code, stdout, stderr := runLab("render", "-key", key, filepath.Join("..", "..", "conf", "lab", "evpn-2hv.yml"), out)
+	code, stdout, stderr := runLab("render", "-key", key, filepath.Join("..", "..", "test", "e2e", "topologies", "evpn-2hv.yml"), out)
 	if code != 0 {
 		t.Fatalf("code %d, stderr %s", code, stderr)
 	}
@@ -118,7 +118,7 @@ func TestRun_RenderWritesEveryNodeFiles(t *testing.T) {
 }
 
 func TestRun_RenderRefusesMissingKeyFile(t *testing.T) {
-	code, _, stderr := runLab("render", "-key", filepath.Join(t.TempDir(), "absent.pub"), filepath.Join("..", "..", "conf", "lab", "evpn-2hv.yml"), t.TempDir())
+	code, _, stderr := runLab("render", "-key", filepath.Join(t.TempDir(), "absent.pub"), filepath.Join("..", "..", "test", "e2e", "topologies", "evpn-2hv.yml"), t.TempDir())
 	if code != 1 || !strings.Contains(stderr, "absent.pub") {
 		t.Errorf("code %d, stderr %q", code, stderr)
 	}
@@ -130,7 +130,7 @@ func savedLab(t *testing.T) string {
 	if err := os.MkdirAll(run, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	example, err := os.ReadFile(filepath.Join("..", "..", "conf", "lab", "evpn-2hv.yml"))
+	example, err := os.ReadFile(filepath.Join("..", "..", "test", "e2e", "topologies", "evpn-2hv.yml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -308,7 +308,7 @@ func TestRun_RenderShipsTheExampleFRRConfigs(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := filepath.Join(dir, "run")
-	code, _, stderr := runLab("render", "-key", key, filepath.Join("..", "..", "conf", "lab", "evpn-2hv.yml"), out)
+	code, _, stderr := runLab("render", "-key", key, filepath.Join("..", "..", "test", "e2e", "topologies", "evpn-2hv.yml"), out)
 	if code != 0 {
 		t.Fatalf("code %d, stderr %s", code, stderr)
 	}

@@ -17,7 +17,7 @@ comment s'en servir.
    topologie déclarative et plan déterministe (``lab plan``), VM rendues et lancées sur le
    serveur (``lab render``, ``lab up`` / ``status`` / ``down`` / ``ssh``), rôles installés au
    démarrage (FRR sur le switch et le route reflector, two par ``deploy.sh`` sur les
-   hyperviseurs) et scénarios versionnés (``scripts/lab/scenario.sh``). La redondance du plan de
+   hyperviseurs) et scénarios versionnés (``test/e2e/run.sh``). La redondance du plan de
    contrôle — deux route reflectors, deux switchs — est l'objet de
    `#54 <https://git.g3e.fr/syonad/two/issues/54>`_.
 
@@ -179,7 +179,7 @@ Une campagne sur le lab enchaîne ces commandes depuis le Mac ; ``lab`` s'exécu
 .. code-block:: text
 
    scripts/lab-host.sh up
-   scripts/lab-host.sh push conf/lab/evpn-2hv.yml
+   scripts/lab-host.sh push test/e2e/topologies/evpn-2hv.yml
    scripts/lab-host.sh ssh './lab up topology/evpn-2hv.yml'
    scripts/lab-host.sh ssh './lab ssh hv1'          # shell interactif sur hv1
    scripts/lab-host.sh ssh './lab ssh hv1 ip -br a' # commande, code de retour propagé
@@ -194,9 +194,9 @@ Topologie
 ---------
 
 Un lab est décrit par un fichier YAML : des **nœuds** (les VM) et des **segments** (des réseaux L2
-portés par un switch). Exemple livré, ``conf/lab/evpn-2hv.yml`` :
+portés par un switch). Exemple livré, ``test/e2e/topologies/evpn-2hv.yml`` :
 
-.. literalinclude:: ../../conf/lab/evpn-2hv.yml
+.. literalinclude:: ../../test/e2e/topologies/evpn-2hv.yml
    :language: yaml
 
 Chaque nœud non-switch est relié au switch de chacun de ses segments par un câble virtuel QEMU ;
@@ -236,7 +236,7 @@ Ce que le fichier déclare :
    * ``agent`` — pour un hyperviseur seulement : le chemin d'un ``agent.yml``, relatif au fichier
      de topologie, déposé dans ``/etc/two/agent.yml`` avant ``deploy.sh``. Sans lui, l'agent tourne
      avec sa configuration par défaut. L'exemple met hv1 sur le serveur DHCP intégré
-     (``conf/lab/agent/two.yml`` : ``dhcp.backend: two``) et laisse hv2 sur dnsmasq.
+     (``test/e2e/topologies/agent/two.yml`` : ``dhcp.backend: two``) et laisse hv2 sur dnsmasq.
 
    ``mgmt0`` et ``lo1`` sont réservés : aucun segment ne peut porter ces noms.
 
@@ -272,7 +272,7 @@ Limites : 1000 nœuds, 256 segments, et autant de câbles que la plage UDP le pe
 
 .. code-block:: text
 
-   $ go run ./cmd/lab plan conf/lab/evpn-2hv.yml
+   $ go run ./cmd/lab plan test/e2e/topologies/evpn-2hv.yml
    lab evpn-2hv: nodes 4, segments 1, cables 3
 
    nodes
@@ -308,7 +308,7 @@ champs inconnus et les clés en double sont refusés aussi :
 
 Les ASN, la loopback du route reflector, le lien ``169.254.0.0/28`` et le subnet des hyperviseurs
 de l'exemple sont **ceux de la production** (décision du 2026-10-04, #50) : les fichiers de
-``conf/lab/`` restent ainsi au plus près de ce qui tourne réellement. Toutes les adresses y sont
+``test/e2e/topologies/`` restent ainsi au plus près de ce qui tourne réellement. Toutes les adresses y sont
 **fixées** par ``addresses`` — le route reflector en ``.2``, les hyperviseurs à partir de ``.11`` —
 pour que le modèle se lise sans le plan et ne dépende pas de l'ordre de déclaration : le
 ``frr.conf`` d'un hyperviseur, écrit à la main, porte son adresse en ``router-id``. Seul le switch
@@ -317,11 +317,11 @@ n'en déclare pas : il porte toujours la passerelle, la première adresse du seg
 Rôles
 ~~~~~
 
-Les configurations FRR du lab vivent dans ``conf/lab/frr/``, une par nœud, **écrites à la main** :
+Les configurations FRR du lab vivent dans ``test/e2e/topologies/frr/``, une par nœud, **écrites à la main** :
 ce sont les mêmes fichiers que la documentation de déploiement inclut, pour que le lab qualifie
 exactement ce qu'elle prescrit. Celle du route reflector :
 
-.. literalinclude:: ../../conf/lab/frr/rr1.conf
+.. literalinclude:: ../../test/e2e/topologies/frr/rr1.conf
    :language: text
 
 Au premier démarrage, cloud-init installe FRR (``frr-stable`` de ``deb.frrouting.org``, sans les
@@ -421,7 +421,7 @@ Vérifié le 2026-10-04 sur le serveur de lab, topologie ``evpn-2hv``, release `
 
    **Le switch du lab est un routeur Linux avec FRR, par choix.** Il joue le rôle générique de
    routeur de cluster : passerelle des hyperviseurs, session eBGP avec BFD vers le route reflector,
-   dont il n'accepte que la loopback (``conf/lab/frr/sw1.conf``). L'équipement réel dépend de qui
+   dont il n'accepte que la loopback (``test/e2e/topologies/frr/sw1.conf``). L'équipement réel dépend de qui
    déploie l'infrastructure (MikroTik aujourd'hui ; Cisco, Juniper, Arista… demain) : il n'a besoin
    que de BGP et d'EVPN, et sa configuration propre au constructeur n'a pas sa place dans le lab.
 
@@ -432,7 +432,7 @@ Rendu des VM
 
 .. code-block:: text
 
-   $ go run ./cmd/lab render -key ~/.config/two-lab/ssh/lab_ed25519.pub conf/lab/evpn-2hv.yml <répertoire>
+   $ go run ./cmd/lab render -key ~/.config/two-lab/ssh/lab_ed25519.pub test/e2e/topologies/evpn-2hv.yml <répertoire>
 
 ``<répertoire>/<nœud>/`` reçoit :
 
@@ -611,7 +611,7 @@ Une campagne réelle, de la création du serveur à la première commande sur un
    …
    qemu QEMU emulator version 7.2.22 (Debian 1:7.2+dfsg-7+deb12u18+b3), nested=Y
    == prêt : root@<adresse>
-   $ scripts/lab-host.sh push conf/lab/evpn-2hv.yml
+   $ scripts/lab-host.sh push test/e2e/topologies/evpn-2hv.yml
    == compilation de lab (linux/amd64)
    == déposés sur le serveur : ~/lab, ~/evpn-2hv.yml — ensuite : lab-host.sh ssh './lab up evpn-2hv.yml'
    $ scripts/lab-host.sh ssh './lab up evpn-2hv.yml'
@@ -674,9 +674,9 @@ Les scénarios se lancent **depuis le Mac**, sur un lab démarré (``up``, ``pus
 
 .. code-block:: text
 
-   scripts/lab/scenario.sh s1          # un scénario
-   scripts/lab/scenario.sh s1 s3       # plusieurs
-   scripts/lab/scenario.sh all         # tous, dans l'ordre
+   test/e2e/run.sh s1          # un scénario
+   test/e2e/run.sh s1 s3       # plusieurs
+   test/e2e/run.sh all         # tous, dans l'ordre
 
 Chacun affiche une ligne ``RÉUSSI`` ou ``ÉCHOUÉ`` par vérification — un échec porte la dernière
 ligne de la commande en cause —, des lignes ``INFO`` pour les mesures, puis son bilan. Le code de
@@ -720,9 +720,9 @@ sortie vaut 1 si une vérification échoue **ou si aucune n'a été faite**.
 
 ``s6`` réutilise les VM de ``s4`` : le lancer après.
 
-**Comment c'est fait.** ``scripts/lab/scenario.sh`` exécute chaque scénario sur le Mac ; un
+**Comment c'est fait.** ``test/e2e/run.sh`` exécute chaque scénario sur le Mac ; un
 scénario envoie des blocs de shell aux nœuds par ``on <nœud> [VAR=valeur…] <<'NODE'``, précédés de
-``scripts/lab/node.sh`` — appels à l'API de l'agent, attente des états, image Debian compatible two
+``test/e2e/lib/node.sh`` — appels à l'API de l'agent, attente des états, image Debian compatible two
 (préparée une fois par hyperviseur, ``seedfrom`` avec barre oblique finale), clé SSH des VM,
 ``check`` et ``vm_fails``. Une vérification négative (« ne joint pas ») passe par ``vm_fails`` :
 elle n'est réussie que si le SSH vers la VM a fonctionné **et** que la commande y a échoué — un
@@ -733,7 +733,7 @@ hv2 sur dnsmasq — toute la série en 8 minutes :
 
 .. code-block:: text
 
-   $ scripts/lab/scenario.sh all | grep -E '^(=== s[0-9].* : |INFO)'
+   $ test/e2e/run.sh all | grep -E '^(=== s[0-9].* : |INFO)'
    INFO: MAC de sn-s1a : 00:22:33:00:00:0a 00:22:33:00:00:0b ; de sn-s1b : 00:22:33:00:00:0a 00:22:33:00:00:0b
    === s1-dhcp-two : 37 réussi(s), 0 échoué(s)
    === s2-gateway : 22 réussi(s), 0 échoué(s)
@@ -763,7 +763,7 @@ Les VM sont accessibles depuis le netns de leur VPC, sur l'hyperviseur, avec l'u
 
 Le lab sert à qualifier des comportements qui ne se voient qu'à plusieurs hyperviseurs — la
 campagne L3VNI de `#41 <https://git.g3e.fr/syonad/two/issues/41>`_ en est le prochain exemple. Un
-scénario est un fichier ``scripts/lab/scenarios/<n>-<nom>.sh``, exécuté par ``scenario.sh`` sur le
+scénario est un fichier ``test/e2e/scenarios/<n>-<nom>.sh``, exécuté par ``scenario.sh`` sur le
 Mac ; il envoie des blocs aux nœuds :
 
 .. code-block:: bash
@@ -796,7 +796,7 @@ Les règles qui ont fait leurs preuves en E5 :
   (``check "prérequis : …"``) ;
 * variables vers un nœud : ``on hv1 NOM=valeur <<'NODE'`` (valeurs échappées par
   ``scenario.sh``) ;
-* ``bash scripts/lab/scenario_test.sh`` vérifie la syntaxe de chaque bloc réellement envoyé — à
+* ``bash test/e2e/run_test.sh`` vérifie la syntaxe de chaque bloc réellement envoyé — à
   lancer avant toute session.
 
 Facturation
@@ -890,7 +890,7 @@ Tests
 .. code-block:: bash
 
    bash scripts/lab-host_test.sh
-   bash scripts/lab/scenario_test.sh
+   bash test/e2e/run_test.sh
    go test ./internal/lab/... ./cmd/lab/
 
 Environ une minute et demie, sans réseau : la suite remplace ``curl`` par une fausse API Scaleway

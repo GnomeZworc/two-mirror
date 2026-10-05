@@ -29,7 +29,7 @@ FAKE
 
 run () {
     env LAB_HOST="${WORK}/lab-host" FAKE_DIR="${WORK}" SCENARIO_DIR="${SCENARIO_DIR:-${WORK}/scenarios}" \
-        FAKE_OUT="${FAKE_OUT:-}" bash "${DIR}/scenario.sh" "$@" > "${WORK}/out.log" 2>&1
+        FAKE_OUT="${FAKE_OUT:-}" bash "${DIR}/run.sh" "$@" > "${WORK}/out.log" 2>&1
 }
 
 teardown () {
@@ -39,7 +39,7 @@ teardown () {
 }
 
 node () {
-    bash -c ". '${DIR}/node.sh'; ${1}" 2>&1
+    bash -c ". '${DIR}/lib/node.sh'; ${1}" 2>&1
 }
 
 test_on_sends_assignments_library_and_block_to_the_node () {
