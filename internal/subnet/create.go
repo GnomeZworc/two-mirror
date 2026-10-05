@@ -70,6 +70,15 @@ func createSubnet(db *badger.DB, subnetName string, d subnetData, backend dhcpba
 		if err := netif.CreateBridge(d.bridge, 1500); err != nil {
 			return fmt.Errorf("create bridge: %w", err)
 		}
+		if d.mode == ModeVxlan {
+			mac, err := anycastGatewayMAC(d.vxlanID)
+			if err != nil {
+				return err
+			}
+			if err := netif.LinkSetHardwareAddr(d.bridge, mac); err != nil {
+				return fmt.Errorf("set anycast gateway mac %s: %w", mac, err)
+			}
+		}
 		return netif.BridgeSetMaster(vethI, d.bridge)
 	}); err != nil {
 		return fmt.Errorf("setup bridge in netns: %w", err)

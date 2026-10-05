@@ -42,6 +42,12 @@ vxlan
 Le subnet vit dans le netns du VPC. La VM n'est donc **pas joignable depuis l'host** sans route
 explicite — point à connaître avant de câbler un outil externe dessus.
 
+Le bridge du subnet, qui porte ``interface_ip``, a une **MAC de gateway anycast** calculée depuis
+le ``vxlan_id`` : ``02:01:00`` suivi des 24 bits de la VNI (``vxlan_id`` 2811 →
+``02:01:00:00:0a:fb``). Elle est identique sur tous les hôtes qui portent le subnet : une VM qui
+change d'hôte garde une entrée ARP valide pour sa gateway. Elle n'est posée qu'à la création du
+subnet — un subnet créé avant garde la MAC choisie par le noyau jusqu'à sa recréation.
+
 bridge
 ------
 
