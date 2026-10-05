@@ -1,0 +1,28 @@
+name: evpn-2hv
+
+images:
+  debian12:
+    url: https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-generic-amd64.qcow2
+    sums: https://cloud.debian.org/images/cloud/bookworm/latest/SHA512SUMS
+
+segments:
+  underlay:
+    switch: sw1
+    cidr: 192.168.14.0/24
+    mtu: 9000
+
+nodes:
+  sw1:
+    { role: switch, image: debian12, cpus: 2, memory: 1024,
+      secondary: { underlay: [169.254.0.1/28] }, frr: frr/sw1.conf }
+  rr1:
+    { role: rr, image: debian12, cpus: 1, memory: 1024, segments: [underlay],
+      addresses: { underlay: 192.168.14.2 }, secondary: { underlay: [169.254.0.3/28] },
+      loopback: 10.255.255.1/32, frr: frr/rr1.conf }
+  hv1:
+    { role: hypervisor, image: debian12, cpus: 4, memory: 16384, segments: [underlay],
+      addresses: { underlay: 192.168.14.11 }, frr: frr/hv1.conf, release: 0.2.0rc003,
+      agent: agent/two.yml }
+  hv2:
+    { role: hypervisor, image: debian12, cpus: 4, memory: 16384, segments: [underlay],
+      addresses: { underlay: 192.168.14.12 }, frr: frr/hv2.conf, release: 0.2.0rc003 }
