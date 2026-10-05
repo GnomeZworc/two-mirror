@@ -24,19 +24,47 @@ créées par l'agent. C'est ce qui rend un subnet utilisable au-delà d'un seul 
 l'agent désactive l'apprentissage et ne configure aucun voisin — cf.
 :doc:`architecture-cluster`.
 
+Configuration de FRR
+~~~~~~~~~~~~~~~~~~~~
+
+Seul ``bgpd`` est activé dans ``/etc/frr/daemons``. D'un hyperviseur à l'autre ne changent que
+``hostname`` et ``router-id``, l'adresse de l'hyperviseur sur son segment.
+
+.. literalinclude:: ../../test/e2e/topologies/frr/hv1.conf
+   :language: text
+
+Ce qu'elle établit :
+
+* **Une seule session**, en iBGP dans l'AS 64600, vers la loopback du route reflector
+  (``10.255.255.1``), jointe par la passerelle par défaut — le routeur de cluster l'a apprise du
+  route reflector (:doc:`routeurs`). Aucune adresse d'un autre hyperviseur n'est écrite : ajouter
+  un nœud ne touche pas la configuration des autres.
+* **EVPN seulement** : l'IPv4 unicast n'est pas activé (``no bgp default ipv4-unicast``).
+  ``advertise-all-vni`` annonce les VNI de toutes les interfaces VXLAN que FRR voit, et donc
+  celles que l'agent crée.
+* **Pas de BFD** sur cette session, contrairement à la session entre route reflector et routeur.
+
+Articulation avec l'agent
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Rien à configurer à la création d'un subnet : la VXLAN apparaît, FRR la voit et l'annonce, sans
+action ni redémarrage. Il faut en revanche que la VXLAN porte une **adresse VTEP locale** : sans
+elle, FRR voit la VNI mais n'annonce rien, et deux hyperviseurs gérés par two ne se joignent pas.
+L'agent la pose à partir de la release ``0.2.0rc003``
+(`#51 <https://git.g3e.fr/syonad/two/issues/51>`_) : l'adresse IPv4 primaire du ``local_iface``
+du subnet.
+
 .. note::
 
-   **À rédiger.** À documenter :
+   **À rédiger.** Reste à documenter :
 
-   * la version de FRR de référence et son mode d'installation, sachant que l'hyperviseur est
-     sans état : le paquet et la configuration doivent être posés à chaque démarrage, par le
-     bootstrap ou par un mécanisme équivalent ;
-   * les démons activés dans ``/etc/frr/daemons`` ;
-   * la configuration de référence : numéro d'AS, session vers le route reflector, famille
-     d'adresses utilisée pour annoncer les MAC et les VNI ;
-   * l'articulation avec les interfaces créées par l'agent : comment FRR découvre une interface
-     VXLAN qui apparaît à la création d'un subnet, et si une action est nécessaire ensuite ;
-   * ce qui se passe au démarrage à froid, quand FRR démarre avant ou après l'agent ;
+   * la version de FRR de référence et son installation sur l'hyperviseur **sans état** : paquet
+     et configuration doivent être posés à chaque démarrage, par le bootstrap ou un mécanisme
+     équivalent (`#52 <https://git.g3e.fr/syonad/two/issues/52>`_) ;
+   * le démarrage à froid, selon que FRR démarre avant ou après l'agent ;
+   * les subnets ``vxlan`` créés avant ``0.2.0rc003``, dont la VXLAN n'a pas d'adresse VTEP
+     locale : les recréer ou poser l'adresse à chaud, à trancher dans
+     `#51 <https://git.g3e.fr/syonad/two/issues/51>`_ ;
    * le cas particulier du **premier** hyperviseur, dont la session ne peut pas s'établir tant
      que le route reflector n'existe pas.
 

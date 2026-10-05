@@ -50,15 +50,12 @@ réseau du système, pas la poser à la main.
       nmcli connection add type dummy ifname lo1 con-name lo1 \
           ipv4.method manual ipv4.addresses 10.255.255.1/32 ipv6.method disabled
 
-   Le lab, en Debian, pose ces adresses par cloud-init et un script rejoué au démarrage ; ces
-   commandes restent à valider sur l'image golden.
+   Ces commandes restent à valider sur l'image golden.
 
 Configuration de FRR
 --------------------
 
-``bgpd`` et ``bfdd`` activés dans ``/etc/frr/daemons``. La configuration ci-dessous est **celle du
-lab** (``test/e2e/topologies/frr/rr1.conf``) : ASN, loopback et plages sont ceux de la production, seul le nom
-d'hôte diffère. Le lab qualifie donc exactement ce fichier.
+``bgpd`` et ``bfdd`` activés dans ``/etc/frr/daemons``.
 
 .. literalinclude:: ../../test/e2e/topologies/frr/rr1.conf
    :language: text
@@ -75,43 +72,15 @@ Ce qu'elle établit :
 * **EVPN** : seule famille activée vers les hyperviseurs, qui sont ses clients
   (``route-reflector-client``) : il réfléchit les routes EVPN de chacun vers tous les autres.
 
-Vérifié dans le lab
-~~~~~~~~~~~~~~~~~~~
-
-Le 2026-10-04, FRR 10.7.1, route reflector en Debian 12 sur le segment des hyperviseurs, avec
-l'adresse du lien en secondaire et la loopback sur ``lo1`` :
-
-.. list-table::
-   :header-rows: 1
-   :widths: 55 45
-
-   * - Vérification
-     - Résultat
-   * - session avec le routeur, IPv4 unicast
-     - Established ; le routeur reçoit **un seul** préfixe, la loopback, et l'installe via
-       ``169.254.0.3``
-   * - BFD avec le routeur
-     - up des deux côtés
-   * - sessions des deux hyperviseurs vers ``10.255.255.1``
-     - Established, voisins dynamiques, iBGP AS 64600, famille L2VPN EVPN négociée
-   * - routes EVPN échangées, VM ↔ VM entre deux hyperviseurs
-     - routes de type 3 échangées, ping et MTU 1500 de bout en bout — à partir de la release
-       ``0.2.0rc003``, qui pose l'adresse VTEP locale des VXLAN
-       (`#51 <https://git.g3e.fr/syonad/two/issues/51>`_)
-
 .. warning::
 
-   **Les tunnels ne survivent pas à la perte du route reflector.** Mesuré dans le lab
-   (2026-10-04, FRR 10.7.1, un seul route reflector, sans ``graceful-restart``) : à l'arrêt de
-   FRR sur le route reflector, la session EVPN des hyperviseurs tombe aussitôt, FRR retire les
-   routes apprises et, avec elles, le VTEP distant et l'entrée d'inondation du VXLAN — **plus
+   **Les tunnels ne survivent pas à la perte du route reflector.** Avec un seul route reflector
+   et sans ``graceful-restart``, à l'arrêt de FRR sur le route reflector, la session EVPN des
+   hyperviseurs tombe aussitôt, FRR retire les routes apprises et, avec elles, le VTEP distant et l'entrée d'inondation du VXLAN — **plus
    aucun paquet ne passe** entre hyperviseurs, à 30 s comme à 90 s. Au redémarrage de FRR sur le
    route reflector, VTEP distant et trafic reviennent **31 s** plus tard. Le trafic entre VM d'un
    même hyperviseur n'est pas concerné. La redondance (deux route reflectors) ou
    ``graceful-restart`` sont les deux leviers ; ni l'un ni l'autre n'est encore qualifié.
-
-Le routeur du lab est un Linux avec FRR, par choix : il joue le rôle générique de routeur de
-cluster, l'équipement réel n'ayant besoin que de BGP et d'EVPN (:doc:`routeurs`).
 
 .. note::
 
@@ -122,7 +91,7 @@ cluster, l'équipement réel n'ayant besoin que de BGP et d'EVPN (:doc:`routeurs
      autres ou d'un cas particulier — l'image, elle, est l'image golden de :doc:`image-qcow2` ;
    * la redondance : une seule VM route reflector, ou deux, et sur quels hyperviseurs ;
    * la procédure de reconstruction — l'état du cluster pendant l'absence du route reflector est
-     mesuré ci-dessus : plus de trafic entre hyperviseurs ;
+     décrit ci-dessus : plus de trafic entre hyperviseurs ;
    * la procédure d'amorçage : ce qui fonctionne, et dans quel ordre, quand on démarre un cluster
      entier depuis zéro — le premier hyperviseur n'a pas de session FRR établie tant que cette VM
      n'existe pas, cf. :doc:`premier-hyperviseur`.

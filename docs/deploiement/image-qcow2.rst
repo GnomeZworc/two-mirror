@@ -323,12 +323,8 @@ Points de vigilance
    22.4.2 —, sans barre oblique finale il demande ``http://169.254.169.254:80meta-data`` : la
    source échoue, la VM démarre en ``DataSourceNone``, sans nom d'hôte ni user-data. À partir de
    23.1, un drapeau actif par défaut (``NOCLOUD_SEED_URL_APPEND_FORWARD_SLASH``) ajoute la barre
-   oblique manquante, ce qui explique qu'une image récente fonctionne sans elle.
-
-   Vérifié le 2026-10-04 dans le lab (#50), sur une VM Debian 12 lancée par l'agent : sans barre
-   oblique, ``Datasource DataSourceNone`` ; avec, ``DataSourceNoCloudNet
-   [seed=…http://169.254.169.254…]`` et le nom d'hôte de la VM. Avec la barre oblique, la
-   configuration fonctionne quelle que soit la version de cloud-init.
+   oblique manquante, ce qui explique qu'une image récente fonctionne sans elle. Avec la barre
+   oblique, la configuration fonctionne quelle que soit la version de cloud-init.
 
 .. note::
 
