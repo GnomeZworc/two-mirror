@@ -654,6 +654,13 @@ window.runMermaid = runMermaid;</script>
 </ul>
 </details></li>
 </ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Développement</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../developpement/index.html">Développement</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../developpement/lab.html">Lab de test multi-nœud</a></li>
+</ul>
+</details></li>
+</ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Interne</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1 has-children"><a class="reference internal" href="../concepts/index.html">Concepts</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -1027,7 +1034,7 @@ cat<span class="w"> </span><span class="s">&lt;&lt; 'ENDFILE' &gt; /mnt/etc/clou
 <span class="s">datasource_list: [ NoCloud ]</span>
 <span class="s">datasource:</span>
 <span class="s">  NoCloud:</span>
-<span class="s">    seedfrom: 'http://169.254.169.254:80'</span>
+<span class="s">    seedfrom: 'http://169.254.169.254:80/'</span>
 <span class="s">    timeout: 5</span>
 <span class="s">    max_wait: 10</span>
 <span class="s">ENDFILE</span>
@@ -1087,12 +1094,16 @@ ni <code class="docutils literal notranslate"><span class="pre">detect-zeroes=un
 aucun espace à l’host : les qcow2 ne se rétractent pas. L’activation reste utile pour le jour
 où l’option sera ajoutée côté agent, mais ne pas compter dessus pour la place disque.</p>
 </div>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p><strong>À vérifier</strong> — <code class="docutils literal notranslate"><span class="pre">seedfrom</span></code> sans barre oblique finale. cloud-init construit l’URL des
-documents en concaténant <code class="docutils literal notranslate"><span class="pre">seedfrom</span></code> avec <code class="docutils literal notranslate"><span class="pre">meta-data</span></code> et <code class="docutils literal notranslate"><span class="pre">user-data</span></code>. Confirmer sur une
-VM réelle que les deux documents sont bien récupérés, et corriger en
-<code class="docutils literal notranslate"><span class="pre">http://169.254.169.254:80/</span></code> si ce n’est pas le cas.</p>
+<div class="admonition warning">
+<p class="admonition-title">Avertissement</p>
+<p><strong>La barre oblique finale de</strong> <code class="docutils literal notranslate"><span class="pre">seedfrom</span></code> <strong>est indispensable avant cloud-init 23.1.</strong>
+cloud-init construit l’URL des documents en concaténant <code class="docutils literal notranslate"><span class="pre">seedfrom</span></code> avec <code class="docutils literal notranslate"><span class="pre">meta-data</span></code>,
+<code class="docutils literal notranslate"><span class="pre">user-data</span></code> et <code class="docutils literal notranslate"><span class="pre">vendor-data</span></code> (<code class="docutils literal notranslate"><span class="pre">util.read_seeded</span></code>). Jusqu’à la 22.4 — celle de Debian 12,
+22.4.2 —, sans barre oblique finale il demande <code class="docutils literal notranslate"><span class="pre">http://169.254.169.254:80meta-data</span></code> : la
+source échoue, la VM démarre en <code class="docutils literal notranslate"><span class="pre">DataSourceNone</span></code>, sans nom d’hôte ni user-data. À partir de
+23.1, un drapeau actif par défaut (<code class="docutils literal notranslate"><span class="pre">NOCLOUD_SEED_URL_APPEND_FORWARD_SLASH</span></code>) ajoute la barre
+oblique manquante, ce qui explique qu’une image récente fonctionne sans elle. Avec la barre
+oblique, la configuration fonctionne quelle que soit la version de cloud-init.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>

@@ -218,6 +218,13 @@
 </ul>
 </details></li>
 </ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Développement</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../developpement/index.html">Développement</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../developpement/lab.html">Lab de test multi-nœud</a></li>
+</ul>
+</details></li>
+</ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Interne</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1 has-children"><a class="reference internal" href="../concepts/index.html">Concepts</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -357,17 +364,19 @@
 <section id="topologie">
 <h2>Topologie<a class="headerlink" href="#topologie" title="Lien vers cette rubrique">#</a></h2>
 <figure class="align-center" id="id1">
-<a class="only-light reference internal image-reference" href="../_images/topologie-cluster.svg"><img alt="Topologie du cluster : routeurs, route reflector et hyperviseurs" class="only-light" src="../_images/topologie-cluster.svg" style="width: 100%;" />
+<a class="only-light reference internal image-reference" href="../_images/architecture-cluster.svg"><img alt="Architecture du cluster : routeurs, route reflector, hyperviseurs, plans de données et de contrôle" class="only-light" src="../_images/architecture-cluster.svg" style="width: 100%;" />
 </a>
 <figcaption>
-<p><span class="caption-text">Topologie cible. Trait plein : plan de données. Trait pointillé : plan de contrôle.</span><a class="headerlink" href="#id1" title="Lien vers cette image">#</a></p>
+<p><span class="caption-text">Architecture cible. Trait bleu : plan de données (VXLAN). Tirets violets : plan de contrôle
+(sessions BGP). Pointillé gris : interfaces créées par l’agent.</span><a class="headerlink" href="#id1" title="Lien vers cette image">#</a></p>
 </figcaption>
 </figure>
 <figure class="align-center" id="id2">
-<a class="only-dark reference internal image-reference" href="../_images/topologie-cluster-dark.svg"><img alt="Topologie du cluster : routeurs, route reflector et hyperviseurs" class="only-dark" src="../_images/topologie-cluster-dark.svg" style="width: 100%;" />
+<a class="only-dark reference internal image-reference" href="../_images/architecture-cluster-dark.svg"><img alt="Architecture du cluster : routeurs, route reflector, hyperviseurs, plans de données et de contrôle" class="only-dark" src="../_images/architecture-cluster-dark.svg" style="width: 100%;" />
 </a>
 <figcaption>
-<p><span class="caption-text">Topologie cible. Trait plein : plan de données. Trait pointillé : plan de contrôle.</span><a class="headerlink" href="#id2" title="Lien vers cette image">#</a></p>
+<p><span class="caption-text">Architecture cible. Trait bleu : plan de données (VXLAN). Tirets violets : plan de contrôle
+(sessions BGP). Pointillé gris : interfaces créées par l’agent.</span><a class="headerlink" href="#id2" title="Lien vers cette image">#</a></p>
 </figcaption>
 </figure>
 <p>Deux plans distincts, à ne pas confondre au moment du diagnostic :</p>

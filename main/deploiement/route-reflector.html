@@ -218,6 +218,13 @@
 </ul>
 </details></li>
 </ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Développement</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../developpement/index.html">Développement</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../developpement/lab.html">Lab de test multi-nœud</a></li>
+</ul>
+</details></li>
+</ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Interne</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1 has-children"><a class="reference internal" href="../concepts/index.html">Concepts</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -335,6 +342,8 @@
             </div>
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#adressage">Adressage</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#configuration-de-frr">Configuration de FRR</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#points-de-vigilance">Points de vigilance</a></li>
 </ul>
             </nav>
@@ -354,24 +363,142 @@ session entre chaque paire d’hyperviseurs, chaque hyperviseur ouvre une sessio
 reflector, qui redistribue.</p>
 <p>Il tourne lui-même en machine virtuelle, ce qui crée une dépendance circulaire à traiter
 explicitement : la VM qui porte le plan de contrôle du cluster est hébergée par le cluster.</p>
+<section id="adressage">
+<h2>Adressage<a class="headerlink" href="#adressage" title="Lien vers cette rubrique">#</a></h2>
+<p>Le route reflector est <strong>sur le même segment L2 que les hyperviseurs</strong>, avec trois adresses :</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 25.0%" />
+<col style="width: 45.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Adresse</p></th>
+<th class="head"><p>Interface</p></th>
+<th class="head"><p>Rôle</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>une adresse de <code class="docutils literal notranslate"><span class="pre">192.168.14.0/24</span></code></p></td>
+<td><p>interface principale</p></td>
+<td><p>celle de n’importe quelle machine du segment ; les réponses aux hyperviseurs en partent</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">169.254.0.3/28</span></code></p></td>
+<td><p>interface principale, <strong>adresse secondaire</strong></p></td>
+<td><p>le lien avec les routeurs de cluster (<code class="docutils literal notranslate"><span class="pre">169.254.0.1</span></code> et <code class="docutils literal notranslate"><span class="pre">.2</span></code>), sur le même L2</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">10.255.255.1/32</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">lo1</span></code>, interface <code class="docutils literal notranslate"><span class="pre">dummy</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">router-id</span></code>, <code class="docutils literal notranslate"><span class="pre">cluster-id</span></code> et source des sessions EVPN ; seule route annoncée aux routeurs</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Les hyperviseurs ne connaissent que la loopback : ils ouvrent leur session vers <code class="docutils literal notranslate"><span class="pre">10.255.255.1</span></code>
+par leur passerelle (<code class="docutils literal notranslate"><span class="pre">192.168.14.1</span></code>), les routeurs l’ayant apprise du route reflector en eBGP.
+Aucune adresse d’hyperviseur n’est déclarée côté route reflector : il accepte toute session venant
+du segment (<code class="docutils literal notranslate"><span class="pre">bgp</span> <span class="pre">listen</span> <span class="pre">range</span></code>).</p>
+<p>L’adresse du lien est une <strong>adresse secondaire</strong> de l’interface principale, pas une interface à
+part : même L2, même MAC sur le fil, une interface de moins qu’avec un <code class="docutils literal notranslate"><span class="pre">ipvlan</span></code>. Elle doit
+survivre aux renouvellements DHCP de l’adresse principale : la déclarer dans la configuration
+réseau du système, pas la poser à la main.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p><strong>À rédiger.</strong> À documenter :</p>
+<p><strong>Non vérifié sur l’image de production.</strong> Avec NetworkManager, la forme attendue est :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>nmcli<span class="w"> </span>connection<span class="w"> </span>modify<span class="w"> </span>&lt;connexion&gt;<span class="w"> </span>+ipv4.addresses<span class="w"> </span><span class="m">169</span>.254.0.3/28
+nmcli<span class="w"> </span>connection<span class="w"> </span>add<span class="w"> </span><span class="nb">type</span><span class="w"> </span>dummy<span class="w"> </span>ifname<span class="w"> </span>lo1<span class="w"> </span>con-name<span class="w"> </span>lo1<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>ipv4.method<span class="w"> </span>manual<span class="w"> </span>ipv4.addresses<span class="w"> </span><span class="m">10</span>.255.255.1/32<span class="w"> </span>ipv6.method<span class="w"> </span>disabled
+</pre></div>
+</div>
+<p>Ces commandes restent à valider sur l’image golden.</p>
+</div>
+</section>
+<section id="configuration-de-frr">
+<h2>Configuration de FRR<a class="headerlink" href="#configuration-de-frr" title="Lien vers cette rubrique">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">bgpd</span></code> et <code class="docutils literal notranslate"><span class="pre">bfdd</span></code> activés dans <code class="docutils literal notranslate"><span class="pre">/etc/frr/daemons</span></code>.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>frr defaults traditional
+hostname rr1
+log syslog informational
+!
+ip prefix-list RR-LOOPBACK-OUT seq 10 permit 10.255.255.1/32
+!
+route-map NO-IN deny 999
+ description deny
+exit
+!
+router bgp 65000
+ no bgp default ipv4-unicast
+ bgp router-id 10.255.255.1
+ bgp cluster-id 10.255.255.1
+ neighbor CLUSTER peer-group
+ neighbor CLUSTER remote-as 65100
+ neighbor CLUSTER bfd
+ neighbor 169.254.0.1 peer-group CLUSTER
+ neighbor 169.254.0.1 description router-1
+ neighbor 169.254.0.2 peer-group CLUSTER
+ neighbor 169.254.0.2 description router-2
+ neighbor fabric peer-group
+ neighbor fabric remote-as 64600
+ neighbor fabric local-as 64600 no-prepend replace-as
+ neighbor fabric capability extended-nexthop
+ neighbor fabric update-source 10.255.255.1
+ bgp listen range 192.168.14.0/24 peer-group fabric
+ bgp listen limit 200
+ !
+ address-family ipv4 unicast
+  network 10.255.255.1/32
+  neighbor CLUSTER activate
+  neighbor CLUSTER prefix-list RR-LOOPBACK-OUT out
+  neighbor CLUSTER route-map NO-IN in
+ exit-address-family
+ !
+ address-family l2vpn evpn
+  neighbor fabric activate
+  neighbor fabric route-reflector-client
+ exit-address-family
+ !
+exit
+!
+</pre></div>
+</div>
+<p>Ce qu’elle établit :</p>
 <ul class="simple">
-<li><p>la création de la VM : ressources, subnet et mode utilisés, et s’il s’agit d’une VM créée
-par l’agent comme les autres ou d’un cas particulier — l’image, elle, est l’image golden de
-<a class="reference internal" href="image-qcow2.html"><span class="doc">Construction de l’image qcow2</span></a> ;</p></li>
-<li><p>son adressage, et comment les hyperviseurs le connaissent ;</p></li>
-<li><p>la configuration du démon de routage qu’elle héberge ;</p></li>
+<li><p><strong>Routeurs de cluster</strong> (groupe <code class="docutils literal notranslate"><span class="pre">CLUSTER</span></code>) : eBGP vers l’AS 65100, avec BFD, en IPv4
+unicast. Le route reflector n’annonce que sa loopback (<code class="docutils literal notranslate"><span class="pre">RR-LOOPBACK-OUT</span></code>) et <strong>n’accepte
+rien</strong> (<code class="docutils literal notranslate"><span class="pre">NO-IN</span></code>) : il ne reçoit aucune route des routeurs.</p></li>
+<li><p><strong>Hyperviseurs</strong> (groupe <code class="docutils literal notranslate"><span class="pre">fabric</span></code>) : voisins dynamiques, toute session venant de
+<code class="docutils literal notranslate"><span class="pre">192.168.14.0/24</span></code> étant acceptée, jusqu’à 200. <code class="docutils literal notranslate"><span class="pre">local-as</span> <span class="pre">64600</span> <span class="pre">no-prepend</span> <span class="pre">replace-as</span></code> fait
+que, du point de vue des hyperviseurs, la session est en iBGP dans l’AS 64600 — celui de leur
+configuration — alors que le route reflector est en AS 65000 face aux routeurs.</p></li>
+<li><p><strong>EVPN</strong> : seule famille activée vers les hyperviseurs, qui sont ses clients
+(<code class="docutils literal notranslate"><span class="pre">route-reflector-client</span></code>) : il réfléchit les routes EVPN de chacun vers tous les autres.</p></li>
+</ul>
+<div class="admonition warning">
+<p class="admonition-title">Avertissement</p>
+<p><strong>Les tunnels ne survivent pas à la perte du route reflector.</strong> Avec un seul route reflector
+et sans <code class="docutils literal notranslate"><span class="pre">graceful-restart</span></code>, à l’arrêt de FRR sur le route reflector, la session EVPN des
+hyperviseurs tombe aussitôt, FRR retire les routes apprises et, avec elles, le VTEP distant et l’entrée d’inondation du VXLAN — <strong>plus
+aucun paquet ne passe</strong> entre hyperviseurs, à 30 s comme à 90 s. Au redémarrage de FRR sur le
+route reflector, VTEP distant et trafic reviennent <strong>31 s</strong> plus tard. Le trafic entre VM d’un
+même hyperviseur n’est pas concerné. La redondance (deux route reflectors) ou
+<code class="docutils literal notranslate"><span class="pre">graceful-restart</span></code> sont les deux leviers ; ni l’un ni l’autre n’est encore qualifié.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>À rédiger.</strong> Reste à documenter :</p>
+<ul class="simple">
+<li><p>la création de la VM : ressources, subnet et mode utilisés (<code class="docutils literal notranslate"><span class="pre">bridge</span></code>, pour pouvoir la
+lancer sur n’importe quel hyperviseur), et s’il s’agit d’une VM créée par l’agent comme les
+autres ou d’un cas particulier — l’image, elle, est l’image golden de <a class="reference internal" href="image-qcow2.html"><span class="doc">Construction de l’image qcow2</span></a> ;</p></li>
 <li><p>la redondance : une seule VM route reflector, ou deux, et sur quels hyperviseurs ;</p></li>
-<li><p>la procédure de reconstruction, et l’état du cluster pendant que le route reflector est
-absent — les tunnels déjà établis continuent-ils de fonctionner, et pendant combien de
-temps ;</p></li>
+<li><p>la procédure de reconstruction — l’état du cluster pendant l’absence du route reflector est
+décrit ci-dessus : plus de trafic entre hyperviseurs ;</p></li>
 <li><p>la procédure d’amorçage : ce qui fonctionne, et dans quel ordre, quand on démarre un cluster
 entier depuis zéro — le premier hyperviseur n’a pas de session FRR établie tant que cette VM
 n’existe pas, cf. <a class="reference internal" href="premier-hyperviseur.html"><span class="doc">Premier hyperviseur</span></a>.</p></li>
 </ul>
 </div>
+</section>
 <section id="points-de-vigilance">
 <h2>Points de vigilance<a class="headerlink" href="#points-de-vigilance" title="Lien vers cette rubrique">#</a></h2>
 <div class="admonition warning">
@@ -437,6 +564,8 @@ même disque fait que cloud-init <strong>ne rejoue pas</strong> le user-data. Cf
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#adressage">Adressage</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#configuration-de-frr">Configuration de FRR</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#points-de-vigilance">Points de vigilance</a></li>
 </ul>
   </nav></div>

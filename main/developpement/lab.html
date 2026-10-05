@@ -1,0 +1,1472 @@
+
+<!DOCTYPE html>
+
+
+<html lang="fr" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Lab de test multi-nœud &#8212; Documentation two 0.1.0</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=57395fb6"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script src="../_static/translations.js?v=e6b791cb"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'developpement/lab';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = '../switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'main';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Recherche" href="../search.html" />
+    <link rel="next" title="Concepts" href="../concepts/index.html" />
+    <link rel="prev" title="Développement" href="index.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="fr"/>
+  <meta name="docsearch:version" content="0.1" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Passer au contenu principal</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Haut de page</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Alerte de version"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">Documentation two 0.1.0</p>
+  
+</a></div>
+        <div class="sidebar-primary-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://git.g3e.fr/syonad/two" title="Dépôt" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-code-branch fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">Dépôt</span></a>
+        </li>
+</ul></div>
+        <div class="sidebar-primary-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Recherche" aria-label="Recherche" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Recherche</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        
+        <ul class="nav bd-sidenav bd-sidenav__home-link">
+            <li class="toctree-l1">
+                <a class="reference internal" href="../index.html">
+                    two
+                </a>
+            </li>
+        </ul>
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Mise en œuvre</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../demarrage/index.html">Démarrage</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../demarrage/installation.html">Installation d’un hyperviseur</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../demarrage/premier-vpc.html">Premier VPC, premier subnet, première VM</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../deploiement/index.html">Déploiement d’un cluster</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../deploiement/architecture-cluster.html">Architecture du cluster</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../deploiement/image-qcow2.html">Construction de l’image qcow2</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../deploiement/routeurs.html">Routeurs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../deploiement/premier-hyperviseur.html">Premier hyperviseur</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../deploiement/route-reflector.html">VM route reflector</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Exploitation</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../exploitation/index.html">Exploitation</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../exploitation/configuration.html">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../exploitation/services.html">Services systemd</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../exploitation/api-agent/index.html">API de l’agent</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../exploitation/api-agent/asynchronisme.html">Modèle asynchrone et codes de retour</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../exploitation/api-agent/reference.html">Référence</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="../exploitation/observabilite.html">Observabilité</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../exploitation/diagnostic.html">Diagnostic</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Développement</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">Développement</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Lab de test multi-nœud</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Interne</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../concepts/index.html">Concepts</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/vpc-subnet-vm.html">VPC, subnet et VM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/modes-reseau.html">Modes réseau</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/cycle-de-vie.html">Cycle de vie des ressources</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/metadata-cloud-init.html">Metadata et cloud-init</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../architecture/index.html">Architecture</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../architecture/vue-densemble.html">Vue d’ensemble</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../architecture/stockage.html">Schéma des clés</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../architecture/contraintes.html">Invariants et pièges</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../versions/index.html">Versions</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../versions/0.2.0.html">Bael</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../versions/0.1.0.html">Michael</a></li>
+</ul>
+</details></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Mode plein écran"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Thème" data-bs-title="Thème"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Clair"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Sombre"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="Paramètres système"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Recherche" aria-label="Recherche" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Lab de test multi-nœud</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contenu </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#le-serveur-de-lab">Le serveur de lab</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#prerequis-cote-scaleway">Prérequis côté Scaleway</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fichiers-locaux">Fichiers locaux</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#commandes">Commandes</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#topologie">Topologie</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#roles">Rôles</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#rendu-des-vm">Rendu des VM</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#verifie-sur-de-vraies-vm">Vérifié sur de vraies VM</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#lancement-des-vm">Lancement des VM</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#verifie-sur-le-serveur-de-lab">Vérifié sur le serveur de lab</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#scenarios">Scénarios</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#ecrire-un-scenario">Écrire un scénario</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#facturation">Facturation</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#diagnostic">Diagnostic</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#securite">Sécurité</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#tests">Tests</a></li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="lab-de-test-multi-noeud">
+<h1>Lab de test multi-nœud<a class="headerlink" href="#lab-de-test-multi-noeud" title="Lien vers cette rubrique">#</a></h1>
+<p>Ce qui fait l’intérêt de two ne se voit qu’à partir de <strong>deux hyperviseurs</strong> : sur un nœud isolé,
+le trafic reste sur le bridge local et l’absence de plan de contrôle passe inaperçue (voir
+<a class="reference internal" href="../deploiement/architecture-cluster.html"><span class="doc">Architecture du cluster</span></a>). Le lab reproduit la topologie du cluster —
+hyperviseurs, route reflector, switch L3 — sous forme de VM, sur un serveur physique loué à
+l’heure.</p>
+<p>Le pourquoi des choix (serveur physique plutôt que VM cloud, câbles QEMU, MTU 9000, versions) est
+consigné sur le ticket <a class="reference external" href="https://git.g3e.fr/syonad/two/issues/50">#50</a>. Cette page décrit
+comment s’en servir.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>État actuel : le lab de #50 est livré — serveur loué à l’heure (<code class="docutils literal notranslate"><span class="pre">scripts/lab-host.sh</span></code>),
+topologie déclarative et plan déterministe (<code class="docutils literal notranslate"><span class="pre">lab</span> <span class="pre">plan</span></code>), VM rendues et lancées sur le
+serveur (<code class="docutils literal notranslate"><span class="pre">lab</span> <span class="pre">render</span></code>, <code class="docutils literal notranslate"><span class="pre">lab</span> <span class="pre">up</span></code> / <code class="docutils literal notranslate"><span class="pre">status</span></code> / <code class="docutils literal notranslate"><span class="pre">down</span></code> / <code class="docutils literal notranslate"><span class="pre">ssh</span></code>), rôles installés au
+démarrage (FRR sur le switch et le route reflector, two par <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> sur les
+hyperviseurs) et scénarios versionnés (<code class="docutils literal notranslate"><span class="pre">test/e2e/run.sh</span></code>). La redondance du plan de
+contrôle — deux route reflectors, deux switchs — est l’objet de
+<a class="reference external" href="https://git.g3e.fr/syonad/two/issues/54">#54</a>.</p>
+</div>
+<section id="le-serveur-de-lab">
+<h2>Le serveur de lab<a class="headerlink" href="#le-serveur-de-lab" title="Lien vers cette rubrique">#</a></h2>
+<p>Un serveur <strong>Scaleway Elastic Metal</strong>, créé pour une campagne de tests puis supprimé.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 75.0%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p>Offre</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">EM-B212X-SSD</span></code>, zone <code class="docutils literal notranslate"><span class="pre">fr-par-1</span></code>, <strong>facturation horaire</strong> : 0,321 € HT de l’heure, sans
+frais de mise en service</p></td>
+</tr>
+<tr class="row-even"><td><p>Matériel</p></td>
+<td><p>2 × Xeon E5-2620 v4 <em>or equivalent</em>, 256 Go, 2 × 1 To SSD</p></td>
+</tr>
+<tr class="row-odd"><td><p>Système</p></td>
+<td><p>Debian 12, installé par Scaleway à la création</p></td>
+</tr>
+<tr class="row-even"><td><p>Pourquoi Intel</p></td>
+<td><p>lab3 est en Intel : two lance ses VM en <code class="docutils literal notranslate"><span class="pre">-cpu</span> <span class="pre">host</span></code>, et KVM a deux implémentations
+distinctes (<code class="docutils literal notranslate"><span class="pre">kvm_intel</span></code>, <code class="docutils literal notranslate"><span class="pre">kvm_amd</span></code>)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><em>Or equivalent</em> n’est pas une clause de style : le premier serveur livré était un
+<strong>Xeon E5-2640 v3</strong> (Haswell, la génération de lab3), pas le E5-2620 v4 annoncé. Relever
+<code class="docutils literal notranslate"><span class="pre">lscpu</span></code> au début de chaque campagne.</p>
+</section>
+<section id="prerequis-cote-scaleway">
+<h2>Prérequis côté Scaleway<a class="headerlink" href="#prerequis-cote-scaleway" title="Lien vers cette rubrique">#</a></h2>
+<ol class="arabic simple">
+<li><p><strong>Un projet dédié au lab</strong>, séparé de toute autre ressource. <code class="docutils literal notranslate"><span class="pre">lab-host.sh</span> <span class="pre">down</span></code> supprime
+tout serveur de lab du projet : il ne doit rien y avoir d’autre.</p></li>
+<li><p><strong>Une clé d’API limitée à ce projet</strong>, avec les droits Elastic Metal et la lecture des clés SSH
+du projet. Rien d’autre.</p></li>
+<li><p><strong>Les clés SSH publiques enregistrées dans le projet</strong>, injectées à l’installation : sans elle,
+le serveur serait facturé sans que personne puisse s’y connecter, et <code class="docutils literal notranslate"><span class="pre">plan</span></code> refuse de
+continuer.</p></li>
+<li><p><strong>Le quota Elastic Metal.</strong> L”<code class="docutils literal notranslate"><span class="pre">EM-B212X-SSD</span></code> exige un compte dont le moyen de paiement <em>et</em>
+l’identité sont validés ; le quota est alors de 2. Vérifier dans la console : Organisation →
+Quotas → Elastic Metal. Voir <a class="reference external" href="https://www.scaleway.com/en/docs/organizations-and-projects/organization/organization-quotas/">les quotas Scaleway</a>.</p></li>
+</ol>
+</section>
+<section id="fichiers-locaux">
+<h2>Fichiers locaux<a class="headerlink" href="#fichiers-locaux" title="Lien vers cette rubrique">#</a></h2>
+<p>Tout ce dont le script a besoin vit sous <code class="docutils literal notranslate"><span class="pre">~/.config/two-lab/</span></code>, hors du dépôt.</p>
+<dl>
+<dt><code class="docutils literal notranslate"><span class="pre">~/.config/two-lab/scaleway.env</span></code></dt><dd><p>Identifiants Scaleway, une ligne <code class="docutils literal notranslate"><span class="pre">CLÉ=valeur</span></code> chacun :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nv">SCW_SECRET_KEY</span><span class="o">=</span>&lt;clé<span class="w"> </span>secrète&gt;
+<span class="nv">SCW_DEFAULT_PROJECT_ID</span><span class="o">=</span>&lt;identifiant<span class="w"> </span>du<span class="w"> </span>projet<span class="w"> </span>de<span class="w"> </span>lab&gt;
+<span class="nv">SCW_DEFAULT_ZONE</span><span class="o">=</span>fr-par-1
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>le fichier doit être en <code class="docutils literal notranslate"><span class="pre">0600</span></code> : le script refuse de s’en servir s’il est lisible par
+d’autres que son propriétaire ;</p></li>
+<li><p>il est <strong>lu, jamais exécuté</strong> — pas de <code class="docutils literal notranslate"><span class="pre">source</span></code> ; seules ces trois clés sont reconnues ;</p></li>
+<li><p>une variable d’environnement du même nom l’emporte sur le fichier ;</p></li>
+<li><p>la clé d’accès (<code class="docutils literal notranslate"><span class="pre">SCW…</span></code>) n’est pas nécessaire : l’API REST n’authentifie que par la clé
+secrète, dans l’en-tête <code class="docutils literal notranslate"><span class="pre">X-Auth-Token</span></code>.</p></li>
+</ul>
+<p>Pour changer de clé, remplacer la ligne <code class="docutils literal notranslate"><span class="pre">SCW_SECRET_KEY=</span></code> ; rien d’autre à modifier.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">~/.config/two-lab/ssh/lab_ed25519</span></code></dt><dd><p>Clé SSH dédiée au lab, <strong>sans phrase de passe</strong>, pour que les sessions tournent sans
+intervention. Sa partie publique doit être enregistrée dans le projet. Quand elle existe, le
+script l’utilise <strong>seule</strong> (<code class="docutils literal notranslate"><span class="pre">IdentitiesOnly</span></code>, agent désactivé) ; sinon il retombe sur
+l’agent SSH.</p>
+<p>Elle ne doit ouvrir que les serveurs éphémères du projet de lab : <strong>ne jamais l’installer sur
+lab3 ni sur une machine durable</strong>. En cas de doute, la retirer du projet et en générer une
+autre :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mkdir<span class="w"> </span>-p<span class="w"> </span>~/.config/two-lab/ssh<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>chmod<span class="w"> </span><span class="m">700</span><span class="w"> </span>~/.config/two-lab<span class="w"> </span>~/.config/two-lab/ssh
+ssh-keygen<span class="w"> </span>-t<span class="w"> </span>ed25519<span class="w"> </span>-N<span class="w"> </span><span class="s1">''</span><span class="w"> </span>-C<span class="w"> </span>two-lab-automation<span class="w"> </span>-f<span class="w"> </span>~/.config/two-lab/ssh/lab_ed25519
+</pre></div>
+</div>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">~/.cache/two-lab/</span></code></dt><dd><p>État de la session en cours : adresse et utilisateur du serveur, <code class="docutils literal notranslate"><span class="pre">known_hosts</span></code> dédié. Vidé
+par <code class="docutils literal notranslate"><span class="pre">down</span></code>.</p>
+</dd>
+</dl>
+</section>
+<section id="commandes">
+<h2>Commandes<a class="headerlink" href="#commandes" title="Lien vers cette rubrique">#</a></h2>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>usage: lab-host.sh &lt;commande&gt; [arguments]
+
+  plan              résout l'offre horaire, l'OS et les clés SSH, affiche la requête de création
+                    et le prix ; ne crée rien
+  up                crée le serveur de lab, attend la fin de son installation et son SSH,
+                    puis le prépare (voir prepare)
+  status            liste les serveurs de lab du projet
+  ssh [commande]    se connecte au serveur de lab ; avec une commande, un terminal n'est demandé
+                    que si l'entrée standard en est un
+  prepare           installe sur le serveur ce dont lab a besoin (qemu, genisoimage), vérifie
+                    /dev/kvm et la virtualisation imbriquée ; lancé aussi par up
+  push &lt;topologie&gt;  compile cmd/lab pour linux/amd64 et dépose sur le serveur ~/lab et le
+                    répertoire de la topologie dans ~/topology/ (avec les fichiers qu'elle
+                    référence) ; ensuite : ssh './lab up topology/&lt;topologie&gt;'
+  down              supprime tous les serveurs de lab du projet et attend leur disparition
+  session [cmd]     up, puis la commande distante (ou un shell), puis down quoi qu'il arrive
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">plan</span></code> et <code class="docutils literal notranslate"><span class="pre">status</span></code> sont <strong>gratuits</strong> ; <code class="docutils literal notranslate"><span class="pre">up</span></code> et <code class="docutils literal notranslate"><span class="pre">session</span></code> <strong>créent un serveur facturé</strong>.</p>
+<p>Toujours commencer par <code class="docutils literal notranslate"><span class="pre">plan</span></code>. Il valide la clé d’API, le quota d’offre, l’OS et les clés SSH,
+et montre exactement ce qui serait commandé :</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ scripts/lab-host.sh plan
+== offre   : EM-B212X-SSD (ddaf8ba6-b2b2-4279-8af3-51930fb602f8), facturation hourly, stock available
+== prix    : 0.321 EUR HT par heure, frais de mise en service 0 EUR
+== os      : Debian 12 (Bookworm) (83640d93-a0b8-45ad-9c9f-30cae48380a4), utilisateur root
+== clés    : 2 clé(s) SSH du projet
+== requête : POST /baremetal/v1/zones/fr-par-1/servers
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">session</span></code> est la forme normale d’usage : le serveur est supprimé à la fin, que la commande
+réussisse, échoue, ou que la session soit interrompue (Ctrl-C, <code class="docutils literal notranslate"><span class="pre">TERM</span></code>, fermeture du terminal).</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ scripts/lab-host.sh session 'uname -a; lscpu | grep -E "Model name|^CPU\(s\)|Virtualization"; free -g | head -2; echo "nested=$(cat /sys/module/kvm_intel/parameters/nested)"; ls -l /dev/kvm'
+== création de two-lab (EM-B212X-SSD, 0.321 EUR/h HT)
+== serveur 2ecc1e6a-0de8-48c0-a198-93857eee5957 créé, facturé jusqu'à 'lab-host.sh down'
+== serveur 2ecc1e6a-0de8-48c0-a198-93857eee5957 : ordered, installation to_install
+== serveur 2ecc1e6a-0de8-48c0-a198-93857eee5957 : ready, installation installing
+…
+== serveur 2ecc1e6a-0de8-48c0-a198-93857eee5957 : ready, installation completed
+== SSH pas encore joignable, nouvel essai dans 20s
+…
+== prêt : root@&lt;adresse&gt;
+Linux two-lab 6.1.0-53-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.1.187-1 (2026-09-07) x86_64 GNU/Linux
+CPU(s):                                  32
+Model name:                              Intel(R) Xeon(R) CPU E5-2640 v3 @ 2.60GHz
+…
+Virtualization:                          VT-x
+               total        used        free      shared  buff/cache   available
+Mem:             251           1         250           0           0         249
+nested=Y
+crw-rw---- 1 root kvm 10, 232 Oct  3 17:23 /dev/kvm
+== session terminée (code 0), suppression du serveur
+== suppression de 2ecc1e6a-0de8-48c0-a198-93857eee5957
+== aucun serveur de lab ne reste dans le projet
+</pre></div>
+</div>
+<p>Extrait de la première campagne (lignes répétées remplacées par <code class="docutils literal notranslate"><span class="pre">…</span></code>). Compter <strong>environ 15 minutes</strong> entre la création et le SSH disponible : 13 min 30 à la première
+campagne, suppression comprise. SSH ne répond pas tout de suite après la fin de l’installation —
+environ 100 secondes la première fois — d’où l’attente intégrée à <code class="docutils literal notranslate"><span class="pre">up</span></code>. Le code de sortie de
+<code class="docutils literal notranslate"><span class="pre">session</span></code> est celui de la commande distante.</p>
+<p><code class="docutils literal notranslate"><span class="pre">up</span></code>, <code class="docutils literal notranslate"><span class="pre">ssh</span></code> et <code class="docutils literal notranslate"><span class="pre">down</span></code> séparément servent au debug interactif — et laissent la suppression
+à la charge de l’utilisateur.</p>
+<p>Une campagne sur le lab enchaîne ces commandes depuis le Mac ; <code class="docutils literal notranslate"><span class="pre">lab</span></code> s’exécute sur le serveur
+(voir <a class="reference internal" href="#lancement-des-vm">Lancement des VM</a>) :</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>scripts/lab-host.sh up
+scripts/lab-host.sh push test/e2e/topologies/evpn-2hv.yml
+scripts/lab-host.sh ssh './lab up topology/evpn-2hv.yml'
+scripts/lab-host.sh ssh './lab ssh hv1'          # shell interactif sur hv1
+scripts/lab-host.sh ssh './lab ssh hv1 ip -br a' # commande, code de retour propagé
+scripts/lab-host.sh down
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">push</span></code> transfère par la connexion SSH du script — mêmes options, même clé, même
+<code class="docutils literal notranslate"><span class="pre">known_hosts</span></code> que <code class="docutils literal notranslate"><span class="pre">ssh</span></code> : le binaire par <code class="docutils literal notranslate"><span class="pre">cat</span></code>, le répertoire de la topologie par <code class="docutils literal notranslate"><span class="pre">tar</span></code>
+(sans les métadonnées macOS), chacun renommé une fois complet. Tout le répertoire part, pour que
+les fichiers que la topologie référence (<code class="docutils literal notranslate"><span class="pre">frr/*.conf</span></code>) arrivent avec elle.</p>
+</section>
+<section id="topologie">
+<h2>Topologie<a class="headerlink" href="#topologie" title="Lien vers cette rubrique">#</a></h2>
+<p>Un lab est décrit par un fichier YAML : des <strong>nœuds</strong> (les VM) et des <strong>segments</strong> (des réseaux L2
+portés par un switch). Exemple livré, <code class="docutils literal notranslate"><span class="pre">test/e2e/topologies/evpn-2hv.yml</span></code> :</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">evpn-2hv</span>
+
+<span class="nt">images</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">debian12</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-generic-amd64.qcow2</span>
+<span class="w">    </span><span class="nt">sums</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://cloud.debian.org/images/cloud/bookworm/latest/SHA512SUMS</span>
+
+<span class="nt">segments</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">underlay</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">switch</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sw1</span>
+<span class="w">    </span><span class="nt">cidr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">192.168.14.0/24</span>
+<span class="w">    </span><span class="nt">mtu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">9000</span>
+
+<span class="nt">nodes</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">sw1</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">{</span><span class="nt"> role</span><span class="p">:</span><span class="w"> </span><span class="nv">switch</span><span class="p p-Indicator">,</span><span class="nt"> image</span><span class="p">:</span><span class="w"> </span><span class="nv">debian12</span><span class="p p-Indicator">,</span><span class="nt"> cpus</span><span class="p">:</span><span class="w"> </span><span class="nv">2</span><span class="p p-Indicator">,</span><span class="nt"> memory</span><span class="p">:</span><span class="w"> </span><span class="nv">1024</span><span class="p p-Indicator">,</span>
+<span class="nt">      secondary</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> underlay</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">169.254.0.1/28</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">},</span><span class="nt"> frr</span><span class="p">:</span><span class="w"> </span><span class="nv">frr/sw1.conf</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="nt">rr1</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">{</span><span class="nt"> role</span><span class="p">:</span><span class="w"> </span><span class="nv">rr</span><span class="p p-Indicator">,</span><span class="nt"> image</span><span class="p">:</span><span class="w"> </span><span class="nv">debian12</span><span class="p p-Indicator">,</span><span class="nt"> cpus</span><span class="p">:</span><span class="w"> </span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="nt"> memory</span><span class="p">:</span><span class="w"> </span><span class="nv">1024</span><span class="p p-Indicator">,</span><span class="nt"> segments</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">underlay</span><span class="p p-Indicator">],</span>
+<span class="nt">      addresses</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> underlay</span><span class="p">:</span><span class="w"> </span><span class="nv">192.168.14.2</span><span class="w"> </span><span class="p p-Indicator">},</span><span class="nt"> secondary</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> underlay</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">169.254.0.3/28</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">},</span>
+<span class="nt">      loopback</span><span class="p">:</span><span class="w"> </span><span class="nv">10.255.255.1/32</span><span class="p p-Indicator">,</span><span class="nt"> frr</span><span class="p">:</span><span class="w"> </span><span class="nv">frr/rr1.conf</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="nt">hv1</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">{</span><span class="nt"> role</span><span class="p">:</span><span class="w"> </span><span class="nv">hypervisor</span><span class="p p-Indicator">,</span><span class="nt"> image</span><span class="p">:</span><span class="w"> </span><span class="nv">debian12</span><span class="p p-Indicator">,</span><span class="nt"> cpus</span><span class="p">:</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">,</span><span class="nt"> memory</span><span class="p">:</span><span class="w"> </span><span class="nv">16384</span><span class="p p-Indicator">,</span><span class="nt"> segments</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">underlay</span><span class="p p-Indicator">],</span>
+<span class="nt">      addresses</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> underlay</span><span class="p">:</span><span class="w"> </span><span class="nv">192.168.14.11</span><span class="w"> </span><span class="p p-Indicator">},</span><span class="nt"> frr</span><span class="p">:</span><span class="w"> </span><span class="nv">frr/hv1.conf</span><span class="p p-Indicator">,</span><span class="nt"> release</span><span class="p">:</span><span class="w"> </span><span class="nv">0.2.0rc003</span><span class="p p-Indicator">,</span>
+<span class="nt">      agent</span><span class="p">:</span><span class="w"> </span><span class="nv">agent/two.yml</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="nt">hv2</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">{</span><span class="nt"> role</span><span class="p">:</span><span class="w"> </span><span class="nv">hypervisor</span><span class="p p-Indicator">,</span><span class="nt"> image</span><span class="p">:</span><span class="w"> </span><span class="nv">debian12</span><span class="p p-Indicator">,</span><span class="nt"> cpus</span><span class="p">:</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">,</span><span class="nt"> memory</span><span class="p">:</span><span class="w"> </span><span class="nv">16384</span><span class="p p-Indicator">,</span><span class="nt"> segments</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">underlay</span><span class="p p-Indicator">],</span>
+<span class="nt">      addresses</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> underlay</span><span class="p">:</span><span class="w"> </span><span class="nv">192.168.14.12</span><span class="w"> </span><span class="p p-Indicator">},</span><span class="nt"> frr</span><span class="p">:</span><span class="w"> </span><span class="nv">frr/hv2.conf</span><span class="p p-Indicator">,</span><span class="nt"> release</span><span class="p">:</span><span class="w"> </span><span class="nv">0.2.0rc003</span><span class="w"> </span><span class="p p-Indicator">}</span>
+</pre></div>
+</div>
+<p>Chaque nœud non-switch est relié au switch de chacun de ses segments par un câble virtuel QEMU ;
+le switch met ces câbles dans un bridge et porte la passerelle du segment.</p>
+<p>Ce que le fichier déclare :</p>
+<dl>
+<dt><code class="docutils literal notranslate"><span class="pre">images</span></code></dt><dd><p><code class="docutils literal notranslate"><span class="pre">url</span></code> de l’image qcow2 et <code class="docutils literal notranslate"><span class="pre">sums</span></code> du fichier de sommes à vérifier, tous deux en <code class="docutils literal notranslate"><span class="pre">https://</span></code>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">segments</span></code></dt><dd><p><code class="docutils literal notranslate"><span class="pre">switch</span></code> (un nœud de rôle <code class="docutils literal notranslate"><span class="pre">switch</span></code>), <code class="docutils literal notranslate"><span class="pre">cidr</span></code> IPv4 entre <code class="docutils literal notranslate"><span class="pre">/8</span></code> et <code class="docutils literal notranslate"><span class="pre">/30</span></code>, <code class="docutils literal notranslate"><span class="pre">mtu</span></code>
+facultatif — 9000 par défaut, entre 1280 et 9000. Nom : 12 caractères au plus, minuscules et
+chiffres, parce qu’il devient le nom d’interface dans les VM et, préfixé de <code class="docutils literal notranslate"><span class="pre">br-</span></code>, celui du
+bridge (15 caractères au plus sous Linux).</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">nodes</span></code></dt><dd><p><code class="docutils literal notranslate"><span class="pre">role</span></code> (<code class="docutils literal notranslate"><span class="pre">switch</span></code>, <code class="docutils literal notranslate"><span class="pre">rr</span></code> ou <code class="docutils literal notranslate"><span class="pre">hypervisor</span></code>), <code class="docutils literal notranslate"><span class="pre">image</span></code>, <code class="docutils literal notranslate"><span class="pre">cpus</span></code>, <code class="docutils literal notranslate"><span class="pre">memory</span></code> en Mio
+(256 au moins), <code class="docutils literal notranslate"><span class="pre">segments</span></code> auxquels le nœud est relié, et <code class="docutils literal notranslate"><span class="pre">addresses</span></code> pour fixer
+l’adresse d’un nœud sur un segment (<code class="docutils literal notranslate"><span class="pre">addresses:</span> <span class="pre">{underlay:</span> <span class="pre">192.168.14.50}</span></code>). Un switch ne
+déclare ni <code class="docutils literal notranslate"><span class="pre">segments</span></code> ni <code class="docutils literal notranslate"><span class="pre">addresses</span></code> : il porte ceux dont il est le <code class="docutils literal notranslate"><span class="pre">switch</span></code>.</p>
+<p>Champs de rôle, facultatifs :</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">secondary</span></code> — des adresses supplémentaires par segment, avec leur longueur de préfixe
+(<code class="docutils literal notranslate"><span class="pre">secondary:</span> <span class="pre">{underlay:</span> <span class="pre">[169.254.0.3/28]}</span></code>), posées sur la même interface que l’adresse
+principale : même L2, même MAC. Elles doivent être <strong>hors</strong> du CIDR du segment, pour ne
+jamais croiser l’attribution automatique. Sur un switch, elles vont sur le bridge du
+segment ;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">loopback</span></code> — une adresse sur une interface <code class="docutils literal notranslate"><span class="pre">dummy</span></code> nommée <code class="docutils literal notranslate"><span class="pre">lo1</span></code>
+(<code class="docutils literal notranslate"><span class="pre">loopback:</span> <span class="pre">10.255.255.1/32</span></code>) ;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">frr</span></code> — le chemin d’un <code class="docutils literal notranslate"><span class="pre">frr.conf</span></code>, relatif au fichier de topologie : FRR est installé
+au démarrage et la configuration déposée <strong>telle quelle</strong> (voir <a class="reference internal" href="#roles">Rôles</a>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">release</span></code> — <strong>obligatoire pour un hyperviseur</strong>, refusé ailleurs : le tag de la release de
+two que <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> installe (<code class="docutils literal notranslate"><span class="pre">release:</span> <span class="pre">0.2.0rc003</span></code>). Sans lui, <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> prendrait la
+dernière release, et le lab ne serait plus reproductible.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">agent</span></code> — pour un hyperviseur seulement : le chemin d’un <code class="docutils literal notranslate"><span class="pre">agent.yml</span></code>, relatif au fichier
+de topologie, déposé dans <code class="docutils literal notranslate"><span class="pre">/etc/two/agent.yml</span></code> avant <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code>. Sans lui, l’agent tourne
+avec sa configuration par défaut. L’exemple met hv1 sur le serveur DHCP intégré
+(<code class="docutils literal notranslate"><span class="pre">test/e2e/topologies/agent/two.yml</span></code> : <code class="docutils literal notranslate"><span class="pre">dhcp.backend:</span> <span class="pre">two</span></code>) et laisse hv2 sur dnsmasq.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">mgmt0</span></code> et <code class="docutils literal notranslate"><span class="pre">lo1</span></code> sont réservés : aucun segment ne peut porter ces noms.</p>
+</dd>
+</dl>
+<p>Ce que l’outil en déduit, de façon déterministe — même fichier, même plan :</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p>Passerelle d’un segment</p></td>
+<td><p>la première adresse du CIDR, portée par le switch sur <code class="docutils literal notranslate"><span class="pre">br-&lt;segment&gt;</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Adresse d’un nœud</p></td>
+<td><p>les suivantes, <strong>dans l’ordre de déclaration des nœuds</strong> ; une adresse fixée par
+<code class="docutils literal notranslate"><span class="pre">addresses</span></code> est réservée d’abord et sautée par l’attribution automatique</p></td>
+</tr>
+<tr class="row-odd"><td><p>Câbles</p></td>
+<td><p>un par couple (segment, nœud), segments puis nœuds dans l’ordre de déclaration ; le
+câble <em>i</em> utilise les ports UDP <code class="docutils literal notranslate"><span class="pre">20000</span> <span class="pre">+</span> <span class="pre">2i</span></code> (côté nœud) et <code class="docutils literal notranslate"><span class="pre">20001</span> <span class="pre">+</span> <span class="pre">2i</span></code> (côté switch)</p></td>
+</tr>
+<tr class="row-even"><td><p>MAC</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">02:4c:&lt;nœud&gt;:&lt;nœud&gt;:&lt;segment&gt;:&lt;côté&gt;</span></code> — préfixe localement administré, rang du nœud
+sur deux octets, rang du segment, <code class="docutils literal notranslate"><span class="pre">00</span></code> côté nœud et <code class="docutils literal notranslate"><span class="pre">01</span></code> côté switch</p></td>
+</tr>
+<tr class="row-odd"><td><p>Interfaces</p></td>
+<td><p>côté nœud, le nom du segment ; côté switch, <code class="docutils literal notranslate"><span class="pre">p&lt;i&gt;</span></code>, du rang du câble</p></td>
+</tr>
+<tr class="row-even"><td><p>SSH d’administration</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">127.0.0.1:&lt;2200</span> <span class="pre">+</span> <span class="pre">rang</span> <span class="pre">du</span> <span class="pre">nœud&gt;</span></code> sur l’hôte du lab</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Avertissement</p>
+<p>Réordonner les nœuds ou les segments dans le fichier <strong>change les adresses, les MAC et les
+ports</strong>. C’est assumé pour un lab ; <code class="docutils literal notranslate"><span class="pre">lab</span> <span class="pre">plan</span></code> montre le résultat avant tout lancement.</p>
+</div>
+<p>Limites : 1000 nœuds, 256 segments, et autant de câbles que la plage UDP le permet (22 768).</p>
+<p><code class="docutils literal notranslate"><span class="pre">lab</span> <span class="pre">plan</span></code> valide le fichier et affiche le plan, sans rien lancer :</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ go run ./cmd/lab plan test/e2e/topologies/evpn-2hv.yml
+lab evpn-2hv: nodes 4, segments 1, cables 3
+
+nodes
+  name  role        image     cpus  memory     ssh
+  sw1   switch      debian12  2     1024 MiB   127.0.0.1:2200
+  rr1   rr          debian12  1     1024 MiB   127.0.0.1:2201
+  hv1   hypervisor  debian12  4     16384 MiB  127.0.0.1:2202
+  hv2   hypervisor  debian12  4     16384 MiB  127.0.0.1:2203
+
+roles
+  name  loopback             secondary                frr       release     agent
+  sw1   -                    underlay 169.254.0.1/28  sw1.conf  -           -
+  rr1   lo1 10.255.255.1/32  underlay 169.254.0.3/28  rr1.conf  -           -
+  hv1   -                    -                        hv1.conf  0.2.0rc003  two.yml
+  hv2   -                    -                        hv2.conf  0.2.0rc003  -
+
+segment underlay: 192.168.14.0/24, mtu 9000, switch sw1, bridge br-underlay, gateway 192.168.14.1
+  node  interface  address           mac                udp         switch port  mac                udp
+  rr1   underlay   192.168.14.2/24   02:4c:00:01:00:00  20000  &lt;-&gt;  sw1 p0       02:4c:00:01:00:01  20001
+  hv1   underlay   192.168.14.11/24  02:4c:00:02:00:00  20002  &lt;-&gt;  sw1 p1       02:4c:00:02:00:01  20003
+  hv2   underlay   192.168.14.12/24  02:4c:00:03:00:00  20004  &lt;-&gt;  sw1 p2       02:4c:00:03:00:01  20005
+</pre></div>
+</div>
+<p>Un fichier invalide est refusé avec <strong>toutes</strong> ses erreurs à la fois, et un code de sortie 1. Les
+champs inconnus et les clés en double sont refusés aussi :</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ lab plan cassee.yml
+lab: cassee.yml:
+segment underlay: rr1 is a rr, not a switch
+segment underlay: cidr 10.250.0.0/31 prefix length out of range [/8, /30]
+node sw1: switch carries no segment
+</pre></div>
+</div>
+<p>Les ASN, la loopback du route reflector, le lien <code class="docutils literal notranslate"><span class="pre">169.254.0.0/28</span></code> et le subnet des hyperviseurs
+de l’exemple sont <strong>ceux de la production</strong> (décision du 2026-10-04, #50) : les fichiers de
+<code class="docutils literal notranslate"><span class="pre">test/e2e/topologies/</span></code> restent ainsi au plus près de ce qui tourne réellement. Toutes les adresses y sont
+<strong>fixées</strong> par <code class="docutils literal notranslate"><span class="pre">addresses</span></code> — le route reflector en <code class="docutils literal notranslate"><span class="pre">.2</span></code>, les hyperviseurs à partir de <code class="docutils literal notranslate"><span class="pre">.11</span></code> —
+pour que le modèle se lise sans le plan et ne dépende pas de l’ordre de déclaration : le
+<code class="docutils literal notranslate"><span class="pre">frr.conf</span></code> d’un hyperviseur, écrit à la main, porte son adresse en <code class="docutils literal notranslate"><span class="pre">router-id</span></code>. Seul le switch
+n’en déclare pas : il porte toujours la passerelle, la première adresse du segment.</p>
+<section id="roles">
+<h3>Rôles<a class="headerlink" href="#roles" title="Lien vers cette rubrique">#</a></h3>
+<p>Les configurations FRR du lab vivent dans <code class="docutils literal notranslate"><span class="pre">test/e2e/topologies/frr/</span></code>, une par nœud, <strong>écrites à la main</strong> :
+ce sont les mêmes fichiers que la documentation de déploiement inclut, pour que le lab qualifie
+exactement ce qu’elle prescrit. Celle du route reflector :</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>frr defaults traditional
+hostname rr1
+log syslog informational
+!
+ip prefix-list RR-LOOPBACK-OUT seq 10 permit 10.255.255.1/32
+!
+route-map NO-IN deny 999
+ description deny
+exit
+!
+router bgp 65000
+ no bgp default ipv4-unicast
+ bgp router-id 10.255.255.1
+ bgp cluster-id 10.255.255.1
+ neighbor CLUSTER peer-group
+ neighbor CLUSTER remote-as 65100
+ neighbor CLUSTER bfd
+ neighbor 169.254.0.1 peer-group CLUSTER
+ neighbor 169.254.0.1 description router-1
+ neighbor 169.254.0.2 peer-group CLUSTER
+ neighbor 169.254.0.2 description router-2
+ neighbor fabric peer-group
+ neighbor fabric remote-as 64600
+ neighbor fabric local-as 64600 no-prepend replace-as
+ neighbor fabric capability extended-nexthop
+ neighbor fabric update-source 10.255.255.1
+ bgp listen range 192.168.14.0/24 peer-group fabric
+ bgp listen limit 200
+ !
+ address-family ipv4 unicast
+  network 10.255.255.1/32
+  neighbor CLUSTER activate
+  neighbor CLUSTER prefix-list RR-LOOPBACK-OUT out
+  neighbor CLUSTER route-map NO-IN in
+ exit-address-family
+ !
+ address-family l2vpn evpn
+  neighbor fabric activate
+  neighbor fabric route-reflector-client
+ exit-address-family
+ !
+exit
+!
+</pre></div>
+</div>
+<p>Au premier démarrage, cloud-init installe FRR (<code class="docutils literal notranslate"><span class="pre">frr-stable</span></code> de <code class="docutils literal notranslate"><span class="pre">deb.frrouting.org</span></code>, sans les
+paquets recommandés), active <code class="docutils literal notranslate"><span class="pre">bgpd</span></code> — et <code class="docutils literal notranslate"><span class="pre">bfdd</span></code> sur le switch et le route reflector —, puis
+dépose le <code class="docutils literal notranslate"><span class="pre">frr.conf</span></code> du nœud et redémarre FRR. La mise à jour des index de paquets est réessayée
+pendant cinq minutes : un nœud peut démarrer avant que le switch, par lequel il sort, n’ait posé
+son NAT.</p>
+<p>La <strong>clé du dépôt FRR</strong> n’est pas téléchargée au démarrage : elle est enregistrée dans <code class="docutils literal notranslate"><span class="pre">lab</span></code>
+(<code class="docutils literal notranslate"><span class="pre">internal/lab/render/frrouting.gpg</span></code>) et déposée par cloud-init. Elle a été récupérée le
+2026-10-04 sur <code class="docutils literal notranslate"><span class="pre">deb.frrouting.org</span></code> ; les empreintes de ses clés primaires sont publiées sous la
+même valeur sur <code class="docutils literal notranslate"><span class="pre">keys.openpgp.org</span></code> et <code class="docutils literal notranslate"><span class="pre">keyserver.ubuntu.com</span></code> :</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>3D99 68AC 9AE7 BE11 6928  8DDB 1FD5 8398 95F5 7FDA   David Lamparter
+4A56 C773 8BB3 F815 95A8  05D2 A832 7699 08F1 3ED1   FRRouting Debian Repository
+A90F C36D 9429 4097 98E9  C2D8 74DE ED43 AB19 4DBF   Jafar Al-Gharaibeh
+</pre></div>
+</div>
+<p>Une clé renouvelée par FRR fera échouer l’installation (signature inconnue) : remplacer le fichier
+après avoir vérifié les nouvelles empreintes.</p>
+<p><strong>Hyperviseurs.</strong> Ils se déploient comme en production, par <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> — celui <strong>du dépôt</strong>,
+embarqué dans <code class="docutils literal notranslate"><span class="pre">lab</span></code> avec <code class="docutils literal notranslate"><span class="pre">bootstrap_kvm.sh</span></code> (paquet <code class="docutils literal notranslate"><span class="pre">scripts</span></code>) et déposé dans
+<code class="docutils literal notranslate"><span class="pre">/opt/two/scripts/</span></code>, où <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> cherche d’abord <code class="docutils literal notranslate"><span class="pre">bootstrap_kvm.sh</span></code> :</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>deploy.sh --noup_script -i -u &lt;segment&gt; -t &lt;release&gt;
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">--noup_script</span></code> empêche l’auto-mise à jour de remplacer le script par celui de <code class="docutils literal notranslate"><span class="pre">main</span></code> : le lab
+teste les scripts de sa branche. L’uplink <code class="docutils literal notranslate"><span class="pre">-u</span></code> est l’interface qui porte la route par défaut —
+celle du premier segment de l’hyperviseur dans l’ordre de déclaration des segments — parce que
+<code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> y lit l’adresse et la passerelle qu’il déplace sur <code class="docutils literal notranslate"><span class="pre">br-000000</span></code>. <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code>
+télécharge la release sur <code class="docutils literal notranslate"><span class="pre">git.g3e.fr</span></code> sans réessayer : le lancement attend d’abord que le serveur
+réponde, à travers le switch. FRR est installé <strong>après</strong> : il démarre sur le réseau final.</p>
+<p><strong>Un seul script de provisionnement par nœud.</strong> cloud-init exécute <code class="docutils literal notranslate"><span class="pre">runcmd</span></code> comme un script
+<code class="docutils literal notranslate"><span class="pre">sh</span></code> sans <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">-e</span></code> : seule la dernière commande compte, et un <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> en échec suivi d’un
+FRR installé avec succès passerait pour un démarrage réussi. Chaque nœud reçoit donc
+<code class="docutils literal notranslate"><span class="pre">/usr/local/sbin/lab-provision</span></code>, en <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">-eu</span></code>, qui enchaîne ses étapes ; <code class="docutils literal notranslate"><span class="pre">runcmd</span></code> n’appelle
+que lui, et la première étape en échec met cloud-init en erreur.</p>
+<p><strong>Ce que vérifie</strong> <code class="docutils literal notranslate"><span class="pre">lab</span> <span class="pre">up</span></code>, une fois cloud-init terminé sans erreur : <code class="docutils literal notranslate"><span class="pre">agent.service</span></code> actif
+sur chaque hyperviseur, <code class="docutils literal notranslate"><span class="pre">frr</span></code> actif sur chaque nœud qui en a un. Ce contrôle couvre ce que
+cloud-init ne voit pas — si la migration réseau échoue, <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> arme un redémarrage de
+secours, et la VM redémarrée ne rejoue pas <code class="docutils literal notranslate"><span class="pre">runcmd</span></code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Avertissement</p>
+<p><strong>Un hyperviseur du lab ne survit pas à un redémarrage.</strong> En production, la racine est en
+tmpfs et <code class="docutils literal notranslate"><span class="pre">deploy.sh</span> <span class="pre">--bootstrap</span></code> est rejoué à chaque démarrage ; dans le lab, <code class="docutils literal notranslate"><span class="pre">-i</span></code> n’est
+exécuté qu’au premier, et la migration réseau, qui n’est pas persistée, est perdue. Recréer le
+lab : <code class="docutils literal notranslate"><span class="pre">lab</span> <span class="pre">down</span></code> puis <code class="docutils literal notranslate"><span class="pre">lab</span> <span class="pre">up</span></code>.</p>
+</div>
+<p>Vérifié le 2026-10-04 sur le serveur de lab, topologie <code class="docutils literal notranslate"><span class="pre">evpn-2hv</span></code>, release <code class="docutils literal notranslate"><span class="pre">0.2.0rc002</span></code> :</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ scripts/lab-host.sh ssh './lab up -timeout 25m topology/evpn-2hv.yml'
+sw1: started
+rr1: started
+hv1: started
+hv2: started
+sw1: ready
+rr1: ready
+hv1: ready
+hv2: ready
+</pre></div>
+</div>
+<div class="pst-scrollable-table-container"><table class="table">
+<colgroup>
+<col style="width: 55.0%" />
+<col style="width: 45.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Vérification</p></th>
+<th class="head"><p>Résultat</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">lab</span> <span class="pre">up</span></code> complet : FRR, <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> et vérification des services de chaque rôle</p></td>
+<td><p>6 min 15</p></td>
+</tr>
+<tr class="row-odd"><td><p>session switch ↔ route reflector, IPv4 unicast, BFD</p></td>
+<td><p>Established, BFD up ; le switch reçoit la seule loopback du route reflector</p></td>
+</tr>
+<tr class="row-even"><td><p>sessions EVPN des deux hyperviseurs vers la loopback du route reflector</p></td>
+<td><p>Established, voisins dynamiques, stables</p></td>
+</tr>
+<tr class="row-odd"><td><p>réseau d’un hyperviseur après <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code></p></td>
+<td><p>adresse sur <code class="docutils literal notranslate"><span class="pre">br-000000</span></code>, MTU 9000, API de l’agent qui répond</p></td>
+</tr>
+<tr class="row-even"><td><p>VPC, subnet <code class="docutils literal notranslate"><span class="pre">vxlan</span></code> et VM Debian <code class="docutils literal notranslate"><span class="pre">genericcloud</span></code> créés par l’API de hv1</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">login:</span></code> en 20 s, en KVM imbriqué</p></td>
+</tr>
+<tr class="row-odd"><td><p>DHCP et routes (option 121) servis par two à la VM</p></td>
+<td><p>conformes, route <code class="docutils literal notranslate"><span class="pre">/32</span></code> vers <code class="docutils literal notranslate"><span class="pre">169.254.169.254</span></code> comprise</p></td>
+</tr>
+<tr class="row-even"><td><p>métadonnées, image configurée selon <a class="reference internal" href="../deploiement/image-qcow2.html"><span class="doc">Construction de l’image qcow2</span></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">DataSourceNoCloudNet</span></code>, nom d’hôte appliqué — avec la barre oblique finale de
+<code class="docutils literal notranslate"><span class="pre">seedfrom</span></code> (voir cette page)</p></td>
+</tr>
+<tr class="row-odd"><td><p>VM ↔ VM entre les deux hyperviseurs, même subnet <code class="docutils literal notranslate"><span class="pre">vxlan</span></code></p></td>
+<td><p><strong>échec</strong> : les VXLAN de two n’ont pas d’adresse VTEP locale, rien n’est annoncé en EVPN —
+<a class="reference external" href="https://git.g3e.fr/syonad/two/issues/51">#51</a> ; avec l’adresse posée, ping et MTU 1500
+passent</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>Le switch du lab est un routeur Linux avec FRR, par choix.</strong> Il joue le rôle générique de
+routeur de cluster : passerelle des hyperviseurs, session eBGP avec BFD vers le route reflector,
+dont il n’accepte que la loopback (<code class="docutils literal notranslate"><span class="pre">test/e2e/topologies/frr/sw1.conf</span></code>). L’équipement réel dépend de qui
+déploie l’infrastructure (MikroTik aujourd’hui ; Cisco, Juniper, Arista… demain) : il n’a besoin
+que de BGP et d’EVPN, et sa configuration propre au constructeur n’a pas sa place dans le lab.</p>
+</div>
+</section>
+</section>
+<section id="rendu-des-vm">
+<h2>Rendu des VM<a class="headerlink" href="#rendu-des-vm" title="Lien vers cette rubrique">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">lab</span> <span class="pre">render</span></code> produit, pour chaque nœud, ce qu’il faut pour démarrer sa VM — sans rien lancer :</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ go run ./cmd/lab render -key ~/.config/two-lab/ssh/lab_ed25519.pub test/e2e/topologies/evpn-2hv.yml &lt;répertoire&gt;
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">&lt;répertoire&gt;/&lt;nœud&gt;/</span></code> reçoit :</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">qemu.args</span></code></dt><dd><p>Les arguments de <code class="docutils literal notranslate"><span class="pre">qemu-system-x86_64</span></code>, <strong>un par ligne</strong> : rien à échapper, rien à
+interpréter par un shell.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">meta-data</span></code>, <code class="docutils literal notranslate"><span class="pre">user-data</span></code>, <code class="docutils literal notranslate"><span class="pre">network-config</span></code></dt><dd><p>Les trois fichiers NoCloud de cloud-init, à mettre dans une image de volume <code class="docutils literal notranslate"><span class="pre">cidata</span></code>.</p>
+</dd>
+</dl>
+<p>Les chemins de la VM (<code class="docutils literal notranslate"><span class="pre">disk.qcow2</span></code>, <code class="docutils literal notranslate"><span class="pre">seed.iso</span></code>, <code class="docutils literal notranslate"><span class="pre">console.log</span></code>, <code class="docutils literal notranslate"><span class="pre">qmp.sock</span></code>, <code class="docutils literal notranslate"><span class="pre">qemu.pid</span></code>)
+sont ceux du répertoire du nœud ; <code class="docutils literal notranslate"><span class="pre">-key</span></code> peut être répété, et accepte un fichier
+<code class="docutils literal notranslate"><span class="pre">authorized_keys</span></code> (lignes vides et commentaires ignorés). Les fichiers sont créés en <code class="docutils literal notranslate"><span class="pre">0600</span></code>.</p>
+<p>Ce que contiennent les arguments QEMU d’un hyperviseur — extrait réel, côté réseau :</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>-netdev
+user,id=mgmt0,restrict=on,ipv6=off,hostfwd=tcp:127.0.0.1:2202-:22
+-device
+virtio-net-pci,netdev=mgmt0,mac=02:4d:00:02:00:00,romfile=
+-netdev
+dgram,id=underlay,local.type=inet,local.host=127.0.0.1,local.port=20002,remote.type=inet,remote.host=127.0.0.1,remote.port=20003
+-device
+virtio-net-pci,netdev=underlay,mac=02:4c:00:02:00:00,host_mtu=9000,romfile=
+</pre></div>
+</div>
+<p>Les choix qui s’y lisent :</p>
+<ul class="simple">
+<li><p><strong>machine</strong> <code class="docutils literal notranslate"><span class="pre">q35</span></code>, <code class="docutils literal notranslate"><span class="pre">-accel</span> <span class="pre">kvm</span> <span class="pre">-cpu</span> <span class="pre">host</span></code> — le KVM imbriqué des hyperviseurs du lab en
+dépend ; <code class="docutils literal notranslate"><span class="pre">-nodefaults</span></code> pour qu’aucun périphérique implicite ne s’ajoute ;</p></li>
+<li><p><strong>administration</strong> (<code class="docutils literal notranslate"><span class="pre">mgmt0</span></code>) : le NAT de QEMU, MAC <code class="docutils literal notranslate"><span class="pre">02:4d:&lt;nœud&gt;:&lt;nœud&gt;:00:00</span></code>, SSH redirigé
+sur la boucle locale de l’hôte. <code class="docutils literal notranslate"><span class="pre">restrict=on</span></code> pour tous les nœuds <strong>sauf le switch</strong> : un
+nœud isolé ne joint ni l’hôte ni l’extérieur par là, seule la redirection SSH passe.
+<code class="docutils literal notranslate"><span class="pre">ipv6=off</span></code> partout (voir plus bas) ;</p></li>
+<li><p><strong>câbles</strong> : <code class="docutils literal notranslate"><span class="pre">dgram</span></code> sur <code class="docutils literal notranslate"><span class="pre">127.0.0.1</span></code>, les deux extrémités d’un câble se répondent
+(port local de l’une = port distant de l’autre), <code class="docutils literal notranslate"><span class="pre">host_mtu</span></code> annonce le MTU du segment au
+guest ;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">romfile=</span></code> vide sur toutes les cartes : pas de ROM de démarrage réseau, donc pas de repli
+sur un démarrage PXE si le firmware ne trouve pas le disque. Pendant les essais de #50, une VM
+restée bloquée sans rien écrire sur sa console, CPU au repos, avait toutes les apparences de
+ce repli ; la cause n’a pas été isolée, l’option est une précaution.</p></li>
+</ul>
+<p>Ce que fait cloud-init :</p>
+<ul class="simple">
+<li><p><strong>toutes les VM</strong> : interfaces nommées d’après leur MAC (<code class="docutils literal notranslate"><span class="pre">mgmt0</span></code>, nom du segment, <code class="docutils literal notranslate"><span class="pre">p&lt;i&gt;</span></code>),
+<code class="docutils literal notranslate"><span class="pre">dhcp4:</span> <span class="pre">false</span></code> partout, <code class="docutils literal notranslate"><span class="pre">mgmt0</span></code> en <code class="docutils literal notranslate"><span class="pre">10.0.2.15/24</span></code> <strong>sans passerelle</strong> ; connexion SSH par
+clé seulement, utilisateur <code class="docutils literal notranslate"><span class="pre">debian</span></code>, <code class="docutils literal notranslate"><span class="pre">root</span></code> désactivé, mot de passe refusé ;</p></li>
+<li><p><strong>un nœud</strong> : adresse sur chaque segment, MTU du segment, route par défaut et DNS
+(<code class="docutils literal notranslate"><span class="pre">1.1.1.1</span></code>, <code class="docutils literal notranslate"><span class="pre">8.8.8.8</span></code>) sur son <strong>premier</strong> segment — la sortie Internet passe par le
+switch ;</p></li>
+<li><p><strong>le switch</strong> : route par défaut par <code class="docutils literal notranslate"><span class="pre">mgmt0</span></code> ; un service <code class="docutils literal notranslate"><span class="pre">lab-switch</span></code> crée un bridge
+<code class="docutils literal notranslate"><span class="pre">br-&lt;segment&gt;</span></code> par segment (STP désactivé, MTU du segment), y branche ses ports, porte la
+passerelle, active le routage et masque (NAT nftables) les segments vers <code class="docutils literal notranslate"><span class="pre">mgmt0</span></code>. Le
+service est rejoué à chaque démarrage.</p></li>
+</ul>
+<section id="verifie-sur-de-vraies-vm">
+<h3>Vérifié sur de vraies VM<a class="headerlink" href="#verifie-sur-de-vraies-vm" title="Lien vers cette rubrique">#</a></h3>
+<p>Le switch et le route reflector n’ont pas besoin de KVM imbriqué : <code class="docutils literal notranslate"><span class="pre">sw1</span></code> et <code class="docutils literal notranslate"><span class="pre">rr1</span></code> de
+l’exemple ont été démarrés <strong>sur un Mac</strong>, en émulation (TCG), avec Debian 12 <code class="docutils literal notranslate"><span class="pre">generic</span></code> et
+les fichiers produits par <code class="docutils literal notranslate"><span class="pre">lab</span> <span class="pre">render</span></code>.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<colgroup>
+<col style="width: 60.0%" />
+<col style="width: 40.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Vérification</p></th>
+<th class="head"><p>Résultat</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>interfaces nommées et adressées, bridge <code class="docutils literal notranslate"><span class="pre">br-underlay</span></code> en <code class="docutils literal notranslate"><span class="pre">10.250.0.1/24</span></code></p></td>
+<td><p>conforme</p></td>
+</tr>
+<tr class="row-odd"><td><p>service <code class="docutils literal notranslate"><span class="pre">lab-switch</span></code> actif, y compris après redémarrage</p></td>
+<td><p>conforme</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ping</span> <span class="pre">-M</span> <span class="pre">do</span> <span class="pre">-s</span> <span class="pre">8972</span></code> de <code class="docutils literal notranslate"><span class="pre">rr1</span></code> vers le switch (MTU 9000, sans fragmentation)</p></td>
+<td><p>passe</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ping</span> <span class="pre">-M</span> <span class="pre">do</span> <span class="pre">-s</span> <span class="pre">8973</span></code> (MTU 9001)</p></td>
+<td><p>refusé : <code class="docutils literal notranslate"><span class="pre">message</span> <span class="pre">too</span> <span class="pre">long,</span> <span class="pre">mtu=9000</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Internet depuis <code class="docutils literal notranslate"><span class="pre">rr1</span></code> en IPv4</p></td>
+<td><p>passe, par <code class="docutils literal notranslate"><span class="pre">10.250.0.1</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">rr1</span></code> vers un service TCP de l’hôte par <code class="docutils literal notranslate"><span class="pre">mgmt0</span></code> — le switch, témoin, y parvient</p></td>
+<td><p>bloqué</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">rr1</span></code> vers Internet par <code class="docutils literal notranslate"><span class="pre">mgmt0</span></code></p></td>
+<td><p>bloqué</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Un défaut trouvé par cet essai, et corrigé : sans <code class="docutils literal notranslate"><span class="pre">ipv6=off</span></code>, le NAT de QEMU annonce un
+préfixe IPv6 et <code class="docutils literal notranslate"><span class="pre">mgmt0</span></code> reçoit une <strong>route IPv6 par défaut</strong> — vers une impasse, puisque
+<code class="docutils literal notranslate"><span class="pre">restrict=on</span></code> bloque tout. Pas de fuite, mais chaque programme qui tente l’IPv6 d’abord (le DNS
+renvoie d’abord des adresses IPv6) attend un délai avant de se rabattre sur l’IPv4.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Un <code class="docutils literal notranslate"><span class="pre">ping</span></code> vers <code class="docutils literal notranslate"><span class="pre">10.0.2.2</span></code> n’est pas un test d’isolation : c’est la passerelle virtuelle de
+QEMU qui répond elle-même, <code class="docutils literal notranslate"><span class="pre">restrict=on</span></code> ou non. Seule une connexion vers un vrai service de
+l’hôte, avec un témoin qui y parvient, le prouve.</p>
+</div>
+<p>Reste à vérifier sur le serveur de lab : les hyperviseurs, qui exigent KVM imbriqué.</p>
+</section>
+</section>
+<section id="lancement-des-vm">
+<h2>Lancement des VM<a class="headerlink" href="#lancement-des-vm" title="Lien vers cette rubrique">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">lab</span></code> s’exécute <strong>sur le serveur de lab</strong>. Il garde l’état du lab dans un répertoire
+(<code class="docutils literal notranslate"><span class="pre">-run</span></code>, par défaut <code class="docutils literal notranslate"><span class="pre">~/lab-run</span></code>) : <code class="docutils literal notranslate"><span class="pre">status</span></code>, <code class="docutils literal notranslate"><span class="pre">down</span></code> et <code class="docutils literal notranslate"><span class="pre">ssh</span></code> n’ont donc pas besoin de la
+topologie.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>lab up [-run dir] [-cache dir] [-timeout 20m] &lt;topologie.yml&gt;
+lab status [-run dir]
+lab down [-run dir]
+lab ssh [-run dir] &lt;nœud&gt; [commande…]
+</pre></div>
+</div>
+<dl>
+<dt><code class="docutils literal notranslate"><span class="pre">lab</span> <span class="pre">up</span></code></dt><dd><ol class="arabic simple">
+<li><p>refuse de continuer si un lab tourne déjà dans le répertoire ;</p></li>
+<li><p>télécharge chaque image dans le cache (<code class="docutils literal notranslate"><span class="pre">-cache</span></code>, par défaut <code class="docutils literal notranslate"><span class="pre">~/.cache/two-lab</span></code>) et la
+vérifie contre <code class="docutils literal notranslate"><span class="pre">SHA512SUMS</span></code> ; une image déjà présente et toujours conforme n’est pas
+retéléchargée, la liste des sommes est relue à chaque fois ;</p></li>
+<li><p>génère une paire de clés SSH dans le répertoire du lab, si elle n’existe pas encore ;</p></li>
+<li><p>pour chaque nœud : fichiers de <code class="docutils literal notranslate"><span class="pre">lab</span> <span class="pre">render</span></code>, disque <strong>neuf</strong> en overlay qcow2 sur
+l’image (<code class="docutils literal notranslate"><span class="pre">qemu-img</span> <span class="pre">create</span> <span class="pre">-b</span></code>, 20 Gio annoncés), image <code class="docutils literal notranslate"><span class="pre">cidata</span></code> (<code class="docutils literal notranslate"><span class="pre">genisoimage</span></code>) ;</p></li>
+<li><p>démarre les QEMU, <strong>switchs d’abord</strong>, détachés (<code class="docutils literal notranslate"><span class="pre">-daemonize</span></code>) : ils survivent à la
+session SSH qui les a lancés ;</p></li>
+<li><p>attend sur chaque nœud la fin de cloud-init (<code class="docutils literal notranslate"><span class="pre">cloud-init</span> <span class="pre">status</span> <span class="pre">--wait</span></code> par SSH),
+jusqu’au délai <code class="docutils literal notranslate"><span class="pre">-timeout</span></code>.</p></li>
+</ol>
+<p>La topologie est copiée dans <code class="docutils literal notranslate"><span class="pre">&lt;run&gt;/topology.yml</span></code>. Un échec laisse les nœuds démarrés en
+place : <code class="docutils literal notranslate"><span class="pre">lab</span> <span class="pre">status</span></code>, puis <code class="docutils literal notranslate"><span class="pre">lab</span> <span class="pre">down</span></code>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">lab</span> <span class="pre">status</span></code></dt><dd><p>Pour chaque nœud : rôle, état du processus QEMU, PID, port SSH sur la boucle locale.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">lab</span> <span class="pre">down</span></code></dt><dd><p>Arrête chaque QEMU par <code class="docutils literal notranslate"><span class="pre">SIGTERM</span></code>, puis <code class="docutils literal notranslate"><span class="pre">SIGKILL</span></code> au bout de 30 s. Les disques sont
+conservés jusqu’au prochain <code class="docutils literal notranslate"><span class="pre">up</span></code>, qui les recrée.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">lab</span> <span class="pre">ssh</span></code></dt><dd><p>Ouvre un shell sur un nœud, ou y exécute une commande, avec la clé générée par <code class="docutils literal notranslate"><span class="pre">up</span></code>. <code class="docutils literal notranslate"><span class="pre">lab</span></code>
+cède la place à <code class="docutils literal notranslate"><span class="pre">ssh</span></code>, dont le code de retour est donc celui de la commande. Un terminal
+n’est demandé (<code class="docutils literal notranslate"><span class="pre">-t</span></code>) que si l’entrée de <code class="docutils literal notranslate"><span class="pre">lab</span></code> en est un : depuis un script, ni
+pseudo-terminal ni <code class="docutils literal notranslate"><span class="pre">\r\n</span></code> dans la sortie.</p>
+<p>Comme <code class="docutils literal notranslate"><span class="pre">ssh</span></code>, <code class="docutils literal notranslate"><span class="pre">lab</span> <span class="pre">ssh</span></code> recolle ses arguments par des espaces et les confie à un shell
+distant — et depuis le Mac, il y en a <strong>deux</strong> : celui du serveur, puis celui de la VM.
+Une commande qui contient elle-même des guillemets se passe en une seule chaîne :</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ echo | scripts/lab-host.sh ssh './lab ssh hv1 sh -c "exit 42"'; echo "rc 42=$?"
+rc 42=0
+$ echo | scripts/lab-host.sh ssh "./lab ssh hv1 'sh -c \"exit 42\"'"; echo "rc 42=$?"
+rc 42=42
+</pre></div>
+</div>
+<p>Dans le premier cas, la VM reçoit <code class="docutils literal notranslate"><span class="pre">sh</span> <span class="pre">-c</span> <span class="pre">exit</span> <span class="pre">42</span></code> : <code class="docutils literal notranslate"><span class="pre">exit</span></code> sans argument, <code class="docutils literal notranslate"><span class="pre">42</span></code> en
+<code class="docutils literal notranslate"><span class="pre">$0</span></code>. Pour plus d’une commande, passer un script sur l’entrée standard :
+<code class="docutils literal notranslate"><span class="pre">scripts/lab-host.sh</span> <span class="pre">ssh</span> <span class="pre">&quot;./lab</span> <span class="pre">ssh</span> <span class="pre">hv1</span> <span class="pre">'sudo</span> <span class="pre">bash</span> <span class="pre">-s'&quot;</span> <span class="pre">&lt;</span> <span class="pre">script.sh</span></code>.</p>
+</dd>
+</dl>
+<p>Un processus n’est tenu pour celui d’un nœud que si son PID, lu dans <code class="docutils literal notranslate"><span class="pre">qemu.pid</span></code>, désigne un
+processus vivant dont la ligne de commande (<code class="docutils literal notranslate"><span class="pre">/proc/&lt;pid&gt;/cmdline</span></code>) contient <code class="docutils literal notranslate"><span class="pre">-name</span> <span class="pre">&lt;nœud&gt;</span></code>.
+Un PID réutilisé par un autre programme n’est donc jamais signalé.</p>
+<div class="admonition warning">
+<p class="admonition-title">Avertissement</p>
+<p>Le cache range une image sous son nom de fichier, et l’URL de Debian est <code class="docutils literal notranslate"><span class="pre">latest</span></code> : une
+nouvelle publication remplace le fichier, et les overlays existants pointeraient sur une
+base différente. <code class="docutils literal notranslate"><span class="pre">up</span></code> recrée toujours les disques, ce qui suffit avec un lab par serveur ;
+<strong>ne pas relancer un QEMU à la main</strong> à partir d’un <code class="docutils literal notranslate"><span class="pre">qemu.args</span></code> après un <code class="docutils literal notranslate"><span class="pre">up</span></code> ultérieur.</p>
+</div>
+<p>Une campagne réelle, de la création du serveur à la première commande sur une VM — sorties du
+2026-10-04 :</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ scripts/lab-host.sh up
+== création de two-lab (EM-B212X-SSD, 0.321 EUR/h HT)
+…
+== préparation du serveur : qemu, genisoimage, KVM imbriqué
+…
+qemu QEMU emulator version 7.2.22 (Debian 1:7.2+dfsg-7+deb12u18+b3), nested=Y
+== prêt : root@&lt;adresse&gt;
+$ scripts/lab-host.sh push test/e2e/topologies/evpn-2hv.yml
+== compilation de lab (linux/amd64)
+== déposés sur le serveur : ~/lab, ~/evpn-2hv.yml — ensuite : lab-host.sh ssh './lab up evpn-2hv.yml'
+$ scripts/lab-host.sh ssh './lab up evpn-2hv.yml'
+sw1: started
+rr1: started
+hv1: started
+hv2: started
+sw1: ready
+rr1: ready
+hv1: ready
+hv2: ready
+$ scripts/lab-host.sh ssh './lab status'
+node  role        state    pid   ssh
+sw1   switch      running  5158  127.0.0.1:2200
+rr1   rr          running  5171  127.0.0.1:2201
+hv1   hypervisor  running  5182  127.0.0.1:2202
+hv2   hypervisor  running  5196  127.0.0.1:2203
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">lab</span> <span class="pre">up</span></code> a pris <strong>49 secondes</strong>, téléchargement et vérification de l’image (427 Mio) compris ;
+l’essentiel du temps d’une campagne est la livraison du serveur (environ 25 minutes avec
+<code class="docutils literal notranslate"><span class="pre">prepare</span></code>).</p>
+<section id="verifie-sur-le-serveur-de-lab">
+<h3>Vérifié sur le serveur de lab<a class="headerlink" href="#verifie-sur-le-serveur-de-lab" title="Lien vers cette rubrique">#</a></h3>
+<p>Le 2026-10-04, sur un Xeon E5-2640 v3, Debian 12 et QEMU 7.2 sur le serveur, topologie
+<code class="docutils literal notranslate"><span class="pre">evpn-2hv</span></code> :</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<colgroup>
+<col style="width: 60.0%" />
+<col style="width: 40.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Vérification</p></th>
+<th class="head"><p>Résultat</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">ping</span> <span class="pre">-M</span> <span class="pre">do</span> <span class="pre">-s</span> <span class="pre">8972</span></code> de hv1 à hv2 à travers le switch</p></td>
+<td><p>passe</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">ping</span> <span class="pre">-M</span> <span class="pre">do</span> <span class="pre">-s</span> <span class="pre">8973</span></code></p></td>
+<td><p>refusé : <code class="docutils literal notranslate"><span class="pre">message</span> <span class="pre">too</span> <span class="pre">long,</span> <span class="pre">mtu=9000</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>sortie Internet de hv1</p></td>
+<td><p>par <code class="docutils literal notranslate"><span class="pre">10.250.0.1</span></code> (le switch), HTTPS 200 ; aucune route IPv6 globale</p></td>
+</tr>
+<tr class="row-odd"><td><p>hv1 vers un service TCP du serveur par <code class="docutils literal notranslate"><span class="pre">mgmt0</span></code> — sw1, témoin, y parvient (200)</p></td>
+<td><p>refusé</p></td>
+</tr>
+<tr class="row-even"><td><p>hv1 vers Internet par <code class="docutils literal notranslate"><span class="pre">mgmt0</span></code>, route forcée via <code class="docutils literal notranslate"><span class="pre">10.0.2.2</span></code> — sw1 y parvient</p></td>
+<td><p>refusé</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">/dev/kvm</span></code> et <code class="docutils literal notranslate"><span class="pre">nested</span></code> dans hv1</p></td>
+<td><p>présent, <code class="docutils literal notranslate"><span class="pre">Y</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>racine de hv1 (overlay de 20 Gio)</p></td>
+<td><p>20 Go : <code class="docutils literal notranslate"><span class="pre">growpart</span></code> agrandit la partition au premier démarrage</p></td>
+</tr>
+<tr class="row-odd"><td><p>code de retour à travers <code class="docutils literal notranslate"><span class="pre">lab-host.sh</span> <span class="pre">ssh</span></code> et <code class="docutils literal notranslate"><span class="pre">lab</span> <span class="pre">ssh</span></code>, sans terminal</p></td>
+<td><p>propagé jusqu’au Mac</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">scripts/lab-host.sh</span> <span class="pre">ssh</span> <span class="pre">'./lab</span> <span class="pre">ssh</span> <span class="pre">hv1'</span></code> depuis un terminal</p></td>
+<td><p>shell interactif</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">lab</span> <span class="pre">down</span></code> puis <code class="docutils literal notranslate"><span class="pre">lab</span> <span class="pre">up</span></code> d’une autre topologie</p></td>
+<td><p>conforme</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</section>
+<section id="scenarios">
+<h2>Scénarios<a class="headerlink" href="#scenarios" title="Lien vers cette rubrique">#</a></h2>
+<p>Les scénarios se lancent <strong>depuis le Mac</strong>, sur un lab démarré (<code class="docutils literal notranslate"><span class="pre">up</span></code>, <code class="docutils literal notranslate"><span class="pre">push</span></code>, <code class="docutils literal notranslate"><span class="pre">./lab</span> <span class="pre">up</span></code>) :</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>test/e2e/run.sh s1          # un scénario
+test/e2e/run.sh s1 s3       # plusieurs
+test/e2e/run.sh all         # tous, dans l'ordre
+</pre></div>
+</div>
+<p>Chacun affiche une ligne <code class="docutils literal notranslate"><span class="pre">RÉUSSI</span></code> ou <code class="docutils literal notranslate"><span class="pre">ÉCHOUÉ</span></code> par vérification — un échec porte la dernière
+ligne de la commande en cause —, des lignes <code class="docutils literal notranslate"><span class="pre">INFO</span></code> pour les mesures, puis son bilan. Le code de
+sortie vaut 1 si une vérification échoue <strong>ou si aucune n’a été faite</strong>.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<colgroup>
+<col style="width: 22.0%" />
+<col style="width: 58.0%" />
+<col style="width: 20.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Scénario</p></th>
+<th class="head"><p>Ce qui doit être vrai</p></th>
+<th class="head"><p>Hyperviseurs</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">s1-dhcp-two</span></code></p></td>
+<td><p>backend DHCP <code class="docutils literal notranslate"><span class="pre">two</span></code>, une VPC et deux subnets : chaque VM reçoit l’adresse de <strong>son</strong>
+subnet, démarrée seule ou en même temps qu’une autre ; le bail est tenu par
+systemd-networkd ; route par défaut, route vers la VPC et <code class="docutils literal notranslate"><span class="pre">/32</span></code> vers les métadonnées
+via <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> ; l’état de chaque serveur DHCP ne connaît que les MAC de son subnet
+(#46)</p></td>
+<td><p>hv1</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">s2-gateway</span></code></p></td>
+<td><p>route par défaut via <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code>, ou via <code class="docutils literal notranslate"><span class="pre">gateway</span></code> avec <code class="docutils literal notranslate"><span class="pre">default_route</span></code> ; route
+vers la VPC toujours via <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> ; même résultat après recréation du subnet (#31)</p></td>
+<td><p>hv1</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">s3-isolation-local</span></code></p></td>
+<td><p>deux VPC sur le même hyperviseur ne se joignent pas, en ICMP comme en TCP ; chaque VM
+joint sa passerelle (témoin)</p></td>
+<td><p>hv1</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">s4-evpn</span></code></p></td>
+<td><p>adresse VTEP locale sur les VXLAN (#51), VTEP distant appris par EVPN, ping VM ↔ VM
+entre hyperviseurs, trame de 1472 octets en <code class="docutils literal notranslate"><span class="pre">-M</span> <span class="pre">do</span></code>, 1473 refusés</p></td>
+<td><p>hv1, hv2</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">s5-isolation-evpn</span></code></p></td>
+<td><p>deux VPC de même plage, VNI différentes, sur deux hyperviseurs : la VM joint celle de sa
+VPC sur l’autre hyperviseur (témoin) et pas celle de l’autre VPC — aucune résolution ARP</p></td>
+<td><p>hv1, hv2</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">s6-rr-loss</span></code></p></td>
+<td><p>FRR arrêté sur le route reflector, ping continu entre les VM de <code class="docutils literal notranslate"><span class="pre">s4</span></code> : la session tombe,
+le trafic restant est <strong>mesuré</strong> (<code class="docutils literal notranslate"><span class="pre">INFO</span></code>) à 30 et 90 s ; au retour du route reflector, le
+VTEP distant est réappris et le trafic repasse — délai mesuré</p></td>
+<td><p>hv1, hv2, rr1</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">s6</span></code> réutilise les VM de <code class="docutils literal notranslate"><span class="pre">s4</span></code> : le lancer après.</p>
+<p><strong>Comment c’est fait.</strong> <code class="docutils literal notranslate"><span class="pre">test/e2e/run.sh</span></code> exécute chaque scénario sur le Mac ; un
+scénario envoie des blocs de shell aux nœuds par <code class="docutils literal notranslate"><span class="pre">on</span> <span class="pre">&lt;nœud&gt;</span> <span class="pre">[VAR=valeur…]</span> <span class="pre">&lt;&lt;'NODE'</span></code>, précédés de
+<code class="docutils literal notranslate"><span class="pre">test/e2e/lib/node.sh</span></code> — appels à l’API de l’agent, attente des états, image Debian compatible two
+(préparée une fois par hyperviseur, <code class="docutils literal notranslate"><span class="pre">seedfrom</span></code> avec barre oblique finale), clé SSH des VM,
+<code class="docutils literal notranslate"><span class="pre">check</span></code> et <code class="docutils literal notranslate"><span class="pre">vm_fails</span></code>. Une vérification négative (« ne joint pas ») passe par <code class="docutils literal notranslate"><span class="pre">vm_fails</span></code> :
+elle n’est réussie que si le SSH vers la VM a fonctionné <strong>et</strong> que la commande y a échoué — un
+SSH en panne ne passe jamais pour une isolation.</p>
+<p>Résultats du 2026-10-04 sur le serveur de lab, release <code class="docutils literal notranslate"><span class="pre">0.2.0rc003</span></code>, hv1 sur le DHCP intégré et
+hv2 sur dnsmasq — toute la série en 8 minutes :</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ test/e2e/run.sh all | grep -E '^(=== s[0-9].* : |INFO)'
+INFO: MAC de sn-s1a : 00:22:33:00:00:0a 00:22:33:00:00:0b ; de sn-s1b : 00:22:33:00:00:0a 00:22:33:00:00:0b
+=== s1-dhcp-two : 37 réussi(s), 0 échoué(s)
+=== s2-gateway : 22 réussi(s), 0 échoué(s)
+=== s3-isolation-local : 12 réussi(s), 0 échoué(s)
+=== s4-evpn : 14 réussi(s), 0 échoué(s)
+=== s5-isolation-evpn : 13 réussi(s), 0 échoué(s)
+INFO: 30 s après l'arrêt du route reflector : 0 réponses dans les 10 dernières secondes (50 si le trafic passe intégralement)
+INFO: VTEP distant encore connu : 0 ; entrée d'inondation : 0
+INFO: 90 s après l'arrêt : 0 réponses dans les 10 dernières secondes
+INFO: retour du VTEP distant et du trafic 31 s après le redémarrage de FRR
+=== s6-rr-loss : 8 réussi(s), 0 échoué(s)
+</pre></div>
+</div>
+<p>Dans ce run, le contrôle « uniquement les MAC de son subnet » de <code class="docutils literal notranslate"><span class="pre">s1</span></code> ne prouvait rien : two
+dérive la MAC du rang de l’IP, et les VM <code class="docutils literal notranslate"><span class="pre">.10</span></code>/<code class="docutils literal notranslate"><span class="pre">.11</span></code> des deux subnets avaient les mêmes MAC.
+Vérifié à la main sur le lab, chaque serveur DHCP ne connaissait que les couples MAC/IP de son
+subnet ; le scénario compare désormais ces couples.</p>
+<p>Les VM sont accessibles depuis le netns de leur VPC, sur l’hyperviseur, avec l’utilisateur
+<code class="docutils literal notranslate"><span class="pre">syonad</span></code> créé par les métadonnées de two :</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>scripts/lab-host.sh ssh "./lab ssh hv1 'sudo ip netns exec vp-s4 ssh -i /root/.ssh/lab-vm syonad@10.240.1.10'"
+</pre></div>
+</div>
+<section id="ecrire-un-scenario">
+<h3>Écrire un scénario<a class="headerlink" href="#ecrire-un-scenario" title="Lien vers cette rubrique">#</a></h3>
+<p>Le lab sert à qualifier des comportements qui ne se voient qu’à plusieurs hyperviseurs — la
+campagne L3VNI de <a class="reference external" href="https://git.g3e.fr/syonad/two/issues/41">#41</a> en est le prochain exemple. Un
+scénario est un fichier <code class="docutils literal notranslate"><span class="pre">test/e2e/scenarios/&lt;n&gt;-&lt;nom&gt;.sh</span></code>, exécuté par <code class="docutils literal notranslate"><span class="pre">scenario.sh</span></code> sur le
+Mac ; il envoie des blocs aux nœuds :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>on<span class="w"> </span>hv1<span class="w"> </span><span class="s">&lt;&lt;'NODE'</span>
+<span class="s">two_image || { echo "ÉCHOUÉ: image compatible two"; exit 0; }</span>
+<span class="s">KEY=$(vm_key)</span>
+<span class="s">check "VPC vp-x" vpc_create vp-x 10.250.0.0/16</span>
+<span class="s">check "subnet sn-x" subnet_create sn-x vp-x 2601 10.250.1.1 10.250.1.0/24</span>
+<span class="s">check "VM x1" vm_create x1 sn-x 10.250.1.10 "${KEY}"</span>
+<span class="s">check "x1 joignable" vm_wait vp-x 10.250.1.10</span>
+<span class="s">check "x1 joint sa passerelle" vm_ssh vp-x 10.250.1.10 'ping -c 2 -W 2 10.250.1.1'</span>
+<span class="s">check "x1 ne joint pas 10.251.1.10" vm_fails vp-x 10.250.1.10 'ping -c 2 -W 2 10.251.1.10'</span>
+<span class="s">info "mesure : $(vtysh -c 'show evpn vni 2601' | grep -c 'flood')"</span>
+<span class="s">NODE</span>
+</pre></div>
+</div>
+<p>Les règles qui ont fait leurs preuves en E5 :</p>
+<ul class="simple">
+<li><p><strong>une vérification par ligne</strong>, avec <code class="docutils literal notranslate"><span class="pre">check</span></code> — jamais un <code class="docutils literal notranslate"><span class="pre">echo</span> <span class="pre">RÉUSSI</span></code> écrit à la main ;</p></li>
+<li><p><strong>toute vérification négative a son témoin</strong> : avant « ne joint pas », une ligne qui prouve que
+la cible est vivante et que le chemin du test fonctionne ;</p></li>
+<li><p><strong>``vm_fails`` pour le négatif</strong>, jamais <code class="docutils literal notranslate"><span class="pre">!</span></code> devant un <code class="docutils literal notranslate"><span class="pre">vm_ssh</span></code> : un SSH en panne doit
+échouer, pas passer pour une isolation ;</p></li>
+<li><p><strong>une donnée qui distingue réellement les cas</strong> : two dérivant la MAC du rang de l’IP, deux
+subnets ont les mêmes MAC — comparer des couples MAC/IP, pas des MAC ;</p></li>
+<li><p><strong>les mesures en ``INFO``</strong>, les attentes en <code class="docutils literal notranslate"><span class="pre">check</span></code> : un temps de reconvergence se mesure,
+il ne se décrète pas ;</p></li>
+<li><p>chaque scénario crée ses propres VPC, plages et VNI, distinctes de celles des autres, pour que
+<code class="docutils literal notranslate"><span class="pre">all</span></code> les enchaîne sur le même lab ; un scénario qui dépend d’un autre le vérifie en tête
+(<code class="docutils literal notranslate"><span class="pre">check</span> <span class="pre">&quot;prérequis</span> <span class="pre">:</span> <span class="pre">…&quot;</span></code>) ;</p></li>
+<li><p>variables vers un nœud : <code class="docutils literal notranslate"><span class="pre">on</span> <span class="pre">hv1</span> <span class="pre">NOM=valeur</span> <span class="pre">&lt;&lt;'NODE'</span></code> (valeurs échappées par
+<code class="docutils literal notranslate"><span class="pre">scenario.sh</span></code>) ;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bash</span> <span class="pre">test/e2e/run_test.sh</span></code> vérifie la syntaxe de chaque bloc réellement envoyé — à
+lancer avant toute session.</p></li>
+</ul>
+</section>
+</section>
+<section id="facturation">
+<h2>Facturation<a class="headerlink" href="#facturation" title="Lien vers cette rubrique">#</a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Avertissement</p>
+<p>Un serveur Elastic Metal est facturé <strong>de sa création à sa suppression, éteint compris</strong>.
+Éteindre ne suffit pas : il faut supprimer. La granularité n’est pas documentée par Scaleway —
+compter chaque heure entamée comme une heure pleine.</p>
+</div>
+<p>Ce que le script garantit :</p>
+<ul class="simple">
+<li><p>il ne commande <strong>jamais</strong> d’offre mensuelle : il exige une seule offre au nom demandé, en
+facturation horaire, en stock et sans frais de mise en service, sinon il refuse avant toute
+création. La CLI <code class="docutils literal notranslate"><span class="pre">scw</span></code> n’est pas utilisée pour cette raison : son <code class="docutils literal notranslate"><span class="pre">server</span> <span class="pre">create</span> <span class="pre">type=…</span></code>
+choisit l’offre par son seul nom et peut tomber sur la mensuelle, qui engage un mois ;</p></li>
+<li><p>il refuse de créer un second serveur si un serveur de lab existe déjà ;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">down</span></code> agit sur <strong>tous</strong> les serveurs portant le tag <code class="docutils literal notranslate"><span class="pre">two-lab</span></code> dans le projet, et
+<code class="docutils literal notranslate"><span class="pre">session</span></code> y ajoute l’identifiant reçu à la création : un serveur créé juste avant une
+interruption est rattrapé ;</p></li>
+<li><p>une suppression refusée pendant la livraison ou l’installation est réessayée tant qu’elle dure,
+dans la limite du délai d’installation augmenté du délai de suppression ;</p></li>
+<li><p>le serveur n’est déclaré supprimé qu’au 404 de l’API, jamais sur une erreur passagère ;</p></li>
+<li><p>un échec de suppression se termine par <code class="docutils literal notranslate"><span class="pre">SERVEUR(S)</span> <span class="pre">DE</span> <span class="pre">LAB</span> <span class="pre">TOUJOURS</span> <span class="pre">FACTURÉ(S)</span></code> et un code
+d’erreur.</p></li>
+</ul>
+<p>Ce qu’il ne peut pas garantir : un <code class="docutils literal notranslate"><span class="pre">SIGKILL</span></code>, une coupure de courant ou une mise en veille du
+poste qui lance la session. En cas de doute, toujours :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>scripts/lab-host.sh<span class="w"> </span>status
+scripts/lab-host.sh<span class="w"> </span>down
+</pre></div>
+</div>
+</section>
+<section id="diagnostic">
+<h2>Diagnostic<a class="headerlink" href="#diagnostic" title="Lien vers cette rubrique">#</a></h2>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">aucune</span> <span class="pre">clé</span> <span class="pre">SSH</span> <span class="pre">active</span> <span class="pre">dans</span> <span class="pre">le</span> <span class="pre">projet</span></code></dt><dd><p>Aucune clé SSH n’est enregistrée dans le projet de lab. En ajouter une dans la console (projet
+→ Clés SSH).</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">offre</span> <span class="pre">horaire</span> <span class="pre">EM-B212X-SSD</span> <span class="pre">:</span> <span class="pre">0</span> <span class="pre">correspondance(s)</span></code></dt><dd><p>L’offre n’existe pas dans la zone en facturation horaire. Vérifier <code class="docutils literal notranslate"><span class="pre">SCW_DEFAULT_ZONE</span></code>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">création</span> <span class="pre">incertaine</span></code></dt><dd><p>La création a échoué ou n’a pas rendu d’identifiant. Le serveur a pu être créé malgré tout —
+cas typique : le quota (identité non validée), ou une réponse perdue. Le script indique s’il
+voit un serveur de lab ; dans tous les cas, lancer <code class="docutils literal notranslate"><span class="pre">status</span></code> puis <code class="docutils literal notranslate"><span class="pre">down</span></code>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">SSH</span> <span class="pre">injoignable</span></code></dt><dd><p>L’installation est terminée mais SSH ne répond pas après 10 minutes. Avec une clé matérielle
+(Yubikey), chaque connexion demande un PIN ou un toucher : utiliser la clé dédiée du lab. Le
+serveur est toujours facturé : <code class="docutils literal notranslate"><span class="pre">down</span></code>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">SERVEUR(S)</span> <span class="pre">DE</span> <span class="pre">LAB</span> <span class="pre">TOUJOURS</span> <span class="pre">FACTURÉ(S)</span></code></dt><dd><p>La suppression n’a pas abouti dans les délais. Relancer <code class="docutils literal notranslate"><span class="pre">down</span></code> ; si l’erreur persiste,
+supprimer depuis la console Scaleway.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">HTTP</span> <span class="pre">403</span> <span class="pre">insufficient</span> <span class="pre">permissions</span></code></dt><dd><p>La clé d’API est authentifiée mais n’a pas le droit demandé — en général la lecture des clés
+SSH du projet. Compléter la politique de la clé, limitée au projet.</p>
+</dd>
+</dl>
+</section>
+<section id="securite">
+<h2>Sécurité<a class="headerlink" href="#securite" title="Lien vers cette rubrique">#</a></h2>
+<ul class="simple">
+<li><p>La clé secrète n’apparaît ni dans les arguments des processus (elle est passée à <code class="docutils literal notranslate"><span class="pre">curl</span></code> par
+un descripteur de fichier), ni dans les journaux, ni dans l’environnement de <code class="docutils literal notranslate"><span class="pre">ssh</span></code>.</p></li>
+<li><p><strong>Ne jamais lancer le script sous</strong> <code class="docutils literal notranslate"><span class="pre">bash</span> <span class="pre">-x</span></code> : la trace afficherait la clé.</p></li>
+<li><p>Le serveur n’expose que SSH, par clé. Le lab n’a aucune donnée personnelle ni secret de
+production.</p></li>
+<li><p>Une clé secrète qui a circulé ailleurs que dans <code class="docutils literal notranslate"><span class="pre">scaleway.env</span></code> (conversation, terminal
+partagé, capture d’écran) se régénère.</p></li>
+<li><p><strong>Clé SSH des VM</strong> : générée par <code class="docutils literal notranslate"><span class="pre">lab</span> <span class="pre">up</span></code> sur le serveur, c’est la seule clé autorisée dans
+les VM. Elle ne quitte jamais le serveur, n’ouvre que les VM du lab — qui n’écoutent qu’en
+boucle locale — et disparaît avec lui. La clé publique du Mac n’est jamais envoyée aux VM.</p></li>
+<li><p><strong>Clés d’hôte des VM non vérifiées</strong> par <code class="docutils literal notranslate"><span class="pre">lab</span> <span class="pre">ssh</span></code> (<code class="docutils literal notranslate"><span class="pre">known_hosts</span></code> jetable) : elles changent
+à chaque <code class="docutils literal notranslate"><span class="pre">up</span></code>. Acceptable uniquement parce que la connexion reste sur la boucle locale d’un
+serveur auquel on s’est authentifié.</p></li>
+<li><p><strong>Code exécuté sans épinglage par</strong> <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> : la bibliothèque <code class="docutils literal notranslate"><span class="pre">shflags</span></code> est récupérée
+par <code class="docutils literal notranslate"><span class="pre">curl</span></code> sur la branche <code class="docutils literal notranslate"><span class="pre">main</span></code> d’un autre dépôt (<code class="docutils literal notranslate"><span class="pre">H6N/tools</span></code>) et exécutée par <code class="docutils literal notranslate"><span class="pre">eval</span></code>,
+sans vérification d’intégrité — dans le lab comme en production. Les artefacts de la release
+sont, eux, vérifiés contre <code class="docutils literal notranslate"><span class="pre">SHA256SUMS</span></code>.</p></li>
+<li><p><strong>Image</strong> : <code class="docutils literal notranslate"><span class="pre">SHA512SUMS</span></code> vient de la même origine que l’image, en HTTPS. La vérification
+protège contre la corruption, pas contre une origine compromise ; la signature GPG de Debian
+(<code class="docutils literal notranslate"><span class="pre">SHA512SUMS.sign</span></code>) n’est pas encore vérifiée.</p></li>
+</ul>
+</section>
+<section id="tests">
+<h2>Tests<a class="headerlink" href="#tests" title="Lien vers cette rubrique">#</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bash<span class="w"> </span>scripts/lab-host_test.sh
+bash<span class="w"> </span>test/e2e/run_test.sh
+go<span class="w"> </span><span class="nb">test</span><span class="w"> </span>./internal/lab/...<span class="w"> </span>./cmd/lab/
+</pre></div>
+</div>
+<p>Environ une minute et demie, sans réseau : la suite remplace <code class="docutils literal notranslate"><span class="pre">curl</span></code> par une fausse API Scaleway
+qui se place dans le pire cas (offre mensuelle listée avant l’horaire, serveurs d’autres projets,
+suppressions refusées, erreurs 503, serveur qui tarde à disparaître) et <code class="docutils literal notranslate"><span class="pre">ssh</span></code> par un faux client.
+Elle tourne sous bash 5 comme sous le bash 3.2 de macOS.</p>
+</section>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="index.html"
+       title="page précédente">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">précédent</p>
+        <p class="prev-next-title">Développement</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="../concepts/index.html"
+       title="page suivante">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">suivant</p>
+        <p class="prev-next-title">Concepts</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contenu
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#le-serveur-de-lab">Le serveur de lab</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#prerequis-cote-scaleway">Prérequis côté Scaleway</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fichiers-locaux">Fichiers locaux</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#commandes">Commandes</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#topologie">Topologie</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#roles">Rôles</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#rendu-des-vm">Rendu des VM</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#verifie-sur-de-vraies-vm">Vérifié sur de vraies VM</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#lancement-des-vm">Lancement des VM</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#verifie-sur-le-serveur-de-lab">Vérifié sur le serveur de lab</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#scenarios">Scénarios</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#ecrire-un-scenario">Écrire un scénario</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#facturation">Facturation</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#diagnostic">Diagnostic</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#securite">Sécurité</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#tests">Tests</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+Par Nicolas Boufidjeline
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2026, Nicolas Boufidjeline.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

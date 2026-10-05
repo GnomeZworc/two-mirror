@@ -218,6 +218,13 @@
 </ul>
 </details></li>
 </ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Développement</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../developpement/index.html">Développement</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../developpement/lab.html">Lab de test multi-nœud</a></li>
+</ul>
+</details></li>
+</ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Interne</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1 has-children"><a class="reference internal" href="../concepts/index.html">Concepts</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -336,7 +343,11 @@
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#installation">Installation</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#plan-de-controle-frr">Plan de contrôle — FRR</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#plan-de-controle-frr">Plan de contrôle — FRR</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#configuration-de-frr">Configuration de FRR</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#articulation-avec-l-agent">Articulation avec l’agent</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#verifier-le-plan-de-donnees">Vérifier le plan de données</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#valider-le-noeud">Valider le nœud</a></li>
 </ul>
@@ -370,23 +381,67 @@ tout ce qui est posé doit l’être par un mécanisme rejoué à chaque démarr
 créées par l’agent. C’est ce qui rend un subnet utilisable au-delà d’un seul nœud, puisque
 l’agent désactive l’apprentissage et ne configure aucun voisin — cf.
 <a class="reference internal" href="architecture-cluster.html"><span class="doc">Architecture du cluster</span></a>.</p>
+<section id="configuration-de-frr">
+<h3>Configuration de FRR<a class="headerlink" href="#configuration-de-frr" title="Lien vers cette rubrique">#</a></h3>
+<p>Seul <code class="docutils literal notranslate"><span class="pre">bgpd</span></code> est activé dans <code class="docutils literal notranslate"><span class="pre">/etc/frr/daemons</span></code>. D’un hyperviseur à l’autre ne changent que
+<code class="docutils literal notranslate"><span class="pre">hostname</span></code> et <code class="docutils literal notranslate"><span class="pre">router-id</span></code>, l’adresse de l’hyperviseur sur son segment.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>frr defaults traditional
+hostname hv1
+log syslog informational
+!
+router bgp 64600
+ bgp router-id 192.168.14.11
+ no bgp default ipv4-unicast
+ neighbor fabric peer-group
+ neighbor fabric remote-as 64600
+ neighbor fabric capability extended-nexthop
+ neighbor 10.255.255.1 peer-group fabric
+ !
+ address-family l2vpn evpn
+  neighbor fabric activate
+  advertise-all-vni
+ exit-address-family
+ !
+exit
+!
+</pre></div>
+</div>
+<p>Ce qu’elle établit :</p>
+<ul class="simple">
+<li><p><strong>Une seule session</strong>, en iBGP dans l’AS 64600, vers la loopback du route reflector
+(<code class="docutils literal notranslate"><span class="pre">10.255.255.1</span></code>), jointe par la passerelle par défaut — le routeur de cluster l’a apprise du
+route reflector (<a class="reference internal" href="routeurs.html"><span class="doc">Routeurs</span></a>). Aucune adresse d’un autre hyperviseur n’est écrite : ajouter
+un nœud ne touche pas la configuration des autres.</p></li>
+<li><p><strong>EVPN seulement</strong> : l’IPv4 unicast n’est pas activé (<code class="docutils literal notranslate"><span class="pre">no</span> <span class="pre">bgp</span> <span class="pre">default</span> <span class="pre">ipv4-unicast</span></code>).
+<code class="docutils literal notranslate"><span class="pre">advertise-all-vni</span></code> annonce les VNI de toutes les interfaces VXLAN que FRR voit, et donc
+celles que l’agent crée.</p></li>
+<li><p><strong>Pas de BFD</strong> sur cette session, contrairement à la session entre route reflector et routeur.</p></li>
+</ul>
+</section>
+<section id="articulation-avec-l-agent">
+<h3>Articulation avec l’agent<a class="headerlink" href="#articulation-avec-l-agent" title="Lien vers cette rubrique">#</a></h3>
+<p>Rien à configurer à la création d’un subnet : la VXLAN apparaît, FRR la voit et l’annonce, sans
+action ni redémarrage. Il faut en revanche que la VXLAN porte une <strong>adresse VTEP locale</strong> : sans
+elle, FRR voit la VNI mais n’annonce rien, et deux hyperviseurs gérés par two ne se joignent pas.
+L’agent la pose à partir de la release <code class="docutils literal notranslate"><span class="pre">0.2.0rc003</span></code>
+(<a class="reference external" href="https://git.g3e.fr/syonad/two/issues/51">#51</a>) : l’adresse IPv4 primaire du <code class="docutils literal notranslate"><span class="pre">local_iface</span></code>
+du subnet.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p><strong>À rédiger.</strong> À documenter :</p>
+<p><strong>À rédiger.</strong> Reste à documenter :</p>
 <ul class="simple">
-<li><p>la version de FRR de référence et son mode d’installation, sachant que l’hyperviseur est
-sans état : le paquet et la configuration doivent être posés à chaque démarrage, par le
-bootstrap ou par un mécanisme équivalent ;</p></li>
-<li><p>les démons activés dans <code class="docutils literal notranslate"><span class="pre">/etc/frr/daemons</span></code> ;</p></li>
-<li><p>la configuration de référence : numéro d’AS, session vers le route reflector, famille
-d’adresses utilisée pour annoncer les MAC et les VNI ;</p></li>
-<li><p>l’articulation avec les interfaces créées par l’agent : comment FRR découvre une interface
-VXLAN qui apparaît à la création d’un subnet, et si une action est nécessaire ensuite ;</p></li>
-<li><p>ce qui se passe au démarrage à froid, quand FRR démarre avant ou après l’agent ;</p></li>
+<li><p>la version de FRR de référence et son installation sur l’hyperviseur <strong>sans état</strong> : paquet
+et configuration doivent être posés à chaque démarrage, par le bootstrap ou un mécanisme
+équivalent (<a class="reference external" href="https://git.g3e.fr/syonad/two/issues/52">#52</a>) ;</p></li>
+<li><p>le démarrage à froid, selon que FRR démarre avant ou après l’agent ;</p></li>
+<li><p>les subnets <code class="docutils literal notranslate"><span class="pre">vxlan</span></code> créés avant <code class="docutils literal notranslate"><span class="pre">0.2.0rc003</span></code>, dont la VXLAN n’a pas d’adresse VTEP
+locale : les recréer ou poser l’adresse à chaud, à trancher dans
+<a class="reference external" href="https://git.g3e.fr/syonad/two/issues/51">#51</a> ;</p></li>
 <li><p>le cas particulier du <strong>premier</strong> hyperviseur, dont la session ne peut pas s’établir tant
 que le route reflector n’existe pas.</p></li>
 </ul>
 </div>
+</section>
 </section>
 <section id="verifier-le-plan-de-donnees">
 <h2>Vérifier le plan de données<a class="headerlink" href="#verifier-le-plan-de-donnees" title="Lien vers cette rubrique">#</a></h2>
@@ -467,7 +522,11 @@ l’agent, le DHCP, la route vers le serveur de metadata et l’image. C’est l
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#installation">Installation</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#plan-de-controle-frr">Plan de contrôle — FRR</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#plan-de-controle-frr">Plan de contrôle — FRR</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#configuration-de-frr">Configuration de FRR</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#articulation-avec-l-agent">Articulation avec l’agent</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#verifier-le-plan-de-donnees">Vérifier le plan de données</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#valider-le-noeud">Valider le nœud</a></li>
 </ul>

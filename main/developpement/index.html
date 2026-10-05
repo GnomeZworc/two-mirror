@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Exploitation &#8212; Documentation two 0.1.0</title>
+    <title>Développement &#8212; Documentation two 0.1.0</title>
   
   
   
@@ -44,7 +44,7 @@
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
     <script src="../_static/translations.js?v=e6b791cb"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'exploitation/index';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'developpement/index';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = '../switcher.json';
@@ -54,8 +54,8 @@
         </script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Recherche" href="../search.html" />
-    <link rel="next" title="Configuration" href="configuration.html" />
-    <link rel="prev" title="VM route reflector" href="../deploiement/route-reflector.html" />
+    <link rel="next" title="Lab de test multi-nœud" href="lab.html" />
+    <link rel="prev" title="Diagnostic" href="../exploitation/diagnostic.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="fr"/>
   <meta name="docsearch:version" content="0.1" />
@@ -204,24 +204,24 @@
 </details></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Exploitation</span></p>
-<ul class="current nav bd-sidenav">
-<li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">Exploitation</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2"><a class="reference internal" href="configuration.html">Configuration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="services.html">Services systemd</a></li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="api-agent/index.html">API de l’agent</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l3"><a class="reference internal" href="api-agent/asynchronisme.html">Modèle asynchrone et codes de retour</a></li>
-<li class="toctree-l3"><a class="reference internal" href="api-agent/reference.html">Référence</a></li>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../exploitation/index.html">Exploitation</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../exploitation/configuration.html">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../exploitation/services.html">Services systemd</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../exploitation/api-agent/index.html">API de l’agent</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../exploitation/api-agent/asynchronisme.html">Modèle asynchrone et codes de retour</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../exploitation/api-agent/reference.html">Référence</a></li>
 </ul>
 </details></li>
-<li class="toctree-l2"><a class="reference internal" href="observabilite.html">Observabilité</a></li>
-<li class="toctree-l2"><a class="reference internal" href="diagnostic.html">Diagnostic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../exploitation/observabilite.html">Observabilité</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../exploitation/diagnostic.html">Diagnostic</a></li>
 </ul>
 </details></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Développement</span></p>
-<ul class="nav bd-sidenav">
-<li class="toctree-l1 has-children"><a class="reference internal" href="../developpement/index.html">Développement</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2"><a class="reference internal" href="../developpement/lab.html">Lab de test multi-nœud</a></li>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">Développement</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="lab.html">Lab de test multi-nœud</a></li>
 </ul>
 </details></li>
 </ul>
@@ -330,7 +330,7 @@
               
 
 <div id="jb-print-docs-body" class="onlyprint">
-    <h1>Exploitation</h1>
+    <h1>Développement</h1>
     <!-- Table of contents -->
     <div id="print-main-content">
         <div id="jb-print-toc">
@@ -344,17 +344,13 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="exploitation">
-<h1>Exploitation<a class="headerlink" href="#exploitation" title="Lien vers cette rubrique">#</a></h1>
-<p>Faire tourner un hyperviseur en service : configuration, services systemd, API de l’agent,
-observabilité et diagnostic.</p>
+  <section id="developpement">
+<h1>Développement<a class="headerlink" href="#developpement" title="Lien vers cette rubrique">#</a></h1>
+<p>Outillage réservé au développement de two : il ne s’installe sur aucun hyperviseur et ne sert
+pas à exploiter un cluster.</p>
 <div class="toctree-wrapper compound">
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
-<li class="toctree-l1"><a class="reference internal" href="services.html">Services systemd</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api-agent/index.html">API de l’agent</a></li>
-<li class="toctree-l1"><a class="reference internal" href="observabilite.html">Observabilité</a></li>
-<li class="toctree-l1"><a class="reference internal" href="diagnostic.html">Diagnostic</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lab.html">Lab de test multi-nœud</a></li>
 </ul>
 </div>
 </section>
@@ -371,20 +367,20 @@ observabilité et diagnostic.</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="../deploiement/route-reflector.html"
+       href="../exploitation/diagnostic.html"
        title="page précédente">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">précédent</p>
-        <p class="prev-next-title">VM route reflector</p>
+        <p class="prev-next-title">Diagnostic</p>
       </div>
     </a>
     <a class="right-next"
-       href="configuration.html"
+       href="lab.html"
        title="page suivante">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">suivant</p>
-        <p class="prev-next-title">Configuration</p>
+        <p class="prev-next-title">Lab de test multi-nœud</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
