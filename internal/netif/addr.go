@@ -19,3 +19,11 @@ func AddrAdd(iface string, ip net.IP) error {
 	}
 	return netlink.AddrAdd(link, addr)
 }
+
+func AddrAddPrefix(iface string, prefix *net.IPNet) error {
+	link, err := netlink.LinkByName(iface)
+	if err != nil {
+		return err
+	}
+	return netlink.AddrAdd(link, &netlink.Addr{IPNet: prefix})
+}
