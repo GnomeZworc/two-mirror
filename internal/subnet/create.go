@@ -2,6 +2,7 @@ package subnet
 
 import (
 	"fmt"
+	"net"
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/dhcp"
@@ -73,17 +74,24 @@ func createSubnet(db *badger.DB, subnetName string, d subnetData, backend dhcpba
 		return fmt.Errorf("unknown subnet mode %q", d.mode)
 	}
 
+	var gatewayMAC net.HardwareAddr
+	if d.mode == ModeVxlan {
+		vtep, err := netif.VTEPAddress(d.localIface)
+		if err != nil {
+			return fmt.Errorf("vtep of %s: %w", d.localIface, err)
+		}
+		if gatewayMAC, err = hostGatewayMAC(vtep); err != nil {
+			return err
+		}
+	}
+
 	if err := netns.Call(d.vpc, func() error {
 		if err := netif.CreateBridge(d.bridge, 1500); err != nil {
 			return fmt.Errorf("create bridge: %w", err)
 		}
-		if d.mode == ModeVxlan {
-			mac, err := anycastGatewayMAC(d.vxlanID)
-			if err != nil {
-				return err
-			}
-			if err := netif.LinkSetHardwareAddr(d.bridge, mac); err != nil {
-				return fmt.Errorf("set anycast gateway mac %s: %w", mac, err)
+		if gatewayMAC != nil {
+			if err := netif.LinkSetHardwareAddr(d.bridge, gatewayMAC); err != nil {
+				return fmt.Errorf("set gateway mac %s: %w", gatewayMAC, err)
 			}
 		}
 		return netif.BridgeSetMaster(vethI, d.bridge)

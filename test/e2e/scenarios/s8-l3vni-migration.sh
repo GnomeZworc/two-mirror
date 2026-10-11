@@ -52,10 +52,10 @@ check "orchestrée, 2 — VM s8-m3 10.242.1.50 sur hv1 pendant que s8-m2 tourne 
 check "hv1 : s8-m3 répond depuis son netns" netns_ping_wait vp-s8 10.242.1.50
 NODE
 on rr1 <<'NODE'
-check "rr1 : MAC de gateway anycast de sn-s8s (02:01:00:00:0a:fb), portée par hv1 et hv2, non annoncée en EVPN" sh -c "! vtysh -c 'show bgp l2vpn evpn route type macip' | grep -qi '02:01:00:00:0a:fb'"
+check "rr1 : MAC de gateway de sn-s8s propre à chaque hôte, hv1 (02:03:c0:a8:0e:0b) et hv2 (02:03:c0:a8:0e:0c)" sh -c "r=\$(vtysh -c 'show bgp l2vpn evpn route type macip'); echo \"\$r\" | grep -qi '02:03:c0:a8:0e:0b' && echo \"\$r\" | grep -qi '02:03:c0:a8:0e:0c'"
 NODE
 on hv1 <<'NODE'
-info "hv1 : MAC en double détectées sur la VNI 2811 : $(vtysh -c 'show evpn mac vni 2811 duplicate' 2>&1 | grep -ci '02:01:00' || true)"
+check "hv1 : aucune MAC en double sur la VNI 2811" sh -c "! vtysh -c 'show evpn mac vni 2811 duplicate' | grep -qiE '([0-9a-f]{2}:){5}[0-9a-f]{2}'"
 NODE
 on hv3 <<'NODE'
 for i in $(seq 1 30); do [ "$(bgp_paths vp-s8 10.242.1.50/32)" = 2 ] && break; sleep 2; done

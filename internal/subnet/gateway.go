@@ -6,14 +6,14 @@ import (
 )
 
 const (
-	maxVNI              = 1<<24 - 1
-	roleAnycastGateway  = 0x01
+	roleHostGateway     = 0x03
 	locallyAdministered = 0x02
 )
 
-func anycastGatewayMAC(vni int) (net.HardwareAddr, error) {
-	if vni < 0 || vni > maxVNI {
-		return nil, fmt.Errorf("vxlan_id %d does not fit in 24 bits", vni)
+func hostGatewayMAC(vtep net.IP) (net.HardwareAddr, error) {
+	ip := vtep.To4()
+	if ip == nil {
+		return nil, fmt.Errorf("vtep %v is not an IPv4 address", vtep)
 	}
-	return net.HardwareAddr{locallyAdministered, roleAnycastGateway, 0x00, byte(vni >> 16), byte(vni >> 8), byte(vni)}, nil
+	return net.HardwareAddr{locallyAdministered, roleHostGateway, ip[0], ip[1], ip[2], ip[3]}, nil
 }

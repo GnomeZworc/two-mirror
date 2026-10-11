@@ -1,31 +1,29 @@
 package subnet
 
-import "testing"
+import (
+	"net"
+	"testing"
+)
 
-func TestAnycastGatewayMAC(t *testing.T) {
-	cases := []struct {
-		vni  int
-		want string
-	}{
-		{2811, "02:01:00:00:0a:fb"},
-		{0, "02:01:00:00:00:00"},
-		{1, "02:01:00:00:00:01"},
-		{0x123456, "02:01:00:12:34:56"},
-		{maxVNI, "02:01:00:ff:ff:ff"},
+func TestHostGatewayMAC(t *testing.T) {
+	cases := map[string]string{
+		"192.168.14.11": "02:03:c0:a8:0e:0b",
+		"192.168.14.12": "02:03:c0:a8:0e:0c",
+		"10.0.0.1":      "02:03:0a:00:00:01",
 	}
-	for _, c := range cases {
-		got, err := anycastGatewayMAC(c.vni)
+	for vtep, want := range cases {
+		got, err := hostGatewayMAC(net.ParseIP(vtep))
 		if err != nil {
-			t.Fatalf("VNI %d : erreur inattendue %v", c.vni, err)
+			t.Fatalf("VTEP %s : erreur inattendue %v", vtep, err)
 		}
-		if got.String() != c.want {
-			t.Errorf("VNI %d : %s, %s attendu", c.vni, got, c.want)
+		if got.String() != want {
+			t.Errorf("VTEP %s : %s, %s attendu", vtep, got, want)
 		}
 	}
 }
 
-func TestAnycastGatewayMACIsLocalUnicast(t *testing.T) {
-	got, err := anycastGatewayMAC(2811)
+func TestHostGatewayMACIsLocalUnicast(t *testing.T) {
+	got, err := hostGatewayMAC(net.ParseIP("192.168.14.11"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,22 +35,17 @@ func TestAnycastGatewayMACIsLocalUnicast(t *testing.T) {
 	}
 }
 
-func TestAnycastGatewayMACIsIdenticalForTheSameVNIAndDistinctOtherwise(t *testing.T) {
-	a, _ := anycastGatewayMAC(2811)
-	b, _ := anycastGatewayMAC(2811)
-	c, _ := anycastGatewayMAC(2812)
-	if a.String() != b.String() {
-		t.Errorf("même VNI, MAC différentes : %s et %s", a, b)
-	}
-	if a.String() == c.String() {
-		t.Errorf("VNI différentes, même MAC : %s", a)
+func TestHostGatewayMACDiffersFromTheRouterMACOfTheSameHost(t *testing.T) {
+	got, _ := hostGatewayMAC(net.ParseIP("192.168.14.11"))
+	if got.String() == "02:02:c0:a8:0e:0b" {
+		t.Errorf("%s : même MAC que la RMAC du L3VNI de cet hôte", got)
 	}
 }
 
-func TestAnycastGatewayMACRejectsVNIOutside24Bits(t *testing.T) {
-	for _, vni := range []int{-1, maxVNI + 1} {
-		if mac, err := anycastGatewayMAC(vni); err == nil {
-			t.Errorf("VNI %d accepté : %s", vni, mac)
+func TestHostGatewayMACRejectsANonIPv4VTEP(t *testing.T) {
+	for _, vtep := range []net.IP{nil, net.ParseIP("fd00::1")} {
+		if mac, err := hostGatewayMAC(vtep); err == nil {
+			t.Errorf("VTEP %v accepté : %s", vtep, mac)
 		}
 	}
 }

@@ -754,8 +754,8 @@ sortie vaut 1 si une vérification échoue **ou si aucune n'a été faite**.
      - suite de ``s7``, topologie ``evpn-3hv.yml`` : migration d'une VM de hv1 vers hv2 par l'API,
        observée depuis hv3 qui n'a pas le subnet : migration simple (VM supprimée puis recréée,
        ``/24`` comme filet), séquence orchestrée (deux VM de même IP, deux ``/32`` en ECMP, 40
-       sources sur 40) ; l'ancien « pire cas » devient un refus (409) ; MAC de gateway anycast non
-       annoncée en EVPN ; watchdog : ``/32`` orphelin signalé comme trou noir, ``/32`` manquant
+       sources sur 40) ; l'ancien « pire cas » devient un refus (409) ; MAC de gateway propre à
+       chaque hôte, sans doublon EVPN ; watchdog : ``/32`` orphelin signalé comme trou noir, ``/32`` manquant
        signalé
      - hv1, hv2, hv3, rr1
 
