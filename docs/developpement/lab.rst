@@ -245,7 +245,7 @@ Ce que le fichier déclare :
    * ``frr`` — le chemin d'un ``frr.conf``, relatif au fichier de topologie : FRR est installé
      au démarrage et la configuration déposée **telle quelle** (voir `Rôles`_).
    * ``release`` — **obligatoire pour un hyperviseur**, refusé ailleurs : le tag de la release de
-     two que ``deploy.sh`` installe (``release: 0.2.0rc005``). Sans lui, ``deploy.sh`` prendrait la
+     two que ``deploy.sh`` installe (``release: 0.2.0rc006``). Sans lui, ``deploy.sh`` prendrait la
      dernière release, et le lab ne serait plus reproductible.
    * ``agent`` — pour un hyperviseur seulement : le chemin d'un ``agent.yml``, relatif au fichier
      de topologie, déposé dans ``/etc/two/agent.yml`` avant ``deploy.sh``. Sans lui, l'agent tourne
@@ -302,8 +302,8 @@ Limites : 1000 nœuds, 256 segments, et autant de câbles que la plage UDP le pe
      name  loopback             secondary                frr       release     agent
      sw1   -                    underlay 169.254.0.1/28  sw1.conf  -           -
      rr1   lo1 10.255.255.1/32  underlay 169.254.0.3/28  rr1.conf  -           -
-     hv1   -                    -                        hv1.conf  0.2.0rc005  two.yml
-     hv2   -                    -                        hv2.conf  0.2.0rc005  bgp.yml
+     hv1   -                    -                        hv1.conf  0.2.0rc006  two.yml
+     hv2   -                    -                        hv2.conf  0.2.0rc006  bgp.yml
 
    segment underlay: 192.168.14.0/24, mtu 9000, switch sw1, bridge br-underlay, gateway 192.168.14.1
      node  interface  address           mac                udp         switch port  mac                udp
