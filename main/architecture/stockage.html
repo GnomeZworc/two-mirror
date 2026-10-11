@@ -374,9 +374,10 @@ subnet/&lt;name&gt;/gateway        → &lt;ip&gt;            (optionnel)
 subnet/&lt;name&gt;/dhcp/&lt;ip&gt;      → &lt;mac&gt;
 
 vm/&lt;name&gt;/state              → creating | running | error | deleting | deleted
-vm/&lt;name&gt;/subnet             → &lt;subnet-name&gt;
-vm/&lt;name&gt;/tap_id             → &lt;int&gt;
-vm/&lt;name&gt;/ip                 → &lt;ip&gt;
+vm/&lt;name&gt;/nic/&lt;i&gt;/subnet     → &lt;subnet-name&gt;   (une interface par index, ordre du tableau interfaces)
+vm/&lt;name&gt;/nic/&lt;i&gt;/ip         → &lt;ip&gt;
+vm/&lt;name&gt;/nic/&lt;i&gt;/primary    → "true"          (exactement une interface ; absent sur les autres)
+vm/&lt;name&gt;/nic/&lt;i&gt;/tap_id     → &lt;int&gt;           (alloué au premier démarrage, puis conservé)
 vm/&lt;name&gt;/metadata_port      → &lt;port&gt;
 vm/&lt;name&gt;/disk/&lt;dev&gt;         → &lt;path&gt;          (une clé par disque : sda, vda, …)
 vm/&lt;name&gt;/memory             → &lt;int&gt;           (Mo)
@@ -389,9 +390,13 @@ vm/&lt;name&gt;/metadata/&lt;document&gt; → &lt;contenu brut&gt; (optionnel : 
 </div>
 <section id="regles">
 <h2>Règles<a class="headerlink" href="#regles" title="Lien vers cette rubrique">#</a></h2>
-<p><strong>Pas de duplication.</strong> Une ressource ne stocke que ce qui lui est propre. Une VM garde le lien
-<code class="docutils literal notranslate"><span class="pre">vm/&lt;name&gt;/subnet</span></code> ; le VPC, le bridge et l”<code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> sont lus depuis le subnet, leur
-source canonique.</p>
+<p><strong>Pas de duplication.</strong> Une ressource ne stocke que ce qui lui est propre. Une interface de VM
+garde le lien <code class="docutils literal notranslate"><span class="pre">vm/&lt;name&gt;/nic/&lt;i&gt;/subnet</span></code> ; le VPC, le mode, le bridge et l”<code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> sont
+lus depuis le subnet, leur source canonique. De même, la L3VNI d’un VPC n’est stockée que sous
+<code class="docutils literal notranslate"><span class="pre">vpc/&lt;name&gt;/l3vni</span></code> : RT, RD, MAC de routeur et table de routage en sont calculés.</p>
+<p><strong>Ancien schéma des VM.</strong> Avant le multi-interfaces, une VM portait directement <code class="docutils literal notranslate"><span class="pre">subnet</span></code>, <code class="docutils literal notranslate"><span class="pre">ip</span></code>
+et <code class="docutils literal notranslate"><span class="pre">tap_id</span></code>. L’agent les migre au démarrage vers <code class="docutils literal notranslate"><span class="pre">nic/0/…</span></code>, marquée <code class="docutils literal notranslate"><span class="pre">primary</span></code>, avant
+d’ouvrir son API ; une VM qui a déjà des clés <code class="docutils literal notranslate"><span class="pre">nic/</span></code> est laissée telle quelle.</p>
 <p><strong>Les états passent par ``state``.</strong> Toujours <code class="docutils literal notranslate"><span class="pre">state.Set</span></code> / <code class="docutils literal notranslate"><span class="pre">state.Get</span></code> : <code class="docutils literal notranslate"><span class="pre">Set</span></code> refuse une
 valeur hors énumération, <code class="docutils literal notranslate"><span class="pre">Get</span></code> refuse de retourner une valeur non reconnue. <code class="docutils literal notranslate"><span class="pre">error</span></code> n’est
 écrit que par <code class="docutils literal notranslate"><span class="pre">Dispatcher.Dispatch</span></code>, via <code class="docutils literal notranslate"><span class="pre">cmd.Key()</span></code>.</p>

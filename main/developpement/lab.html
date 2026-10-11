@@ -487,15 +487,16 @@ par <code class="docutils literal notranslate"><span class="pre">down</span></co
                     et le prix ; ne crée rien
   up                crée le serveur de lab, attend la fin de son installation et son SSH,
                     puis le prépare (voir prepare)
-  status            liste les serveurs de lab du projet
+  status            liste les serveurs de lab du projet, dans toutes les zones candidates
   ssh [commande]    se connecte au serveur de lab ; avec une commande, un terminal n'est demandé
                     que si l'entrée standard en est un
   prepare           installe sur le serveur ce dont lab a besoin (qemu, genisoimage), vérifie
-                    /dev/kvm et la virtualisation imbriquée ; lancé aussi par up
+                    /dev/kvm, la virtualisation imbriquée et un CPU x86-64-v3 ; lancé aussi par up
   push &lt;topologie&gt;  compile cmd/lab pour linux/amd64 et dépose sur le serveur ~/lab et le
                     répertoire de la topologie dans ~/topology/ (avec les fichiers qu'elle
                     référence) ; ensuite : ssh './lab up topology/&lt;topologie&gt;'
-  down              supprime tous les serveurs de lab du projet et attend leur disparition
+  down              supprime tous les serveurs de lab du projet, dans toutes les zones candidates,
+                    et attend leur disparition
   session [cmd]     up, puis la commande distante (ou un shell), puis down quoi qu'il arrive
 </pre></div>
 </div>
@@ -503,13 +504,25 @@ par <code class="docutils literal notranslate"><span class="pre">down</span></co
 <p>Toujours commencer par <code class="docutils literal notranslate"><span class="pre">plan</span></code>. Il valide la clé d’API, le quota d’offre, l’OS et les clés SSH,
 et montre exactement ce qui serait commandé :</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ scripts/lab-host.sh plan
-== offre   : EM-B212X-SSD (ddaf8ba6-b2b2-4279-8af3-51930fb602f8), facturation hourly, stock available
-== prix    : 0.321 EUR HT par heure, frais de mise en service 0 EUR
+!! fr-par-1 : offre EM-B420E-NVME en rupture de stock en fr-par-1
+!! fr-par-2 : offre EM-B420E-NVME en rupture de stock en fr-par-2
+!! nl-ams-1 : offre horaire EM-B420E-NVME : 0 correspondance(s) en nl-ams-1, une seule attendue
+== zone    : nl-ams-2
+== offre   : EM-B420E-NVME (d14eef5e-3279-42db-bb57-bb2bbe6a5b28), AMD EPYC 7272, facturation hourly, stock available
+== prix    : 0.444 EUR HT par heure, frais de mise en service 0 EUR
 == os      : Debian 12 (Bookworm) (83640d93-a0b8-45ad-9c9f-30cae48380a4), utilisateur root
 == clés    : 2 clé(s) SSH du projet
-== requête : POST /baremetal/v1/zones/fr-par-1/servers
+== requête : POST /baremetal/v1/zones/nl-ams-2/servers
 </pre></div>
 </div>
+<p><strong>Offre et zone.</strong> L’offre par défaut est <code class="docutils literal notranslate"><span class="pre">EM-B420E-NVME</span></code> (AMD EPYC 7272, 12 cœurs, 119 Gio) :
+son modèle de CPU est exact et atteint <strong>x86-64-v3</strong>, le minimum de RHEL 10 et Rocky 10. Les offres
+« Xeon … or equivalent » ne garantissent rien : <code class="docutils literal notranslate"><span class="pre">EM-B212X-SSD</span></code> (« E5-2620 v4 or equivalent ») a
+livré le 2026-10-11 un E5-2670 de 2012, x86-64-v2, sur lequel Rocky 10 ne démarre pas.
+<code class="docutils literal notranslate"><span class="pre">prepare</span></code> refuse donc un serveur sans x86-64-v3 — dans une <code class="docutils literal notranslate"><span class="pre">session</span></code>, il est aussitôt
+supprimé. La zone n’est pas imposée : <code class="docutils literal notranslate"><span class="pre">plan</span></code> et <code class="docutils literal notranslate"><span class="pre">up</span></code> prennent la première zone de
+<code class="docutils literal notranslate"><span class="pre">LAB_ZONES</span></code> (par défaut toutes les zones Elastic Metal) où l’offre est en stock, <code class="docutils literal notranslate"><span class="pre">SCW_DEFAULT_ZONE</span></code>
+passant en tête ; <code class="docutils literal notranslate"><span class="pre">status</span></code> et <code class="docutils literal notranslate"><span class="pre">down</span></code> couvrent toutes ces zones.</p>
 <p><code class="docutils literal notranslate"><span class="pre">session</span></code> est la forme normale d’usage : le serveur est supprimé à la fin, que la commande
 réussisse, échoue, ou que la session soit interrompue (Ctrl-C, <code class="docutils literal notranslate"><span class="pre">TERM</span></code>, fermeture du terminal).</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ scripts/lab-host.sh session 'uname -a; lscpu | grep -E "Model name|^CPU\(s\)|Virtualization"; free -g | head -2; echo "nested=$(cat /sys/module/kvm_intel/parameters/nested)"; ls -l /dev/kvm'
@@ -584,11 +597,12 @@ portés par un switch). Exemple livré, <code class="docutils literal notranslat
 <span class="nt">      loopback</span><span class="p">:</span><span class="w"> </span><span class="nv">10.255.255.1/32</span><span class="p p-Indicator">,</span><span class="nt"> frr</span><span class="p">:</span><span class="w"> </span><span class="nv">frr/rr1.conf</span><span class="w"> </span><span class="p p-Indicator">}</span>
 <span class="w">  </span><span class="nt">hv1</span><span class="p">:</span>
 <span class="w">    </span><span class="p p-Indicator">{</span><span class="nt"> role</span><span class="p">:</span><span class="w"> </span><span class="nv">hypervisor</span><span class="p p-Indicator">,</span><span class="nt"> image</span><span class="p">:</span><span class="w"> </span><span class="nv">debian12</span><span class="p p-Indicator">,</span><span class="nt"> cpus</span><span class="p">:</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">,</span><span class="nt"> memory</span><span class="p">:</span><span class="w"> </span><span class="nv">16384</span><span class="p p-Indicator">,</span><span class="nt"> segments</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">underlay</span><span class="p p-Indicator">],</span>
-<span class="nt">      addresses</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> underlay</span><span class="p">:</span><span class="w"> </span><span class="nv">192.168.14.11</span><span class="w"> </span><span class="p p-Indicator">},</span><span class="nt"> frr</span><span class="p">:</span><span class="w"> </span><span class="nv">frr/hv1.conf</span><span class="p p-Indicator">,</span><span class="nt"> release</span><span class="p">:</span><span class="w"> </span><span class="nv">0.2.0rc003</span><span class="p p-Indicator">,</span>
+<span class="nt">      addresses</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> underlay</span><span class="p">:</span><span class="w"> </span><span class="nv">192.168.14.11</span><span class="w"> </span><span class="p p-Indicator">},</span><span class="nt"> frr</span><span class="p">:</span><span class="w"> </span><span class="nv">frr/hv1.conf</span><span class="p p-Indicator">,</span><span class="nt"> release</span><span class="p">:</span><span class="w"> </span><span class="nv">0.2.0rc005</span><span class="p p-Indicator">,</span>
 <span class="nt">      agent</span><span class="p">:</span><span class="w"> </span><span class="nv">agent/two.yml</span><span class="w"> </span><span class="p p-Indicator">}</span>
 <span class="w">  </span><span class="nt">hv2</span><span class="p">:</span>
 <span class="w">    </span><span class="p p-Indicator">{</span><span class="nt"> role</span><span class="p">:</span><span class="w"> </span><span class="nv">hypervisor</span><span class="p p-Indicator">,</span><span class="nt"> image</span><span class="p">:</span><span class="w"> </span><span class="nv">debian12</span><span class="p p-Indicator">,</span><span class="nt"> cpus</span><span class="p">:</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">,</span><span class="nt"> memory</span><span class="p">:</span><span class="w"> </span><span class="nv">16384</span><span class="p p-Indicator">,</span><span class="nt"> segments</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">underlay</span><span class="p p-Indicator">],</span>
-<span class="nt">      addresses</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> underlay</span><span class="p">:</span><span class="w"> </span><span class="nv">192.168.14.12</span><span class="w"> </span><span class="p p-Indicator">},</span><span class="nt"> frr</span><span class="p">:</span><span class="w"> </span><span class="nv">frr/hv2.conf</span><span class="p p-Indicator">,</span><span class="nt"> release</span><span class="p">:</span><span class="w"> </span><span class="nv">0.2.0rc003</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="nt">      addresses</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> underlay</span><span class="p">:</span><span class="w"> </span><span class="nv">192.168.14.12</span><span class="w"> </span><span class="p p-Indicator">},</span><span class="nt"> frr</span><span class="p">:</span><span class="w"> </span><span class="nv">frr/hv2.conf</span><span class="p p-Indicator">,</span><span class="nt"> release</span><span class="p">:</span><span class="w"> </span><span class="nv">0.2.0rc005</span><span class="p p-Indicator">,</span>
+<span class="nt">      agent</span><span class="p">:</span><span class="w"> </span><span class="nv">agent/bgp.yml</span><span class="w"> </span><span class="p p-Indicator">}</span>
 </pre></div>
 </div>
 <p>Chaque nœud non-switch est relié au switch de chacun de ses segments par un câble virtuel QEMU ;
@@ -618,12 +632,14 @@ segment ;</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">frr</span></code> — le chemin d’un <code class="docutils literal notranslate"><span class="pre">frr.conf</span></code>, relatif au fichier de topologie : FRR est installé
 au démarrage et la configuration déposée <strong>telle quelle</strong> (voir <a class="reference internal" href="#roles">Rôles</a>).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">release</span></code> — <strong>obligatoire pour un hyperviseur</strong>, refusé ailleurs : le tag de la release de
-two que <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> installe (<code class="docutils literal notranslate"><span class="pre">release:</span> <span class="pre">0.2.0rc003</span></code>). Sans lui, <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> prendrait la
+two que <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> installe (<code class="docutils literal notranslate"><span class="pre">release:</span> <span class="pre">0.2.0rc005</span></code>). Sans lui, <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> prendrait la
 dernière release, et le lab ne serait plus reproductible.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">agent</span></code> — pour un hyperviseur seulement : le chemin d’un <code class="docutils literal notranslate"><span class="pre">agent.yml</span></code>, relatif au fichier
 de topologie, déposé dans <code class="docutils literal notranslate"><span class="pre">/etc/two/agent.yml</span></code> avant <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code>. Sans lui, l’agent tourne
-avec sa configuration par défaut. L’exemple met hv1 sur le serveur DHCP intégré
-(<code class="docutils literal notranslate"><span class="pre">test/e2e/topologies/agent/two.yml</span></code> : <code class="docutils literal notranslate"><span class="pre">dhcp.backend:</span> <span class="pre">two</span></code>) et laisse hv2 sur dnsmasq.</p></li>
+avec sa configuration par défaut. Les deux fichiers fournis donnent à l’agent la section
+<code class="docutils literal notranslate"><span class="pre">bgp</span></code> (AS 64600, route reflector <code class="docutils literal notranslate"><span class="pre">10.255.255.1</span></code>) et un watchdog toutes les 10 s ;
+<code class="docutils literal notranslate"><span class="pre">test/e2e/topologies/agent/two.yml</span></code> met en plus hv1 sur le serveur DHCP intégré
+(<code class="docutils literal notranslate"><span class="pre">dhcp.backend:</span> <span class="pre">two</span></code>), <code class="docutils literal notranslate"><span class="pre">agent/bgp.yml</span></code> laisse les autres sur dnsmasq.</p></li>
 </ul>
 <p><code class="docutils literal notranslate"><span class="pre">mgmt0</span></code> et <code class="docutils literal notranslate"><span class="pre">lo1</span></code> sont réservés : aucun segment ne peut porter ces noms.</p>
 </dd>
@@ -680,8 +696,8 @@ roles
   name  loopback             secondary                frr       release     agent
   sw1   -                    underlay 169.254.0.1/28  sw1.conf  -           -
   rr1   lo1 10.255.255.1/32  underlay 169.254.0.3/28  rr1.conf  -           -
-  hv1   -                    -                        hv1.conf  0.2.0rc003  two.yml
-  hv2   -                    -                        hv2.conf  0.2.0rc003  -
+  hv1   -                    -                        hv1.conf  0.2.0rc005  two.yml
+  hv2   -                    -                        hv2.conf  0.2.0rc005  bgp.yml
 
 segment underlay: 192.168.14.0/24, mtu 9000, switch sw1, bridge br-underlay, gateway 192.168.14.1
   node  interface  address           mac                udp         switch port  mac                udp
@@ -710,7 +726,9 @@ n’en déclare pas : il porte toujours la passerelle, la première adresse du s
 <h3>Rôles<a class="headerlink" href="#roles" title="Lien vers cette rubrique">#</a></h3>
 <p>Les configurations FRR du lab vivent dans <code class="docutils literal notranslate"><span class="pre">test/e2e/topologies/frr/</span></code>, une par nœud, <strong>écrites à la main</strong> :
 ce sont les mêmes fichiers que la documentation de déploiement inclut, pour que le lab qualifie
-exactement ce qu’elle prescrit. Celle du route reflector :</p>
+exactement ce qu’elle prescrit. Celles des hyperviseurs se réduisent à <code class="docutils literal notranslate"><span class="pre">hostname</span></code> et <code class="docutils literal notranslate"><span class="pre">log</span></code> :
+la configuration BGP est posée par l’agent (section <code class="docutils literal notranslate"><span class="pre">bgp</span></code> de <code class="docutils literal notranslate"><span class="pre">agent.yml</span></code>). Celle du route
+reflector :</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>frr defaults traditional
 hostname rr1
 log syslog informational
@@ -783,7 +801,12 @@ teste les scripts de sa branche. L’uplink <code class="docutils literal notran
 celle du premier segment de l’hyperviseur dans l’ordre de déclaration des segments — parce que
 <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> y lit l’adresse et la passerelle qu’il déplace sur <code class="docutils literal notranslate"><span class="pre">br-000000</span></code>. <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code>
 télécharge la release sur <code class="docutils literal notranslate"><span class="pre">git.g3e.fr</span></code> sans réessayer : le lancement attend d’abord que le serveur
-réponde, à travers le switch. FRR est installé <strong>après</strong> : il démarre sur le réseau final.</p>
+réponde, à travers le switch. FRR est installé <strong>après</strong> : il démarre sur le réseau final. Démarré
+avant la migration, zebra peut perdre la route par défaut quand elle passe de l’uplink à
+<code class="docutils literal notranslate"><span class="pre">br-000000</span></code> — constaté le 2026-10-11 sur un hyperviseur sur deux : route reflector
+<code class="docutils literal notranslate"><span class="pre">unresolved</span></code>, session BGP jamais établie. L’agent, configuré avec une section <code class="docutils literal notranslate"><span class="pre">bgp</span></code>, refuse de
+démarrer tant que FRR n’est pas là : son premier démarrage par <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> échoue, et le
+provisionnement le <strong>redémarre</strong> une fois FRR installé.</p>
 <p><strong>Un seul script de provisionnement par nœud.</strong> cloud-init exécute <code class="docutils literal notranslate"><span class="pre">runcmd</span></code> comme un script
 <code class="docutils literal notranslate"><span class="pre">sh</span></code> sans <code class="docutils literal notranslate"><span class="pre">set</span> <span class="pre">-e</span></code> : seule la dernière commande compte, et un <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> en échec suivi d’un
 FRR installé avec succès passerait pour un démarrage réussi. Chaque nœud reçoit donc
@@ -1174,6 +1197,26 @@ le trafic restant est <strong>mesuré</strong> (<code class="docutils literal no
 VTEP distant est réappris et le trafic repasse — délai mesuré</p></td>
 <td><p>hv1, hv2, rr1</p></td>
 </tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">s7-l3vni</span></code></p></td>
+<td><p>qualification de <a class="reference external" href="https://git.g3e.fr/syonad/two/issues/41">#41</a> <strong>par l’API</strong> : VPC créées
+avec une <code class="docutils literal notranslate"><span class="pre">l3vni</span></code>, l’agent pose VRF, L3VNI, transit, FRR et les routes de type 5 (<code class="docutils literal notranslate"><span class="pre">/24</span></code>
+des subnets, <code class="docutils literal notranslate"><span class="pre">/32</span></code> des VM). Deux subnets d’une même VPC, chacun sur un seul hyperviseur,
+se joignent par le L3VNI à travers le route reflector inchangé ; 1472 octets en <code class="docutils literal notranslate"><span class="pre">-M</span> <span class="pre">do</span></code> ;
+une seconde VPC de même plage sur un autre L3VNI n’est ni importée ni jointe ; L3VNI déjà
+prise refusée ; forwarding de l’hôte limité aux interfaces de la VRF ; suppression d’un
+subnet refusée tant qu’une VM l’utilise ; démontage complet d’une VPC sans redémarrage de
+bgpd</p></td>
+<td><p>hv1, hv2, rr1</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">s8-l3vni-migration</span></code></p></td>
+<td><p>suite de <code class="docutils literal notranslate"><span class="pre">s7</span></code>, topologie <code class="docutils literal notranslate"><span class="pre">evpn-3hv.yml</span></code> : migration d’une VM de hv1 vers hv2 par l’API,
+observée depuis hv3 qui n’a pas le subnet : migration simple (VM supprimée puis recréée,
+<code class="docutils literal notranslate"><span class="pre">/24</span></code> comme filet), séquence orchestrée (deux VM de même IP, deux <code class="docutils literal notranslate"><span class="pre">/32</span></code> en ECMP, 40
+sources sur 40) ; l’ancien « pire cas » devient un refus (409) ; MAC de gateway propre à
+chaque hôte, sans doublon EVPN ; watchdog : <code class="docutils literal notranslate"><span class="pre">/32</span></code> orphelin signalé comme trou noir, <code class="docutils literal notranslate"><span class="pre">/32</span></code> manquant
+signalé</p></td>
+<td><p>hv1, hv2, hv3, rr1</p></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -1182,7 +1225,9 @@ VTEP distant est réappris et le trafic repasse — délai mesuré</p></td>
 scénario envoie des blocs de shell aux nœuds par <code class="docutils literal notranslate"><span class="pre">on</span> <span class="pre">&lt;nœud&gt;</span> <span class="pre">[VAR=valeur…]</span> <span class="pre">&lt;&lt;'NODE'</span></code>, précédés de
 <code class="docutils literal notranslate"><span class="pre">test/e2e/lib/node.sh</span></code> — appels à l’API de l’agent, attente des états, image Debian compatible two
 (préparée une fois par hyperviseur, <code class="docutils literal notranslate"><span class="pre">seedfrom</span></code> avec barre oblique finale), clé SSH des VM,
-<code class="docutils literal notranslate"><span class="pre">check</span></code> et <code class="docutils literal notranslate"><span class="pre">vm_fails</span></code>. Une vérification négative (« ne joint pas ») passe par <code class="docutils literal notranslate"><span class="pre">vm_fails</span></code> :
+<code class="docutils literal notranslate"><span class="pre">check</span></code> et <code class="docutils literal notranslate"><span class="pre">vm_fails</span></code> ; pour #41, <code class="docutils literal notranslate"><span class="pre">vpc_create</span></code> avec une <code class="docutils literal notranslate"><span class="pre">l3vni</span></code>, <code class="docutils literal notranslate"><span class="pre">api_code</span></code> (code HTTP
+d’un refus attendu), l’observation des VRF et de BGP (<code class="docutils literal notranslate"><span class="pre">vrf_nexthops</span></code>, <code class="docutils literal notranslate"><span class="pre">bgp_paths</span></code>,
+<code class="docutils literal notranslate"><span class="pre">wait_l3vni</span></code>…) et <code class="docutils literal notranslate"><span class="pre">wait_watchdog</span></code> (alerte du watchdog dans le journal de l’agent). Une vérification négative (« ne joint pas ») passe par <code class="docutils literal notranslate"><span class="pre">vm_fails</span></code> :
 elle n’est réussie que si le SSH vers la VM a fonctionné <strong>et</strong> que la commande y a échoué — un
 SSH en panne ne passe jamais pour une isolation.</p>
 <p>Résultats du 2026-10-04 sur le serveur de lab, release <code class="docutils literal notranslate"><span class="pre">0.2.0rc003</span></code>, hv1 sur le DHCP intégré et
@@ -1205,6 +1250,61 @@ INFO: retour du VTEP distant et du trafic 31 s après le redémarrage de FRR
 dérive la MAC du rang de l’IP, et les VM <code class="docutils literal notranslate"><span class="pre">.10</span></code>/<code class="docutils literal notranslate"><span class="pre">.11</span></code> des deux subnets avaient les mêmes MAC.
 Vérifié à la main sur le lab, chaque serveur DHCP ne connaissait que les couples MAC/IP de son
 subnet ; le scénario compare désormais ces couples.</p>
+<p><code class="docutils literal notranslate"><span class="pre">s7-l3vni</span></code> le 2026-10-05, même lab, FRR 10.7.1 : <strong>46 réussi(s), 0 échoué(s)</strong> au dernier run.
+Quatre constats pour #41, au-delà du routage inter-subnet qui fonctionne avec le route reflector
+inchangé :</p>
+<ul class="simple">
+<li><p><strong>bgpd 10.7.1 plante</strong> (SIGSEGV dans <code class="docutils literal notranslate"><span class="pre">bgp_redistribute_add</span></code>) quand la VRF du noyau est
+supprimée puis recréée sous une instance <code class="docutils literal notranslate"><span class="pre">router</span> <span class="pre">bgp</span> <span class="pre">…</span> <span class="pre">vrf</span></code> encore configurée — FRR refuse de
+supprimer l’instance tant que <code class="docutils literal notranslate"><span class="pre">vni</span></code> est déclaré dans la VRF (« Please unconfigure l3vni »).
+Le plantage a touché les deux hyperviseurs à une seconde d’intervalle. Avec le démontage dans
+l’ordre — <code class="docutils literal notranslate"><span class="pre">no</span> <span class="pre">redistribute</span></code>, <code class="docutils literal notranslate"><span class="pre">no</span> <span class="pre">vni</span></code>, <code class="docutils literal notranslate"><span class="pre">no</span> <span class="pre">router</span> <span class="pre">bgp</span> <span class="pre">…</span> <span class="pre">vrf</span></code>, puis le noyau —, trois runs
+consécutifs passent sans plantage.</p></li>
+<li><p><strong>La configuration posée par vtysh est perdue</strong> au redémarrage de bgpd par watchfrr, qui
+relit <code class="docutils literal notranslate"><span class="pre">frr.conf</span></code> seul.</p></li>
+<li><p><strong>Le transit</strong> <code class="docutils literal notranslate"><span class="pre">169.254.0.0/30</span></code>, <strong>identique sur tous les hôtes</strong>, fait rejeter comme
+« martiens » les ICMP émis par les sauts distants (VRF et netns de l’hôte de sortie) : le
+noyau de l’hôte d’entrée possède la même adresse. Quatre routeurs sur le chemin, seuls les
+deux premiers répondent. Même effet attendu sur un ICMP « fragmentation nécessaire ».</p></li>
+<li><p><strong>La route du supernet n’existe pas dans le netns</strong> de la VPC avant la pose manuelle (premier
+run, lab neuf) : two ne pose que la route connectée du subnet.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">s8-l3vni-migration</span></code> le 2026-10-06, <code class="docutils literal notranslate"><span class="pre">evpn-3hv.yml</span></code> : <strong>61 réussi(s), 0 échoué(s)</strong>. Le filet du
+<code class="docutils literal notranslate"><span class="pre">/24</span></code> porte le trafic tant que la destination n’a pas annoncé son <code class="docutils literal notranslate"><span class="pre">/32</span></code> ; deux <code class="docutils literal notranslate"><span class="pre">/32</span></code>
+coexistent sans perte tant que la source garde le subnet (40 sources sur 40, relais en L2). Si la
+source supprime le subnet avant de retirer son <code class="docutils literal notranslate"><span class="pre">/32</span></code>, le trou noir est <strong>stable mais partiel</strong> :
+hv3 installe les deux chemins en ECMP, et seuls les flux hachés vers la source échouent (17 sources
+sur 40) — invisible avec un seul émetteur.</p>
+<p>Le 2026-10-11, les mêmes qualifications <strong>par l’API</strong>, l’agent posant toute la configuration
+(FRR 10.7.1) :</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">s1</span></code> à <code class="docutils literal notranslate"><span class="pre">s6</span></code> sur <code class="docutils literal notranslate"><span class="pre">evpn-2hv.yml</span></code>, release <code class="docutils literal notranslate"><span class="pre">0.2.0rc004</span></code>, base BGP des hyperviseurs posée par
+l’agent : 37, 22, 12, 14, 13 et 8 réussis, aucun échec.</p></li>
+<li><p>Puis, release <code class="docutils literal notranslate"><span class="pre">0.2.0rc005</span></code> (correction du démontage FRR, ci-dessous), <code class="docutils literal notranslate"><span class="pre">evpn-3hv.yml</span></code> :</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">s7-l3vni</span></code> : <strong>52 réussi(s), 1 échoué(s)</strong>. Routage inter-subnet par le
+L3VNI, MAC de routeur dérivée du VTEP, exports <code class="docutils literal notranslate"><span class="pre">/24</span></code> et <code class="docutils literal notranslate"><span class="pre">/32</span></code> automatiques, forwarding par
+interface, L3VNI en double et subnet utilisé refusés (409), démontage complet d’une VPC sans
+redémarrage de bgpd. L’échec — « TTL 1 », un seul paquet — ne s’est pas reproduit au run
+précédent : probablement le débit limité des ICMP du noyau ; la vérification envoie désormais
+trois paquets.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">s8-l3vni-migration</span></code> : <strong>48 réussi(s), 1 échoué(s)</strong>. Migration simple (<code class="docutils literal notranslate"><span class="pre">/32</span></code> de la
+destination installé sur hv3 sans délai mesurable, 50/50), séquence orchestrée (deux <code class="docutils literal notranslate"><span class="pre">/32</span></code> en
+ECMP, 40 sources sur 40), ex-pire cas refusé (409), watchdog : <code class="docutils literal notranslate"><span class="pre">/32</span></code> orphelin signalé comme
+trou noir, <code class="docutils literal notranslate"><span class="pre">/32</span></code> manquant signalé. L’échec est un constat : <strong>la MAC de gateway anycast est
+annoncée en EVPN</strong> (route de type 2 sur rr1) et FRR la déclare en double sur la VNI du subnet
+porté par deux hyperviseurs — apprise sur le veth du subnet, numéros de séquence croissants.</p></li>
+</ul>
+<p>Trois défauts trouvés et corrigés pendant la campagne :</p>
+<ul class="simple">
+<li><p><strong>FRR installé avant la migration réseau</strong> : zebra a perdu la route par défaut sur un
+hyperviseur sur deux (route reflector <code class="docutils literal notranslate"><span class="pre">unresolved</span></code>). Retour à l’ordre « FRR après
+<code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> », puis redémarrage de l’agent (voir <a class="reference internal" href="#roles">Rôles</a>).</p></li>
+<li><p><strong>Remarques de vtysh prises pour des erreurs</strong> : <code class="docutils literal notranslate"><span class="pre">no</span> <span class="pre">vni</span></code> répond
+<code class="docutils literal notranslate"><span class="pre">%</span> <span class="pre">Configuration</span> <span class="pre">applied</span> <span class="pre">with</span> <span class="pre">notes:</span></code> avec un code de retour 0. Une vraie erreur (commande
+inconnue, refus) sort en 1.</p></li>
+<li><p><strong>L3VNI libérée de façon asynchrone</strong> : juste après <code class="docutils literal notranslate"><span class="pre">no</span> <span class="pre">vni</span></code>, <code class="docutils literal notranslate"><span class="pre">no</span> <span class="pre">router</span> <span class="pre">bgp</span> <span class="pre">…</span> <span class="pre">vrf</span></code> peut être
+refusé (« Please unconfigure l3vni ») puis accepté un instant plus tard ; l’agent réessaie.</p></li>
+</ul>
 <p>Les VM sont accessibles depuis le netns de leur VPC, sur l’hyperviseur, avec l’utilisateur
 <code class="docutils literal notranslate"><span class="pre">syonad</span></code> créé par les métadonnées de two :</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>scripts/lab-host.sh ssh "./lab ssh hv1 'sudo ip netns exec vp-s4 ssh -i /root/.ssh/lab-vm syonad@10.240.1.10'"

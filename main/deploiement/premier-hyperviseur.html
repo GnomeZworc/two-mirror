@@ -392,12 +392,8 @@ démarrage, à partir de la section <code class="docutils literal notranslate"><
 </div>
 <p>L’agent en déduit la configuration ci-dessous ; le <code class="docutils literal notranslate"><span class="pre">router-id</span></code> est l’adresse IPv4 primaire de
 <code class="docutils literal notranslate"><span class="pre">default_interface</span></code>, la seule valeur qui change d’un hyperviseur à l’autre. <code class="docutils literal notranslate"><span class="pre">hostname</span></code> et
-<code class="docutils literal notranslate"><span class="pre">log</span></code> ne sont pas gérés par l’agent.</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>frr defaults traditional
-hostname hv1
-log syslog informational
-!
-router bgp 64600
+<code class="docutils literal notranslate"><span class="pre">log</span></code> ne sont pas gérés par l’agent : ce sont les seules lignes à déposer dans <code class="docutils literal notranslate"><span class="pre">frr.conf</span></code>.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>router bgp 64600
  bgp router-id 192.168.14.11
  no bgp default ipv4-unicast
  neighbor fabric peer-group
@@ -409,10 +405,15 @@ router bgp 64600
   neighbor fabric activate
   advertise-all-vni
  exit-address-family
- !
 exit
-!
 </pre></div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Avertissement</p>
+<p>Avec une section <code class="docutils literal notranslate"><span class="pre">bgp</span></code>, l’agent <strong>refuse de démarrer</strong> si <code class="docutils literal notranslate"><span class="pre">vtysh</span></code> ne répond pas, et
+<code class="docutils literal notranslate"><span class="pre">agent.service</span></code> ne le relance pas. L’ordre au démarrage est donc : migration réseau vers
+<code class="docutils literal notranslate"><span class="pre">br-000000</span></code>, <strong>puis</strong> FRR, <strong>puis</strong> l’agent. FRR démarré avant la migration peut perdre la
+route par défaut quand elle change d’interface, et ne plus joindre le route reflector.</p>
 </div>
 <p>Ce qu’elle établit :</p>
 <ul class="simple">

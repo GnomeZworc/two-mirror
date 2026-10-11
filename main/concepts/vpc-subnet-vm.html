@@ -827,9 +827,9 @@ se change pas après création.</p>
 </pre></div>
 </div>
 <p>Dans le netns, le <code class="docutils literal notranslate"><span class="pre">cidr</span></code> du VPC est routé vers <code class="docutils literal notranslate"><span class="pre">169.254.0.1</span></code> ; le transit <code class="docutils literal notranslate"><span class="pre">/30</span></code> est le même
-sur tous les hyperviseurs et pour tous les VPC. Le forwarding IPv4 est activé dans le netns, et
-sur l’hôte <strong>seulement</strong> sur <code class="docutils literal notranslate"><span class="pre">brl3-&lt;id&gt;</span></code> et <code class="docutils literal notranslate"><span class="pre">l3-&lt;id&gt;-o</span></code> : l’hyperviseur ne devient pas un
-routeur entre ses autres interfaces. FRR reçoit la VRF, son <code class="docutils literal notranslate"><span class="pre">vni</span></code>, une instance
+sur tous les hyperviseurs et pour tous les VPC. L’agent active le forwarding IPv4 dans le netns,
+et sur l’hôte sur <code class="docutils literal notranslate"><span class="pre">brl3-&lt;id&gt;</span></code> et <code class="docutils literal notranslate"><span class="pre">l3-&lt;id&gt;-o</span></code>, les deux interfaces d’entrée de la VRF ; il ne
+touche pas au réglage global, que <code class="docutils literal notranslate"><span class="pre">bootstrap_kvm.sh</span></code> met déjà à 1. FRR reçoit la VRF, son <code class="docutils literal notranslate"><span class="pre">vni</span></code>, une instance
 <code class="docutils literal notranslate"><span class="pre">router</span> <span class="pre">bgp</span> <span class="pre">&lt;asn&gt;</span> <span class="pre">vrf</span> <span class="pre">vrf-&lt;id&gt;</span></code> avec RD <code class="docutils literal notranslate"><span class="pre">&lt;VTEP&gt;:&lt;l3vni&gt;</span></code> et RT <code class="docutils literal notranslate"><span class="pre">&lt;asn&gt;:&lt;l3vni&gt;</span></code>, et
 l’export des routes du <code class="docutils literal notranslate"><span class="pre">cidr</span></code> présentes dans la VRF.</p>
 <p>La suppression retire d’abord la configuration de routage de FRR, puis les interfaces, puis la

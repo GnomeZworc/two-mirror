@@ -844,11 +844,15 @@ configuration réseau côté host n’existe pas encore : la création part en <
   BR --- VX[&quot;vxlan&amp;lt;vni&amp;gt;&quot;] --- HBR[&quot;bridge host&lt;br/&gt;(iface_type)&quot;] --- UP[uplink]
     </pre><p>Le subnet vit dans le netns du VPC. La VM n’est donc <strong>pas joignable depuis l’host</strong> sans route
 explicite — point à connaître avant de câbler un outil externe dessus.</p>
-<p>Le bridge du subnet, qui porte <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code>, a une <strong>MAC de gateway anycast</strong> calculée depuis
-le <code class="docutils literal notranslate"><span class="pre">vxlan_id</span></code> : <code class="docutils literal notranslate"><span class="pre">02:01:00</span></code> suivi des 24 bits de la VNI (<code class="docutils literal notranslate"><span class="pre">vxlan_id</span></code> 2811 →
-<code class="docutils literal notranslate"><span class="pre">02:01:00:00:0a:fb</span></code>). Elle est identique sur tous les hôtes qui portent le subnet : une VM qui
-change d’hôte garde une entrée ARP valide pour sa gateway. Elle n’est posée qu’à la création du
-subnet — un subnet créé avant garde la MAC choisie par le noyau jusqu’à sa recréation.</p>
+<p>Le bridge du subnet, qui porte <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code>, a une <strong>MAC de gateway propre à l’hôte</strong>, calculée
+depuis son VTEP — l’IPv4 primaire du <code class="docutils literal notranslate"><span class="pre">local_iface</span></code> : <code class="docutils literal notranslate"><span class="pre">02:03</span></code> suivi des quatre octets de
+l’adresse (VTEP <code class="docutils literal notranslate"><span class="pre">192.168.14.12</span></code> → <code class="docutils literal notranslate"><span class="pre">02:03:c0:a8:0e:0c</span></code>). Unique dans le fabric, elle est la
+même pour tous les subnets d’un hôte, chacun étant un domaine L2 distinct. Elle n’est posée qu’à la
+création du subnet — un subnet créé avant garde la MAC choisie par le noyau jusqu’à sa recréation.</p>
+<p>Une MAC de gateway <strong>identique sur tous les hôtes</strong> (anycast) a été essayée puis retirée : apprise
+sur le veth du subnet, elle était annoncée en EVPN par chaque hôte et détectée en double ; et une
+gateway ne pouvait plus joindre en L2 une VM d’un autre hôte, la réponse revenant à la gateway
+locale de la VM. Le cache ARP d’une VM migrée à chaud est un sujet de la migration, pas du subnet.</p>
 </section>
 <section id="bridge">
 <h2>bridge<a class="headerlink" href="#bridge" title="Lien vers cette rubrique">#</a></h2>
