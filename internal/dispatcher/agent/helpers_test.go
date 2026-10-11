@@ -17,6 +17,7 @@ func newTestDispatcher(t *testing.T) (*Dispatcher, *badger.DB) {
 	t.Cleanup(func() { db.Close() })
 	q := worker.New(100)
 	q.Start(2)
+	t.Cleanup(q.Stop)
 	cfg := &configuration.Config{DefaultInterface: "br-default"}
 	cfg.Interfaces = map[string]string{"vms": "br-vms"}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
