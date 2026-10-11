@@ -39,9 +39,9 @@ se change pas après création.
    └── l3-<id>-o    169.254.0.1/30 ── l3-<id>-i 169.254.0.2/30, dans le netns du VPC
 
 Dans le netns, le ``cidr`` du VPC est routé vers ``169.254.0.1`` ; le transit ``/30`` est le même
-sur tous les hyperviseurs et pour tous les VPC. Le forwarding IPv4 est activé dans le netns, et
-sur l'hôte **seulement** sur ``brl3-<id>`` et ``l3-<id>-o`` : l'hyperviseur ne devient pas un
-routeur entre ses autres interfaces. FRR reçoit la VRF, son ``vni``, une instance
+sur tous les hyperviseurs et pour tous les VPC. L'agent active le forwarding IPv4 dans le netns,
+et sur l'hôte sur ``brl3-<id>`` et ``l3-<id>-o``, les deux interfaces d'entrée de la VRF ; il ne
+touche pas au réglage global, que ``bootstrap_kvm.sh`` met déjà à 1. FRR reçoit la VRF, son ``vni``, une instance
 ``router bgp <asn> vrf vrf-<id>`` avec RD ``<VTEP>:<l3vni>`` et RT ``<asn>:<l3vni>``, et
 l'export des routes du ``cidr`` présentes dans la VRF.
 

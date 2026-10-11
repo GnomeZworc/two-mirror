@@ -112,15 +112,16 @@ Commandes
                        et le prix ; ne crée rien
      up                crée le serveur de lab, attend la fin de son installation et son SSH,
                        puis le prépare (voir prepare)
-     status            liste les serveurs de lab du projet
+     status            liste les serveurs de lab du projet, dans toutes les zones candidates
      ssh [commande]    se connecte au serveur de lab ; avec une commande, un terminal n'est demandé
                        que si l'entrée standard en est un
      prepare           installe sur le serveur ce dont lab a besoin (qemu, genisoimage), vérifie
-                       /dev/kvm et la virtualisation imbriquée ; lancé aussi par up
+                       /dev/kvm, la virtualisation imbriquée et un CPU x86-64-v3 ; lancé aussi par up
      push <topologie>  compile cmd/lab pour linux/amd64 et dépose sur le serveur ~/lab et le
                        répertoire de la topologie dans ~/topology/ (avec les fichiers qu'elle
                        référence) ; ensuite : ssh './lab up topology/<topologie>'
-     down              supprime tous les serveurs de lab du projet et attend leur disparition
+     down              supprime tous les serveurs de lab du projet, dans toutes les zones candidates,
+                       et attend leur disparition
      session [cmd]     up, puis la commande distante (ou un shell), puis down quoi qu'il arrive
 
 ``plan`` et ``status`` sont **gratuits** ; ``up`` et ``session`` **créent un serveur facturé**.
@@ -131,11 +132,24 @@ et montre exactement ce qui serait commandé :
 .. code-block:: text
 
    $ scripts/lab-host.sh plan
-   == offre   : EM-B212X-SSD (ddaf8ba6-b2b2-4279-8af3-51930fb602f8), facturation hourly, stock available
-   == prix    : 0.321 EUR HT par heure, frais de mise en service 0 EUR
+   !! fr-par-1 : offre EM-B420E-NVME en rupture de stock en fr-par-1
+   !! fr-par-2 : offre EM-B420E-NVME en rupture de stock en fr-par-2
+   !! nl-ams-1 : offre horaire EM-B420E-NVME : 0 correspondance(s) en nl-ams-1, une seule attendue
+   == zone    : nl-ams-2
+   == offre   : EM-B420E-NVME (d14eef5e-3279-42db-bb57-bb2bbe6a5b28), AMD EPYC 7272, facturation hourly, stock available
+   == prix    : 0.444 EUR HT par heure, frais de mise en service 0 EUR
    == os      : Debian 12 (Bookworm) (83640d93-a0b8-45ad-9c9f-30cae48380a4), utilisateur root
    == clés    : 2 clé(s) SSH du projet
-   == requête : POST /baremetal/v1/zones/fr-par-1/servers
+   == requête : POST /baremetal/v1/zones/nl-ams-2/servers
+
+**Offre et zone.** L'offre par défaut est ``EM-B420E-NVME`` (AMD EPYC 7272, 12 cœurs, 119 Gio) :
+son modèle de CPU est exact et atteint **x86-64-v3**, le minimum de RHEL 10 et Rocky 10. Les offres
+« Xeon … or equivalent » ne garantissent rien : ``EM-B212X-SSD`` (« E5-2620 v4 or equivalent ») a
+livré le 2026-10-11 un E5-2670 de 2012, x86-64-v2, sur lequel Rocky 10 ne démarre pas.
+``prepare`` refuse donc un serveur sans x86-64-v3 — dans une ``session``, il est aussitôt
+supprimé. La zone n'est pas imposée : ``plan`` et ``up`` prennent la première zone de
+``LAB_ZONES`` (par défaut toutes les zones Elastic Metal) où l'offre est en stock, ``SCW_DEFAULT_ZONE``
+passant en tête ; ``status`` et ``down`` couvrent toutes ces zones.
 
 ``session`` est la forme normale d'usage : le serveur est supprimé à la fin, que la commande
 réussisse, échoue, ou que la session soit interrompue (Ctrl-C, ``TERM``, fermeture du terminal).
@@ -231,12 +245,14 @@ Ce que le fichier déclare :
    * ``frr`` — le chemin d'un ``frr.conf``, relatif au fichier de topologie : FRR est installé
      au démarrage et la configuration déposée **telle quelle** (voir `Rôles`_).
    * ``release`` — **obligatoire pour un hyperviseur**, refusé ailleurs : le tag de la release de
-     two que ``deploy.sh`` installe (``release: 0.2.0rc003``). Sans lui, ``deploy.sh`` prendrait la
+     two que ``deploy.sh`` installe (``release: 0.2.0rc005``). Sans lui, ``deploy.sh`` prendrait la
      dernière release, et le lab ne serait plus reproductible.
    * ``agent`` — pour un hyperviseur seulement : le chemin d'un ``agent.yml``, relatif au fichier
      de topologie, déposé dans ``/etc/two/agent.yml`` avant ``deploy.sh``. Sans lui, l'agent tourne
-     avec sa configuration par défaut. L'exemple met hv1 sur le serveur DHCP intégré
-     (``test/e2e/topologies/agent/two.yml`` : ``dhcp.backend: two``) et laisse hv2 sur dnsmasq.
+     avec sa configuration par défaut. Les deux fichiers fournis donnent à l'agent la section
+     ``bgp`` (AS 64600, route reflector ``10.255.255.1``) et un watchdog toutes les 10 s ;
+     ``test/e2e/topologies/agent/two.yml`` met en plus hv1 sur le serveur DHCP intégré
+     (``dhcp.backend: two``), ``agent/bgp.yml`` laisse les autres sur dnsmasq.
 
    ``mgmt0`` et ``lo1`` sont réservés : aucun segment ne peut porter ces noms.
 
@@ -286,8 +302,8 @@ Limites : 1000 nœuds, 256 segments, et autant de câbles que la plage UDP le pe
      name  loopback             secondary                frr       release     agent
      sw1   -                    underlay 169.254.0.1/28  sw1.conf  -           -
      rr1   lo1 10.255.255.1/32  underlay 169.254.0.3/28  rr1.conf  -           -
-     hv1   -                    -                        hv1.conf  0.2.0rc003  two.yml
-     hv2   -                    -                        hv2.conf  0.2.0rc003  -
+     hv1   -                    -                        hv1.conf  0.2.0rc005  two.yml
+     hv2   -                    -                        hv2.conf  0.2.0rc005  bgp.yml
 
    segment underlay: 192.168.14.0/24, mtu 9000, switch sw1, bridge br-underlay, gateway 192.168.14.1
      node  interface  address           mac                udp         switch port  mac                udp
@@ -319,7 +335,9 @@ Rôles
 
 Les configurations FRR du lab vivent dans ``test/e2e/topologies/frr/``, une par nœud, **écrites à la main** :
 ce sont les mêmes fichiers que la documentation de déploiement inclut, pour que le lab qualifie
-exactement ce qu'elle prescrit. Celle du route reflector :
+exactement ce qu'elle prescrit. Celles des hyperviseurs se réduisent à ``hostname`` et ``log`` :
+la configuration BGP est posée par l'agent (section ``bgp`` de ``agent.yml``). Celle du route
+reflector :
 
 .. literalinclude:: ../../test/e2e/topologies/frr/rr1.conf
    :language: text
@@ -357,7 +375,12 @@ teste les scripts de sa branche. L'uplink ``-u`` est l'interface qui porte la ro
 celle du premier segment de l'hyperviseur dans l'ordre de déclaration des segments — parce que
 ``deploy.sh`` y lit l'adresse et la passerelle qu'il déplace sur ``br-000000``. ``deploy.sh``
 télécharge la release sur ``git.g3e.fr`` sans réessayer : le lancement attend d'abord que le serveur
-réponde, à travers le switch. FRR est installé **après** : il démarre sur le réseau final.
+réponde, à travers le switch. FRR est installé **après** : il démarre sur le réseau final. Démarré
+avant la migration, zebra peut perdre la route par défaut quand elle passe de l'uplink à
+``br-000000`` — constaté le 2026-10-11 sur un hyperviseur sur deux : route reflector
+``unresolved``, session BGP jamais établie. L'agent, configuré avec une section ``bgp``, refuse de
+démarrer tant que FRR n'est pas là : son premier démarrage par ``deploy.sh`` échoue, et le
+provisionnement le **redémarre** une fois FRR installé.
 
 **Un seul script de provisionnement par nœud.** cloud-init exécute ``runcmd`` comme un script
 ``sh`` sans ``set -e`` : seule la dernière commande compte, et un ``deploy.sh`` en échec suivi d'un
@@ -717,6 +740,24 @@ sortie vaut 1 si une vérification échoue **ou si aucune n'a été faite**.
        le trafic restant est **mesuré** (``INFO``) à 30 et 90 s ; au retour du route reflector, le
        VTEP distant est réappris et le trafic repasse — délai mesuré
      - hv1, hv2, rr1
+   * - ``s7-l3vni``
+     - qualification de `#41 <https://git.g3e.fr/syonad/two/issues/41>`_ **par l'API** : VPC créées
+       avec une ``l3vni``, l'agent pose VRF, L3VNI, transit, FRR et les routes de type 5 (``/24``
+       des subnets, ``/32`` des VM). Deux subnets d'une même VPC, chacun sur un seul hyperviseur,
+       se joignent par le L3VNI à travers le route reflector inchangé ; 1472 octets en ``-M do`` ;
+       une seconde VPC de même plage sur un autre L3VNI n'est ni importée ni jointe ; L3VNI déjà
+       prise refusée ; forwarding de l'hôte limité aux interfaces de la VRF ; suppression d'un
+       subnet refusée tant qu'une VM l'utilise ; démontage complet d'une VPC sans redémarrage de
+       bgpd
+     - hv1, hv2, rr1
+   * - ``s8-l3vni-migration``
+     - suite de ``s7``, topologie ``evpn-3hv.yml`` : migration d'une VM de hv1 vers hv2 par l'API,
+       observée depuis hv3 qui n'a pas le subnet : migration simple (VM supprimée puis recréée,
+       ``/24`` comme filet), séquence orchestrée (deux VM de même IP, deux ``/32`` en ECMP, 40
+       sources sur 40) ; l'ancien « pire cas » devient un refus (409) ; MAC de gateway anycast non
+       annoncée en EVPN ; watchdog : ``/32`` orphelin signalé comme trou noir, ``/32`` manquant
+       signalé
+     - hv1, hv2, hv3, rr1
 
 ``s6`` réutilise les VM de ``s4`` : le lancer après.
 
@@ -724,7 +765,9 @@ sortie vaut 1 si une vérification échoue **ou si aucune n'a été faite**.
 scénario envoie des blocs de shell aux nœuds par ``on <nœud> [VAR=valeur…] <<'NODE'``, précédés de
 ``test/e2e/lib/node.sh`` — appels à l'API de l'agent, attente des états, image Debian compatible two
 (préparée une fois par hyperviseur, ``seedfrom`` avec barre oblique finale), clé SSH des VM,
-``check`` et ``vm_fails``. Une vérification négative (« ne joint pas ») passe par ``vm_fails`` :
+``check`` et ``vm_fails`` ; pour #41, ``vpc_create`` avec une ``l3vni``, ``api_code`` (code HTTP
+d'un refus attendu), l'observation des VRF et de BGP (``vrf_nexthops``, ``bgp_paths``,
+``wait_l3vni``…) et ``wait_watchdog`` (alerte du watchdog dans le journal de l'agent). Une vérification négative (« ne joint pas ») passe par ``vm_fails`` :
 elle n'est réussie que si le SSH vers la VM a fonctionné **et** que la commande y a échoué — un
 SSH en panne ne passe jamais pour une isolation.
 
@@ -750,6 +793,62 @@ Dans ce run, le contrôle « uniquement les MAC de son subnet » de ``s1`` ne pr
 dérive la MAC du rang de l'IP, et les VM ``.10``/``.11`` des deux subnets avaient les mêmes MAC.
 Vérifié à la main sur le lab, chaque serveur DHCP ne connaissait que les couples MAC/IP de son
 subnet ; le scénario compare désormais ces couples.
+
+``s7-l3vni`` le 2026-10-05, même lab, FRR 10.7.1 : **46 réussi(s), 0 échoué(s)** au dernier run.
+Quatre constats pour #41, au-delà du routage inter-subnet qui fonctionne avec le route reflector
+inchangé :
+
+* **bgpd 10.7.1 plante** (SIGSEGV dans ``bgp_redistribute_add``) quand la VRF du noyau est
+  supprimée puis recréée sous une instance ``router bgp … vrf`` encore configurée — FRR refuse de
+  supprimer l'instance tant que ``vni`` est déclaré dans la VRF (« Please unconfigure l3vni »).
+  Le plantage a touché les deux hyperviseurs à une seconde d'intervalle. Avec le démontage dans
+  l'ordre — ``no redistribute``, ``no vni``, ``no router bgp … vrf``, puis le noyau —, trois runs
+  consécutifs passent sans plantage.
+* **La configuration posée par vtysh est perdue** au redémarrage de bgpd par watchfrr, qui
+  relit ``frr.conf`` seul.
+* **Le transit** ``169.254.0.0/30``, **identique sur tous les hôtes**, fait rejeter comme
+  « martiens » les ICMP émis par les sauts distants (VRF et netns de l'hôte de sortie) : le
+  noyau de l'hôte d'entrée possède la même adresse. Quatre routeurs sur le chemin, seuls les
+  deux premiers répondent. Même effet attendu sur un ICMP « fragmentation nécessaire ».
+* **La route du supernet n'existe pas dans le netns** de la VPC avant la pose manuelle (premier
+  run, lab neuf) : two ne pose que la route connectée du subnet.
+
+``s8-l3vni-migration`` le 2026-10-06, ``evpn-3hv.yml`` : **61 réussi(s), 0 échoué(s)**. Le filet du
+``/24`` porte le trafic tant que la destination n'a pas annoncé son ``/32`` ; deux ``/32``
+coexistent sans perte tant que la source garde le subnet (40 sources sur 40, relais en L2). Si la
+source supprime le subnet avant de retirer son ``/32``, le trou noir est **stable mais partiel** :
+hv3 installe les deux chemins en ECMP, et seuls les flux hachés vers la source échouent (17 sources
+sur 40) — invisible avec un seul émetteur.
+
+Le 2026-10-11, les mêmes qualifications **par l'API**, l'agent posant toute la configuration
+(FRR 10.7.1) :
+
+* ``s1`` à ``s6`` sur ``evpn-2hv.yml``, release ``0.2.0rc004``, base BGP des hyperviseurs posée par
+  l'agent : 37, 22, 12, 14, 13 et 8 réussis, aucun échec.
+* Puis, release ``0.2.0rc005`` (correction du démontage FRR, ci-dessous), ``evpn-3hv.yml`` :
+* ``s7-l3vni`` : **52 réussi(s), 1 échoué(s)**. Routage inter-subnet par le
+  L3VNI, MAC de routeur dérivée du VTEP, exports ``/24`` et ``/32`` automatiques, forwarding par
+  interface, L3VNI en double et subnet utilisé refusés (409), démontage complet d'une VPC sans
+  redémarrage de bgpd. L'échec — « TTL 1 », un seul paquet — ne s'est pas reproduit au run
+  précédent : probablement le débit limité des ICMP du noyau ; la vérification envoie désormais
+  trois paquets.
+* ``s8-l3vni-migration`` : **48 réussi(s), 1 échoué(s)**. Migration simple (``/32`` de la
+  destination installé sur hv3 sans délai mesurable, 50/50), séquence orchestrée (deux ``/32`` en
+  ECMP, 40 sources sur 40), ex-pire cas refusé (409), watchdog : ``/32`` orphelin signalé comme
+  trou noir, ``/32`` manquant signalé. L'échec est un constat : **la MAC de gateway anycast est
+  annoncée en EVPN** (route de type 2 sur rr1) et FRR la déclare en double sur la VNI du subnet
+  porté par deux hyperviseurs — apprise sur le veth du subnet, numéros de séquence croissants.
+
+Trois défauts trouvés et corrigés pendant la campagne :
+
+* **FRR installé avant la migration réseau** : zebra a perdu la route par défaut sur un
+  hyperviseur sur deux (route reflector ``unresolved``). Retour à l'ordre « FRR après
+  ``deploy.sh`` », puis redémarrage de l'agent (voir `Rôles`_).
+* **Remarques de vtysh prises pour des erreurs** : ``no vni`` répond
+  ``% Configuration applied with notes:`` avec un code de retour 0. Une vraie erreur (commande
+  inconnue, refus) sort en 1.
+* **L3VNI libérée de façon asynchrone** : juste après ``no vni``, ``no router bgp … vrf`` peut être
+  refusé (« Please unconfigure l3vni ») puis accepté un instant plus tard ; l'agent réessaie.
 
 Les VM sont accessibles depuis le netns de leur VPC, sur l'hyperviseur, avec l'utilisateur
 ``syonad`` créé par les métadonnées de two :
