@@ -4,18 +4,30 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"time"
+)
+
+const (
+	appliedWithNotes = "% Configuration applied with notes:"
+	l3vniStillBound  = "% Please unconfigure l3vni"
+	l3vniRetries     = 20
+	l3vniRetryDelay  = 250 * time.Millisecond
 )
 
 type runner func(args ...string) ([]byte, error)
 
 type Client struct {
-	run runner
+	run   runner
+	sleep func(time.Duration)
 }
 
 func NewClient() *Client {
-	return &Client{run: func(args ...string) ([]byte, error) {
-		return exec.Command("vtysh", args...).CombinedOutput()
-	}}
+	return &Client{
+		run: func(args ...string) ([]byte, error) {
+			return exec.Command("vtysh", args...).CombinedOutput()
+		},
+		sleep: time.Sleep,
+	}
 }
 
 func (c *Client) ApplyBase(b Base) error {
@@ -79,7 +91,7 @@ func (c *Client) teardown(v VRF, plan func(VRF, string) []step) error {
 		return err
 	}
 	for _, s := range plan(v, running) {
-		if err := c.configure(s...); err != nil {
+		if err := c.configureStep(s); err != nil {
 			return err
 		}
 	}
@@ -90,6 +102,15 @@ func (c *Client) teardown(v VRF, plan func(VRF, string) []step) error {
 		return err
 	}
 	return remaining(plan(v, running))
+}
+
+func (c *Client) configureStep(s step) error {
+	err := c.configure(s...)
+	for i := 0; i < l3vniRetries && err != nil && strings.Contains(err.Error(), l3vniStillBound); i++ {
+		c.sleep(l3vniRetryDelay)
+		err = c.configure(s...)
+	}
+	return err
 }
 
 func (c *Client) runningConfig() (string, error) {
@@ -116,8 +137,9 @@ func (c *Client) exec(cmds ...string) (string, error) {
 		return "", fmt.Errorf("vtysh %q: %w: %s", cmds, err, strings.TrimSpace(string(out)))
 	}
 	for _, l := range strings.Split(string(out), "\n") {
-		if strings.HasPrefix(strings.TrimSpace(l), "%") {
-			return "", fmt.Errorf("vtysh %q: %s", cmds, strings.TrimSpace(l))
+		l = strings.TrimSpace(l)
+		if strings.HasPrefix(l, "%") && l != appliedWithNotes {
+			return "", fmt.Errorf("vtysh %q: %s", cmds, l)
 		}
 	}
 	return string(out), nil

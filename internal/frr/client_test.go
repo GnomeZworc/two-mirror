@@ -6,13 +6,16 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 type fakeVtysh struct {
-	calls   [][]string
-	running []string
-	fail    map[string]string
-	status  map[string]error
+	calls     [][]string
+	running   []string
+	fail      map[string]string
+	status    map[string]error
+	failTimes map[string]int
+	slept     int
 }
 
 func (f *fakeVtysh) run(args ...string) ([]byte, error) {
@@ -31,15 +34,23 @@ func (f *fakeVtysh) run(args ...string) ([]byte, error) {
 		return []byte(out), nil
 	}
 	for _, c := range cmds {
-		if out, ok := f.fail[c]; ok {
-			return []byte(out), f.status[c]
+		out, ok := f.fail[c]
+		if !ok {
+			continue
 		}
+		if n, limited := f.failTimes[c]; limited {
+			if n == 0 {
+				continue
+			}
+			f.failTimes[c] = n - 1
+		}
+		return []byte(out), f.status[c]
 	}
 	return nil, nil
 }
 
 func (f *fakeVtysh) client() *Client {
-	return &Client{run: f.run}
+	return &Client{run: f.run, sleep: func(time.Duration) { f.slept++ }}
 }
 
 func (f *fakeVtysh) sent(cmd string) bool {
@@ -247,5 +258,64 @@ func TestApplyBaseStopsWhenTheRunningConfigIsUnreadable(t *testing.T) {
 	}
 	if f.sent("write memory") || f.sent("router bgp 64600") {
 		t.Errorf("appels : %q", f.calls)
+	}
+}
+
+func TestExecAcceptsAConfigurationAppliedWithNotes(t *testing.T) {
+	f := &fakeVtysh{fail: map[string]string{"vni 4001": "% Configuration applied with notes:\nNo changes found to be committed!\n"}}
+	if err := f.client().ApplyVRF(labVRF(t)); err != nil {
+		t.Errorf("remarques prises pour une erreur : %v", err)
+	}
+}
+
+func TestExecStillReportsOtherPercentLines(t *testing.T) {
+	f := &fakeVtysh{fail: map[string]string{"vni 4001": "% Configuration applied with notes:\n% Unknown command: vni 4001\n"}}
+	if err := f.client().ApplyVRF(labVRF(t)); err == nil || !strings.Contains(err.Error(), "% Unknown command") {
+		t.Errorf("erreur %v", err)
+	}
+}
+
+func TestWithdrawVRFWaitsForBGPToReleaseTheL3VNI(t *testing.T) {
+	f := &fakeVtysh{
+		running:   []string{fullRunning, otherOnlyRunning},
+		fail:      map[string]string{"no router bgp 64600 vrf vrf-a1b2": "% Please unconfigure l3vni 4001\n"},
+		status:    map[string]error{"no router bgp 64600 vrf vrf-a1b2": errors.New("exit status 1")},
+		failTimes: map[string]int{"no router bgp 64600 vrf vrf-a1b2": 3},
+	}
+	if err := f.client().WithdrawVRF(labVRF(t)); err != nil {
+		t.Fatalf("refus transitoire non rattrapé : %v", err)
+	}
+	if f.slept != 3 {
+		t.Errorf("%d attentes, attendu 3", f.slept)
+	}
+	if !f.sent("no route-map EXPORT-a1b2") {
+		t.Errorf("démontage interrompu : %q", f.calls)
+	}
+}
+
+func TestWithdrawVRFGivesUpOnAPersistentL3VNIRefusal(t *testing.T) {
+	f := &fakeVtysh{
+		running: []string{fullRunning},
+		fail:    map[string]string{"no router bgp 64600 vrf vrf-a1b2": "% Please unconfigure l3vni 4001\n"},
+	}
+	err := f.client().WithdrawVRF(labVRF(t))
+	if err == nil || !strings.Contains(err.Error(), "Please unconfigure l3vni 4001") {
+		t.Fatalf("erreur %v", err)
+	}
+	if f.slept != l3vniRetries {
+		t.Errorf("%d attentes, attendu %d", f.slept, l3vniRetries)
+	}
+	if f.sent("no route-map EXPORT-a1b2") {
+		t.Error("étape suivante exécutée après l'abandon")
+	}
+}
+
+func TestOtherTeardownErrorsAreNotRetried(t *testing.T) {
+	f := &fakeVtysh{
+		running: []string{fullRunning},
+		fail:    map[string]string{"no router bgp 64600 vrf vrf-a1b2": "% Unknown command\n"},
+	}
+	if err := f.client().WithdrawVRF(labVRF(t)); err == nil || f.slept != 0 {
+		t.Errorf("erreur %v, %d attentes", err, f.slept)
 	}
 }
