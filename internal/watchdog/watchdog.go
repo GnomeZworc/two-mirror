@@ -6,6 +6,7 @@ import (
 	"time"
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
+	"git.g3e.fr/syonad/two/internal/frr"
 	"git.g3e.fr/syonad/two/internal/watchdog/notify"
 	"git.g3e.fr/syonad/two/pkg/systemd"
 
@@ -21,6 +22,7 @@ type Watchdog struct {
 	logger   *slog.Logger
 	interval time.Duration
 	dbusDown bool
+	l3       l3Probe
 }
 
 func New(db *badger.DB, cfg *configuration.Config, n notify.Notifier, logger *slog.Logger, interval time.Duration) *Watchdog {
@@ -38,6 +40,7 @@ func New(db *badger.DB, cfg *configuration.Config, n notify.Notifier, logger *sl
 		notifier: n,
 		logger:   logger,
 		interval: interval,
+		l3:       systemProbe{frr: frr.NewClient()},
 	}
 }
 
@@ -70,6 +73,10 @@ func (w *Watchdog) tick() {
 	}
 	if err := CheckVMs(w.db, w.cfg, u, w.notifier); err != nil {
 		w.logger.Error("watchdog: vm check failed", "err", err)
+	}
+	CheckBGP(w.cfg, w.l3, w.notifier)
+	if err := CheckL3VPCs(w.db, w.cfg, w.l3, w.notifier); err != nil {
+		w.logger.Error("watchdog: l3 vpc check failed", "err", err)
 	}
 }
 

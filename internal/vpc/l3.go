@@ -137,3 +137,33 @@ func deleteL3(h host, cfg *configuration.Config, v l3VPC) error {
 	}
 	return nil
 }
+
+type Routing struct {
+	VNI       uint32
+	Supernet  *net.IPNet
+	VRF       string
+	Bridge    string
+	Vxlan     string
+	VethHost  string
+	VethNetns string
+}
+
+func LoadRouting(db *badger.DB, vpcName string) (Routing, bool, error) {
+	v, ok, err := loadRouted(db, vpcName)
+	if err != nil || !ok {
+		return Routing{}, ok, err
+	}
+	return Routing{
+		VNI:       v.vni,
+		Supernet:  v.supernet,
+		VRF:       v.vrf(),
+		Bridge:    v.bridge(),
+		Vxlan:     v.vxlan(),
+		VethHost:  v.vethHost(),
+		VethNetns: v.vethNetns(),
+	}, true, nil
+}
+
+func RouterMAC(vtep net.IP) (net.HardwareAddr, error) {
+	return routerMAC(vtep)
+}
