@@ -383,8 +383,16 @@ l’agent désactive l’apprentissage et ne configure aucun voisin — cf.
 <a class="reference internal" href="architecture-cluster.html"><span class="doc">Architecture du cluster</span></a>.</p>
 <section id="configuration-de-frr">
 <h3>Configuration de FRR<a class="headerlink" href="#configuration-de-frr" title="Lien vers cette rubrique">#</a></h3>
-<p>Seul <code class="docutils literal notranslate"><span class="pre">bgpd</span></code> est activé dans <code class="docutils literal notranslate"><span class="pre">/etc/frr/daemons</span></code>. D’un hyperviseur à l’autre ne changent que
-<code class="docutils literal notranslate"><span class="pre">hostname</span></code> et <code class="docutils literal notranslate"><span class="pre">router-id</span></code>, l’adresse de l’hyperviseur sur son segment.</p>
+<p>Seul <code class="docutils literal notranslate"><span class="pre">bgpd</span></code> est activé dans <code class="docutils literal notranslate"><span class="pre">/etc/frr/daemons</span></code>. Le reste est posé par l’agent, à chaque
+démarrage, à partir de la section <code class="docutils literal notranslate"><span class="pre">bgp</span></code> de <code class="docutils literal notranslate"><span class="pre">agent.yml</span></code> (<a class="reference internal" href="../exploitation/configuration.html"><span class="doc">Configuration</span></a>) :</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">bgp</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">asn</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">64600</span>
+<span class="w">  </span><span class="nt">route_reflectors</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">10.255.255.1</span><span class="p p-Indicator">]</span>
+</pre></div>
+</div>
+<p>L’agent en déduit la configuration ci-dessous ; le <code class="docutils literal notranslate"><span class="pre">router-id</span></code> est l’adresse IPv4 primaire de
+<code class="docutils literal notranslate"><span class="pre">default_interface</span></code>, la seule valeur qui change d’un hyperviseur à l’autre. <code class="docutils literal notranslate"><span class="pre">hostname</span></code> et
+<code class="docutils literal notranslate"><span class="pre">log</span></code> ne sont pas gérés par l’agent.</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>frr defaults traditional
 hostname hv1
 log syslog informational

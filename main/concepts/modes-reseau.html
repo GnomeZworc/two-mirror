@@ -844,6 +844,11 @@ configuration réseau côté host n’existe pas encore : la création part en <
   BR --- VX[&quot;vxlan&amp;lt;vni&amp;gt;&quot;] --- HBR[&quot;bridge host&lt;br/&gt;(iface_type)&quot;] --- UP[uplink]
     </pre><p>Le subnet vit dans le netns du VPC. La VM n’est donc <strong>pas joignable depuis l’host</strong> sans route
 explicite — point à connaître avant de câbler un outil externe dessus.</p>
+<p>Le bridge du subnet, qui porte <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code>, a une <strong>MAC de gateway anycast</strong> calculée depuis
+le <code class="docutils literal notranslate"><span class="pre">vxlan_id</span></code> : <code class="docutils literal notranslate"><span class="pre">02:01:00</span></code> suivi des 24 bits de la VNI (<code class="docutils literal notranslate"><span class="pre">vxlan_id</span></code> 2811 →
+<code class="docutils literal notranslate"><span class="pre">02:01:00:00:0a:fb</span></code>). Elle est identique sur tous les hôtes qui portent le subnet : une VM qui
+change d’hôte garde une entrée ARP valide pour sa gateway. Elle n’est posée qu’à la création du
+subnet — un subnet créé avant garde la MAC choisie par le noyau jusqu’à sa recréation.</p>
 </section>
 <section id="bridge">
 <h2>bridge<a class="headerlink" href="#bridge" title="Lien vers cette rubrique">#</a></h2>
