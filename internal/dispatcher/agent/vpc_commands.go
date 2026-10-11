@@ -70,8 +70,8 @@ func (c CreateVPCCommand) checkL3VNI(db *badger.DB, cfg *configuration.Config) e
 	return nil
 }
 
-func (c CreateVPCCommand) Execute(db *badger.DB, _ *configuration.Config) error {
-	return vpc.CreateVPC(db, c.Name)
+func (c CreateVPCCommand) Execute(db *badger.DB, cfg *configuration.Config) error {
+	return vpc.CreateVPC(db, c.Name, cfg)
 }
 
 type DeleteVPCCommand struct {
@@ -132,7 +132,7 @@ func (c DeleteVPCCommand) Execute(db *badger.DB, cfg *configuration.Config) erro
 		case <-time.After(time.Duration(cfg.Dispatcher.PollSeconds) * time.Second):
 		}
 	}
-	if err := vpc.DeleteVPC(db, c.Name); err != nil {
+	if err := vpc.DeleteVPC(db, c.Name, cfg); err != nil {
 		return err
 	}
 	current, err := state.Get(db, c.Key())

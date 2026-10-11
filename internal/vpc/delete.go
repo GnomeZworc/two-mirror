@@ -3,6 +3,7 @@ package vpc
 import (
 	"strings"
 
+	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
 	"git.g3e.fr/syonad/two/internal/state"
@@ -10,11 +11,21 @@ import (
 	"github.com/dgraph-io/badger/v4"
 )
 
-func DeleteVPC(db *badger.DB, name string) error {
+func DeleteVPC(db *badger.DB, name string, cfg *configuration.Config) error {
 	if current, err := state.Get(db, "vpc/"+name); err != nil {
 		return err
 	} else if current == state.Deleting {
 		vpcID := strings.SplitN(name, "-", 2)[1]
+
+		l3, ok, err := loadL3(db, name, vpcID)
+		if err != nil {
+			return err
+		}
+		if ok {
+			if err := deleteL3(newSystem(), cfg, l3); err != nil {
+				return err
+			}
+		}
 
 		if err := netif.DeleteLink("vp-" + vpcID + "-e"); err != nil {
 			return err

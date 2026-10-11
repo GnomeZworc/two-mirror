@@ -3,6 +3,7 @@ package vpc
 import (
 	"strings"
 
+	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
 	"git.g3e.fr/syonad/two/internal/state"
@@ -10,7 +11,7 @@ import (
 	"github.com/dgraph-io/badger/v4"
 )
 
-func CreateVPC(db *badger.DB, name string) error {
+func CreateVPC(db *badger.DB, name string, cfg *configuration.Config) error {
 	if current, err := state.Get(db, "vpc/"+name); err != nil {
 		return err
 	} else if current == state.Creating {
@@ -47,6 +48,15 @@ func CreateVPC(db *badger.DB, name string) error {
 			return netif.LinkSetUp("vp-" + vpcID + "-i")
 		}); err != nil {
 			return err
+		}
+		l3, ok, err := loadL3(db, name, vpcID)
+		if err != nil {
+			return err
+		}
+		if ok {
+			if err := createL3(newSystem(), cfg, l3); err != nil {
+				return err
+			}
 		}
 		return state.Set(db, "vpc/"+name, state.Running)
 	}

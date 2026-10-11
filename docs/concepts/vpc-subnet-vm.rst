@@ -20,6 +20,35 @@ d'isolation : deux VPC ne se voient pas, et peuvent réutiliser les mêmes plage
 
 Un VPC ne peut être supprimé que si tous ses subnets le sont déjà — sinon 409.
 
+Routage entre hyperviseurs : ``l3vni``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Un VPC créé avec ``l3vni`` route ses subnets entre hyperviseurs par un **VNI de transit** propre
+au VPC (IRB symétrique, `#41 <https://git.g3e.fr/syonad/two/issues/41>`_) : un hyperviseur n'a
+plus besoin de porter un subnet pour joindre ses VM. Sans ``l3vni``, le VPC se comporte comme
+avant. Le champ exige la section ``bgp`` de l'agent (:doc:`/exploitation/configuration`) et ne
+se change pas après création.
+
+À la création, l'agent pose sur l'hyperviseur, pour un VPC ``vp-<id>`` :
+
+.. code-block:: text
+
+   vrf-<id>         VRF, table de routage = l3vni
+   ├── brl3-<id>    bridge sans adresse, MAC de routeur 02:02:<IPv4 du VTEP>
+   │   └── vxl3-<id>    VXLAN du l3vni, VTEP = IPv4 primaire de default_interface
+   └── l3-<id>-o    169.254.0.1/30 ── l3-<id>-i 169.254.0.2/30, dans le netns du VPC
+
+Dans le netns, le ``cidr`` du VPC est routé vers ``169.254.0.1`` ; le transit ``/30`` est le même
+sur tous les hyperviseurs et pour tous les VPC. Le forwarding IPv4 est activé dans le netns, et
+sur l'hôte **seulement** sur ``brl3-<id>`` et ``l3-<id>-o`` : l'hyperviseur ne devient pas un
+routeur entre ses autres interfaces. FRR reçoit la VRF, son ``vni``, une instance
+``router bgp <asn> vrf vrf-<id>`` avec RD ``<VTEP>:<l3vni>`` et RT ``<asn>:<l3vni>``, et
+l'export des routes du ``cidr`` présentes dans la VRF.
+
+La suppression retire d'abord la configuration de routage de FRR, puis les interfaces, puis la
+VRF de FRR. Cet ordre est imposé : supprimer la VRF du noyau sous une instance BGP encore
+configurée fait planter ``bgpd`` (FRR 10.7.1).
+
 Subnet
 ------
 
