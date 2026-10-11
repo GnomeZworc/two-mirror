@@ -9,6 +9,7 @@ import (
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
 	"git.g3e.fr/syonad/two/internal/state"
+	"git.g3e.fr/syonad/two/internal/vpc"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 
 	"github.com/dgraph-io/badger/v4"
@@ -31,6 +32,12 @@ func DeleteSubnet(db *badger.DB, subnetName string, cfg *configuration.Config) e
 	backend, err := dhcpbackend.New(cfg)
 	if err != nil {
 		return err
+	}
+
+	if d.mode == ModeVxlan {
+		if err := vpc.WithdrawRoute(db, d.vpc, d.cidr); err != nil {
+			return err
+		}
 	}
 
 	if err := stopDHCP(db, subnetName, d, backend); err != nil {

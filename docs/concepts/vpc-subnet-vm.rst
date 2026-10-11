@@ -63,6 +63,11 @@ hosts dont le nommage réseau diffère.
 
 Le comportement réseau dépend du :doc:`mode </concepts/modes-reseau>`.
 
+Un subnet ne peut être supprimé que si aucune VM non supprimée n'a d'interface dessus — sinon
+409, avec la liste des VM. Dans un VPC routé par ``l3vni``, un subnet ``vxlan`` annonce son
+préfixe dans la VRF du VPC à la création et le retire en premier à la suppression : c'est le
+filet qui couvre une VM tant que son ``/32`` n'est pas annoncé.
+
 VM
 --
 

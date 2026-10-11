@@ -10,6 +10,7 @@ import (
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
 	"git.g3e.fr/syonad/two/internal/state"
+	"git.g3e.fr/syonad/two/internal/vpc"
 
 	"github.com/dgraph-io/badger/v4"
 )
@@ -35,6 +36,12 @@ func CreateSubnet(db *badger.DB, subnetName string, cfg *configuration.Config) e
 
 	if err := createSubnet(db, subnetName, d, backend); err != nil {
 		return err
+	}
+
+	if d.mode == ModeVxlan {
+		if err := vpc.ExportRoute(db, d.vpc, d.cidr); err != nil {
+			return err
+		}
 	}
 
 	return state.Set(db, "subnet/"+subnetName, state.Running)

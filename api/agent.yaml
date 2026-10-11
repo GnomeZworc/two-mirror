@@ -281,7 +281,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
-          description: Subnet not deletable — only running or error states can be deleted
+          description: Subnet not deletable — only running or error states can be deleted, and no VM that is not deleted may still have an interface on it
           content:
             application/json:
               schema:

@@ -79,6 +79,14 @@ func (f *fakeHost) DeleteLink(name string) error {
 	return f.record("del " + name)
 }
 
+func (f *fakeHost) TableRouteVia(table uint32, dst *net.IPNet, gw net.IP, iface string) error {
+	return f.record(fmt.Sprintf("table %d route %s via %s dev %s", table, dst, gw, iface))
+}
+
+func (f *fakeHost) TableRouteDel(table uint32, dst *net.IPNet) error {
+	return f.record(fmt.Sprintf("table %d del %s", table, dst))
+}
+
 func (f *fakeHost) ApplyVRF(v frr.VRF) error {
 	return f.record(fmt.Sprintf("frr apply asn=%d id=%s vni=%d vtep=%s supernet=%s", v.ASN, v.ID, v.L3VNI, v.VTEP, v.Supernet))
 }

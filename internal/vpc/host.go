@@ -22,6 +22,8 @@ type host interface {
 	LinkUp(ns, iface string) error
 	RouteVia(ns string, dst *net.IPNet, gw net.IP, iface string) error
 	DeleteLink(name string) error
+	TableRouteVia(table uint32, dst *net.IPNet, gw net.IP, iface string) error
+	TableRouteDel(table uint32, dst *net.IPNet) error
 	ApplyVRF(v frr.VRF) error
 	WithdrawVRF(v frr.VRF) error
 	RemoveVRF(v frr.VRF) error
@@ -79,6 +81,14 @@ func (system) RouteVia(ns string, dst *net.IPNet, gw net.IP, iface string) error
 }
 
 func (system) DeleteLink(name string) error { return netif.DeleteLinkIfExists(name) }
+
+func (system) TableRouteVia(table uint32, dst *net.IPNet, gw net.IP, iface string) error {
+	return netif.RouteReplaceVia(int(table), dst, gw, iface)
+}
+
+func (system) TableRouteDel(table uint32, dst *net.IPNet) error {
+	return netif.RouteDelIfExists(int(table), dst)
+}
 
 func (s system) ApplyVRF(v frr.VRF) error { return s.frr.ApplyVRF(v) }
 
