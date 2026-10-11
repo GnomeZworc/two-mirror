@@ -8,6 +8,7 @@ de sérialisation structurée.
 
    vpc/<name>/state             → creating | running | error | deleting | deleted
    vpc/<name>/cidr              → <cidr>
+   vpc/<name>/l3vni             → <id>            (optionnel : VPC routé par L3VNI)
 
    subnet/<name>/state          → creating | running | error | deleting | deleted
    subnet/<name>/vpc            → <vpc-name>

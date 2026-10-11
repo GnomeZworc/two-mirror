@@ -1,8 +1,10 @@
 package dispatcher
 
 import (
+	"strings"
 	"testing"
 
+	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 )
 
@@ -135,5 +137,83 @@ func TestDeleteVPCCommand_Prepare_AllowedWhenSubnetDeleting(t *testing.T) {
 	cmd := DeleteVPCCommand{Name: "vpc-ok"}
 	if err := cmd.Prepare(db, nil); err != nil {
 		t.Fatalf("Prepare devrait réussir si le subnet est deleting : %v", err)
+	}
+}
+
+func bgpConfig() *configuration.Config {
+	cfg := &configuration.Config{}
+	cfg.BGP.ASN = 64600
+	cfg.BGP.RouteReflectors = []string{"10.255.255.1"}
+	return cfg
+}
+
+func TestCreateVPCCommand_Prepare_StoresTheL3VNI(t *testing.T) {
+	_, db := newTestDispatcher(t)
+	cmd := CreateVPCCommand{Name: "vpc-1", CIDR: "10.0.0.0/16", L3VNI: 4001}
+	if err := cmd.Prepare(db, bgpConfig()); err != nil {
+		t.Fatalf("Prepare a échoué : %v", err)
+	}
+	if got, err := kv.GetFromDB(db, "vpc/vpc-1/l3vni"); err != nil || got != "4001" {
+		t.Errorf("l3vni en DB = %q, %v ; attendu 4001", got, err)
+	}
+}
+
+func TestCreateVPCCommand_Prepare_WithoutL3VNIStoresNothing(t *testing.T) {
+	_, db := newTestDispatcher(t)
+	cmd := CreateVPCCommand{Name: "vpc-1", CIDR: "10.0.0.0/16"}
+	if err := cmd.Prepare(db, nil); err != nil {
+		t.Fatalf("Prepare a échoué : %v", err)
+	}
+	if got, err := kv.GetFromDB(db, "vpc/vpc-1/l3vni"); err == nil {
+		t.Errorf("clé l3vni écrite : %q", got)
+	}
+}
+
+func TestCreateVPCCommand_Prepare_RefusesAnL3VNIWithoutBGP(t *testing.T) {
+	_, db := newTestDispatcher(t)
+	cmd := CreateVPCCommand{Name: "vpc-1", CIDR: "10.0.0.0/16", L3VNI: 4001}
+	err := cmd.Prepare(db, &configuration.Config{})
+	if err == nil || !strings.Contains(err.Error(), "requires the bgp section") {
+		t.Fatalf("erreur %v", err)
+	}
+	if entries, _ := kv.ListByPrefix(db, "vpc/"); len(entries) != 0 {
+		t.Errorf("écritures malgré le refus : %v", entries)
+	}
+}
+
+func TestCreateVPCCommand_Prepare_RefusesAReservedL3VNI(t *testing.T) {
+	_, db := newTestDispatcher(t)
+	cmd := CreateVPCCommand{Name: "vpc-1", CIDR: "10.0.0.0/16", L3VNI: 254}
+	if err := cmd.Prepare(db, bgpConfig()); err == nil || !strings.Contains(err.Error(), "l3vni 254 is reserved") {
+		t.Fatalf("erreur %v", err)
+	}
+	if entries, _ := kv.ListByPrefix(db, "vpc/"); len(entries) != 0 {
+		t.Errorf("écritures malgré le refus : %v", entries)
+	}
+}
+
+func TestCreateVPCCommand_Prepare_RefusesAnL3VNIAlreadyUsed(t *testing.T) {
+	_, db := newTestDispatcher(t)
+	kv.AddInDB(db, "vpc/vpc-a/state", "deleting")
+	kv.AddInDB(db, "vpc/vpc-a/l3vni", "4001")
+	cmd := CreateVPCCommand{Name: "vpc-b", CIDR: "10.0.0.0/16", L3VNI: 4001}
+	err := cmd.Prepare(db, bgpConfig())
+	if err == nil || !strings.Contains(err.Error(), `l3vni 4001 is already used by vpc "vpc-a"`) {
+		t.Fatalf("erreur %v", err)
+	}
+	if _, err := kv.GetFromDB(db, "vpc/vpc-b/state"); err == nil {
+		t.Error("vpc-b créé malgré le doublon")
+	}
+}
+
+func TestCreateVPCCommand_Prepare_ReusesTheL3VNIOfADeletedVPC(t *testing.T) {
+	_, db := newTestDispatcher(t)
+	kv.AddInDB(db, "vpc/vpc-a/state", "deleted")
+	kv.AddInDB(db, "vpc/vpc-a/l3vni", "4001")
+	kv.AddInDB(db, "vpc/vpc-c/state", "running")
+	kv.AddInDB(db, "vpc/vpc-c/l3vni", "4002")
+	cmd := CreateVPCCommand{Name: "vpc-b", CIDR: "10.0.0.0/16", L3VNI: 4001}
+	if err := cmd.Prepare(db, bgpConfig()); err != nil {
+		t.Fatalf("Prepare a échoué : %v", err)
 	}
 }

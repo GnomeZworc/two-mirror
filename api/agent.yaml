@@ -45,13 +45,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/VPC"
         "400":
-          description: Missing required field or invalid request body
+          description: Missing required field, invalid request body, or l3vni out of range
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
         "409":
-          description: VPC already exists
+          description: VPC already exists, l3vni already used by another VPC, or l3vni requested on an agent without a bgp section
           content:
             application/json:
               schema:
@@ -317,6 +317,17 @@ components:
           type: string
           description: CIDR block for the entire VPC address space
           example: "10.0.0.0/16"
+        l3vni:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 16777215
+          description: >-
+            Optional. L3VNI of the VPC, used for inter-subnet routing between hypervisors
+            (symmetric IRB). Also the id of the routing table of the VPC VRF, so 253-255 are
+            rejected. Requires the bgp section in the agent configuration, and must not be used
+            by another VPC of the agent. Absent: the VPC has no L3VNI.
+          example: 4001
 
     VPC:
       type: object
@@ -331,6 +342,10 @@ components:
         cidr:
           type: string
           example: "10.0.0.0/16"
+        l3vni:
+          type: integer
+          description: L3VNI of the VPC, absent when the VPC has none
+          example: 4001
 
     SubnetCreateRequest:
       type: object
