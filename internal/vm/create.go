@@ -15,6 +15,7 @@ import (
 	"git.g3e.fr/syonad/two/internal/netns"
 	"git.g3e.fr/syonad/two/internal/qemu"
 	"git.g3e.fr/syonad/two/internal/state"
+	"git.g3e.fr/syonad/two/internal/vpc"
 
 	"github.com/dgraph-io/badger/v4"
 )
@@ -109,6 +110,10 @@ func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 		return qemu.Start(qcfg)
 	}); err != nil {
 		return fmt.Errorf("start qemu: %w", err)
+	}
+
+	if err := applyHostRoutes(db, d, vpc.ExportRoute); err != nil {
+		return err
 	}
 
 	return state.Set(db, "vm/"+name, state.Running)

@@ -14,6 +14,7 @@ import (
 	"git.g3e.fr/syonad/two/internal/netns"
 	"git.g3e.fr/syonad/two/internal/qmp"
 	"git.g3e.fr/syonad/two/internal/state"
+	"git.g3e.fr/syonad/two/internal/vpc"
 
 	"github.com/dgraph-io/badger/v4"
 )
@@ -35,6 +36,10 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 
 	backend, err := dhcpbackend.New(cfg)
 	if err != nil {
+		return err
+	}
+
+	if err := applyHostRoutes(db, d, vpc.WithdrawRoute); err != nil {
 		return err
 	}
 

@@ -78,6 +78,12 @@ le nom de l'interface dans le guest. Exactement une interface doit être ``prima
 la route par défaut et le serveur de metadata. Tous les subnets d'une VM doivent appartenir au
 **même VPC**.
 
+**Routes.** Dans un VPC routé par ``l3vni``, chaque interface sur un subnet ``vxlan`` est annoncée
+en ``/32`` dans la VRF du VPC une fois QEMU démarré, juste avant le passage en ``running``. À la
+suppression, ces ``/32`` sont retirés **avant** l'arrêt de QEMU. Comme un subnet ne peut être
+supprimé tant qu'une VM l'utilise, le ``/32`` d'une VM est toujours retiré avant le ``/24`` de son
+subnet — l'ordre qui évite le trou noir de `#41 <https://git.g3e.fr/syonad/two/issues/41>`_.
+
 **Stockage.** Un seul disque ``vdX`` (virtio-blk) par VM ; les disques supplémentaires passent
 par le contrôleur SCSI (``sdX``). Cette contrainte vient de la carte PCI figée — voir
 :doc:`/architecture/contraintes`.
