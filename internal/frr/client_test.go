@@ -79,17 +79,6 @@ func TestApplyVRFRefusesAnInvalidVRFWithoutCallingVtysh(t *testing.T) {
 	}
 }
 
-func TestApplyBaseConfiguresThenSaves(t *testing.T) {
-	f := &fakeVtysh{}
-	b := Base{ASN: 64600, RouterID: labVRF(t).VTEP, RouteReflectors: []net.IP{net.ParseIP("10.255.255.1")}}
-	if err := f.client().ApplyBase(b); err != nil {
-		t.Fatal(err)
-	}
-	if len(f.calls) != 2 || f.calls[0][0] != "configure terminal" || f.calls[0][1] != "router bgp 64600" || f.calls[1][0] != "write memory" {
-		t.Errorf("appels : %q", f.calls)
-	}
-}
-
 func TestExecReportsAnErrorPrintedByVtysh(t *testing.T) {
 	f := &fakeVtysh{fail: map[string]string{"vni 4001": "% Please unconfigure l3vni 4001\n"}}
 	err := f.client().ApplyVRF(labVRF(t))
@@ -180,5 +169,83 @@ func TestTeardownNeedsOnlyTheASNAndTheID(t *testing.T) {
 	f = &fakeVtysh{}
 	if err := f.client().WithdrawVRF(VRF{ASN: 64600}); err == nil || len(f.calls) != 0 {
 		t.Errorf("démontage sans id : erreur %v, appels %q", err, f.calls)
+	}
+}
+
+const baseRunning = `frr version 10.7.1
+router bgp 64600
+ bgp router-id 192.168.14.13
+ neighbor fabric peer-group
+ neighbor fabric remote-as 64600
+ neighbor 10.255.255.1 peer-group fabric
+ neighbor 10.255.255.9 peer-group fabric
+ neighbor 10.0.0.5 peer-group monitoring
+ !
+ address-family l2vpn evpn
+  neighbor fabric activate
+  advertise-all-vni
+ exit-address-family
+exit
+!
+router bgp 64600 vrf vrf-a1b2
+ neighbor 10.255.255.7 peer-group fabric
+exit
+`
+
+func labBase() Base {
+	return Base{ASN: 64600, RouterID: net.ParseIP("192.168.14.13"), RouteReflectors: []net.IP{net.ParseIP("10.255.255.1")}}
+}
+
+func TestApplyBaseOnAFreshFRRConfiguresThenSaves(t *testing.T) {
+	f := &fakeVtysh{running: []string{""}}
+	if err := f.client().ApplyBase(labBase()); err != nil {
+		t.Fatal(err)
+	}
+	want := [][]string{
+		{"show running-config"},
+		append([]string{"configure terminal"}, labBase().commands()...),
+		{"write memory"},
+	}
+	if !reflect.DeepEqual(f.calls, want) {
+		t.Errorf("appels :\n%q\nattendu :\n%q", f.calls, want)
+	}
+}
+
+func TestApplyBaseRemovesReflectorsNoLongerConfiguredAfterAddingTheNewOnes(t *testing.T) {
+	f := &fakeVtysh{running: []string{baseRunning}}
+	if err := f.client().ApplyBase(labBase()); err != nil {
+		t.Fatal(err)
+	}
+	want := [][]string{
+		{"show running-config"},
+		append([]string{"configure terminal"}, labBase().commands()...),
+		{"configure terminal", "router bgp 64600", "no neighbor 10.255.255.9", "exit"},
+		{"write memory"},
+	}
+	if !reflect.DeepEqual(f.calls, want) {
+		t.Errorf("appels :\n%q\nattendu :\n%q", f.calls, want)
+	}
+}
+
+func TestApplyBaseRefusesToChangeTheASN(t *testing.T) {
+	f := &fakeVtysh{running: []string{baseRunning}}
+	b := labBase()
+	b.ASN = 64601
+	err := f.client().ApplyBase(b)
+	if err == nil || !strings.Contains(err.Error(), "bgp already runs as AS 64600, not 64601") {
+		t.Errorf("erreur %v", err)
+	}
+	if len(f.calls) != 1 {
+		t.Errorf("appels après le refus : %q", f.calls)
+	}
+}
+
+func TestApplyBaseStopsWhenTheRunningConfigIsUnreadable(t *testing.T) {
+	f := &fakeVtysh{}
+	if err := f.client().ApplyBase(labBase()); err == nil {
+		t.Fatal("aucune erreur")
+	}
+	if f.sent("write memory") || f.sent("router bgp 64600") {
+		t.Errorf("appels : %q", f.calls)
 	}
 }

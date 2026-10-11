@@ -55,6 +55,7 @@ type Config struct {
 		Enabled         bool `mapstructure:"enabled"`
 		IntervalSeconds int  `mapstructure:"interval_seconds"`
 	} `mapstructure:"watchdog"`
+	BGP              BGP               `mapstructure:"bgp"`
 	DefaultInterface string            `mapstructure:"default_interface"`
 	Interfaces       map[string]string `mapstructure:"interfaces"`
 }

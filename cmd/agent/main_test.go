@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	configuration "git.g3e.fr/syonad/two/internal/config/agent"
+	"git.g3e.fr/syonad/two/internal/frr"
 	"git.g3e.fr/syonad/two/pkg/worker"
 )
 
@@ -94,5 +96,24 @@ func TestShutdown_SansServeur(t *testing.T) {
 
 	if !shutdown(discardLogger(), q, map[string]httpShutdowner{}, 5*time.Second) {
 		t.Fatal("l'absence de serveur ne doit pas empêcher un arrêt propre")
+	}
+}
+
+type fakeBase struct{ called bool }
+
+func (f *fakeBase) ApplyBase(frr.Base) error {
+	f.called = true
+	return nil
+}
+
+func TestApplyBGPBase_RefusesAnInvalidSectionBeforeTouchingFRR(t *testing.T) {
+	cfg := &configuration.Config{}
+	cfg.BGP.RouteReflectors = []string{"10.255.255.1"}
+	f := &fakeBase{}
+	if err := applyBGPBase(cfg, f); err == nil || !strings.Contains(err.Error(), "bgp.asn must be set") {
+		t.Errorf("erreur %v", err)
+	}
+	if f.called {
+		t.Error("ApplyBase appelé avec une section bgp invalide")
 	}
 }

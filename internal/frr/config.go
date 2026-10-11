@@ -3,6 +3,7 @@ package frr
 import (
 	"fmt"
 	"net"
+	"strings"
 )
 
 const maxVNI = 1<<24 - 1
@@ -58,6 +59,31 @@ func (b Base) commands() []string {
 		"exit-address-family",
 		"exit",
 	)
+}
+
+func (b Base) staleReflectors(running string) ([]string, error) {
+	want := make(map[string]bool, len(b.RouteReflectors))
+	for _, rr := range b.RouteReflectors {
+		want[rr.String()] = true
+	}
+	var stale []string
+	in := false
+	for _, l := range strings.Split(running, "\n") {
+		l = strings.TrimRight(l, " \r")
+		f := strings.Fields(l)
+		switch {
+		case len(f) == 3 && f[0] == "router" && f[1] == "bgp":
+			if f[2] != fmt.Sprint(b.ASN) {
+				return nil, fmt.Errorf("frr: bgp already runs as AS %s, not %d: changing the asn requires removing that instance by hand", f[2], b.ASN)
+			}
+			in = true
+		case in && l == "exit":
+			in = false
+		case in && len(f) == 4 && f[0] == "neighbor" && f[2] == "peer-group" && f[3] == "fabric" && !want[f[1]]:
+			stale = append(stale, f[1])
+		}
+	}
+	return stale, nil
 }
 
 func (v VRF) Name() string {

@@ -22,8 +22,25 @@ func (c *Client) ApplyBase(b Base) error {
 	if err := b.validate(); err != nil {
 		return err
 	}
+	running, err := c.runningConfig()
+	if err != nil {
+		return err
+	}
+	stale, err := b.staleReflectors(running)
+	if err != nil {
+		return err
+	}
 	if err := c.configure(b.commands()...); err != nil {
 		return err
+	}
+	if len(stale) > 0 {
+		cmds := []string{fmt.Sprintf("router bgp %d", b.ASN)}
+		for _, rr := range stale {
+			cmds = append(cmds, "no neighbor "+rr)
+		}
+		if err := c.configure(append(cmds, "exit")...); err != nil {
+			return err
+		}
 	}
 	return c.save()
 }

@@ -27,8 +27,18 @@ l'agent désactive l'apprentissage et ne configure aucun voisin — cf.
 Configuration de FRR
 ~~~~~~~~~~~~~~~~~~~~
 
-Seul ``bgpd`` est activé dans ``/etc/frr/daemons``. D'un hyperviseur à l'autre ne changent que
-``hostname`` et ``router-id``, l'adresse de l'hyperviseur sur son segment.
+Seul ``bgpd`` est activé dans ``/etc/frr/daemons``. Le reste est posé par l'agent, à chaque
+démarrage, à partir de la section ``bgp`` de ``agent.yml`` (:doc:`/exploitation/configuration`) :
+
+.. code-block:: yaml
+
+   bgp:
+     asn: 64600
+     route_reflectors: [10.255.255.1]
+
+L'agent en déduit la configuration ci-dessous ; le ``router-id`` est l'adresse IPv4 primaire de
+``default_interface``, la seule valeur qui change d'un hyperviseur à l'autre. ``hostname`` et
+``log`` ne sont pas gérés par l'agent.
 
 .. literalinclude:: ../../test/e2e/topologies/frr/hv1.conf
    :language: text
