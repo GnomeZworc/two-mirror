@@ -133,6 +133,84 @@ test_wait_state () {
     teardown
 }
 
+test_vrf_route_via_matches_the_next_hop_exactly () {
+    setup "vrf_route_via : next-hop exact dans la bonne VRF"
+    local stub='ip () { [ "$*" = "-4 route show vrf vrf-s7 10.241.1.10" ] && echo "10.241.1.10 nhid 12 via 192.168.14.11 dev brl3-s7 proto bgp metric 20 onlink"; }; '
+    [[ $(node "${stub}vrf_route_via vp-s7 10.241.1.10 192.168.14.11 && echo OUI") == OUI ]] || fail "route présente refusée"
+    [[ $(node "${stub}vrf_route_via vp-s7 10.241.1.10 192.168.14.1 || echo NON") == NON ]] || fail "192.168.14.1 pris pour 192.168.14.11"
+    [[ $(node "${stub}vrf_route_via vp-s7b 10.241.1.10 192.168.14.11 || echo NON") == NON ]] || fail "mauvaise VRF acceptée"
+    teardown
+}
+
+test_vrf_members_lists_interface_names () {
+    setup "vrf_members : noms triés, sans le suffixe @ du veth"
+    [[ $(node 'ip () { printf "%s\n" "15: l3-s7-o@if14: <UP> mtu 1500 master vrf-s7" "12: brl3-s7: <UP> mtu 1500 master vrf-s7"; }; vrf_members vp-s7') == "brl3-s7 l3-s7-o" ]] \
+        || fail "lu : $(node 'ip () { printf "%s\n" "15: l3-s7-o@if14: <UP>" "12: brl3-s7: <UP>"; }; vrf_members vp-s7')"
+    teardown
+}
+
+test_vm_create_is_idempotent () {
+    setup "vm_create : VM déjà en running, rien n'est copié ni envoyé"
+    [[ $(node 'api_state () { echo running; }; cp () { echo COPIE; }; api_post () { echo POST; }; vm_create v sn 10.0.0.10 && echo OK') == OK ]] \
+        || fail "VM existante recréée"
+    teardown
+}
+
+test_l3vni_ready_requires_type_state_and_rmac () {
+    setup "l3vni_ready : type L3, état Up et RMAC exigés"
+    local out='VNI: 2700\n  Type: L3\n  State: Up\n  Router MAC: 02:00:00:00:27:02'
+    [[ $(node "vtysh () { printf '${out}\n'; }; l3vni_ready 2700 02:00:00:00:27:02 && echo OUI") == OUI ]] || fail "VNI prête refusée"
+    [[ $(node "vtysh () { printf '${out}\n'; }; l3vni_ready 2700 02:00:00:00:27:01 || echo NON") == NON ]] || fail "mauvaise RMAC acceptée"
+    [[ $(node "vtysh () { printf '${out/Up/Down}\n'; }; l3vni_ready 2700 02:00:00:00:27:02 || echo NON") == NON ]] || fail "état Down accepté"
+    [[ $(node "vtysh () { printf '${out/L3/L2}\n'; }; l3vni_ready 2700 02:00:00:00:27:02 || echo NON") == NON ]] || fail "VNI L2 acceptée"
+    teardown
+}
+
+test_vrf_nexthops_lists_every_ecmp_member () {
+    setup "vrf_nexthops : un chemin, plusieurs chemins, aucun"
+    [[ $(node 'ip () { echo "10.242.1.50 nhid 9 via 192.168.14.12 dev brl3-s8 proto bgp metric 20 onlink"; }; vrf_nexthops vp-s8 10.242.1.50') == 192.168.14.12 ]] || fail "un chemin"
+    [[ $(node 'ip () { printf "%s\n" "10.242.1.0/24 nhid 90 proto bgp metric 20" "	nexthop via 192.168.14.12 dev brl3-s8 weight 1 onlink" "	nexthop via 192.168.14.11 dev brl3-s8 weight 1 onlink"; }; vrf_nexthops vp-s8 10.242.1.0/24') == "192.168.14.11 192.168.14.12" ]] || fail "ECMP"
+    [[ -z $(node 'ip () { :; }; vrf_nexthops vp-s8 10.242.1.50') ]] || fail "aucun chemin"
+    teardown
+}
+
+test_bgp_best_reports_next_hop_and_reason () {
+    setup "bgp_paths / bgp_best : nombre de chemins, meilleur next-hop et raison"
+    local json='{"prefix":"10.242.1.50/32","paths":[{"nexthops":[{"ip":"192.168.14.12"}]},{"nexthops":[{"ip":"192.168.14.11"}],"bestpath":{"overall":true,"selectionReason":"Router ID"}}]}'
+    [[ $(node "vtysh () { echo '${json}'; }; bgp_paths vp-s8 10.242.1.50/32") == 2 ]] || fail "nombre de chemins"
+    [[ $(node "vtysh () { echo '${json}'; }; bgp_best vp-s8 10.242.1.50/32") == "192.168.14.11 (Router ID)" ]] || fail "meilleur : $(node "vtysh () { echo '${json}'; }; bgp_best vp-s8 10.242.1.50/32")"
+    [[ $(node "vtysh () { echo '{}'; }; bgp_paths vp-s8 10.242.1.50/32") == 0 ]] || fail "préfixe absent"
+    teardown
+}
+
+test_vpc_create_sends_the_l3vni_only_when_given () {
+    setup "vpc_create : l3vni transmise si donnée, absente sinon"
+    local stub='api_state () { echo; }; wait_state () { :; }; api_post () { echo "$1 $2"; }; '
+    [[ $(node "${stub}vpc_create vp-s7 10.241.0.0/16 2700") == 'vpcs {"name":"vp-s7","cidr":"10.241.0.0/16","l3vni":2700}' ]] \
+        || fail "avec l3vni : $(node "${stub}vpc_create vp-s7 10.241.0.0/16 2700")"
+    [[ $(node "${stub}vpc_create vp-s1 10.210.0.0/16") == 'vpcs {"name":"vp-s1","cidr":"10.210.0.0/16"}' ]] \
+        || fail "sans l3vni : $(node "${stub}vpc_create vp-s1 10.210.0.0/16")"
+    teardown
+}
+
+test_api_code_returns_the_http_status () {
+    setup "api_code : méthode, chemin et code HTTP"
+    [[ $(node 'curl () { echo "$*" >&2; echo 409; }; api_code DELETE subnets/sn-a 2>/dev/null') == 409 ]] || fail "code"
+    [[ $(node 'curl () { echo "$*"; }; api_code DELETE subnets/sn-a') == "-s -o /dev/null -w %{http_code} -X DELETE http://127.0.0.1:8080/subnets/sn-a" ]] \
+        || fail "appel : $(node 'curl () { echo "$*"; }; api_code DELETE subnets/sn-a')"
+    teardown
+}
+
+test_watchdog_reported_matches_only_watchdog_alerts () {
+    setup "watchdog_reported : alerte du watchdog contenant le texte, rien d'autre"
+    local alert='{"level":"ERROR","msg":"watchdog: inconsistency detected","kind":"vpc","name":"vp-s8","problem":"route 10.242.1.99/32 exported in vrf-s8 without a running owner: its traffic is black-holed"}'
+    local other='{"level":"ERROR","msg":"command failed","error":"route 10.242.1.99/32 exported in vrf-s8 without a running owner"}'
+    [[ $(node "journalctl () { echo '${alert}'; }; watchdog_reported 'route 10.242.1.99/32 exported in vrf-s8 without a running owner' && echo OUI") == OUI ]] || fail "alerte non trouvée"
+    [[ $(node "journalctl () { echo '${other}'; }; watchdog_reported 'route 10.242.1.99/32 exported in vrf-s8' || echo NON") == NON ]] || fail "message hors watchdog accepté"
+    [[ $(node "journalctl () { echo '${alert}'; }; watchdog_reported 'route 10.242.1.98/32' || echo NON") == NON ]] || fail "autre route acceptée"
+    teardown
+}
+
 for T in $(declare -F | awk '{print $3}' | grep '^test_'); do
     "${T}"
 done
