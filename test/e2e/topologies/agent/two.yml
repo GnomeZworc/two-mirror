@@ -1,2 +1,8 @@
 dhcp:
   backend: two
+bgp:
+  asn: 64600
+  route_reflectors: [10.255.255.1]
+watchdog:
+  enabled: true
+  interval_seconds: 10

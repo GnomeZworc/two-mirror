@@ -147,7 +147,7 @@ func TestRoles_ProvisioningIsOneScriptThatStopsAtTheFirstFailure(t *testing.T) {
 	nodes := renderRoles(t)
 	for name, steps := range map[string]string{
 		"sw1": "systemctl daemon-reload\nsystemctl enable --now lab-switch.service\n/usr/local/sbin/lab-frr\n",
-		"hv1": "/usr/local/sbin/lab-deploy\n/usr/local/sbin/lab-frr\n",
+		"hv1": "/usr/local/sbin/lab-deploy\n/usr/local/sbin/lab-frr\nsystemctl restart agent.service\n",
 		"hv2": "/usr/local/sbin/lab-deploy\n",
 	} {
 		cfg := user(t, nodeNamed(t, nodes, name))
