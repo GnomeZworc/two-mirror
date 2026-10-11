@@ -22,9 +22,10 @@ de sérialisation structurée.
    subnet/<name>/dhcp/<ip>      → <mac>
 
    vm/<name>/state              → creating | running | error | deleting | deleted
-   vm/<name>/subnet             → <subnet-name>
-   vm/<name>/tap_id             → <int>
-   vm/<name>/ip                 → <ip>
+   vm/<name>/nic/<i>/subnet     → <subnet-name>   (une interface par index, ordre du tableau interfaces)
+   vm/<name>/nic/<i>/ip         → <ip>
+   vm/<name>/nic/<i>/primary    → "true"          (exactement une interface ; absent sur les autres)
+   vm/<name>/nic/<i>/tap_id     → <int>           (alloué au premier démarrage, puis conservé)
    vm/<name>/metadata_port      → <port>
    vm/<name>/disk/<dev>         → <path>          (une clé par disque : sda, vda, …)
    vm/<name>/memory             → <int>           (Mo)
@@ -37,9 +38,14 @@ de sérialisation structurée.
 Règles
 ------
 
-**Pas de duplication.** Une ressource ne stocke que ce qui lui est propre. Une VM garde le lien
-``vm/<name>/subnet`` ; le VPC, le bridge et l'``interface_ip`` sont lus depuis le subnet, leur
-source canonique.
+**Pas de duplication.** Une ressource ne stocke que ce qui lui est propre. Une interface de VM
+garde le lien ``vm/<name>/nic/<i>/subnet`` ; le VPC, le mode, le bridge et l'``interface_ip`` sont
+lus depuis le subnet, leur source canonique. De même, la L3VNI d'un VPC n'est stockée que sous
+``vpc/<name>/l3vni`` : RT, RD, MAC de routeur et table de routage en sont calculés.
+
+**Ancien schéma des VM.** Avant le multi-interfaces, une VM portait directement ``subnet``, ``ip``
+et ``tap_id``. L'agent les migre au démarrage vers ``nic/0/…``, marquée ``primary``, avant
+d'ouvrir son API ; une VM qui a déjà des clés ``nic/`` est laissée telle quelle.
 
 **Les états passent par ``state``.** Toujours ``state.Set`` / ``state.Get`` : ``Set`` refuse une
 valeur hors énumération, ``Get`` refuse de retourner une valeur non reconnue. ``error`` n'est
