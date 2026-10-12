@@ -1,4 +1,4 @@
-package vpc
+package l3vni
 
 import (
 	"fmt"
@@ -35,7 +35,7 @@ func loadL3(db *badger.DB, name, id string) (l3VPC, bool, error) {
 	if err != nil {
 		return l3VPC{}, false, fmt.Errorf("vpc %q: invalid l3vni %q", name, raw)
 	}
-	if err := ValidL3VNI(uint32(vni)); err != nil {
+	if err := Valid(uint32(vni)); err != nil {
 		return l3VPC{}, false, fmt.Errorf("vpc %q: %w", name, err)
 	}
 	cidr, err := kv.GetFromDB(db, "vpc/"+name+"/cidr")
@@ -136,6 +136,22 @@ func deleteL3(h host, cfg *configuration.Config, v l3VPC) error {
 		return fmt.Errorf("l3vni %d: remove frr vrf: %w", v.vni, err)
 	}
 	return nil
+}
+
+func Create(db *badger.DB, vpcName string, cfg *configuration.Config) error {
+	v, ok, err := loadRouted(db, vpcName)
+	if err != nil || !ok {
+		return err
+	}
+	return createL3(newSystem(), cfg, v)
+}
+
+func Delete(db *badger.DB, vpcName string, cfg *configuration.Config) error {
+	v, ok, err := loadRouted(db, vpcName)
+	if err != nil || !ok {
+		return err
+	}
+	return deleteL3(newSystem(), cfg, v)
 }
 
 type Routing struct {

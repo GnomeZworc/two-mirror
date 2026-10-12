@@ -1,10 +1,10 @@
-package vpc
+package l3vni
 
 import "fmt"
 
 const maxL3VNI = 1<<24 - 1
 
-func ValidL3VNI(id uint32) error {
+func Valid(id uint32) error {
 	if id == 0 || id > maxL3VNI {
 		return fmt.Errorf("l3vni %d does not fit in 24 bits (1-%d)", id, maxL3VNI)
 	}

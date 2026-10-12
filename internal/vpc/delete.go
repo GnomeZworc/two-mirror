@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
+	"git.g3e.fr/syonad/two/internal/l3vni"
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
 	"git.g3e.fr/syonad/two/internal/state"
@@ -17,14 +18,8 @@ func DeleteVPC(db *badger.DB, name string, cfg *configuration.Config) error {
 	} else if current == state.Deleting {
 		vpcID := strings.SplitN(name, "-", 2)[1]
 
-		l3, ok, err := loadL3(db, name, vpcID)
-		if err != nil {
+		if err := l3vni.Delete(db, name, cfg); err != nil {
 			return err
-		}
-		if ok {
-			if err := deleteL3(newSystem(), cfg, l3); err != nil {
-				return err
-			}
 		}
 
 		if err := netif.DeleteLink("vp-" + vpcID + "-e"); err != nil {

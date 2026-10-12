@@ -8,6 +8,7 @@ import (
 	"time"
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
+	"git.g3e.fr/syonad/two/internal/l3vni"
 	"git.g3e.fr/syonad/two/internal/state"
 	"git.g3e.fr/syonad/two/internal/vpc"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
@@ -46,7 +47,7 @@ func (c CreateVPCCommand) Prepare(db *badger.DB, cfg *configuration.Config) erro
 }
 
 func (c CreateVPCCommand) checkL3VNI(db *badger.DB, cfg *configuration.Config) error {
-	if err := vpc.ValidL3VNI(c.L3VNI); err != nil {
+	if err := l3vni.Valid(c.L3VNI); err != nil {
 		return err
 	}
 	if cfg == nil || !cfg.BGP.Enabled() {
