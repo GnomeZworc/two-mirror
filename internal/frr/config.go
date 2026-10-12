@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"net"
 	"strings"
-
-	"git.g3e.fr/syonad/two/internal/netif"
 )
+
+const MaxL3VNI = 1<<16 - 1
 
 type Base struct {
 	ASN             uint32
@@ -116,8 +116,8 @@ func (v VRF) validate() error {
 	if err := v.validateName(); err != nil {
 		return err
 	}
-	if v.L3VNI == 0 || v.L3VNI > netif.MaxVNI {
-		return fmt.Errorf("frr: l3vni %d does not fit in 24 bits", v.L3VNI)
+	if v.L3VNI == 0 || v.L3VNI > MaxL3VNI {
+		return fmt.Errorf("frr: l3vni %d out of range 1-%d: the route distinguisher <vtep>:<l3vni> holds 16 bits", v.L3VNI, MaxL3VNI)
 	}
 	if v.VTEP.To4() == nil {
 		return fmt.Errorf("frr: vtep %v is not an IPv4 address", v.VTEP)

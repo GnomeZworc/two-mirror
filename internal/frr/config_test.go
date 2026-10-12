@@ -117,8 +117,9 @@ func TestVRFValidateRejects(t *testing.T) {
 	}{
 		"asn nul":           {func(v *VRF) { v.ASN = 0 }, "asn must not be 0"},
 		"id vide":           {func(v *VRF) { v.ID = "" }, "vrf id must not be empty"},
-		"l3vni nul":         {func(v *VRF) { v.L3VNI = 0 }, "l3vni 0 does not fit in 24 bits"},
-		"l3vni sur 25 bits": {func(v *VRF) { v.L3VNI = 16777216 }, "l3vni 16777216 does not fit in 24 bits"},
+		"l3vni nul":         {func(v *VRF) { v.L3VNI = 0 }, "l3vni 0 out of range 1-65535"},
+		"l3vni sur 17 bits": {func(v *VRF) { v.L3VNI = 65536 }, "l3vni 65536 out of range 1-65535"},
+		"l3vni sur 24 bits": {func(v *VRF) { v.L3VNI = 16777215 }, "l3vni 16777215 out of range 1-65535"},
 		"vtep absent":       {func(v *VRF) { v.VTEP = nil }, "vtep <nil> is not an IPv4 address"},
 		"vtep IPv6":         {func(v *VRF) { v.VTEP = net.ParseIP("fd00::1") }, "vtep fd00::1 is not an IPv4 address"},
 		"supernet absent":   {func(v *VRF) { v.Supernet = nil }, "supernet <nil> is not an IPv4 prefix"},
@@ -133,10 +134,10 @@ func TestVRFValidateRejects(t *testing.T) {
 	}
 }
 
-func TestVRFAcceptsTheLargest24BitVNI(t *testing.T) {
+func TestVRFAcceptsTheLargest16BitVNI(t *testing.T) {
 	v := labVRF(t)
-	v.L3VNI = 16777215
+	v.L3VNI = 65535
 	if err := v.validate(); err != nil {
-		t.Errorf("l3vni 16777215 refusée : %v", err)
+		t.Errorf("l3vni 65535 refusée : %v", err)
 	}
 }
