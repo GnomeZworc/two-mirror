@@ -149,7 +149,10 @@ livré le 2026-10-11 un E5-2670 de 2012, x86-64-v2, sur lequel Rocky 10 ne déma
 ``prepare`` refuse donc un serveur sans x86-64-v3 — dans une ``session``, il est aussitôt
 supprimé. La zone n'est pas imposée : ``plan`` et ``up`` prennent la première zone de
 ``LAB_ZONES`` (par défaut toutes les zones Elastic Metal) où l'offre est en stock, ``SCW_DEFAULT_ZONE``
-passant en tête ; ``status`` et ``down`` couvrent toutes ces zones.
+passant en tête ; ``status`` et ``down`` couvrent toutes ces zones. Une zone dont la liste échoue
+est signalée sans masquer les autres : ``status`` affiche ce qui a répondu, ``down`` supprime les
+serveurs listés, et tous deux sortent en erreur ; ``up`` refuse de créer tant qu'une zone reste
+inconnue.
 
 ``session`` est la forme normale d'usage : le serveur est supprimé à la fin, que la commande
 réussisse, échoue, ou que la session soit interrompue (Ctrl-C, ``TERM``, fermeture du terminal).

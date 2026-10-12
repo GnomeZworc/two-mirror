@@ -175,14 +175,18 @@ build_request () {
 }
 
 lab_servers () {
-    local JSON Z ALL="[]"
+    local JSON Z ALL="[]" RC=0
     for Z in ${ZONES}; do
-        JSON=$(api GET "/baremetal/v1/zones/${Z}/servers?project_id=${PROJECT_ID}&tags=${LAB_TAG}&page_size=100") \
-            || return 1
+        if ! JSON=$(api GET "/baremetal/v1/zones/${Z}/servers?project_id=${PROJECT_ID}&tags=${LAB_TAG}&page_size=100"); then
+            warn "zone ${Z} : liste des serveurs de lab indisponible"
+            RC=1
+            continue
+        fi
         ALL=$(jq -c --argjson all "${ALL}" --arg p "${PROJECT_ID}" --arg t "${LAB_TAG}" --arg z "${Z}" \
             '$all + [.servers[] | select(.project_id == $p and (.tags | index($t))) | . + {zone: $z}]' <<< "${JSON}")
     done
     printf '%s\n' "${ALL}"
+    return "${RC}"
 }
 
 server_ip () {
@@ -279,7 +283,8 @@ require_no_lab_server () {
 
 report_uncertain_creation () {
     local FOUND
-    if FOUND=$(lab_servers) && [[ $(jq 'length' <<< "${FOUND}") -gt 0 ]]; then
+    FOUND=$(lab_servers)
+    if [[ $(jq 'length' <<< "${FOUND}") -gt 0 ]]; then
         warn "un serveur de lab existe bien : $(jq -r '[.[].id] | join(", ")' <<< "${FOUND}")"
     fi
     die "création incertaine : le serveur a pu être créé et être facturé ; '${0##*/} status' puis '${0##*/} down'"
@@ -312,13 +317,14 @@ cmd_up () {
 }
 
 cmd_status () {
-    local SERVERS
-    SERVERS=$(lab_servers) || die "impossible de lister les serveurs de lab"
+    local SERVERS RC=0
+    SERVERS=$(lab_servers) || RC=1
     if [[ $(jq 'length' <<< "${SERVERS}") -eq 0 ]]; then
-        info "aucun serveur de lab dans le projet ${PROJECT_ID} (${ZONES})"
-        return 0
+        [[ "${RC}" -eq 0 ]] && info "aucun serveur de lab dans le projet ${PROJECT_ID} (${ZONES})"
+    else
+        jq -r '.[] | "\(.zone)  \(.id)  \(.name)  \(.offer_name)  \(.status)  installation \(.install.status // "none")  \(.created_at)  \([.ips[] | select(.version == "IPv4") | .address] | join(","))"' <<< "${SERVERS}"
     fi
-    jq -r '.[] | "\(.zone)  \(.id)  \(.name)  \(.offer_name)  \(.status)  installation \(.install.status // "none")  \(.created_at)  \([.ips[] | select(.version == "IPv4") | .address] | join(","))"' <<< "${SERVERS}"
+    [[ "${RC}" -eq 0 ]] || die "liste incomplète : des serveurs de lab peuvent exister dans les zones en erreur"
 }
 
 require_known_server () {
@@ -424,24 +430,24 @@ wait_gone () {
 
 lab_server_ids () {
     local DEADLINE=$(( SECONDS + DELETE_TIMEOUT ))
-    local SERVERS
+    local SERVERS="[]"
     while (( SECONDS < DEADLINE )); do
         if SERVERS=$(lab_servers); then
             jq -r '.[] | "\(.zone) \(.id)"' <<< "${SERVERS}"
             return 0
         fi
-        warn "liste des serveurs de lab indisponible, nouvel essai dans ${POLL_INTERVAL}s"
+        warn "liste des serveurs de lab incomplète, nouvel essai dans ${POLL_INTERVAL}s"
         sleep "${POLL_INTERVAL}"
     done
+    jq -r '.[] | "\(.zone) \(.id)"' <<< "${SERVERS}"
     return 1
 }
 
 cmd_down () {
     local IDS ID FAILED=0
     if ! IDS=$(lab_server_ids); then
-        warn "impossible de lister les serveurs de lab après ${DELETE_TIMEOUT}s"
+        warn "liste des serveurs de lab incomplète après ${DELETE_TIMEOUT}s : suppression de ceux qui sont listés"
         FAILED=1
-        IDS=""
     fi
     IDS=$(printf '%s\n%s\n' "${IDS}" "${CREATED_ID}" | grep -v '^$' | sort -u)
     while read -r ZONE ID; do
