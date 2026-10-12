@@ -404,46 +404,56 @@ une erreur.</p>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">internal/vpc</span></code>, <code class="docutils literal notranslate"><span class="pre">internal/subnet</span></code></p></td>
 <td><p>création et suppression bas niveau (netns + netif)</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">internal/netns</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">internal/l3vni</span></code></p></td>
+<td><p>routage d’une VPC par L3VNI : VRF, L3VNI, transit, configuration FRR, export des routes
+<code class="docutils literal notranslate"><span class="pre">/24</span></code> et <code class="docutils literal notranslate"><span class="pre">/32</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">internal/frr</span></code></p></td>
+<td><p>génération des commandes FRR, seul point d’appel à <code class="docutils literal notranslate"><span class="pre">vtysh</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">internal/sysctl</span></code></p></td>
+<td><p>écriture sous <code class="docutils literal notranslate"><span class="pre">/proc/sys</span></code>, dans un netns si besoin</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">internal/netns</span></code></p></td>
 <td><p>network namespaces : create/enter/delete/call</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">internal/netif</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">internal/netif</span></code></p></td>
 <td><p>netlink : bridge, veth, vxlan, tap, routes, adresses</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">internal/ebtables</span></code>, <code class="docutils literal notranslate"><span class="pre">internal/iptables</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">internal/ebtables</span></code>, <code class="docutils literal notranslate"><span class="pre">internal/iptables</span></code></p></td>
 <td><p>wrappers dédiés ; ne pas appeler ces binaires ailleurs</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">internal/qemu</span></code>, <code class="docutils literal notranslate"><span class="pre">internal/qmp</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">internal/qemu</span></code>, <code class="docutils literal notranslate"><span class="pre">internal/qmp</span></code></p></td>
 <td><p>lancement de QEMU et client QMP sur socket Unix</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">internal/vm</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">internal/vm</span></code></p></td>
 <td><p>cycle de vie d’une VM : tap, iptables, metadata, qemu</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">internal/dhcp</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">internal/dhcp</span></code></p></td>
 <td><p>plan d’adressage ip → mac, et configurations dnsmasq du backend historique</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">internal/metadata</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">internal/metadata</span></code></p></td>
 <td><p>serveur de metadata cloud-init et ses templates</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">internal/watchdog</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">internal/watchdog</span></code></p></td>
 <td><p>vérification périodique en lecture seule</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">internal/config/agent</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">internal/config/agent</span></code></p></td>
 <td><p>chargement par viper — tags <code class="docutils literal notranslate"><span class="pre">mapstructure</span></code>, jamais <code class="docutils literal notranslate"><span class="pre">yaml</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">internal/prometheus/agent</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">internal/prometheus/agent</span></code></p></td>
 <td><p>collector des métriques <code class="docutils literal notranslate"><span class="pre">syonad_*</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">pkg/db/kv</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">pkg/db/kv</span></code></p></td>
 <td><p>wrapper Badger ; toutes les valeurs sont des chaînes plates</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">pkg/worker</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">pkg/worker</span></code></p></td>
 <td><p>pool de goroutines sur canal</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">pkg/systemd</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">pkg/systemd</span></code></p></td>
 <td><p>client D-Bus systemd</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">pkg/logger</span></code>, <code class="docutils literal notranslate"><span class="pre">pkg/prometheus</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">pkg/logger</span></code>, <code class="docutils literal notranslate"><span class="pre">pkg/prometheus</span></code></p></td>
 <td><p>journalisation <code class="docutils literal notranslate"><span class="pre">slog</span></code> et serveur de métriques</p></td>
 </tr>
 </tbody>

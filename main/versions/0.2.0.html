@@ -393,9 +393,10 @@ subnet déjà créé reste servi par le serveur qui l’a été. La procédure e
 </ul>
 <p><strong>Routage inter-subnet entre hyperviseurs : L3VNI (#41)</strong></p>
 <ul class="simple">
-<li><p>Nouveau champ facultatif <code class="docutils literal notranslate"><span class="pre">l3vni</span></code> sur <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/vpcs</span></code> (1 à 16777215, sauf 253-255 : c’est aussi
-l’identifiant de la table de routage). Absent, le VPC se comporte comme avant. Une L3VNI déjà
-portée par un VPC de l’agent est refusée (409), comme un <code class="docutils literal notranslate"><span class="pre">l3vni</span></code> demandé sans section <code class="docutils literal notranslate"><span class="pre">bgp</span></code></p></li>
+<li><p>Nouveau champ facultatif <code class="docutils literal notranslate"><span class="pre">l3vni</span></code> sur <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/vpcs</span></code> (1 à 65535, sauf 253-255 : c’est aussi
+l’identifiant de la table de routage, et le numéro du RD <code class="docutils literal notranslate"><span class="pre">&lt;VTEP&gt;:&lt;l3vni&gt;</span></code>, sur 16 bits).
+Absent, le VPC se comporte comme avant. Une L3VNI déjà portée par un VPC de l’agent est refusée
+(409), comme un <code class="docutils literal notranslate"><span class="pre">l3vni</span></code> demandé sans section <code class="docutils literal notranslate"><span class="pre">bgp</span></code></p></li>
 <li><p>Pour un VPC routé, l’agent pose sur l’hyperviseur une VRF (table = L3VNI), un bridge à la MAC de
 routeur <code class="docutils literal notranslate"><span class="pre">02:02:&lt;IPv4</span> <span class="pre">du</span> <span class="pre">VTEP&gt;</span></code>, le VXLAN de la L3VNI, un lien de transit <code class="docutils literal notranslate"><span class="pre">169.254.0.1/30</span></code> ↔
 <code class="docutils literal notranslate"><span class="pre">169.254.0.2/30</span></code> vers le netns et la route du <code class="docutils literal notranslate"><span class="pre">cidr</span></code> du VPC dans le netns ; FRR reçoit la VRF,
