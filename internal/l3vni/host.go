@@ -13,8 +13,7 @@ type host interface {
 	VTEPAddress(iface string) (net.IP, error)
 	Sysctl(ns, key, value string) error
 	CreateVRF(name string, table uint32) error
-	CreateBridge(name string, mtu int) error
-	SetHardwareAddr(name string, mac net.HardwareAddr) error
+	CreateBridge(name string, mtu int, mac net.HardwareAddr) error
 	SetMaster(iface, master string) error
 	CreateVxlan(name string, vni int, iface string, mtu int) error
 	CreateVeth(hostIf, nsIf, ns string, mtu int) error
@@ -52,10 +51,8 @@ func (system) Sysctl(ns, key, value string) error {
 
 func (system) CreateVRF(name string, table uint32) error { return netif.CreateVRF(name, table) }
 
-func (system) CreateBridge(name string, mtu int) error { return netif.CreateBridge(name, mtu) }
-
-func (system) SetHardwareAddr(name string, mac net.HardwareAddr) error {
-	return netif.LinkSetHardwareAddr(name, mac)
+func (system) CreateBridge(name string, mtu int, mac net.HardwareAddr) error {
+	return netif.CreateBridge(name, mtu, mac)
 }
 
 func (system) SetMaster(iface, master string) error { return netif.BridgeSetMaster(iface, master) }

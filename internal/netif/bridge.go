@@ -1,14 +1,17 @@
 package netif
 
 import (
+	"net"
+
 	"github.com/vishvananda/netlink"
 )
 
-func CreateBridge(name string, mtu int) error {
+func CreateBridge(name string, mtu int, mac net.HardwareAddr) error {
 	br := &netlink.Bridge{
 		LinkAttrs: netlink.LinkAttrs{
-			Name: name,
-			MTU:  mtu,
+			Name:         name,
+			MTU:          mtu,
+			HardwareAddr: mac,
 		},
 	}
 

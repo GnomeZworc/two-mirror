@@ -43,12 +43,8 @@ func (f *fakeHost) CreateVRF(name string, table uint32) error {
 	return f.record(fmt.Sprintf("vrf %s table %d", name, table))
 }
 
-func (f *fakeHost) CreateBridge(name string, mtu int) error {
-	return f.record(fmt.Sprintf("bridge %s mtu %d", name, mtu))
-}
-
-func (f *fakeHost) SetHardwareAddr(name string, mac net.HardwareAddr) error {
-	return f.record(fmt.Sprintf("mac %s %s", name, mac))
+func (f *fakeHost) CreateBridge(name string, mtu int, mac net.HardwareAddr) error {
+	return f.record(fmt.Sprintf("bridge %s mtu %d mac %s", name, mtu, mac))
 }
 
 func (f *fakeHost) SetMaster(iface, master string) error {
@@ -123,8 +119,7 @@ func TestCreateL3FollowsTheLabRecipe(t *testing.T) {
 	want := []string{
 		"vtep br-000000",
 		"vrf vrf-s7 table 2700",
-		"bridge brl3-s7 mtu 1500",
-		"mac brl3-s7 02:02:c0:a8:0e:0b",
+		"bridge brl3-s7 mtu 1500 mac 02:02:c0:a8:0e:0b",
 		"master brl3-s7 vrf-s7",
 		"vxlan vxl3-s7 id 2700 dev br-000000 mtu 1500",
 		"master vxl3-s7 brl3-s7",
