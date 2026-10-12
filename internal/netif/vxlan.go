@@ -8,8 +8,6 @@ import (
 	"github.com/vishvananda/netlink"
 )
 
-const MaxVNI = 1<<24 - 1
-
 const (
 	scopeUniverse    = 0
 	addressSecondary = 0x01

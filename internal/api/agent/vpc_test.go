@@ -280,6 +280,7 @@ func TestPostVpc_RejectsAnInvalidL3VNIAsABadRequest(t *testing.T) {
 	for _, body := range []string{
 		`{"name":"vp-1","cidr":"10.0.0.0/16","l3vni":0}`,
 		`{"name":"vp-1","cidr":"10.0.0.0/16","l3vni":255}`,
+		`{"name":"vp-1","cidr":"10.0.0.0/16","l3vni":65536}`,
 		`{"name":"vp-1","cidr":"10.0.0.0/16","l3vni":16777216}`,
 		`{"name":"vp-1","cidr":"10.0.0.0/16","l3vni":-1}`,
 	} {

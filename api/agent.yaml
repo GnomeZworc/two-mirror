@@ -321,11 +321,11 @@ components:
           type: integer
           format: int32
           minimum: 1
-          maximum: 16777215
+          maximum: 65535
           description: >-
             Optional. L3VNI of the VPC, used for inter-subnet routing between hypervisors
             (symmetric IRB). Also the id of the routing table of the VPC VRF, so 253-255 are
-            rejected. Requires the bgp section in the agent configuration, and must not be used
+            rejected, and the number of the route distinguisher <vtep>:<l3vni>, which holds 16 bits. Requires the bgp section in the agent configuration, and must not be used
             by another VPC of the agent. Absent: the VPC has no L3VNI.
           example: 4001
 
