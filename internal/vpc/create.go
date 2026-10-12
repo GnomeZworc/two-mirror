@@ -27,7 +27,7 @@ func CreateVPC(db *badger.DB, name string, cfg *configuration.Config) error {
 		}
 
 		if err := netns.Call(name, func() error {
-			return netif.CreateBridge("br-public", 1500)
+			return netif.CreateBridge("br-public", 1500, nil)
 		}); err != nil {
 			return err
 		}

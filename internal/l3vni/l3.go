@@ -85,8 +85,7 @@ func createL3(h host, cfg *configuration.Config, v l3VPC) error {
 		run  func() error
 	}{
 		{"create " + v.vrf(), func() error { return h.CreateVRF(v.vrf(), v.vni) }},
-		{"create " + v.bridge(), func() error { return h.CreateBridge(v.bridge(), l3MTU) }},
-		{"set router mac on " + v.bridge(), func() error { return h.SetHardwareAddr(v.bridge(), rmac) }},
+		{"create " + v.bridge(), func() error { return h.CreateBridge(v.bridge(), l3MTU, rmac) }},
 		{"attach " + v.bridge(), func() error { return h.SetMaster(v.bridge(), v.vrf()) }},
 		{"create " + v.vxlan(), func() error { return h.CreateVxlan(v.vxlan(), int(v.vni), cfg.DefaultInterface, l3MTU) }},
 		{"attach " + v.vxlan(), func() error { return h.SetMaster(v.vxlan(), v.bridge()) }},
