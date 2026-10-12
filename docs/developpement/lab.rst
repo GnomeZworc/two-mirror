@@ -758,6 +758,12 @@ sortie vaut 1 si une vérification échoue **ou si aucune n'a été faite**.
        chaque hôte, sans doublon EVPN ; watchdog : ``/32`` orphelin signalé comme trou noir, ``/32`` manquant
        signalé
      - hv1, hv2, hv3, rr1
+   * - ``s9-subnets-partages``
+     - deux VPC, avec et sans ``l3vni``, chacune avec deux subnets présents sur **les deux**
+       hyperviseurs et une VM par subnet et par hôte : ping entre toutes les paires (même subnet ou
+       non, même hôte ou non) ; chaque VM voit la MAC de gateway de son propre hôte ; aucune MAC en
+       double sur les quatre VNI
+     - hv2, hv3, rr1
 
 ``s6`` réutilise les VM de ``s4`` : le lancer après.
 
@@ -849,6 +855,21 @@ Trois défauts trouvés et corrigés pendant la campagne :
   inconnue, refus) sort en 1.
 * **L3VNI libérée de façon asynchrone** : juste après ``no vni``, ``no router bgp … vrf`` peut être
   refusé (« Please unconfigure l3vni ») puis accepté un instant plus tard ; l'agent réessaie.
+
+Le 2026-10-12, release ``0.2.0rc006``, ``evpn-3hv.yml`` : ``s1`` à ``s7`` sans échec,
+``s8-l3vni-migration`` **50 réussi(s), 0 échoué(s)** (MAC de gateway propre à chaque hôte, aucun
+doublon EVPN), ``s9-subnets-partages`` **75 réussi(s), 1 échoué(s)**. L'échec est une session SSH
+coupée (``Broken pipe``), pas un ping perdu : quand un hôte route vers une VM d'un autre hôte, son
+netns émet une requête ARP au nom de la gateway, partagée par tous les hôtes ; la VM met son cache à
+jour et, pendant ~8 s, envoie à la gateway de l'autre hôte ce qui était destiné à la sienne.
+Détails et suite : `#57 <https://git.g3e.fr/syonad/two/issues/57>`_.
+
+.. note::
+
+   Un ``Broken pipe`` (``client_loop: send disconnect``) ou une session SSH figée dans un scénario
+   n'est **pas forcément un aléa du lab** : c'est la signature de ce problème. Ne pas le classer
+   comme test instable ni ajouter un nouvel essai qui le masquerait ; regarder d'abord le cache ARP
+   de la VM (``ip neigh show <gateway>``) et l'état de la session côté VM.
 
 Les VM sont accessibles depuis le netns de leur VPC, sur l'hyperviseur, avec l'utilisateur
 ``syonad`` créé par les métadonnées de two :
