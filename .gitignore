@@ -33,3 +33,7 @@ data/
 
 # Sphinx build output
 docs/_build/
+
+# Binaires compilés en local pour le lab (test/e2e/build.sh)
+test/e2e/topologies/bin/*
+!test/e2e/topologies/bin/.gitkeep
