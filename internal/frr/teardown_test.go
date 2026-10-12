@@ -97,6 +97,23 @@ func TestRoutingTeardownFollowsTheOrderFRRRequires(t *testing.T) {
 	}
 }
 
+func TestRoutingTeardownTakesTheASNOfTheInstanceFromFRR(t *testing.T) {
+	want := []step{
+		{"router bgp 64600 vrf vrf-a1b2", "address-family ipv4 unicast", "no redistribute kernel"},
+		{"vrf vrf-a1b2", "no vni 4001"},
+		{"no router bgp 64600 vrf vrf-a1b2"},
+		{"no route-map EXPORT-a1b2"},
+		{"no ip prefix-list PL-a1b2"},
+	}
+	for _, asn := range []uint32{0, 64601} {
+		v := labVRF(t)
+		v.ASN = asn
+		if got := routingTeardown(v, fullRunning); !reflect.DeepEqual(got, want) {
+			t.Errorf("asn %d :\n%q\nattendu :\n%q", asn, got, want)
+		}
+	}
+}
+
 func TestRoutingTeardownIgnoresAVRFWhoseNameExtendsOurs(t *testing.T) {
 	if got := routingTeardown(labVRF(t), otherOnlyRunning); got != nil {
 		t.Errorf("étapes visant vrf-a1b2c : %q", got)
