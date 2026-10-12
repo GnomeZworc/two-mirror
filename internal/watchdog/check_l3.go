@@ -8,10 +8,10 @@ import (
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/frr"
+	"git.g3e.fr/syonad/two/internal/l3vni"
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
 	"git.g3e.fr/syonad/two/internal/state"
-	"git.g3e.fr/syonad/two/internal/vpc"
 	"git.g3e.fr/syonad/two/internal/watchdog/notify"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 
@@ -91,7 +91,7 @@ func CheckL3VPCs(db *badger.DB, cfg *configuration.Config, p l3Probe, n notify.N
 		if st, err := state.Get(db, prefixVPC+name); err != nil || st != state.Running {
 			continue
 		}
-		r, ok, err := vpc.LoadRouting(db, name)
+		r, ok, err := l3vni.LoadRouting(db, name)
 		if err != nil {
 			n.Notify(kindVPC, name, err.Error())
 			continue
@@ -117,7 +117,7 @@ func expectedRouterMAC(cfg *configuration.Config, p l3Probe, n notify.Notifier) 
 		n.Notify(kindBGP, "vtep", fmt.Sprintf("vtep address unreadable on %s: %v", cfg.DefaultInterface, err))
 		return "unknown"
 	}
-	mac, err := vpc.RouterMAC(vtep)
+	mac, err := l3vni.RouterMAC(vtep)
 	if err != nil {
 		n.Notify(kindBGP, "vtep", err.Error())
 		return "unknown"
@@ -125,7 +125,7 @@ func expectedRouterMAC(cfg *configuration.Config, p l3Probe, n notify.Notifier) 
 	return mac.String()
 }
 
-func checkL3VPC(db *badger.DB, name string, r vpc.Routing, rmac string, p l3Probe, n notify.Notifier) {
+func checkL3VPC(db *badger.DB, name string, r l3vni.Routing, rmac string, p l3Probe, n notify.Notifier) {
 	for _, iface := range []string{r.VRF, r.Bridge, r.Vxlan, r.VethHost} {
 		if problem := p.LinkProblem("", iface); problem != "" {
 			n.Notify(kindVPC, name, problem)

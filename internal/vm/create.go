@@ -10,12 +10,12 @@ import (
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/dhcpbackend"
 	"git.g3e.fr/syonad/two/internal/iptables"
+	"git.g3e.fr/syonad/two/internal/l3vni"
 	"git.g3e.fr/syonad/two/internal/metadata"
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
 	"git.g3e.fr/syonad/two/internal/qemu"
 	"git.g3e.fr/syonad/two/internal/state"
-	"git.g3e.fr/syonad/two/internal/vpc"
 
 	"github.com/dgraph-io/badger/v4"
 )
@@ -112,7 +112,7 @@ func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 		return fmt.Errorf("start qemu: %w", err)
 	}
 
-	if err := applyHostRoutes(db, d, vpc.ExportRoute); err != nil {
+	if err := applyHostRoutes(db, d, l3vni.ExportRoute); err != nil {
 		return err
 	}
 

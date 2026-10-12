@@ -39,6 +39,13 @@ Paquets
      - migrations idempotentes jouées au démarrage de l'agent
    * - ``internal/vpc``, ``internal/subnet``
      - création et suppression bas niveau (netns + netif)
+   * - ``internal/l3vni``
+     - routage d'une VPC par L3VNI : VRF, L3VNI, transit, configuration FRR, export des routes
+       ``/24`` et ``/32``
+   * - ``internal/frr``
+     - génération des commandes FRR, seul point d'appel à ``vtysh``
+   * - ``internal/sysctl``
+     - écriture sous ``/proc/sys``, dans un netns si besoin
    * - ``internal/netns``
      - network namespaces : create/enter/delete/call
    * - ``internal/netif``

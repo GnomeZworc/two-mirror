@@ -1,4 +1,4 @@
-package vpc
+package l3vni
 
 import (
 	"net"

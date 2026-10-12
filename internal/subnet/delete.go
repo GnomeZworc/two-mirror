@@ -6,10 +6,10 @@ import (
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/dhcpbackend"
 	"git.g3e.fr/syonad/two/internal/ebtables"
+	"git.g3e.fr/syonad/two/internal/l3vni"
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
 	"git.g3e.fr/syonad/two/internal/state"
-	"git.g3e.fr/syonad/two/internal/vpc"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 
 	"github.com/dgraph-io/badger/v4"
@@ -35,7 +35,7 @@ func DeleteSubnet(db *badger.DB, subnetName string, cfg *configuration.Config) e
 	}
 
 	if d.mode == ModeVxlan {
-		if err := vpc.WithdrawRoute(db, d.vpc, d.cidr); err != nil {
+		if err := l3vni.WithdrawRoute(db, d.vpc, d.cidr); err != nil {
 			return err
 		}
 	}

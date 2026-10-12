@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	dispatcher "git.g3e.fr/syonad/two/internal/dispatcher/agent"
-	"git.g3e.fr/syonad/two/internal/vpc"
+	"git.g3e.fr/syonad/two/internal/l3vni"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 )
 
@@ -82,7 +82,7 @@ func (s *Server) postVpc(w http.ResponseWriter, r *http.Request) {
 	}
 	cmd := dispatcher.CreateVPCCommand{Name: req.Name, CIDR: req.CIDR}
 	if req.L3VNI != nil {
-		if err := vpc.ValidL3VNI(*req.L3VNI); err != nil {
+		if err := l3vni.Valid(*req.L3VNI); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{Error: err.Error()})
 			return

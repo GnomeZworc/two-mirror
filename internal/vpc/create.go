@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
+	"git.g3e.fr/syonad/two/internal/l3vni"
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
 	"git.g3e.fr/syonad/two/internal/state"
@@ -49,14 +50,8 @@ func CreateVPC(db *badger.DB, name string, cfg *configuration.Config) error {
 		}); err != nil {
 			return err
 		}
-		l3, ok, err := loadL3(db, name, vpcID)
-		if err != nil {
+		if err := l3vni.Create(db, name, cfg); err != nil {
 			return err
-		}
-		if ok {
-			if err := createL3(newSystem(), cfg, l3); err != nil {
-				return err
-			}
 		}
 		return state.Set(db, "vpc/"+name, state.Running)
 	}
