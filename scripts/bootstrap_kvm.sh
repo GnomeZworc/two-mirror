@@ -16,7 +16,7 @@
 # L'host est stateless (root sur tmpfs) : rien de ce qui suit ne survit à un
 # reboot, deploy.sh --bootstrap est rejoué à chaque démarrage.
 
-KVM_PACKAGES="qemu-system-x86 ovmf dnsmasq ebtables iptables nfs-common jq curl"
+KVM_PACKAGES="qemu-system-x86 qemu-utils ovmf dnsmasq ebtables iptables nfs-common jq curl"
 
 kvm_packages () {
     local DRY_RUN="${1}"
@@ -26,7 +26,7 @@ kvm_packages () {
 
     info "paquets"
     run "${DRY_RUN}" "DEBIAN_FRONTEND=noninteractive apt-get update"
-    run "${DRY_RUN}" "DEBIAN_FRONTEND=noninteractive apt-get install -y ${KVM_PACKAGES}"
+    run "${DRY_RUN}" "DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ${KVM_PACKAGES}"
 
     # Le dnsmasq système prendrait le port 53 en concurrence des instances
     # dnsmasq@ lancées par l'agent dans les netns.

@@ -68,8 +68,12 @@ Les options booléennes actives par défaut se **désactivent** par leur forme l
 Ce que fait ``-i``
 ------------------
 
-**Paquets** — ``qemu-system-x86``, ``ovmf``, ``dnsmasq``, ``ebtables``, ``iptables``,
-``nfs-common``, ``jq``, ``curl``. Le service ``dnsmasq`` du système est ensuite désactivé et
+**Paquets** — ``qemu-system-x86``, ``qemu-utils``, ``ovmf``, ``dnsmasq``, ``ebtables``,
+``iptables``, ``nfs-common``, ``jq``, ``curl``, **sans les paquets recommandés** : ceux de
+``qemu-system-x86`` (interface graphique, gtk, gstreamer, pilotes de stockage réseau) ne servent
+pas à un hyperviseur sans écran, et l'installation passe d'environ 270 à 65 Mo — rejouée à chaque
+démarrage, la racine étant en tmpfs. ``qemu-utils`` est demandé explicitement : ``qemu-img`` sert
+à la construction de l'image (:doc:`/deploiement/image-qcow2`). Le service ``dnsmasq`` du système est ensuite désactivé et
 **masqué** : il prendrait le port 53 en concurrence des instances ``dnsmasq@`` que l'agent lance
 dans les netns.
 
