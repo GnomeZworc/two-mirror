@@ -17,10 +17,14 @@ import (
 // without blocking and Execute never runs, so DB state reflects only Prepare writes.
 func newTestServer(t *testing.T) (*Server, *badger.DB) {
 	t.Helper()
+	return newTestServerWith(t, &configuration.Config{DefaultInterface: "br-test"})
+}
+
+func newTestServerWith(t *testing.T, cfg *configuration.Config) (*Server, *badger.DB) {
+	t.Helper()
 	db := kv.InitDB(kv.Config{Path: t.TempDir()}, false)
 	t.Cleanup(func() { db.Close() })
 	q := worker.New(100)
-	cfg := &configuration.Config{DefaultInterface: "br-test"}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	d := dispatcher.New(q, db, cfg, logger)
 	return New(d, db, logger, "127.0.0.1:0"), db

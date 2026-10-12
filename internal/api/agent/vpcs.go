@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 
 	dispatcher "git.g3e.fr/syonad/two/internal/dispatcher/agent"
+	"git.g3e.fr/syonad/two/internal/l3vni"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 )
 
@@ -44,6 +46,8 @@ func (s *Server) listVpcs(w http.ResponseWriter, _ *http.Request) {
 			vpcs[name].State = value
 		case "cidr":
 			vpcs[name].CIDR = value
+		case "l3vni":
+			vpcs[name].L3VNI = parseL3VNI(value)
 		}
 	}
 	result := make([]VPC, 0, len(vpcs))
@@ -77,6 +81,14 @@ func (s *Server) postVpc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	cmd := dispatcher.CreateVPCCommand{Name: req.Name, CIDR: req.CIDR}
+	if req.L3VNI != nil {
+		if err := l3vni.Valid(*req.L3VNI); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: err.Error()})
+			return
+		}
+		cmd.L3VNI = *req.L3VNI
+	}
 	if err := s.dispatcher.Prepare(cmd); err != nil {
 		w.WriteHeader(http.StatusConflict)
 		json.NewEncoder(w).Encode(ErrorResponse{Error: err.Error()})
@@ -90,5 +102,10 @@ func (s *Server) postVpc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(VPC{Name: req.Name, State: state, CIDR: req.CIDR})
+	json.NewEncoder(w).Encode(VPC{Name: req.Name, State: state, CIDR: req.CIDR, L3VNI: cmd.L3VNI})
+}
+
+func parseL3VNI(value string) uint32 {
+	id, _ := strconv.ParseUint(value, 10, 32)
+	return uint32(id)
 }

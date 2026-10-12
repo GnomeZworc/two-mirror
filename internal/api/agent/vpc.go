@@ -36,8 +36,9 @@ func (s *Server) getVpc(w http.ResponseWriter, _ *http.Request, name string) {
 		return
 	}
 	cidr, _ := kv.GetFromDB(s.db, "vpc/"+name+"/cidr")
+	l3vni, _ := kv.GetFromDB(s.db, "vpc/"+name+"/l3vni")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(VPC{Name: name, State: state, CIDR: cidr})
+	json.NewEncoder(w).Encode(VPC{Name: name, State: state, CIDR: cidr, L3VNI: parseL3VNI(l3vni)})
 }
 
 func (s *Server) deleteVpc(w http.ResponseWriter, _ *http.Request, name string) {

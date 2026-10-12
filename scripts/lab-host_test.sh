@@ -63,18 +63,22 @@ with open(os.path.join(d, "calls.log"), "a") as f:
 if "X-Auth-Token: " + os.environ["FAKE_SECRET"] not in headers:
     reply(401, {"message": "unauthorized"})
 
-zone = "/baremetal/v1/zones/fr-par-1"
+zname = path.split("/")[4] if path.startswith("/baremetal/v1/zones/") else ""
+zone = "/baremetal/v1/zones/" + zname
 if method == "GET" and path == zone + "/offers":
-    reply(200, {"offers": st["offers"], "total_count": len(st["offers"])})
+    offers = st.get("zones", {}).get(zname, {}).get("offers", st["offers"] if zname == "fr-par-1" else [])
+    reply(200, {"offers": offers, "total_count": len(offers)})
 if method == "GET" and path == zone + "/os":
     reply(200, {"os": st["os"], "total_count": len(st["os"])})
 if method == "GET" and path == "/iam/v1alpha1/ssh-keys":
     reply(200, {"ssh_keys": st["keys"], "total_count": len(st["keys"])})
 if method == "GET" and path == zone + "/servers":
+    if st.get("zones", {}).get(zname, {}).get("list_fail"):
+        reply(503, {"message": "service unavailable"})
     if st["list_errors"] > 0:
         st["list_errors"] -= 1
         reply(503, {"message": "service unavailable"})
-    listed = [v for v in st["servers"].values() if not v.get("hidden")]
+    listed = [v for v in st["servers"].values() if not v.get("hidden") and v.get("zone", "fr-par-1") == zname]
     reply(200, {"servers": listed, "total_count": len(listed)})
 if method == "POST" and path == zone + "/servers":
     req = json.loads(body)
@@ -84,7 +88,7 @@ if method == "POST" and path == zone + "/servers":
     sid = "srv-%d" % st["seq"]
     st["servers"][sid] = {"id": sid, "name": req["name"], "project_id": req["project_id"],
                           "tags": req["tags"], "offer_name": "EM-B212X-SSD", "status": "delivering",
-                          "install": {"status": "to_install"}, "ips": [], "created_at": "now",
+                          "install": {"status": "to_install"}, "ips": [], "created_at": "now", "zone": zname,
                           "hidden": st["hide_from_list"]}
     if st["post_fail_after_create"]:
         reply(502, {"message": "bad gateway"})
@@ -93,7 +97,7 @@ if method == "POST" and path == zone + "/servers":
     reply(200, st["servers"][sid])
 if path.startswith(zone + "/servers/"):
     sid = path.rsplit("/", 1)[1]
-    if sid not in st["servers"]:
+    if sid not in st["servers"] or st["servers"][sid].get("zone", "fr-par-1") != zname:
         reply(404, {"message": "not found"})
     srv = st["servers"][sid]
     if method == "GET" and st["get_errors"] > 0:
@@ -222,7 +226,8 @@ lab_env () {
         SCW_API_URL="https://api.example.invalid" SCW_SECRET_KEY="${SECRET}" \
         SCW_DEFAULT_PROJECT_ID="${PROJECT}" LAB_POLL_INTERVAL="${LAB_POLL_INTERVAL:-0}" \
         LAB_INSTALL_TIMEOUT="${LAB_INSTALL_TIMEOUT:-60}" LAB_DELETE_TIMEOUT="${LAB_DELETE_TIMEOUT:-60}" \
-        LAB_SSH_TIMEOUT="${LAB_SSH_TIMEOUT:-60}" \
+        LAB_SSH_TIMEOUT="${LAB_SSH_TIMEOUT:-60}" LAB_ZONES="${LAB_ZONES:-fr-par-1}" \
+        LAB_OFFER="${LAB_OFFER:-EM-B212X-SSD}" ${SCW_DEFAULT_ZONE:+SCW_DEFAULT_ZONE="${SCW_DEFAULT_ZONE}"} \
         "$@"
 }
 
@@ -464,6 +469,33 @@ test_down_fails_loudly_when_listing_never_works () {
     mutate ".servers[\"srv-lab\"] = ${LAB_SERVER} | .list_errors = 100000"
     LAB_DELETE_TIMEOUT=1 run_lab down && fail "down a réussi"
     grep -q "TOUJOURS FACTURÉ" "${WORK}/out.log" || fail "pas d'alerte de facturation"
+    teardown
+}
+
+test_down_deletes_what_answering_zones_list_when_one_zone_fails () {
+    setup "down : une zone en erreur n'empêche pas de supprimer les serveurs des autres"
+    mutate ".servers[\"srv-lab\"] = ${LAB_SERVER} | .zones = {\"nl-ams-2\": {list_fail: true}}"
+    LAB_ZONES="fr-par-1 nl-ams-2" LAB_DELETE_TIMEOUT=1 run_lab down && fail "down a réussi malgré une zone en erreur"
+    [[ $(remaining) == "foreign-1,foreign-2" ]] || fail "restants : $(remaining)"
+    grep -q "zone nl-ams-2" "${WORK}/out.log" || fail "zone en erreur non signalée"
+    grep -q "TOUJOURS FACTURÉ" "${WORK}/out.log" || fail "pas d'alerte de facturation"
+    teardown
+}
+
+test_status_lists_answering_zones_and_fails_when_one_zone_fails () {
+    setup "status : liste les zones qui répondent, échoue si une zone est en erreur"
+    mutate ".servers[\"srv-lab\"] = ${LAB_SERVER} | .zones = {\"nl-ams-2\": {list_fail: true}}"
+    LAB_ZONES="fr-par-1 nl-ams-2" run_lab status && fail "status a réussi malgré une zone en erreur"
+    grep -q "^fr-par-1  srv-lab " "${WORK}/out.log" || fail "srv-lab non listé"
+    grep -q "liste incomplète" "${WORK}/out.log" || fail "liste incomplète non signalée"
+    teardown
+}
+
+test_up_refuses_when_one_zone_cannot_be_listed () {
+    setup "up : refus si une zone ne peut pas être listée"
+    mutate '.zones = {"nl-ams-2": {list_fail: true}} | .progress = [["ready","completed"]]'
+    LAB_ZONES="fr-par-1 nl-ams-2" run_lab up && fail "up a réussi"
+    grep -q "^POST" "${WORK}/calls.log" && fail "serveur créé sans connaître toutes les zones"
     teardown
 }
 
@@ -730,7 +762,7 @@ test_ssh_without_terminal_does_not_ask_for_one () {
 run_lab_without_env_credentials () {
     env -i PATH="${WORK}/bin:${PATH}" HOME="${WORK}" TMPDIR="${TMPDIR:-/tmp}" \
         FAKE_DIR="${WORK}" FAKE_SECRET="${SECRET}" SCW_API_URL="https://api.example.invalid" \
-        LAB_POLL_INTERVAL=0 "$@" bash "${SCRIPT}" plan > "${WORK}/out.log" 2>&1
+        LAB_POLL_INTERVAL=0 LAB_ZONES=fr-par-1 LAB_OFFER=EM-B212X-SSD "$@" bash "${SCRIPT}" plan > "${WORK}/out.log" 2>&1
 }
 
 write_credentials () {
@@ -811,6 +843,74 @@ signal_during_session () {
     RC=$?
     [[ "${RC}" -eq "${EXPECTED}" ]] || fail "code ${RC} au lieu de ${EXPECTED}"
     [[ $(remaining) == "foreign-1,foreign-2" ]] || fail "restants : $(remaining)"
+    teardown
+}
+
+zone_offer () {
+    jq -n --arg id "${1}" --arg stock "${2}" '{id: $id, name: "EM-B420E-NVME", subscription_period: "hourly", enable: true,
+        stock: $stock, cpus: [{name: "AMD EPYC 7272"}], price_per_hour: {currency_code: "EUR", units: 0, nanos: 444000000},
+        fee: {currency_code: "EUR", units: 0, nanos: 0}}'
+}
+
+test_default_offer_is_the_epyc_one () {
+    setup "offre par défaut : EM-B420E-NVME"
+    LAB_OFFER=EM-B420E-NVME run_lab plan
+    grep -q 'aucune zone candidate' "${WORK}/out.log" || fail "l'offre EM-B420E-NVME n'a pas été cherchée"
+    grep -q 'name=EM-B420E-NVME' "${WORK}/calls.log" || fail "requête : $(cat "${WORK}/calls.log")"
+    [[ $(env -i bash -c ". '${SCRIPT}'; echo \${OFFER_NAME}") == EM-B420E-NVME ]] \
+        || fail "défaut lu : $(env -i bash -c ". '${SCRIPT}'; echo \${OFFER_NAME}")"
+    teardown
+}
+
+test_up_takes_the_first_zone_with_stock () {
+    setup "up : première zone candidate où l'offre est en stock"
+    mutate ".zones = {\"fr-par-2\": {offers: [$(zone_offer off-par2 empty)]}, \"nl-ams-2\": {offers: [$(zone_offer off-ams2 available)]}}
+        | .progress = [[\"ready\", \"completed\"]]"
+    LAB_ZONES="fr-par-2 nl-ams-2 pl-waw-3" LAB_OFFER=EM-B420E-NVME run_lab up
+    grep -q 'POST /baremetal/v1/zones/nl-ams-2/servers' "${WORK}/calls.log" || fail "pas de création en nl-ams-2 : $(grep POST "${WORK}/calls.log")"
+    grep -q 'zones/pl-waw-3/offers' "${WORK}/calls.log" && fail "zone suivante interrogée après avoir trouvé du stock"
+    [[ $(jq -r '.offer_id' "${WORK}/create.json") == off-ams2 ]] || fail "offre créée : $(jq -c . "${WORK}/create.json")"
+    grep -q 'fr-par-2 : offre EM-B420E-NVME en rupture de stock' "${WORK}/out.log" || fail "raison du refus de fr-par-2 absente"
+    teardown
+}
+
+test_preferred_zone_goes_first () {
+    setup "SCW_DEFAULT_ZONE : préférence placée en tête, sans exclure les autres"
+    [[ $(lab_env bash -c ". '${SCRIPT}'; candidate_zones nl-ams-2 'fr-par-1 nl-ams-2 pl-waw-3'") == "nl-ams-2 fr-par-1 pl-waw-3" ]] \
+        || fail "ordre : $(lab_env bash -c ". '${SCRIPT}'; candidate_zones nl-ams-2 'fr-par-1 nl-ams-2 pl-waw-3'")"
+    [[ $(lab_env bash -c ". '${SCRIPT}'; candidate_zones '' 'fr-par-1 nl-ams-2'") == "fr-par-1 nl-ams-2" ]] || fail "sans préférence"
+    teardown
+}
+
+test_no_zone_with_stock_is_refused_without_creation () {
+    setup "aucune zone en stock : refus, rien n'est créé"
+    LAB_ZONES="fr-par-2 nl-ams-2" LAB_OFFER=EM-B420E-NVME run_lab up && fail "code de retour nul"
+    grep -q 'disponible dans aucune zone candidate (fr-par-2 nl-ams-2)' "${WORK}/out.log" || fail "message absent"
+    grep -q '^POST' "${WORK}/calls.log" && fail "serveur créé"
+    teardown
+}
+
+test_down_and_status_cover_every_candidate_zone () {
+    setup "down et status : serveurs de lab de toutes les zones candidates"
+    mutate ".servers[\"lab-ams\"] = {id: \"lab-ams\", name: \"two-lab\", project_id: \"${PROJECT}\", tags: [\"two-lab\"],
+        status: \"ready\", install: {status: \"completed\"}, ips: [], zone: \"nl-ams-2\", offer_name: \"EM-B420E-NVME\", created_at: \"now\"}"
+    mutate ".servers[\"lab-par\"] = {id: \"lab-par\", name: \"two-lab\", project_id: \"${PROJECT}\", tags: [\"two-lab\"],
+        status: \"ready\", install: {status: \"completed\"}, ips: [], offer_name: \"EM-B212X-SSD\", created_at: \"now\"}"
+    LAB_ZONES="fr-par-1 nl-ams-2" run_lab status
+    grep -q '^nl-ams-2  lab-ams' "${WORK}/out.log" || fail "status : $(cat "${WORK}/out.log")"
+    LAB_ZONES="fr-par-1 nl-ams-2" run_lab down || fail "down en échec"
+    grep -q 'DELETE /baremetal/v1/zones/nl-ams-2/servers/lab-ams' "${WORK}/calls.log" || fail "lab-ams non supprimé dans sa zone"
+    [[ $(remaining) == "foreign-1,foreign-2" ]] || fail "restants : $(remaining)"
+    teardown
+}
+
+test_prepare_script_requires_x86_64_v3 () {
+    setup "prepare : refus d'un CPU sans x86-64-v3"
+    local DIR="${WORK}/root"
+    mkdir -p "${DIR}/bin" "${DIR}/sys/module/kvm_intel/parameters" "${DIR}/dev"
+    lab_env bash -c ". '${SCRIPT}'; prepare_script" > "${WORK}/prepare.sh"
+    grep -q "x86-64-v3 (supported" "${WORK}/prepare.sh" || fail "aucune vérification x86-64-v3 dans le script de préparation"
+    grep -q "exit 1" <<< "$(sed -n '/x86-64-v3/,/fi/p' "${WORK}/prepare.sh")" || fail "pas d'arrêt si le niveau manque"
     teardown
 }
 

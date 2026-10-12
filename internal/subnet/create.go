@@ -2,11 +2,13 @@ package subnet
 
 import (
 	"fmt"
+	"net"
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/dhcp"
 	"git.g3e.fr/syonad/two/internal/dhcpbackend"
 	"git.g3e.fr/syonad/two/internal/ebtables"
+	"git.g3e.fr/syonad/two/internal/l3vni"
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
 	"git.g3e.fr/syonad/two/internal/state"
@@ -35,6 +37,12 @@ func CreateSubnet(db *badger.DB, subnetName string, cfg *configuration.Config) e
 
 	if err := createSubnet(db, subnetName, d, backend); err != nil {
 		return err
+	}
+
+	if d.mode == ModeVxlan {
+		if err := l3vni.ExportRoute(db, d.vpc, d.cidr); err != nil {
+			return err
+		}
 	}
 
 	return state.Set(db, "subnet/"+subnetName, state.Running)
@@ -66,8 +74,19 @@ func createSubnet(db *badger.DB, subnetName string, d subnetData, backend dhcpba
 		return fmt.Errorf("unknown subnet mode %q", d.mode)
 	}
 
+	var gatewayMAC net.HardwareAddr
+	if d.mode == ModeVxlan {
+		vtep, err := netif.VTEPAddress(d.localIface)
+		if err != nil {
+			return fmt.Errorf("vtep of %s: %w", d.localIface, err)
+		}
+		if gatewayMAC, err = netif.HostMAC(netif.RoleHostGateway, vtep); err != nil {
+			return err
+		}
+	}
+
 	if err := netns.Call(d.vpc, func() error {
-		if err := netif.CreateBridge(d.bridge, 1500); err != nil {
+		if err := netif.CreateBridge(d.bridge, 1500, gatewayMAC); err != nil {
 			return fmt.Errorf("create bridge: %w", err)
 		}
 		return netif.BridgeSetMaster(vethI, d.bridge)
@@ -122,7 +141,7 @@ func createSubnet(db *badger.DB, subnetName string, d subnetData, backend dhcpba
 func setupVxlanHost(d subnetData, vethE string) error {
 	vxlanIface := fmt.Sprintf("vxlan-%d", d.vxlanID)
 
-	if err := netif.CreateBridge(d.bridge, 1500); err != nil {
+	if err := netif.CreateBridge(d.bridge, 1500, nil); err != nil {
 		return fmt.Errorf("create bridge: %w", err)
 	}
 	if err := netif.CreateVxlan(vxlanIface, d.vxlanID, d.localIface, 1500); err != nil {

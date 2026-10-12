@@ -2,7 +2,9 @@ package dispatcher
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
@@ -101,7 +103,34 @@ func (c DeleteSubnetCommand) Prepare(db *badger.DB, _ *configuration.Config) err
 	if !state.CanDelete(current) {
 		return fmt.Errorf("subnet %q cannot be deleted while %s", c.Name, current)
 	}
+	vms, err := vmsUsingSubnet(db, c.Name)
+	if err != nil {
+		return err
+	}
+	if len(vms) > 0 {
+		return fmt.Errorf("subnet %q is still used by vms %s", c.Name, strings.Join(vms, ", "))
+	}
 	return state.Set(db, c.Key(), state.Deleting)
+}
+
+func vmsUsingSubnet(db *badger.DB, subnetName string) ([]string, error) {
+	entries, err := kv.ListByPrefix(db, "vm/")
+	if err != nil {
+		return nil, fmt.Errorf("failed to list vms: %w", err)
+	}
+	var users []string
+	for key, value := range entries {
+		parts := strings.Split(key, "/")
+		if len(parts) != 5 || parts[2] != "nic" || parts[4] != "subnet" || value != subnetName {
+			continue
+		}
+		if s, err := state.Get(db, "vm/"+parts[1]); err == nil && s == state.Deleted {
+			continue
+		}
+		users = append(users, parts[1])
+	}
+	sort.Strings(users)
+	return users, nil
 }
 
 func (c DeleteSubnetCommand) Execute(db *badger.DB, cfg *configuration.Config) error {

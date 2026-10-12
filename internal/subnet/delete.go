@@ -6,6 +6,7 @@ import (
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/dhcpbackend"
 	"git.g3e.fr/syonad/two/internal/ebtables"
+	"git.g3e.fr/syonad/two/internal/l3vni"
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
 	"git.g3e.fr/syonad/two/internal/state"
@@ -31,6 +32,12 @@ func DeleteSubnet(db *badger.DB, subnetName string, cfg *configuration.Config) e
 	backend, err := dhcpbackend.New(cfg)
 	if err != nil {
 		return err
+	}
+
+	if d.mode == ModeVxlan {
+		if err := l3vni.WithdrawRoute(db, d.vpc, d.cidr); err != nil {
+			return err
+		}
 	}
 
 	if err := stopDHCP(db, subnetName, d, backend); err != nil {

@@ -18,11 +18,7 @@ func CreateVxlan(name string, vxlanID int, localIface string, mtu int) error {
 	if err != nil {
 		return err
 	}
-	addrs, err := netlink.AddrList(link, syscall.AF_INET)
-	if err != nil {
-		return err
-	}
-	local, err := vtepAddress(localIface, addrs)
+	local, err := linkVTEPAddress(link)
 	if err != nil {
 		return err
 	}
@@ -38,6 +34,22 @@ func CreateVxlan(name string, vxlanID int, localIface string, mtu int) error {
 		Learning:     false,
 	}
 	return netlink.LinkAdd(vxlan)
+}
+
+func VTEPAddress(iface string) (net.IP, error) {
+	link, err := netlink.LinkByName(iface)
+	if err != nil {
+		return nil, err
+	}
+	return linkVTEPAddress(link)
+}
+
+func linkVTEPAddress(link netlink.Link) (net.IP, error) {
+	addrs, err := netlink.AddrList(link, syscall.AF_INET)
+	if err != nil {
+		return nil, err
+	}
+	return vtepAddress(link.Attrs().Name, addrs)
 }
 
 func vtepAddress(iface string, addrs []netlink.Addr) (net.IP, error) {

@@ -312,18 +312,20 @@ func TestRun_RenderShipsTheExampleFRRConfigs(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("code %d, stderr %s", code, stderr)
 	}
-	for node, want := range map[string]string{
-		"sw1": "router bgp 65100",
-		"rr1": "bgp listen range 192.168.14.0/24 peer-group fabric",
-		"hv1": "bgp router-id 192.168.14.11",
-		"hv2": "bgp router-id 192.168.14.12",
+	for node, wants := range map[string][]string{
+		"sw1": {"router bgp 65100"},
+		"rr1": {"bgp listen range 192.168.14.0/24 peer-group fabric"},
+		"hv1": {"hostname hv1", "route_reflectors: [10.255.255.1]"},
+		"hv2": {"hostname hv2", "route_reflectors: [10.255.255.1]"},
 	} {
 		data, err := os.ReadFile(filepath.Join(out, node, "user-data"))
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !strings.Contains(string(data), want) {
-			t.Errorf("%s user-data does not carry %q", node, want)
+		for _, want := range wants {
+			if !strings.Contains(string(data), want) {
+				t.Errorf("%s user-data does not carry %q", node, want)
+			}
 		}
 	}
 }

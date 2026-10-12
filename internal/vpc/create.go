@@ -3,6 +3,8 @@ package vpc
 import (
 	"strings"
 
+	configuration "git.g3e.fr/syonad/two/internal/config/agent"
+	"git.g3e.fr/syonad/two/internal/l3vni"
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
 	"git.g3e.fr/syonad/two/internal/state"
@@ -10,7 +12,7 @@ import (
 	"github.com/dgraph-io/badger/v4"
 )
 
-func CreateVPC(db *badger.DB, name string) error {
+func CreateVPC(db *badger.DB, name string, cfg *configuration.Config) error {
 	if current, err := state.Get(db, "vpc/"+name); err != nil {
 		return err
 	} else if current == state.Creating {
@@ -25,7 +27,7 @@ func CreateVPC(db *badger.DB, name string) error {
 		}
 
 		if err := netns.Call(name, func() error {
-			return netif.CreateBridge("br-public", 1500)
+			return netif.CreateBridge("br-public", 1500, nil)
 		}); err != nil {
 			return err
 		}
@@ -46,6 +48,9 @@ func CreateVPC(db *badger.DB, name string) error {
 		if err := netns.Call(name, func() error {
 			return netif.LinkSetUp("vp-" + vpcID + "-i")
 		}); err != nil {
+			return err
+		}
+		if err := l3vni.Create(db, name, cfg); err != nil {
 			return err
 		}
 		return state.Set(db, "vpc/"+name, state.Running)

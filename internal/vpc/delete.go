@@ -3,6 +3,7 @@ package vpc
 import (
 	"strings"
 
+	"git.g3e.fr/syonad/two/internal/l3vni"
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
 	"git.g3e.fr/syonad/two/internal/state"
@@ -15,6 +16,10 @@ func DeleteVPC(db *badger.DB, name string) error {
 		return err
 	} else if current == state.Deleting {
 		vpcID := strings.SplitN(name, "-", 2)[1]
+
+		if err := l3vni.Delete(db, name); err != nil {
+			return err
+		}
 
 		if err := netif.DeleteLink("vp-" + vpcID + "-e"); err != nil {
 			return err

@@ -26,6 +26,10 @@ api_delete () {
     curl -fsS -o /dev/null -X DELETE "${API}/${1}"
 }
 
+api_code () {
+    curl -s -o /dev/null -w '%{http_code}' -X "${1}" "${API}/${2}"
+}
+
 api_state () {
     curl -fsS "${API}/${1}" 2>/dev/null | jq -r .state
 }
@@ -44,8 +48,9 @@ wait_state () {
 }
 
 vpc_create () {
+    local l3vni="${3:+,\"l3vni\":${3}}"
     api_state "vpcs/${1}" | grep -qx running && return 0
-    api_post vpcs "{\"name\":\"${1}\",\"cidr\":\"${2}\"}" && wait_state "vpcs/${1}" running
+    api_post vpcs "{\"name\":\"${1}\",\"cidr\":\"${2}\"${l3vni}}" && wait_state "vpcs/${1}" running
 }
 
 subnet_create () {
@@ -83,6 +88,7 @@ vm_key () {
 
 vm_create () {
     local name="${1}" subnet="${2}" ip="${3}" key="${4:-}" meta="{}"
+    api_state "vms/${name}" | grep -qx running && return 0
     [ -n "${key}" ] && meta="{\"sshkey\":\"${key}\"}"
     mkdir -p "${VOLUMES}"
     cp "${TWO_IMAGE}" "${VOLUMES}/${name}.qcow2" || return 1
@@ -148,4 +154,106 @@ while not buf.endswith(b"\n"):
 state = json.loads(buf).get("state") or {}
 print(" ".join(sorted(h["mac"].lower() + "=" + h["ip"] for h in state.get("hosts") or [])))
 PY
+}
+
+vrf_nexthops () {
+    ip -4 route show vrf "vrf-${1#vp-}" "${2}" | grep -o 'via [0-9.]*' | cut -d' ' -f2 | sort -u | tr '\n' ' ' | sed 's/ $//'
+}
+
+wait_vrf_nexthops () {
+    local i
+    for i in $(seq 1 30); do
+        [ "$(vrf_nexthops "${1}" "${2}")" = "${3}" ] && return 0
+        sleep 2
+    done
+    echo "vrf-${1#vp-} ${2} : next-hops « $(vrf_nexthops "${1}" "${2}") », « ${3} » attendu" >&2
+    return 1
+}
+
+ping_rate () {
+    vm_ssh "${1}" "${2}" "ping -q -n -c ${4:-50} -i 0.2 -W 1 ${3}" 2>/dev/null | grep -o '[0-9]* received' | cut -d' ' -f1
+}
+
+vrf_route_via () {
+    ip -4 route show vrf "vrf-${1#vp-}" "${2}" | grep -q "via ${3} "
+}
+
+wait_vrf_route () {
+    local i
+    for i in $(seq 1 30); do
+        vrf_route_via "$@" && return 0
+        sleep 2
+    done
+    echo "vrf-${1#vp-} : pas de route ${2} via ${3}" >&2
+    return 1
+}
+
+vrf_members () {
+    ip -o link show master "vrf-${1#vp-}" | awk -F': ' '{print $2}' | cut -d@ -f1 | sort | tr '\n' ' ' | sed 's/ $//'
+}
+
+netns_ping_wait () {
+    local i
+    for i in $(seq 1 40); do
+        ip netns exec "${1}" ping -c 1 -W 2 "${2}" >/dev/null 2>&1 && return 0
+        sleep 5
+    done
+    echo "${2} injoignable depuis ${1}" >&2
+    return 1
+}
+
+l3vni_ready () {
+    local out
+    out=$(vtysh -c "show evpn vni ${1}") &&
+        grep -q 'Type: L3' <<<"${out}" &&
+        grep -q 'State: Up' <<<"${out}" &&
+        grep -qi "Router MAC: ${2}" <<<"${out}"
+}
+
+wait_l3vni () {
+    local i
+    for i in $(seq 1 15); do
+        l3vni_ready "$@" && return 0
+        sleep 2
+    done
+    echo "VNI ${1} : pas de type L3 actif avec la RMAC ${2}" >&2
+    return 1
+}
+
+vtep_host () {
+    ip -4 route get 10.255.255.1 | grep -o 'src [0-9.]*' | cut -d' ' -f2
+}
+
+bgp_paths () {
+    vtysh -c "show bgp vrf vrf-${1#vp-} ipv4 unicast ${2} json" 2>/dev/null | jq -r '(.paths // []) | length'
+}
+
+bgp_best () {
+    vtysh -c "show bgp vrf vrf-${1#vp-} ipv4 unicast ${2} json" 2>/dev/null |
+        jq -r '(.paths // [])[] | select(.bestpath.overall == true) | "\(.nexthops[0].ip) (\(.bestpath.selectionReason // "seul chemin"))"'
+}
+
+sources_reach () {
+    local vpc="${1}" bridge="${2}" base="${3}" dst="${4}" n ok=0 total=0
+    for n in $(seq 20 59); do
+        ip -n "${vpc}" addr add "${base}.${n}/32" dev "${bridge}" 2>/dev/null
+        ip netns exec "${vpc}" ping -n -c 2 -W 1 -I "${base}.${n}" "${dst}" >/dev/null 2>&1 && ok=$((ok + 1))
+        total=$((total + 1))
+        ip -n "${vpc}" addr del "${base}.${n}/32" dev "${bridge}"
+    done
+    echo "${ok}/${total}"
+}
+
+watchdog_reported () {
+    journalctl -u agent --since "-${2:-120}s" --no-pager -o cat | grep -F 'watchdog: inconsistency detected' | grep -qF -- "${1}"
+}
+
+wait_watchdog () {
+    local i
+    for i in $(seq 1 30); do
+        watchdog_reported "$@" && return 0
+        sleep 2
+    done
+    echo "watchdog : « ${1} » non signalé" >&2
+    return 1
 }

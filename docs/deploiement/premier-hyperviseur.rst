@@ -27,11 +27,41 @@ l'agent désactive l'apprentissage et ne configure aucun voisin — cf.
 Configuration de FRR
 ~~~~~~~~~~~~~~~~~~~~
 
-Seul ``bgpd`` est activé dans ``/etc/frr/daemons``. D'un hyperviseur à l'autre ne changent que
-``hostname`` et ``router-id``, l'adresse de l'hyperviseur sur son segment.
+Seul ``bgpd`` est activé dans ``/etc/frr/daemons``. Le reste est posé par l'agent, à chaque
+démarrage, à partir de la section ``bgp`` de ``agent.yml`` (:doc:`/exploitation/configuration`) :
 
-.. literalinclude:: ../../test/e2e/topologies/frr/hv1.conf
-   :language: text
+.. code-block:: yaml
+
+   bgp:
+     asn: 64600
+     route_reflectors: [10.255.255.1]
+
+L'agent en déduit la configuration ci-dessous ; le ``router-id`` est l'adresse IPv4 primaire de
+``default_interface``, la seule valeur qui change d'un hyperviseur à l'autre. ``hostname`` et
+``log`` ne sont pas gérés par l'agent : ce sont les seules lignes à déposer dans ``frr.conf``.
+
+.. code-block:: text
+
+   router bgp 64600
+    bgp router-id 192.168.14.11
+    no bgp default ipv4-unicast
+    neighbor fabric peer-group
+    neighbor fabric remote-as 64600
+    neighbor fabric capability extended-nexthop
+    neighbor 10.255.255.1 peer-group fabric
+    !
+    address-family l2vpn evpn
+     neighbor fabric activate
+     advertise-all-vni
+    exit-address-family
+   exit
+
+.. warning::
+
+   Avec une section ``bgp``, l'agent **refuse de démarrer** si ``vtysh`` ne répond pas, et
+   ``agent.service`` ne le relance pas. L'ordre au démarrage est donc : migration réseau vers
+   ``br-000000``, **puis** FRR, **puis** l'agent. FRR démarré avant la migration peut perdre la
+   route par défaut quand elle change d'interface, et ne plus joindre le route reflector.
 
 Ce qu'elle établit :
 

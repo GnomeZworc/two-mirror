@@ -3,10 +3,12 @@ package dispatcher
 import (
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
+	"git.g3e.fr/syonad/two/internal/l3vni"
 	"git.g3e.fr/syonad/two/internal/state"
 	"git.g3e.fr/syonad/two/internal/vpc"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
@@ -14,27 +16,63 @@ import (
 )
 
 type CreateVPCCommand struct {
-	Name string
-	CIDR string
+	Name  string
+	CIDR  string
+	L3VNI uint32
 }
 
 func (c CreateVPCCommand) Key() string { return "vpc/" + c.Name }
 
-func (c CreateVPCCommand) Prepare(db *badger.DB, _ *configuration.Config) error {
+func (c CreateVPCCommand) Prepare(db *badger.DB, cfg *configuration.Config) error {
 	if _, err := kv.GetFromDB(db, "vpc/"+c.Name+"/state"); err == nil {
 		return fmt.Errorf("vpc %q already exists", c.Name)
 	}
 	if _, _, err := net.ParseCIDR(c.CIDR); err != nil {
 		return fmt.Errorf("invalid cidr %q: %w", c.CIDR, err)
 	}
+	if c.L3VNI != 0 {
+		if err := c.checkL3VNI(db, cfg); err != nil {
+			return err
+		}
+	}
 	if err := kv.AddInDB(db, "vpc/"+c.Name+"/cidr", c.CIDR); err != nil {
 		return err
+	}
+	if c.L3VNI != 0 {
+		if err := kv.AddInDB(db, "vpc/"+c.Name+"/l3vni", strconv.FormatUint(uint64(c.L3VNI), 10)); err != nil {
+			return err
+		}
 	}
 	return state.Set(db, c.Key(), state.Creating)
 }
 
-func (c CreateVPCCommand) Execute(db *badger.DB, _ *configuration.Config) error {
-	return vpc.CreateVPC(db, c.Name)
+func (c CreateVPCCommand) checkL3VNI(db *badger.DB, cfg *configuration.Config) error {
+	if err := l3vni.Valid(c.L3VNI); err != nil {
+		return err
+	}
+	if cfg == nil || !cfg.BGP.Enabled() {
+		return fmt.Errorf("l3vni requires the bgp section in the agent configuration")
+	}
+	entries, err := kv.ListByPrefix(db, "vpc/")
+	if err != nil {
+		return fmt.Errorf("failed to list vpcs: %w", err)
+	}
+	want := strconv.FormatUint(uint64(c.L3VNI), 10)
+	for key, value := range entries {
+		parts := strings.Split(key, "/")
+		if len(parts) != 3 || parts[2] != "l3vni" || value != want {
+			continue
+		}
+		if s, err := state.Get(db, "vpc/"+parts[1]); err == nil && s == state.Deleted {
+			continue
+		}
+		return fmt.Errorf("l3vni %d is already used by vpc %q", c.L3VNI, parts[1])
+	}
+	return nil
+}
+
+func (c CreateVPCCommand) Execute(db *badger.DB, cfg *configuration.Config) error {
+	return vpc.CreateVPC(db, c.Name, cfg)
 }
 
 type DeleteVPCCommand struct {

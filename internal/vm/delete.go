@@ -9,6 +9,7 @@ import (
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/dhcpbackend"
 	"git.g3e.fr/syonad/two/internal/iptables"
+	"git.g3e.fr/syonad/two/internal/l3vni"
 	"git.g3e.fr/syonad/two/internal/metadata"
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
@@ -35,6 +36,10 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 
 	backend, err := dhcpbackend.New(cfg)
 	if err != nil {
+		return err
+	}
+
+	if err := applyHostRoutes(db, d, l3vni.WithdrawRoute); err != nil {
 		return err
 	}
 

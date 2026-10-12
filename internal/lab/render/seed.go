@@ -133,6 +133,9 @@ func userData(p *topology.Plan, n topology.NodePlan, o Options) ([]byte, error) 
 			writeFile{Path: FRRScript, Permissions: "0755", Content: frrScript(n)},
 		)
 		steps = append(steps, FRRScript)
+		if n.Role == topology.RoleHypervisor {
+			steps = append(steps, "systemctl restart agent.service")
+		}
 	}
 	if len(steps) > 0 {
 		cfg.WriteFiles = append(cfg.WriteFiles,

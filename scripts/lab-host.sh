@@ -2,7 +2,8 @@
 
 API_URL="${SCW_API_URL:-https://api.scaleway.com}"
 CREDENTIALS_FILE="${LAB_CREDENTIALS_FILE:-${HOME}/.config/two-lab/scaleway.env}"
-OFFER_NAME="${LAB_OFFER:-EM-B212X-SSD}"
+OFFER_NAME="${LAB_OFFER:-EM-B420E-NVME}"
+ALL_ZONES="fr-par-1 fr-par-2 nl-ams-1 nl-ams-2 pl-waw-2 pl-waw-3"
 OS_NAME="${LAB_OS_NAME:-Debian}"
 OS_VERSION="${LAB_OS_VERSION:-12}"
 LAB_NAME="${LAB_NAME:-two-lab}"
@@ -30,20 +31,21 @@ usage: ${0##*/} <commande> [arguments]
                     et le prix ; ne crée rien
   up                crée le serveur de lab, attend la fin de son installation et son SSH,
                     puis le prépare (voir prepare)
-  status            liste les serveurs de lab du projet
+  status            liste les serveurs de lab du projet, dans toutes les zones candidates
   ssh [commande]    se connecte au serveur de lab ; avec une commande, un terminal n'est demandé
                     que si l'entrée standard en est un
   prepare           installe sur le serveur ce dont lab a besoin (qemu, genisoimage), vérifie
-                    /dev/kvm et la virtualisation imbriquée ; lancé aussi par up
+                    /dev/kvm, la virtualisation imbriquée et un CPU x86-64-v3 ; lancé aussi par up
   push <topologie>  compile cmd/lab pour linux/amd64 et dépose sur le serveur ~/lab et le
                     répertoire de la topologie dans ~/topology/ (avec les fichiers qu'elle
                     référence) ; ensuite : ssh './lab up topology/<topologie>'
-  down              supprime tous les serveurs de lab du projet et attend leur disparition
+  down              supprime tous les serveurs de lab du projet, dans toutes les zones candidates,
+                    et attend leur disparition
   session [cmd]     up, puis la commande distante (ou un shell), puis down quoi qu'il arrive
 
 environnement : SCW_SECRET_KEY et SCW_DEFAULT_PROJECT_ID (requis, à défaut lus dans ${CREDENTIALS_FILE},
-                fichier en 0600, lignes CLÉ=valeur), SCW_DEFAULT_ZONE (${ZONE}),
-                LAB_OFFER (${OFFER_NAME}), LAB_OS_NAME (${OS_NAME}), LAB_OS_VERSION (${OS_VERSION}),
+                fichier en 0600, lignes CLÉ=valeur), LAB_ZONES (zones candidates, dans l'ordre :
+                ${ZONES} ; SCW_DEFAULT_ZONE passe en tête), LAB_OFFER (${OFFER_NAME}), LAB_OS_NAME (${OS_NAME}), LAB_OS_VERSION (${OS_VERSION}),
                 LAB_SSH_KEY (${SSH_KEY} ; à défaut, l'agent SSH)
 
 ne jamais lancer sous 'bash -x' : la trace afficherait SCW_SECRET_KEY.
@@ -64,8 +66,17 @@ load_credentials () {
             esac
         done < "${CREDENTIALS_FILE}"
     fi
-    ZONE="${SCW_DEFAULT_ZONE:-fr-par-1}"
+    ZONES=$(candidate_zones "${SCW_DEFAULT_ZONE:-}" "${LAB_ZONES:-${ALL_ZONES}}")
+    ZONE="${ZONES%% *}"
     PROJECT_ID="${SCW_DEFAULT_PROJECT_ID:-}"
+}
+
+candidate_zones () {
+    local PREFERRED="${1}" LIST="${2}" Z OUT="${1}"
+    for Z in ${LIST}; do
+        [[ " ${OUT} " == *" ${Z} "* ]] || OUT="${OUT:+${OUT} }${Z}"
+    done
+    printf '%s\n' "${OUT}"
 }
 
 require_env () {
@@ -124,7 +135,7 @@ resolve_offer () {
     [[ $(jq -r '.stock' <<< "${OFFER}") != "empty" ]] || die "offre ${OFFER_NAME} en rupture de stock en ${ZONE}"
     [[ $(jq -r '((.fee.units // 0) == 0) and ((.fee.nanos // 0) == 0)' <<< "${OFFER}") == "true" ]] \
         || die "offre ${OFFER_NAME} : frais de mise en service non nuls ($(money '.fee' <<< "${OFFER}")), refus"
-    printf '%s\n' "${OFFER}"
+    jq -c --arg z "${ZONE}" '. + {zone: $z}' <<< "${OFFER}"
 }
 
 resolve_os () {
@@ -164,11 +175,18 @@ build_request () {
 }
 
 lab_servers () {
-    local JSON
-    JSON=$(api GET "/baremetal/v1/zones/${ZONE}/servers?project_id=${PROJECT_ID}&tags=${LAB_TAG}&page_size=100") \
-        || return 1
-    jq -c --arg p "${PROJECT_ID}" --arg t "${LAB_TAG}" \
-        '[.servers[] | select(.project_id == $p and (.tags | index($t)))]' <<< "${JSON}"
+    local JSON Z ALL="[]" RC=0
+    for Z in ${ZONES}; do
+        if ! JSON=$(api GET "/baremetal/v1/zones/${Z}/servers?project_id=${PROJECT_ID}&tags=${LAB_TAG}&page_size=100"); then
+            warn "zone ${Z} : liste des serveurs de lab indisponible"
+            RC=1
+            continue
+        fi
+        ALL=$(jq -c --argjson all "${ALL}" --arg p "${PROJECT_ID}" --arg t "${LAB_TAG}" --arg z "${Z}" \
+            '$all + [.servers[] | select(.project_id == $p and (.tags | index($t))) | . + {zone: $z}]' <<< "${JSON}")
+    done
+    printf '%s\n' "${ALL}"
+    return "${RC}"
 }
 
 server_ip () {
@@ -180,12 +198,26 @@ server_is_installing () {
            or (.install.status // "") == "to_install" or (.install.status // "") == "installing"' >/dev/null
 }
 
+select_zone () {
+    local Z OUT
+    for Z in ${ZONES}; do
+        if OUT=$(ZONE="${Z}" resolve_offer 2>&1); then
+            printf '%s\n' "${OUT}"
+            return 0
+        fi
+        warn "${Z} : ${OUT##*!! }"
+    done
+    die "offre horaire ${OFFER_NAME} disponible dans aucune zone candidate (${ZONES})"
+}
+
 cmd_plan () {
     local OFFER OS KEYS
-    OFFER=$(resolve_offer) || exit 1
+    OFFER=$(select_zone) || exit 1
+    ZONE=$(jq -r '.zone' <<< "${OFFER}")
     OS=$(resolve_os "$(jq -r '.id' <<< "${OFFER}")") || exit 1
     KEYS=$(resolve_ssh_keys) || exit 1
-    info "offre   : ${OFFER_NAME} ($(jq -r '.id' <<< "${OFFER}")), facturation $(jq -r '.subscription_period' <<< "${OFFER}"), stock $(jq -r '.stock' <<< "${OFFER}")"
+    info "zone    : ${ZONE}"
+    info "offre   : ${OFFER_NAME} ($(jq -r '.id' <<< "${OFFER}")), $(jq -r '[.cpus[]?.name] | unique | join(", ") | if . == "" then "CPU ?" else . end' <<< "${OFFER}"), facturation $(jq -r '.subscription_period' <<< "${OFFER}"), stock $(jq -r '.stock' <<< "${OFFER}")"
     info "prix    : $(money '.price_per_hour' <<< "${OFFER}") HT par heure, frais de mise en service $(money '.fee' <<< "${OFFER}")"
     info "os      : $(jq -r '"\(.name) \(.version) (\(.id))"' <<< "${OS}"), utilisateur $(jq -r '.user.default_value // "?"' <<< "${OS}")"
     info "clés    : $(jq -r 'length' <<< "${KEYS}") clé(s) SSH du projet"
@@ -251,7 +283,8 @@ require_no_lab_server () {
 
 report_uncertain_creation () {
     local FOUND
-    if FOUND=$(lab_servers) && [[ $(jq 'length' <<< "${FOUND}") -gt 0 ]]; then
+    FOUND=$(lab_servers)
+    if [[ $(jq 'length' <<< "${FOUND}") -gt 0 ]]; then
         warn "un serveur de lab existe bien : $(jq -r '[.[].id] | join(", ")' <<< "${FOUND}")"
     fi
     die "création incertaine : le serveur a pu être créé et être facturé ; '${0##*/} status' puis '${0##*/} down'"
@@ -260,15 +293,16 @@ report_uncertain_creation () {
 cmd_up () {
     local OFFER OS KEYS BODY JSON ID IP SSH_USER
     require_no_lab_server
-    OFFER=$(resolve_offer) || exit 1
+    OFFER=$(select_zone) || exit 1
+    ZONE=$(jq -r '.zone' <<< "${OFFER}")
     OS=$(resolve_os "$(jq -r '.id' <<< "${OFFER}")") || exit 1
     KEYS=$(resolve_ssh_keys) || exit 1
     BODY=$(build_request "${OFFER}" "${OS}" "${KEYS}")
-    info "création de ${LAB_NAME} (${OFFER_NAME}, $(money '.price_per_hour' <<< "${OFFER}")/h HT)"
+    info "création de ${LAB_NAME} (${OFFER_NAME}, ${ZONE}, $(money '.price_per_hour' <<< "${OFFER}")/h HT)"
     JSON=$(api POST "/baremetal/v1/zones/${ZONE}/servers" "${BODY}") || report_uncertain_creation
     ID=$(jq -r '.id // empty' <<< "${JSON}" 2>/dev/null)
     [[ -n "${ID}" ]] || report_uncertain_creation
-    CREATED_ID="${ID}"
+    CREATED_ID="${ZONE} ${ID}"
     info "serveur ${ID} créé, facturé jusqu'à '${0##*/} down'"
     JSON=$(wait_installed "${ID}") || die "serveur ${ID} inutilisable — il est toujours facturé : '${0##*/} down'"
     IP=$(server_ip <<< "${JSON}")
@@ -283,13 +317,14 @@ cmd_up () {
 }
 
 cmd_status () {
-    local SERVERS
-    SERVERS=$(lab_servers) || die "impossible de lister les serveurs de lab"
+    local SERVERS RC=0
+    SERVERS=$(lab_servers) || RC=1
     if [[ $(jq 'length' <<< "${SERVERS}") -eq 0 ]]; then
-        info "aucun serveur de lab dans le projet ${PROJECT_ID} (${ZONE})"
-        return 0
+        [[ "${RC}" -eq 0 ]] && info "aucun serveur de lab dans le projet ${PROJECT_ID} (${ZONES})"
+    else
+        jq -r '.[] | "\(.zone)  \(.id)  \(.name)  \(.offer_name)  \(.status)  installation \(.install.status // "none")  \(.created_at)  \([.ips[] | select(.version == "IPv4") | .address] | join(","))"' <<< "${SERVERS}"
     fi
-    jq -r '.[] | "\(.id)  \(.name)  \(.offer_name)  \(.status)  installation \(.install.status // "none")  \(.created_at)  \([.ips[] | select(.version == "IPv4") | .address] | join(","))"' <<< "${SERVERS}"
+    [[ "${RC}" -eq 0 ]] || die "liste incomplète : des serveurs de lab peuvent exister dans les zones en erreur"
 }
 
 require_known_server () {
@@ -319,13 +354,18 @@ case "${NESTED}" in
     Y|1) ;;
     *) echo "virtualisation imbriquée désactivée (nested=${NESTED:-absent})" >&2; exit 1 ;;
 esac
-echo "qemu $(qemu-system-x86_64 --version | head -n 1), nested=${NESTED}"
+LD=$(ls /lib64/ld-linux-x86-64.so.2 /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 2>/dev/null | head -n 1)
+if ! "${LD}" --help 2>/dev/null | grep -q 'x86-64-v3 (supported'; then
+    echo "CPU sans x86-64-v3 :$(grep -m 1 'model name' /proc/cpuinfo | cut -d: -f2) — Rocky 10 / RHEL 10 n'y démarrent pas" >&2
+    exit 1
+fi
+echo "qemu $(qemu-system-x86_64 --version | head -n 1), nested=${NESTED},$(grep -m 1 'model name' /proc/cpuinfo | cut -d: -f2)"
 EOF
 }
 
 cmd_prepare () {
     require_known_server
-    info "préparation du serveur : qemu, genisoimage, KVM imbriqué"
+    info "préparation du serveur : qemu, genisoimage, KVM imbriqué, CPU x86-64-v3"
     prepare_script | ssh_run -- bash -s
 }
 
@@ -390,28 +430,29 @@ wait_gone () {
 
 lab_server_ids () {
     local DEADLINE=$(( SECONDS + DELETE_TIMEOUT ))
-    local SERVERS
+    local SERVERS="[]"
     while (( SECONDS < DEADLINE )); do
         if SERVERS=$(lab_servers); then
-            jq -r '.[].id' <<< "${SERVERS}"
+            jq -r '.[] | "\(.zone) \(.id)"' <<< "${SERVERS}"
             return 0
         fi
-        warn "liste des serveurs de lab indisponible, nouvel essai dans ${POLL_INTERVAL}s"
+        warn "liste des serveurs de lab incomplète, nouvel essai dans ${POLL_INTERVAL}s"
         sleep "${POLL_INTERVAL}"
     done
+    jq -r '.[] | "\(.zone) \(.id)"' <<< "${SERVERS}"
     return 1
 }
 
 cmd_down () {
     local IDS ID FAILED=0
     if ! IDS=$(lab_server_ids); then
-        warn "impossible de lister les serveurs de lab après ${DELETE_TIMEOUT}s"
+        warn "liste des serveurs de lab incomplète après ${DELETE_TIMEOUT}s : suppression de ceux qui sont listés"
         FAILED=1
-        IDS=""
     fi
     IDS=$(printf '%s\n%s\n' "${IDS}" "${CREATED_ID}" | grep -v '^$' | sort -u)
-    for ID in ${IDS}; do
-        info "suppression de ${ID}"
+    while read -r ZONE ID; do
+        [[ -n "${ID}" ]] || continue
+        info "suppression de ${ID} (${ZONE})"
         if ! delete_server "${ID}"; then
             warn "suppression de ${ID} toujours refusée"
             FAILED=1
@@ -421,7 +462,7 @@ cmd_down () {
             warn "${ID} toujours présent après ${DELETE_TIMEOUT}s"
             FAILED=1
         fi
-    done
+    done <<< "${IDS}"
     rm -f "${STATE_DIR}/ip" "${STATE_DIR}/user" "${STATE_DIR}/known_hosts"
     [[ "${FAILED}" -eq 0 ]] || die "SERVEUR(S) DE LAB TOUJOURS FACTURÉ(S) — '${0##*/} status', puis la console Scaleway"
     info "aucun serveur de lab ne reste dans le projet"

@@ -13,7 +13,9 @@ import (
 	agentapi "git.g3e.fr/syonad/two/internal/api/agent"
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	dispatcher "git.g3e.fr/syonad/two/internal/dispatcher/agent"
+	"git.g3e.fr/syonad/two/internal/frr"
 	"git.g3e.fr/syonad/two/internal/migration"
+	"git.g3e.fr/syonad/two/internal/netif"
 	agentmetrics "git.g3e.fr/syonad/two/internal/prometheus/agent"
 	"git.g3e.fr/syonad/two/internal/watchdog"
 	"git.g3e.fr/syonad/two/internal/watchdog/notify"
@@ -29,11 +31,14 @@ const shutdownTimeout = 20 * time.Second
 func main() {
 	confFile := flag.String("config", "/etc/two/agent.yml", "config file path")
 	flag.Parse()
+	os.Exit(run(*confFile))
+}
 
-	cfg, err := configuration.LoadConfig(*confFile)
+func run(confFile string) int {
+	cfg, err := configuration.LoadConfig(confFile)
 	if err != nil {
 		slog.Error("failed to load config", "error", err)
-		return
+		return 1
 	}
 
 	log := logger.New(cfg.Logger.Level, cfg.Logger.Debug)
@@ -50,12 +55,20 @@ func main() {
 	// d'états, et des ressources transitoires orphelines d'un arrêt précédent.
 	if err := migration.MigrateStates(db, log.With(slog.String("component", "migration"))); err != nil {
 		log.Error("failed to migrate states", "error", err)
-		return
+		return 1
 	}
 
 	if err := migration.MigrateVMNICs(db, log.With(slog.String("component", "migration"))); err != nil {
 		log.Error("vm nic migration failed", "error", err)
-		return
+		return 1
+	}
+
+	if cfg.BGP.Enabled() {
+		if err := applyBGPBase(cfg, frr.NewClient()); err != nil {
+			log.Error("failed to apply the bgp base configuration", "error", err)
+			return 1
+		}
+		log.Info("bgp base configuration applied", "asn", cfg.BGP.ASN, "route_reflectors", cfg.BGP.RouteReflectors)
 	}
 
 	q := worker.New(cfg.Worker.BufferSize)
@@ -108,6 +121,23 @@ func main() {
 		servers["admin"] = adminSrv
 	}
 	closeDB = shutdown(log, q, servers, shutdownTimeout)
+	return 0
+}
+
+type baseApplier interface {
+	ApplyBase(frr.Base) error
+}
+
+func applyBGPBase(cfg *configuration.Config, frrClient baseApplier) error {
+	reflectors, err := cfg.BGP.Reflectors()
+	if err != nil {
+		return err
+	}
+	vtep, err := netif.VTEPAddress(cfg.DefaultInterface)
+	if err != nil {
+		return err
+	}
+	return frrClient.ApplyBase(frr.Base{ASN: cfg.BGP.ASN, RouterID: vtep, RouteReflectors: reflectors})
 }
 
 type httpShutdowner interface {

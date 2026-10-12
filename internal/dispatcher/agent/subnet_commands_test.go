@@ -1,6 +1,7 @@
 package dispatcher
 
 import (
+	"strings"
 	"testing"
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
@@ -325,5 +326,40 @@ func TestCreateSubnetCommand_Prepare_RejectsUnknownMode(t *testing.T) {
 	})
 	if err == nil {
 		t.Error("un mode inconnu doit être refusé")
+	}
+}
+
+func TestDeleteSubnetCommand_Prepare_RefusedWhileAVMUsesIt(t *testing.T) {
+	_, db := newTestDispatcher(t)
+	kv.AddInDB(db, "subnet/sn-a/state", "running")
+	kv.AddInDB(db, "vm/i-gone/state", "deleted")
+	kv.AddInDB(db, "vm/i-gone/nic/0/subnet", "sn-a")
+	kv.AddInDB(db, "vm/i-other/state", "running")
+	kv.AddInDB(db, "vm/i-other/nic/0/subnet", "sn-b")
+	kv.AddInDB(db, "vm/i-b/state", "deleting")
+	kv.AddInDB(db, "vm/i-b/nic/0/subnet", "sn-b")
+	kv.AddInDB(db, "vm/i-b/nic/1/subnet", "sn-a")
+	kv.AddInDB(db, "vm/i-a/state", "error")
+	kv.AddInDB(db, "vm/i-a/nic/0/subnet", "sn-a")
+	kv.AddInDB(db, "vm/i-c/state", "running")
+	kv.AddInDB(db, "vm/i-c/nic/0/subnet", "sn-a")
+	err := DeleteSubnetCommand{Name: "sn-a"}.Prepare(db, nil)
+	if err == nil || !strings.Contains(err.Error(), `subnet "sn-a" is still used by vms i-a, i-b, i-c`) {
+		t.Fatalf("erreur %v", err)
+	}
+	if s, _ := kv.GetFromDB(db, "subnet/sn-a/state"); s != "running" {
+		t.Errorf("état modifié malgré le refus : %q", s)
+	}
+}
+
+func TestDeleteSubnetCommand_Prepare_AllowedOnceItsVMsAreDeleted(t *testing.T) {
+	_, db := newTestDispatcher(t)
+	kv.AddInDB(db, "subnet/sn-a/state", "running")
+	kv.AddInDB(db, "vm/i-gone/state", "deleted")
+	kv.AddInDB(db, "vm/i-gone/nic/0/subnet", "sn-a")
+	kv.AddInDB(db, "vm/i-other/state", "running")
+	kv.AddInDB(db, "vm/i-other/nic/0/subnet", "sn-b")
+	if err := (DeleteSubnetCommand{Name: "sn-a"}).Prepare(db, nil); err != nil {
+		t.Fatalf("Prepare a échoué : %v", err)
 	}
 }

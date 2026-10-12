@@ -35,6 +35,15 @@ interfaces:
   internet: br-000000
   admin: br-000000
 
+# BGP control plane of the hypervisor (optional).
+# Absent: the agent leaves FRR alone. Present: at every start, before serving its
+# API, the agent applies the base BGP configuration through vtysh (router-id = the
+# primary IPv4 of default_interface) and saves it with "write memory".
+# Changing the asn requires removing the previous instance by hand.
+# bgp:
+#   asn: 64600
+#   route_reflectors: [10.255.255.1]
+
 # Metadata server runtime directory (cloud-init files per VM)
 metadata:
   run_dir: "/run/two/metadata"

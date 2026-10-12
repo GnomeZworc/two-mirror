@@ -42,6 +42,17 @@ vxlan
 Le subnet vit dans le netns du VPC. La VM n'est donc **pas joignable depuis l'host** sans route
 explicite — point à connaître avant de câbler un outil externe dessus.
 
+Le bridge du subnet, qui porte ``interface_ip``, a une **MAC de gateway propre à l'hôte**, calculée
+depuis son VTEP — l'IPv4 primaire du ``local_iface`` : ``02:03`` suivi des quatre octets de
+l'adresse (VTEP ``192.168.14.12`` → ``02:03:c0:a8:0e:0c``). Unique dans le fabric, elle est la
+même pour tous les subnets d'un hôte, chacun étant un domaine L2 distinct. Elle n'est posée qu'à la
+création du subnet — un subnet créé avant garde la MAC choisie par le noyau jusqu'à sa recréation.
+
+Une MAC de gateway **identique sur tous les hôtes** (anycast) a été essayée puis retirée : apprise
+sur le veth du subnet, elle était annoncée en EVPN par chaque hôte et détectée en double ; et une
+gateway ne pouvait plus joindre en L2 une VM d'un autre hôte, la réponse revenant à la gateway
+locale de la VM. Le cache ARP d'une VM migrée à chaud est un sujet de la migration, pas du subnet.
+
 bridge
 ------
 
