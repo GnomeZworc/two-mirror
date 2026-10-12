@@ -72,15 +72,11 @@ func Prepare(ctx context.Context, p *topology.Plan, o Options) ([]render.Node, e
 	if err != nil {
 		return nil, err
 	}
-	frr, err := ReadFRR(p)
-	if err != nil {
+	opts := render.Options{RunDir: o.RunDir, AuthorizedKeys: []string{key}}
+	if err := ReadInputs(p, &opts); err != nil {
 		return nil, err
 	}
-	agent, err := ReadAgent(p)
-	if err != nil {
-		return nil, err
-	}
-	nodes, err := render.Render(p, render.Options{RunDir: o.RunDir, AuthorizedKeys: []string{key}, FRR: frr, Agent: agent})
+	nodes, err := render.Render(p, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -92,12 +88,31 @@ func Prepare(ctx context.Context, p *topology.Plan, o Options) ([]render.Node, e
 	return nodes, nil
 }
 
-func ReadFRR(p *topology.Plan) (map[string]string, error) {
-	return readNodeFiles(p, func(n topology.NodePlan) string { return n.FRR })
-}
-
-func ReadAgent(p *topology.Plan) (map[string]string, error) {
-	return readNodeFiles(p, func(n topology.NodePlan) string { return n.Agent })
+func ReadInputs(p *topology.Plan, o *render.Options) error {
+	var err error
+	if o.FRR, err = readNodeFiles(p, func(n topology.NodePlan) string { return n.FRR }); err != nil {
+		return err
+	}
+	if o.Provision, err = readNodeFiles(p, func(n topology.NodePlan) string { return n.Provision }); err != nil {
+		return err
+	}
+	if o.PostProvision, err = readNodeFiles(p, func(n topology.NodePlan) string { return n.PostProvision }); err != nil {
+		return err
+	}
+	o.Files = map[string]map[string][]byte{}
+	for _, n := range p.Nodes {
+		for name, src := range n.Files {
+			data, err := os.ReadFile(src)
+			if err != nil {
+				return fmt.Errorf("node %s: file %s: %w", n.Name, name, err)
+			}
+			if o.Files[n.Name] == nil {
+				o.Files[n.Name] = map[string][]byte{}
+			}
+			o.Files[n.Name][name] = data
+		}
+	}
+	return nil
 }
 
 func readNodeFiles(p *topology.Plan, path func(topology.NodePlan) string) (map[string]string, error) {

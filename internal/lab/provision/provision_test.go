@@ -60,8 +60,8 @@ segments:
 nodes:
   sw1: { role: switch,     image: debian12, cpus: 2, memory: 1024 }
   rr1: { role: rr,         image: debian12, cpus: 1, memory: 1024, segments: [underlay] }
-  hv1: { role: hypervisor, image: debian12, cpus: 4, memory: 16384, segments: [underlay], release: 0.2.0rc002 }
-  hv2: { role: hypervisor, image: debian12, cpus: 4, memory: 16384, segments: [underlay], release: 0.2.0rc002 }
+  hv1: { role: host, image: debian12, cpus: 4, memory: 16384, segments: [underlay] }
+  hv2: { role: host, image: debian12, cpus: 4, memory: 16384, segments: [underlay] }
 `
 	topo, err := topology.Parse([]byte(doc))
 	if err != nil {
@@ -316,7 +316,7 @@ func TestEnsureKey_WithTheRealSSHKeygen(t *testing.T) {
 	}
 }
 
-func TestReadFRR_ReadsOnlyTheNodesThatDeclareOne(t *testing.T) {
+func TestReadInputs_ReadsOnlyTheFRRConfigsDeclared(t *testing.T) {
 	dir := t.TempDir()
 	conf := filepath.Join(dir, "rr1.conf")
 	if err := os.WriteFile(conf, []byte("hostname rr1\n"), 0o600); err != nil {
@@ -326,19 +326,20 @@ func TestReadFRR_ReadsOnlyTheNodesThatDeclareOne(t *testing.T) {
 	p := labPlan(t, m)
 	p.Nodes[1].FRR = conf
 
-	got, err := ReadFRR(p)
+	var o render.Options
+	err := ReadInputs(p, &o)
 
-	if err != nil || !reflect.DeepEqual(got, map[string]string{"rr1": "hostname rr1\n"}) {
-		t.Errorf("ReadFRR = %q, %v", got, err)
+	if err != nil || !reflect.DeepEqual(o.FRR, map[string]string{"rr1": "hostname rr1\n"}) {
+		t.Errorf("FRR = %q, %v", o.FRR, err)
 	}
 }
 
-func TestReadFRR_NamesTheNodeOfAMissingFile(t *testing.T) {
+func TestReadInputs_NamesTheNodeOfAMissingFRRConfig(t *testing.T) {
 	m := newMirror(t)
 	p := labPlan(t, m)
 	p.Nodes[2].FRR = filepath.Join(t.TempDir(), "absent.conf")
 
-	if _, err := ReadFRR(p); err == nil || !strings.Contains(err.Error(), "node hv1: ") || !strings.Contains(err.Error(), "absent.conf") {
+	if err := ReadInputs(p, &render.Options{}); err == nil || !strings.Contains(err.Error(), "node hv1: ") || !strings.Contains(err.Error(), "absent.conf") {
 		t.Errorf("error = %v", err)
 	}
 }
@@ -386,22 +387,37 @@ func TestPrepare_PutsTheFRRConfigIntoTheSeed(t *testing.T) {
 	t.Errorf("hv1 user-data has no /etc/lab/frr.conf:\n%s", data)
 }
 
-func TestReadAgent_ReadsOnlyTheNodesThatDeclareOne(t *testing.T) {
-	conf := filepath.Join(t.TempDir(), "two.yml")
-	if err := os.WriteFile(conf, []byte("dhcp:\n  backend: two\n"), 0o600); err != nil {
-		t.Fatal(err)
+func TestReadInputs_ReadsTheProvisionScriptsAndFiles(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name, content string) string {
+		path := filepath.Join(dir, name)
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return path
 	}
 	m := newMirror(t)
 	p := labPlan(t, m)
-	p.Nodes[2].Agent = conf
+	p.Nodes[2].Provision = write("hv.sh", "#!/bin/sh\necho provision\n")
+	p.Nodes[2].PostProvision = write("hv-post.sh", "#!/bin/sh\necho post\n")
+	p.Nodes[2].Files = map[string]string{"agent.yml": write("two.yml", "dhcp:\n  backend: two\n")}
 
-	got, err := ReadAgent(p)
-
-	if err != nil || !reflect.DeepEqual(got, map[string]string{"hv1": "dhcp:\n  backend: two\n"}) {
-		t.Errorf("ReadAgent = %q, %v", got, err)
+	var o render.Options
+	if err := ReadInputs(p, &o); err != nil {
+		t.Fatal(err)
 	}
-	p.Nodes[3].Agent = filepath.Join(t.TempDir(), "absent.yml")
-	if _, err := ReadAgent(p); err == nil || !strings.Contains(err.Error(), "node hv2: ") {
+	if !reflect.DeepEqual(o.Provision, map[string]string{"hv1": "#!/bin/sh\necho provision\n"}) {
+		t.Errorf("provision = %q", o.Provision)
+	}
+	if !reflect.DeepEqual(o.PostProvision, map[string]string{"hv1": "#!/bin/sh\necho post\n"}) {
+		t.Errorf("post_provision = %q", o.PostProvision)
+	}
+	if !reflect.DeepEqual(o.Files, map[string]map[string][]byte{"hv1": {"agent.yml": []byte("dhcp:\n  backend: two\n")}}) {
+		t.Errorf("files = %q", o.Files)
+	}
+
+	p.Nodes[3].Files = map[string]string{"agent.yml": filepath.Join(dir, "absent.yml")}
+	if err := ReadInputs(p, &render.Options{}); err == nil || !strings.Contains(err.Error(), "node hv2: file agent.yml: ") {
 		t.Errorf("error = %v", err)
 	}
 }

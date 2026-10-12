@@ -15,7 +15,7 @@ segments:
 nodes:
   sw1: { role: switch, image: deb, cpus: 2, memory: 1024, secondary: { underlay: [169.254.0.1/28] }, frr: frr/sw1.conf }
   rr1: { role: rr, image: deb, cpus: 1, memory: 1024, segments: [underlay], secondary: { underlay: [169.254.0.3/28] }, loopback: 10.255.255.1/32, frr: frr/rr1.conf }
-  hv1: { role: hypervisor, image: deb, cpus: 4, memory: 16384, segments: [underlay], frr: /etc/lab/hv1.conf, release: 0.2.0rc002 }
+  hv1: { role: host, image: deb, cpus: 4, memory: 16384, segments: [underlay], frr: /etc/lab/hv1.conf, provision: provision/hv.sh, post_provision: /opt/lab/post.sh, files: { agent.yml: agent/two.yml, deploy.sh: /opt/deploy.sh }, services: [agent.service] }
 `
 
 func TestCompute_CarriesTheRoleFields(t *testing.T) {
@@ -99,7 +99,7 @@ segments:
   blue: { switch: sw, cidr: 10.2.0.0/24 }
 nodes:
   sw: { role: switch, image: deb, cpus: 1, memory: 512 }
-  hv: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [red, blue], release: 0.2.0rc002 }
+  hv: { role: host, image: deb, cpus: 1, memory: 512, segments: [red, blue] }
   ` + c.node + `
 `
 			requireContains(t, validationError(t, doc), c.want)
@@ -115,7 +115,7 @@ segments:
 nodes:
   sw:    { role: switch, image: deb, cpus: 1, memory: 512, secondary: { red: [169.254.0.1/28], blue: [169.254.1.1/28] } }
   other: { role: switch, image: deb, cpus: 1, memory: 512 }
-  hv:    { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [red, blue], release: 0.2.0rc002 }
+  hv:    { role: host, image: deb, cpus: 1, memory: 512, segments: [red, blue] }
 `
 	msg := validationError(t, doc)
 	requireContains(t, msg, "node sw: secondary address given for segment blue it is not attached to")
@@ -130,7 +130,7 @@ segments:
   lo1: { switch: sw, cidr: 10.1.0.0/24 }
 nodes:
   sw: { role: switch, image: deb, cpus: 1, memory: 512 }
-  hv: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [lo1], release: 0.2.0rc002 }
+  hv: { role: host, image: deb, cpus: 1, memory: 512, segments: [lo1] }
 `
 	requireContains(t, validationError(t, doc), "segment lo1: name is reserved for the loopback interface")
 }
@@ -142,10 +142,10 @@ func TestWrite_ShowsTheRoles(t *testing.T) {
 	}
 	want := `
 roles
-  name  loopback             secondary                frr       release     agent
-  sw1   -                    underlay 169.254.0.1/28  sw1.conf  -           -
-  rr1   lo1 10.255.255.1/32  underlay 169.254.0.3/28  rr1.conf  -           -
-  hv1   -                    -                        hv1.conf  0.2.0rc002  -
+  name  loopback             secondary                frr       provision  post_provision  files                services
+  sw1   -                    underlay 169.254.0.1/28  sw1.conf  -          -               -                    -
+  rr1   lo1 10.255.255.1/32  underlay 169.254.0.3/28  rr1.conf  -          -               -                    -
+  hv1   -                    -                        hv1.conf  hv.sh      post.sh         agent.yml,deploy.sh  agent.service
 `
 	if !bytes.Contains(buf.Bytes(), []byte(want)) {
 		t.Errorf("plan:\n%s\ndoes not contain:\n%s", buf.String(), want)
@@ -169,27 +169,30 @@ nodes:
 	}
 }
 
-func TestValidate_ReleaseRejections(t *testing.T) {
+func TestValidate_ProvisionRejections(t *testing.T) {
 	cases := map[string]struct {
 		node string
 		want string
 	}{
-		"hypervisor without release": {
+		"the hypervisor role is gone": {
 			`hv: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [red] }`,
-			"node hv: a hypervisor needs the release of two to deploy (release: <tag>)",
+			`node hv: role "hypervisor" must be one of switch, rr, host`,
 		},
-		"release with shell characters": {
-			`hv: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [red], release: "0.2.0; reboot" }`,
-			`node hv: release "0.2.0; reboot" must match`,
+		"file name leaving the files directory": {
+			`hv: { role: host, image: deb, cpus: 1, memory: 512, segments: [red], files: { ../etc/passwd: a.yml } }`,
+			`node hv: file name "../etc/passwd" must match`,
 		},
-		"release on a route reflector": {
-			`hv: { role: rr, image: deb, cpus: 1, memory: 512, segments: [red], release: 0.2.0rc002 }`,
-			"node hv: release is only for hypervisors",
+		"file without source": {
+			`hv: { role: host, image: deb, cpus: 1, memory: 512, segments: [red], files: { agent.yml: "" } }`,
+			"node hv: file agent.yml has no source",
 		},
-		"release on a switch": {
-			`hv: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [red], release: 0.2.0rc002 }
-  sw2: { role: switch, image: deb, cpus: 1, memory: 512, release: 0.2.0rc002 }`,
-			"node sw2: release is only for hypervisors",
+		"service with shell characters": {
+			`hv: { role: host, image: deb, cpus: 1, memory: 512, segments: [red], services: ["agent.service; reboot"] }`,
+			`node hv: service "agent.service; reboot" must match`,
+		},
+		"service listed twice": {
+			`hv: { role: host, image: deb, cpus: 1, memory: 512, segments: [red], services: [agent.service, agent.service] }`,
+			"node hv: service agent.service listed twice",
 		},
 	}
 	for name, c := range cases {
@@ -206,60 +209,61 @@ nodes:
 	}
 }
 
-func TestCompute_CarriesTheRelease(t *testing.T) {
-	if got := nodeOf(t, compute(t, withRoles), "hv1").Release; got != "0.2.0rc002" {
-		t.Errorf("hv1 release = %q", got)
-	}
-	if got := nodeOf(t, compute(t, withRoles), "rr1").Release; got != "" {
-		t.Errorf("rr1 release = %q", got)
-	}
-}
-
-func TestValidate_AgentOnlyForHypervisors(t *testing.T) {
+func TestValidate_ProvisionIsAllowedOnEveryRole(t *testing.T) {
 	doc := header + `
 segments:
   red: { switch: sw, cidr: 10.1.0.0/24 }
 nodes:
-  sw: { role: switch, image: deb, cpus: 1, memory: 512 }
-  rr: { role: rr, image: deb, cpus: 1, memory: 512, segments: [red], agent: agent.yml }
-  hv: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [red], release: 0.2.0rc003, agent: agent.yml }
+  sw: { role: switch, image: deb, cpus: 1, memory: 512, provision: sw.sh, files: { a.conf: a.conf }, services: [lab-switch.service] }
+  rr: { role: rr, image: deb, cpus: 1, memory: 512, segments: [red], provision: rr.sh, post_provision: rr-post.sh }
+  hv: { role: host, image: deb, cpus: 1, memory: 512, segments: [red], files: { agent.yml: agent.yml }, services: [agent.service] }
 `
-	msg := validationError(t, doc)
-	requireContains(t, msg, "node rr: agent is only for hypervisors")
-	if bytes.Contains([]byte(msg), []byte("node hv: agent")) {
-		t.Errorf("a hypervisor agent was refused:\n%s", msg)
+	compute(t, doc)
+}
+
+func TestCompute_CarriesTheProvision(t *testing.T) {
+	hv1 := nodeOf(t, compute(t, withRoles), "hv1")
+	if hv1.Provision != "provision/hv.sh" || hv1.PostProvision != "/opt/lab/post.sh" {
+		t.Errorf("hv1 provision = %q, post_provision = %q", hv1.Provision, hv1.PostProvision)
+	}
+	if !reflect.DeepEqual(hv1.Files, map[string]string{"agent.yml": "agent/two.yml", "deploy.sh": "/opt/deploy.sh"}) {
+		t.Errorf("hv1 files = %v", hv1.Files)
+	}
+	if !reflect.DeepEqual(hv1.Services, []string{"agent.service"}) {
+		t.Errorf("hv1 services = %v", hv1.Services)
+	}
+	rr1 := nodeOf(t, compute(t, withRoles), "rr1")
+	if rr1.Provision != "" || rr1.PostProvision != "" || rr1.Files != nil || rr1.Services != nil {
+		t.Errorf("rr1 = %+v, want no provision", rr1)
 	}
 }
 
-func TestLoad_ResolvesTheAgentPathAgainstTheTopologyFile(t *testing.T) {
+func TestLoad_ResolvesProvisionPathsAgainstTheTopologyFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "lab.yml")
-	doc := header + `
-segments:
-  red: { switch: sw, cidr: 10.1.0.0/24 }
-nodes:
-  sw:  { role: switch, image: deb, cpus: 1, memory: 512 }
-  hv1: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [red], release: 0.2.0rc003, agent: agent/two.yml }
-  hv2: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [red], release: 0.2.0rc003, agent: /etc/lab/agent.yml }
-`
-	if err := os.WriteFile(path, []byte(doc), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte(withRoles), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	topo, err := Load(path)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	want := map[string]string{"sw": "", "hv1": filepath.Join(dir, "agent", "two.yml"), "hv2": "/etc/lab/agent.yml"}
-	for _, n := range topo.Nodes {
-		if n.Agent != want[n.Name] {
-			t.Errorf("%s agent = %q, want %q", n.Name, n.Agent, want[n.Name])
-		}
-	}
 	p, err := Compute(topo)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := nodeOf(t, p, "hv1").Agent; got != filepath.Join(dir, "agent", "two.yml") {
-		t.Errorf("plan hv1 agent = %q", got)
+	hv1 := nodeOf(t, p, "hv1")
+	if hv1.Provision != filepath.Join(dir, "provision", "hv.sh") {
+		t.Errorf("provision = %q", hv1.Provision)
+	}
+	if hv1.PostProvision != "/opt/lab/post.sh" {
+		t.Errorf("post_provision = %q, an absolute path must be kept", hv1.PostProvision)
+	}
+	want := map[string]string{"agent.yml": filepath.Join(dir, "agent", "two.yml"), "deploy.sh": "/opt/deploy.sh"}
+	if !reflect.DeepEqual(hv1.Files, want) {
+		t.Errorf("files = %v, want %v", hv1.Files, want)
+	}
+	if rr1 := nodeOf(t, p, "rr1"); rr1.Provision != "" || rr1.Files != nil {
+		t.Errorf("rr1 = %+v", rr1)
 	}
 }

@@ -22,15 +22,17 @@ func (p *Plan) Write(w io.Writer) error {
 
 	var extras []NodePlan
 	for _, n := range p.Nodes {
-		if len(n.Secondary) > 0 || n.Loopback.IsValid() || n.FRR != "" || n.Release != "" || n.Agent != "" {
+		if len(n.Secondary) > 0 || n.Loopback.IsValid() || n.FRR != "" || n.Provision != "" || n.PostProvision != "" || len(n.Files) > 0 || len(n.Services) > 0 {
 			extras = append(extras, n)
 		}
 	}
 	if len(extras) > 0 {
 		fmt.Fprintf(tw, "\nroles\n")
-		fmt.Fprintf(tw, "  name\tloopback\tsecondary\tfrr\trelease\tagent\n")
+		fmt.Fprintf(tw, "  name\tloopback\tsecondary\tfrr\tprovision\tpost_provision\tfiles\tservices\n")
 		for _, n := range extras {
-			fmt.Fprintf(tw, "  %s\t%s\t%s\t%s\t%s\t%s\n", n.Name, orDash(loopback(n)), orDash(secondary(n)), orDash(filepath.Base(n.FRR)), orDash(n.Release), orDash(filepath.Base(n.Agent)))
+			fmt.Fprintf(tw, "  %s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", n.Name, orDash(loopback(n)), orDash(secondary(n)),
+				orDash(filepath.Base(n.FRR)), orDash(filepath.Base(n.Provision)), orDash(filepath.Base(n.PostProvision)),
+				orDash(strings.Join(sortedKeys(n.Files), ",")), orDash(strings.Join(n.Services, ",")))
 		}
 	}
 

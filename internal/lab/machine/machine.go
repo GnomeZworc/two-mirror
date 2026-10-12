@@ -168,10 +168,7 @@ func (l Lab) waitReady(ctx context.Context, n topology.NodePlan) error {
 }
 
 func services(n topology.NodePlan) []string {
-	var units []string
-	if n.Role == topology.RoleHypervisor {
-		units = append(units, "agent.service")
-	}
+	units := append([]string(nil), n.Services...)
 	if n.FRR != "" {
 		units = append(units, "frr.service")
 	}

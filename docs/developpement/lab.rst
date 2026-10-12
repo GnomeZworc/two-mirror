@@ -231,7 +231,7 @@ Ce que le fichier déclare :
    bridge (15 caractères au plus sous Linux).
 
 ``nodes``
-   ``role`` (``switch``, ``rr`` ou ``hypervisor``), ``image``, ``cpus``, ``memory`` en Mio
+   ``role`` (``switch``, ``rr`` ou ``host``), ``image``, ``cpus``, ``memory`` en Mio
    (256 au moins), ``segments`` auxquels le nœud est relié, et ``addresses`` pour fixer
    l'adresse d'un nœud sur un segment (``addresses: {underlay: 192.168.14.50}``). Un switch ne
    déclare ni ``segments`` ni ``addresses`` : il porte ceux dont il est le ``switch``.
@@ -247,15 +247,17 @@ Ce que le fichier déclare :
      (``loopback: 10.255.255.1/32``) ;
    * ``frr`` — le chemin d'un ``frr.conf``, relatif au fichier de topologie : FRR est installé
      au démarrage et la configuration déposée **telle quelle** (voir `Rôles`_).
-   * ``release`` — **obligatoire pour un hyperviseur**, refusé ailleurs : le tag de la release de
-     two que ``deploy.sh`` installe (``release: 0.2.0rc008``). Sans lui, ``deploy.sh`` prendrait la
-     dernière release, et le lab ne serait plus reproductible.
-   * ``agent`` — pour un hyperviseur seulement : le chemin d'un ``agent.yml``, relatif au fichier
-     de topologie, déposé dans ``/etc/two/agent.yml`` avant ``deploy.sh``. Sans lui, l'agent tourne
-     avec sa configuration par défaut. Les deux fichiers fournis donnent à l'agent la section
-     ``bgp`` (AS 64600, route reflector ``10.255.255.1``) et un watchdog toutes les 10 s ;
-     ``test/e2e/topologies/agent/two.yml`` met en plus hv1 sur le serveur DHCP intégré
-     (``dhcp.backend: two``), ``agent/bgp.yml`` laisse les autres sur dnsmasq.
+   * ``provision`` — le chemin d'un script, relatif au fichier de topologie, exécuté au premier
+     démarrage **avant** FRR ;
+   * ``post_provision`` — un second script, exécuté **après** FRR ;
+   * ``files`` — des fichiers déposés dans ``/etc/lab/files/<nom>`` avant les scripts, sous la
+     forme ``{<nom>: <chemin>}`` (``files: {agent.yml: agent/two.yml}``) ;
+   * ``services`` — les unités systemd que ``lab up`` vérifie actives sur le nœud.
+
+   Les scripts reçoivent ``LAB_NODE`` (nom du nœud), ``LAB_UPLINK`` (interface de son premier
+   segment, qui porte la route par défaut) et ``LAB_FILES`` (``/etc/lab/files``). L'outil ne sait
+   rien de ce qu'ils installent : l'installation de two est une provision de
+   ``test/e2e/topologies/`` (voir `Rôles`_).
 
    ``mgmt0`` et ``lo1`` sont réservés : aucun segment ne peut porter ces noms.
 
@@ -295,18 +297,18 @@ Limites : 1000 nœuds, 256 segments, et autant de câbles que la plage UDP le pe
    lab evpn-2hv: nodes 4, segments 1, cables 3
 
    nodes
-     name  role        image     cpus  memory     ssh
-     sw1   switch      debian12  2     1024 MiB   127.0.0.1:2200
-     rr1   rr          debian12  1     1024 MiB   127.0.0.1:2201
-     hv1   hypervisor  debian12  4     16384 MiB  127.0.0.1:2202
-     hv2   hypervisor  debian12  4     16384 MiB  127.0.0.1:2203
+     name  role    image     cpus  memory     ssh
+     sw1   switch  debian12  2     1024 MiB   127.0.0.1:2200
+     rr1   rr      debian12  1     1024 MiB   127.0.0.1:2201
+     hv1   host    debian12  4     16384 MiB  127.0.0.1:2202
+     hv2   host    debian12  4     16384 MiB  127.0.0.1:2203
 
    roles
-     name  loopback             secondary                frr       release     agent
-     sw1   -                    underlay 169.254.0.1/28  sw1.conf  -           -
-     rr1   lo1 10.255.255.1/32  underlay 169.254.0.3/28  rr1.conf  -           -
-     hv1   -                    -                        hv1.conf  0.2.0rc008  two.yml
-     hv2   -                    -                        hv2.conf  0.2.0rc008  bgp.yml
+     name  loopback             secondary                frr       provision      post_provision      files      services
+     sw1   -                    underlay 169.254.0.1/28  sw1.conf  -              -                   -          -
+     rr1   lo1 10.255.255.1/32  underlay 169.254.0.3/28  rr1.conf  -              -                   -          -
+     hv1   -                    -                        hv1.conf  hypervisor.sh  hypervisor-post.sh  agent.yml  agent.service
+     hv2   -                    -                        hv2.conf  hypervisor.sh  hypervisor-post.sh  agent.yml  agent.service
 
    segment underlay: 192.168.14.0/24, mtu 9000, switch sw1, bridge br-underlay, gateway 192.168.14.1
      node  interface  address           mac                udp         switch port  mac                udp
@@ -365,34 +367,42 @@ même valeur sur ``keys.openpgp.org`` et ``keyserver.ubuntu.com`` :
 Une clé renouvelée par FRR fera échouer l'installation (signature inconnue) : remplacer le fichier
 après avoir vérifié les nouvelles empreintes.
 
-**Hyperviseurs.** Ils se déploient comme en production, par ``deploy.sh`` — celui **du dépôt**,
-embarqué dans ``lab`` avec ``bootstrap_kvm.sh`` (paquet ``scripts``) et déposé dans
-``/opt/two/scripts/``, où ``deploy.sh`` cherche d'abord ``bootstrap_kvm.sh`` :
+**Hyperviseurs.** Ce sont des nœuds ``host`` dont la provision installe two comme en
+production. ``test/e2e/topologies/provision/hypervisor.sh`` dépose ``agent.yml`` (fichier
+``agent.yml`` du nœud) dans ``/etc/two/agent.yml``, télécharge ``deploy.sh`` et
+``bootstrap_kvm.sh`` **au tag de la release testée** dans ``/opt/two/scripts/``, où ``deploy.sh``
+cherche d'abord ``bootstrap_kvm.sh``, puis lance :
 
 .. code-block:: text
 
-   deploy.sh --noup_script -i -u <segment> -t <release>
+   deploy.sh --noup_script -i -u "$LAB_UPLINK" -t <release>
 
-``--noup_script`` empêche l'auto-mise à jour de remplacer le script par celui de ``main`` : le lab
-teste les scripts de sa branche. L'uplink ``-u`` est l'interface qui porte la route par défaut —
-celle du premier segment de l'hyperviseur dans l'ordre de déclaration des segments — parce que
-``deploy.sh`` y lit l'adresse et la passerelle qu'il déplace sur ``br-000000``. ``deploy.sh``
-télécharge la release sur ``git.g3e.fr`` sans réessayer : le lancement attend d'abord que le serveur
-réponde, à travers le switch. FRR est installé **après** : il démarre sur le réseau final. Démarré
+La release est fixée dans le script (``RELEASE=``) : sans elle, ``deploy.sh`` prendrait la dernière,
+et le lab ne serait plus reproductible. ``--noup_script`` empêche l'auto-mise à jour de remplacer le
+script par celui de ``main``. L'uplink ``-u`` est l'interface qui porte la route par défaut, parce
+que ``deploy.sh`` y lit l'adresse et la passerelle qu'il déplace sur ``br-000000``. ``deploy.sh``
+télécharge la release sur ``git.g3e.fr`` sans réessayer : le script attend d'abord que le serveur
+réponde, à travers le switch. Les deux fichiers ``agent/`` donnent à l'agent la section ``bgp``
+(AS 64600, route reflector ``10.255.255.1``) et un watchdog toutes les 10 s ;
+``agent/two.yml`` met en plus hv1 sur le serveur DHCP intégré (``dhcp.backend: two``),
+``agent/bgp.yml`` laisse les autres sur dnsmasq.
+
+FRR est installé **après** la provision : il démarre sur le réseau final. Démarré
 avant la migration, zebra peut perdre la route par défaut quand elle passe de l'uplink à
 ``br-000000`` — constaté le 2026-10-11 sur un hyperviseur sur deux : route reflector
 ``unresolved``, session BGP jamais établie. L'agent, configuré avec une section ``bgp``, refuse de
-démarrer tant que FRR n'est pas là : son premier démarrage par ``deploy.sh`` échoue, et le
-provisionnement le **redémarre** une fois FRR installé.
+démarrer tant que FRR n'est pas là : son premier démarrage par ``deploy.sh`` échoue, et
+``provision/hypervisor-post.sh`` (``post_provision``) le **redémarre** une fois FRR installé.
 
 **Un seul script de provisionnement par nœud.** cloud-init exécute ``runcmd`` comme un script
 ``sh`` sans ``set -e`` : seule la dernière commande compte, et un ``deploy.sh`` en échec suivi d'un
 FRR installé avec succès passerait pour un démarrage réussi. Chaque nœud reçoit donc
-``/usr/local/sbin/lab-provision``, en ``set -eu``, qui enchaîne ses étapes ; ``runcmd`` n'appelle
+``/usr/local/sbin/lab-provision``, en ``set -eu``, qui enchaîne ses étapes — script du switch ou
+de la loopback, ``provision``, FRR, ``post_provision`` ; ``runcmd`` n'appelle
 que lui, et la première étape en échec met cloud-init en erreur.
 
-**Ce que vérifie** ``lab up``, une fois cloud-init terminé sans erreur : ``agent.service`` actif
-sur chaque hyperviseur, ``frr`` actif sur chaque nœud qui en a un. Ce contrôle couvre ce que
+**Ce que vérifie** ``lab up``, une fois cloud-init terminé sans erreur : les ``services`` déclarés
+par chaque nœud (``agent.service`` sur les hyperviseurs), et ``frr`` sur chaque nœud qui en a un. Ce contrôle couvre ce que
 cloud-init ne voit pas — si la migration réseau échoue, ``deploy.sh`` arme un redémarrage de
 secours, et la VM redémarrée ne rejoue pas ``runcmd``.
 

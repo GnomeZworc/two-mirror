@@ -23,7 +23,8 @@ const (
 var (
 	namePattern    = regexp.MustCompile(`^[a-z][a-z0-9-]{0,14}$`)
 	segmentPattern = regexp.MustCompile(`^[a-z][a-z0-9]{0,11}$`)
-	releasePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`)
+	filePattern    = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`)
+	unitPattern    = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9@._:-]{0,127}$`)
 )
 
 func (t *Topology) Validate() error {
@@ -108,9 +109,9 @@ func (t *Topology) Validate() error {
 			add("node %s: name must match %s", n.Name, namePattern)
 		}
 		switch n.Role {
-		case RoleSwitch, RoleRR, RoleHypervisor:
+		case RoleSwitch, RoleRR, RoleHost:
 		default:
-			add("node %s: role %q must be one of %s, %s, %s", n.Name, n.Role, RoleSwitch, RoleRR, RoleHypervisor)
+			add("node %s: role %q must be one of %s, %s, %s", n.Name, n.Role, RoleSwitch, RoleRR, RoleHost)
 		}
 		if !images[n.Image] {
 			add("node %s: image %q is not declared", n.Name, n.Image)
@@ -207,16 +208,23 @@ func validateExtras(n Node, segments map[string]Segment, add func(string, ...any
 			}
 		}
 	}
-	switch {
-	case n.Role == RoleHypervisor && n.Release == "":
-		add("node %s: a hypervisor needs the release of two to deploy (release: <tag>)", n.Name)
-	case n.Role == RoleHypervisor && !releasePattern.MatchString(n.Release):
-		add("node %s: release %q must match %s", n.Name, n.Release, releasePattern)
-	case n.Role != RoleHypervisor && n.Release != "":
-		add("node %s: release is only for hypervisors", n.Name)
+	for _, name := range sortedKeys(n.Files) {
+		switch {
+		case !filePattern.MatchString(name):
+			add("node %s: file name %q must match %s", n.Name, name, filePattern)
+		case n.Files[name] == "":
+			add("node %s: file %s has no source", n.Name, name)
+		}
 	}
-	if n.Role != RoleHypervisor && n.Agent != "" {
-		add("node %s: agent is only for hypervisors", n.Name)
+	seenUnits := map[string]bool{}
+	for _, unit := range n.Services {
+		switch {
+		case !unitPattern.MatchString(unit):
+			add("node %s: service %q must match %s", n.Name, unit, unitPattern)
+		case seenUnits[unit]:
+			add("node %s: service %s listed twice", n.Name, unit)
+		}
+		seenUnits[unit] = true
 	}
 	if n.Loopback != "" {
 		prefix, err := netip.ParsePrefix(n.Loopback)

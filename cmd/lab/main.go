@@ -130,17 +130,12 @@ func renderCmd(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "lab: %v\n", err)
 		return 1
 	}
-	frr, err := provision.ReadFRR(p)
-	if err != nil {
+	opts := render.Options{RunDir: dir, AuthorizedKeys: authorized}
+	if err := provision.ReadInputs(p, &opts); err != nil {
 		fmt.Fprintf(stderr, "lab: %v\n", err)
 		return 1
 	}
-	agent, err := provision.ReadAgent(p)
-	if err != nil {
-		fmt.Fprintf(stderr, "lab: %v\n", err)
-		return 1
-	}
-	nodes, err := render.Render(p, render.Options{RunDir: dir, AuthorizedKeys: authorized, FRR: frr, Agent: agent})
+	nodes, err := render.Render(p, opts)
 	if err != nil {
 		fmt.Fprintf(stderr, "lab: %v\n", err)
 		return 1

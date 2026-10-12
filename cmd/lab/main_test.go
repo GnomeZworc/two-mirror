@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -9,6 +10,8 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+
+	"go.yaml.in/yaml/v3"
 )
 
 func runLab(args ...string) (int, string, string) {
@@ -165,11 +168,11 @@ func TestRun_CommandsWithoutALabInTheRunDir(t *testing.T) {
 
 func TestRun_StatusOfAStoppedLab(t *testing.T) {
 	code, stdout, stderr := runLab("status", "-run", savedLab(t))
-	want := `node  role        state    pid  ssh
-sw1   switch      stopped  -    127.0.0.1:2200
-rr1   rr          stopped  -    127.0.0.1:2201
-hv1   hypervisor  stopped  -    127.0.0.1:2202
-hv2   hypervisor  stopped  -    127.0.0.1:2203
+	want := `node  role    state    pid  ssh
+sw1   switch  stopped  -    127.0.0.1:2200
+rr1   rr      stopped  -    127.0.0.1:2201
+hv1   host    stopped  -    127.0.0.1:2202
+hv2   host    stopped  -    127.0.0.1:2203
 `
 	if code != 0 || stdout != want {
 		t.Errorf("code %d, stderr %q, stdout:\n%s", code, stderr, stdout)
@@ -315,8 +318,8 @@ func TestRun_RenderShipsTheExampleFRRConfigs(t *testing.T) {
 	for node, wants := range map[string][]string{
 		"sw1": {"router bgp 65100"},
 		"rr1": {"bgp listen range 192.168.14.0/24 peer-group fabric"},
-		"hv1": {"hostname hv1", "route_reflectors: [10.255.255.1]"},
-		"hv2": {"hostname hv2", "route_reflectors: [10.255.255.1]"},
+		"hv1": {"hostname hv1"},
+		"hv2": {"hostname hv2"},
 	} {
 		data, err := os.ReadFile(filepath.Join(out, node, "user-data"))
 		if err != nil {
@@ -326,6 +329,32 @@ func TestRun_RenderShipsTheExampleFRRConfigs(t *testing.T) {
 			if !strings.Contains(string(data), want) {
 				t.Errorf("%s user-data does not carry %q", node, want)
 			}
+		}
+	}
+	for _, node := range []string{"hv1", "hv2"} {
+		data, err := os.ReadFile(filepath.Join(out, node, "user-data"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var cfg struct {
+			Files []struct {
+				Path    string `yaml:"path"`
+				Content string `yaml:"content"`
+			} `yaml:"write_files"`
+		}
+		if err := yaml.Unmarshal(data, &cfg); err != nil {
+			t.Fatal(err)
+		}
+		var agent []byte
+		for _, f := range cfg.Files {
+			if f.Path == "/etc/lab/files/agent.yml" {
+				if agent, err = base64.StdEncoding.DecodeString(f.Content); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+		if !strings.Contains(string(agent), "route_reflectors: [10.255.255.1]") {
+			t.Errorf("%s agent.yml = %q", node, agent)
 		}
 	}
 }
@@ -344,7 +373,7 @@ segments:
   underlay: { switch: sw1, cidr: 10.1.0.0/24 }
 nodes:
   sw1: { role: switch, image: deb, cpus: 1, memory: 512, frr: frr/absent.conf }
-  hv1: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [underlay], release: 0.2.0rc002 }
+  hv1: { role: host, image: deb, cpus: 1, memory: 512, segments: [underlay] }
 `
 	if err := os.WriteFile(topo, []byte(doc), 0o600); err != nil {
 		t.Fatal(err)

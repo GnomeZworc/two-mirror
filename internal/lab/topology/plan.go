@@ -34,17 +34,19 @@ type SegmentPlan struct {
 }
 
 type NodePlan struct {
-	Name      string
-	Role      string
-	Image     string
-	CPUs      int
-	Memory    int
-	SSHPort   int
-	Secondary map[string][]netip.Prefix
-	Loopback  netip.Prefix
-	FRR       string
-	Release   string
-	Agent     string
+	Name          string
+	Role          string
+	Image         string
+	CPUs          int
+	Memory        int
+	SSHPort       int
+	Secondary     map[string][]netip.Prefix
+	Loopback      netip.Prefix
+	FRR           string
+	Provision     string
+	PostProvision string
+	Files         map[string]string
+	Services      []string
 }
 
 type Cable struct {
@@ -71,15 +73,17 @@ func Compute(t *Topology) (*Plan, error) {
 	p := &Plan{Name: t.Name, Images: append([]Image(nil), t.Images...)}
 	for i, n := range t.Nodes {
 		node := NodePlan{
-			Name:    n.Name,
-			Role:    n.Role,
-			Image:   n.Image,
-			CPUs:    n.CPUs,
-			Memory:  n.Memory,
-			SSHPort: SSHBasePort + i,
-			FRR:     n.FRR,
-			Release: n.Release,
-			Agent:   n.Agent,
+			Name:          n.Name,
+			Role:          n.Role,
+			Image:         n.Image,
+			CPUs:          n.CPUs,
+			Memory:        n.Memory,
+			SSHPort:       SSHBasePort + i,
+			FRR:           n.FRR,
+			Provision:     n.Provision,
+			PostProvision: n.PostProvision,
+			Files:         n.Files,
+			Services:      n.Services,
 		}
 		for segment, raws := range n.Secondary {
 			for _, raw := range raws {

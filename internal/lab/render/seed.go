@@ -4,12 +4,12 @@ import (
 	_ "embed"
 	"encoding/base64"
 	"fmt"
+	"sort"
 	"strings"
 
 	"go.yaml.in/yaml/v3"
 
 	"git.g3e.fr/syonad/two/internal/lab/topology"
-	"git.g3e.fr/syonad/two/scripts"
 )
 
 const (
@@ -27,11 +27,10 @@ const (
 	FRRRepo     = "https://deb.frrouting.org/frr"
 	FRRPackages = "frr frr-pythontools"
 
-	ProvisionScript = "/usr/local/sbin/lab-provision"
-	DeployScript    = "/usr/local/sbin/lab-deploy"
-	TwoScriptsDir   = "/opt/two/scripts"
-	TwoGitServer    = "https://git.g3e.fr/"
-	AgentConfig     = "/etc/two/agent.yml"
+	ProvisionScript   = "/usr/local/sbin/lab-provision"
+	NodeProvision     = "/usr/local/sbin/lab-node-provision"
+	NodePostProvision = "/usr/local/sbin/lab-node-post-provision"
+	FilesDir          = "/etc/lab/files"
 )
 
 //go:embed frrouting.gpg
@@ -115,16 +114,17 @@ func userData(p *topology.Plan, n topology.NodePlan, o Options) ([]byte, error) 
 		}
 		steps = append(steps, "systemctl daemon-reload", "systemctl enable --now lab-node.service")
 	}
-	if n.Agent != "" {
-		cfg.WriteFiles = append(cfg.WriteFiles, writeFile{Path: AgentConfig, Permissions: "0640", Content: o.Agent[n.Name]})
+	names := make([]string, 0, len(n.Files))
+	for name := range n.Files {
+		names = append(names, name)
 	}
-	if n.Role == topology.RoleHypervisor {
-		cfg.WriteFiles = append(cfg.WriteFiles,
-			writeFile{Path: TwoScriptsDir + "/deploy.sh", Permissions: "0755", Encoding: "b64", Content: base64.StdEncoding.EncodeToString(scripts.Deploy)},
-			writeFile{Path: TwoScriptsDir + "/bootstrap_kvm.sh", Permissions: "0755", Encoding: "b64", Content: base64.StdEncoding.EncodeToString(scripts.BootstrapKVM)},
-			writeFile{Path: DeployScript, Permissions: "0755", Content: deployScript(p, n)},
-		)
-		steps = append(steps, DeployScript)
+	sort.Strings(names)
+	for _, name := range names {
+		cfg.WriteFiles = append(cfg.WriteFiles, writeFile{Path: FilesDir + "/" + name, Permissions: "0644", Encoding: "b64", Content: base64.StdEncoding.EncodeToString(o.Files[n.Name][name])})
+	}
+	if n.Provision != "" {
+		cfg.WriteFiles = append(cfg.WriteFiles, writeFile{Path: NodeProvision, Permissions: "0755", Encoding: "b64", Content: base64.StdEncoding.EncodeToString([]byte(o.Provision[n.Name]))})
+		steps = append(steps, provisionEnv(p, n)+NodeProvision)
 	}
 	if n.FRR != "" {
 		cfg.WriteFiles = append(cfg.WriteFiles,
@@ -133,9 +133,10 @@ func userData(p *topology.Plan, n topology.NodePlan, o Options) ([]byte, error) 
 			writeFile{Path: FRRScript, Permissions: "0755", Content: frrScript(n)},
 		)
 		steps = append(steps, FRRScript)
-		if n.Role == topology.RoleHypervisor {
-			steps = append(steps, "systemctl restart agent.service")
-		}
+	}
+	if n.PostProvision != "" {
+		cfg.WriteFiles = append(cfg.WriteFiles, writeFile{Path: NodePostProvision, Permissions: "0755", Encoding: "b64", Content: base64.StdEncoding.EncodeToString([]byte(o.PostProvision[n.Name]))})
+		steps = append(steps, provisionEnv(p, n)+NodePostProvision)
 	}
 	if len(steps) > 0 {
 		cfg.WriteFiles = append(cfg.WriteFiles,
@@ -154,16 +155,16 @@ func retry(command string) string {
 	return "n=0\nuntil " + command + "; do\n    n=$((n + 1))\n    [ \"$n\" -lt 30 ] || exit 1\n    sleep 10\ndone\n"
 }
 
-func deployScript(p *topology.Plan, n topology.NodePlan) string {
-	uplink := nodeCables(p, n.Name)[0].NodeInterface
-	return "#!/bin/sh\nset -eu\n" +
-		retry("curl -fsS -o /dev/null "+TwoGitServer) +
-		"cd " + TwoScriptsDir + "\n" +
-		fmt.Sprintf("bash ./deploy.sh --noup_script -i -u %s -t %s\n", uplink, n.Release)
+func provisionEnv(p *topology.Plan, n topology.NodePlan) string {
+	uplink := ""
+	if cables := nodeCables(p, n.Name); len(cables) > 0 {
+		uplink = cables[0].NodeInterface
+	}
+	return fmt.Sprintf("LAB_NODE=%s LAB_UPLINK=%s LAB_FILES=%s ", n.Name, uplink, FilesDir)
 }
 
 func frrDaemons(n topology.NodePlan) []string {
-	if n.Role == topology.RoleHypervisor {
+	if n.Role == topology.RoleHost {
 		return []string{"bgpd"}
 	}
 	return []string{"bgpd", "bfdd"}

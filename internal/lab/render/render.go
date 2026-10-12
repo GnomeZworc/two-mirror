@@ -31,7 +31,9 @@ type Options struct {
 	RunDir         string
 	AuthorizedKeys []string
 	FRR            map[string]string
-	Agent          map[string]string
+	Provision      map[string]string
+	PostProvision  map[string]string
+	Files          map[string]map[string][]byte
 }
 
 type Node struct {
@@ -51,8 +53,16 @@ func Render(p *topology.Plan, o Options) ([]Node, error) {
 		if _, ok := o.FRR[n.Name]; n.FRR != "" && !ok {
 			return nil, fmt.Errorf("node %s: frr configuration %s was not read", n.Name, n.FRR)
 		}
-		if _, ok := o.Agent[n.Name]; n.Agent != "" && !ok {
-			return nil, fmt.Errorf("node %s: agent configuration %s was not read", n.Name, n.Agent)
+		if _, ok := o.Provision[n.Name]; n.Provision != "" && !ok {
+			return nil, fmt.Errorf("node %s: provision script %s was not read", n.Name, n.Provision)
+		}
+		if _, ok := o.PostProvision[n.Name]; n.PostProvision != "" && !ok {
+			return nil, fmt.Errorf("node %s: post_provision script %s was not read", n.Name, n.PostProvision)
+		}
+		for name, src := range n.Files {
+			if _, ok := o.Files[n.Name][name]; !ok {
+				return nil, fmt.Errorf("node %s: file %s (%s) was not read", n.Name, name, src)
+			}
 		}
 	}
 	var nodes []Node

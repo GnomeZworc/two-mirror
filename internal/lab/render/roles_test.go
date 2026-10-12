@@ -1,11 +1,9 @@
 package render
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -21,8 +19,8 @@ segments:
 nodes:
   sw1: { role: switch, image: deb, cpus: 2, memory: 1024, secondary: { underlay: [169.254.0.1/28] }, frr: sw1.conf }
   rr1: { role: rr, image: deb, cpus: 1, memory: 1024, segments: [underlay], secondary: { underlay: [169.254.0.3/28] }, loopback: 10.255.255.1/32, frr: rr1.conf }
-  hv1: { role: hypervisor, image: deb, cpus: 4, memory: 16384, segments: [underlay], frr: hv1.conf, release: 0.2.0rc002 }
-  hv2: { role: hypervisor, image: deb, cpus: 4, memory: 16384, segments: [underlay], release: 0.2.0rc002 }
+  hv1: { role: host, image: deb, cpus: 4, memory: 16384, segments: [underlay], frr: hv1.conf, provision: hv.sh, post_provision: hv-post.sh, files: { agent.yml: two.yml }, services: [agent.service] }
+  hv2: { role: host, image: deb, cpus: 4, memory: 16384, segments: [underlay] }
 `
 
 var frrConfigs = map[string]string{
@@ -31,9 +29,20 @@ var frrConfigs = map[string]string{
 	"hv1": "hostname hv1\nrouter bgp 64600\n",
 }
 
+func roleOptions() Options {
+	return Options{
+		RunDir:         "/srv/lab",
+		AuthorizedKeys: []string{labKey},
+		FRR:            frrConfigs,
+		Provision:      map[string]string{"hv1": "#!/bin/sh\necho provision\n"},
+		PostProvision:  map[string]string{"hv1": "#!/bin/sh\necho post\n"},
+		Files:          map[string]map[string][]byte{"hv1": {"agent.yml": []byte("dhcp:\n  backend: two\n")}},
+	}
+}
+
 func renderRoles(t *testing.T) map[string]Node {
 	t.Helper()
-	nodes, err := Render(plan(t, withRoles), Options{RunDir: "/srv/lab", AuthorizedKeys: []string{labKey}, FRR: frrConfigs})
+	nodes, err := Render(plan(t, withRoles), roleOptions())
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -145,10 +154,10 @@ func TestRoles_FRRKeyIsThePinnedRepositoryKey(t *testing.T) {
 
 func TestRoles_ProvisioningIsOneScriptThatStopsAtTheFirstFailure(t *testing.T) {
 	nodes := renderRoles(t)
+	env := "LAB_NODE=hv1 LAB_UPLINK=underlay LAB_FILES=/etc/lab/files "
 	for name, steps := range map[string]string{
 		"sw1": "systemctl daemon-reload\nsystemctl enable --now lab-switch.service\n/usr/local/sbin/lab-frr\n",
-		"hv1": "/usr/local/sbin/lab-deploy\n/usr/local/sbin/lab-frr\nsystemctl restart agent.service\n",
-		"hv2": "/usr/local/sbin/lab-deploy\n",
+		"hv1": env + "/usr/local/sbin/lab-node-provision\n/usr/local/sbin/lab-frr\n" + env + "/usr/local/sbin/lab-node-post-provision\n",
 	} {
 		cfg := user(t, nodeNamed(t, nodes, name))
 		if !reflect.DeepEqual(cfg.Runcmd, [][]string{{"/usr/local/sbin/lab-provision"}}) {
@@ -159,47 +168,34 @@ func TestRoles_ProvisioningIsOneScriptThatStopsAtTheFirstFailure(t *testing.T) {
 			t.Errorf("%s lab-provision (%s):\n%s", name, f.Permissions, f.Content)
 		}
 	}
+	if cfg := user(t, nodeNamed(t, nodes, "hv2")); cfg.Runcmd != nil {
+		t.Errorf("hv2 has nothing to provision, runcmd = %q", cfg.Runcmd)
+	}
 }
 
-func TestRoles_HypervisorDeploysTheReleaseThroughTheRepositoryScripts(t *testing.T) {
+func TestRoles_HostReceivesItsScriptsAndFiles(t *testing.T) {
 	cfg := user(t, nodeNamed(t, renderRoles(t), "hv1"))
-
-	f := fileAt(t, cfg, "/usr/local/sbin/lab-deploy")
-	want := `#!/bin/sh
-set -eu
-n=0
-until curl -fsS -o /dev/null https://git.g3e.fr/; do
-    n=$((n + 1))
-    [ "$n" -lt 30 ] || exit 1
-    sleep 10
-done
-cd /opt/two/scripts
-bash ./deploy.sh --noup_script -i -u underlay -t 0.2.0rc002
-`
-	if f.Content != want || f.Permissions != "0755" {
-		t.Errorf("lab-deploy (%s):\n%s\nwant:\n%s", f.Permissions, f.Content, want)
-	}
-
-	for path, source := range map[string]string{
-		"/opt/two/scripts/deploy.sh":        "../../../scripts/deploy.sh",
-		"/opt/two/scripts/bootstrap_kvm.sh": "../../../scripts/bootstrap_kvm.sh",
+	for path, want := range map[string]struct {
+		content     string
+		permissions string
+	}{
+		"/usr/local/sbin/lab-node-provision":      {"#!/bin/sh\necho provision\n", "0755"},
+		"/usr/local/sbin/lab-node-post-provision": {"#!/bin/sh\necho post\n", "0755"},
+		"/etc/lab/files/agent.yml":                {"dhcp:\n  backend: two\n", "0644"},
 	} {
 		f := fileAt(t, cfg, path)
 		got, err := base64.StdEncoding.DecodeString(f.Content)
 		if err != nil {
 			t.Fatal(err)
 		}
-		repo, err := os.ReadFile(source)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if f.Encoding != "b64" || f.Permissions != "0755" || !bytes.Equal(got, repo) {
-			t.Errorf("%s: encoding %q, permissions %q, identical to %s: %v", path, f.Encoding, f.Permissions, source, bytes.Equal(got, repo))
+		if f.Encoding != "b64" || f.Permissions != want.permissions || string(got) != want.content {
+			t.Errorf("%s: encoding %q, permissions %q, content %q", path, f.Encoding, f.Permissions, got)
 		}
 	}
 }
 
 func TestRoles_UplinkIsTheInterfaceCarryingTheDefaultRoute(t *testing.T) {
+	p := plan(t, twoSegments)
 	hv := nodeNamed(t, renderAll(t, twoSegments), "hv")
 	var withDefault []string
 	for name, e := range network(t, hv).Ethernets {
@@ -212,18 +208,32 @@ func TestRoles_UplinkIsTheInterfaceCarryingTheDefaultRoute(t *testing.T) {
 	if !reflect.DeepEqual(withDefault, []string{"red"}) {
 		t.Fatalf("default route on %v, want [red]", withDefault)
 	}
-	if got := fileAt(t, user(t, hv), "/usr/local/sbin/lab-deploy").Content; !strings.HasSuffix(got, "bash ./deploy.sh --noup_script -i -u red -t 0.2.0rc002\n") {
-		t.Errorf("lab-deploy:\n%s", got)
+	for _, n := range p.Nodes {
+		if n.Name == "hv" {
+			if got := provisionEnv(p, n); got != "LAB_NODE=hv LAB_UPLINK=red LAB_FILES=/etc/lab/files " {
+				t.Errorf("provision environment = %q", got)
+			}
+		}
 	}
 }
 
-func TestRoles_OnlyHypervisorsDeployTwo(t *testing.T) {
+func TestRoles_NodesWithoutProvisionReceiveNoProvisionFiles(t *testing.T) {
 	nodes := renderRoles(t)
-	for _, name := range []string{"sw1", "rr1"} {
+	for _, name := range []string{"sw1", "rr1", "hv2"} {
 		for _, f := range user(t, nodeNamed(t, nodes, name)).WriteFiles {
-			if strings.HasPrefix(f.Path, "/opt/two/") || f.Path == "/usr/local/sbin/lab-deploy" {
+			if strings.HasPrefix(f.Path, "/etc/lab/files/") || strings.HasPrefix(f.Path, "/usr/local/sbin/lab-node-") {
 				t.Errorf("%s receives %s", name, f.Path)
 			}
+		}
+	}
+}
+
+func TestRoles_FRRDaemons(t *testing.T) {
+	p := plan(t, withRoles)
+	want := map[string][]string{"sw1": {"bgpd", "bfdd"}, "rr1": {"bgpd", "bfdd"}, "hv1": {"bgpd"}}
+	for _, n := range p.Nodes {
+		if w, ok := want[n.Name]; ok && !reflect.DeepEqual(frrDaemons(n), w) {
+			t.Errorf("%s daemons = %v, want %v", n.Name, frrDaemons(n), w)
 		}
 	}
 }
@@ -246,7 +256,7 @@ func TestRoles_RefusesAnUnreadFRRConfig(t *testing.T) {
 
 func TestRoles_SwitchLoopbackIsCreatedByTheSwitchScript(t *testing.T) {
 	doc := strings.Replace(withRoles, "secondary: { underlay: [169.254.0.1/28] }, frr: sw1.conf", "secondary: { underlay: [169.254.0.1/28] }, loopback: 10.255.254.1/32, frr: sw1.conf", 1)
-	nodes, err := Render(plan(t, doc), Options{RunDir: "/srv/lab", AuthorizedKeys: []string{labKey}, FRR: frrConfigs})
+	nodes, err := Render(plan(t, doc), roleOptions())
 	if err != nil {
 		t.Fatalf("Render: %v", err)
 	}
@@ -263,36 +273,20 @@ func TestRoles_SwitchLoopbackIsCreatedByTheSwitchScript(t *testing.T) {
 	}
 }
 
-func TestRoles_HypervisorAgentConfigIsWrittenBeforeTheDeployment(t *testing.T) {
-	doc := strings.Replace(withRoles, "frr: hv1.conf, release: 0.2.0rc002 }", "frr: hv1.conf, release: 0.2.0rc002, agent: two.yml }", 1)
-	nodes, err := Render(plan(t, doc), Options{RunDir: "/srv/lab", AuthorizedKeys: []string{labKey}, FRR: frrConfigs, Agent: map[string]string{"hv1": "dhcp:\n  backend: two\n"}})
-	if err != nil {
-		t.Fatalf("Render: %v", err)
+func TestRoles_RefusesUnreadProvisionInputs(t *testing.T) {
+	cases := map[string]struct {
+		mutate func(*Options)
+		want   string
+	}{
+		"provision": {func(o *Options) { o.Provision = nil }, "node hv1: provision script hv.sh was not read"},
+		"post":      {func(o *Options) { o.PostProvision = nil }, "node hv1: post_provision script hv-post.sh was not read"},
+		"file":      {func(o *Options) { o.Files = nil }, "node hv1: file agent.yml (two.yml) was not read"},
 	}
-	var hv1, hv2 Node
-	for _, n := range nodes {
-		switch n.Name {
-		case "hv1":
-			hv1 = n
-		case "hv2":
-			hv2 = n
+	for name, c := range cases {
+		o := roleOptions()
+		c.mutate(&o)
+		if _, err := Render(plan(t, withRoles), o); err == nil || err.Error() != c.want {
+			t.Errorf("%s: error = %v, want %q", name, err, c.want)
 		}
-	}
-	f := fileAt(t, user(t, hv1), "/etc/two/agent.yml")
-	if f.Content != "dhcp:\n  backend: two\n" || f.Permissions != "0640" {
-		t.Errorf("agent.yml (%s) = %q", f.Permissions, f.Content)
-	}
-	for _, w := range user(t, hv2).WriteFiles {
-		if w.Path == "/etc/two/agent.yml" {
-			t.Error("hv2 receives an agent.yml it does not declare")
-		}
-	}
-}
-
-func TestRoles_RefusesAnUnreadAgentConfig(t *testing.T) {
-	doc := strings.Replace(withRoles, "frr: hv1.conf, release: 0.2.0rc002 }", "frr: hv1.conf, release: 0.2.0rc002, agent: two.yml }", 1)
-	_, err := Render(plan(t, doc), Options{RunDir: "/srv/lab", AuthorizedKeys: []string{labKey}, FRR: frrConfigs})
-	if err == nil || err.Error() != "node hv1: agent configuration two.yml was not read" {
-		t.Errorf("error = %v", err)
 	}
 }

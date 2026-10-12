@@ -127,9 +127,9 @@ nodes:
 	return p
 }
 
-const switchLast = `  rr1: { role: rr,         image: deb, cpus: 1, memory: 1024, segments: [underlay] }
-  hv1: { role: hypervisor, image: deb, cpus: 4, memory: 16384, segments: [underlay], release: 0.2.0rc002 }
-  sw1: { role: switch,     image: deb, cpus: 2, memory: 1024 }
+const switchLast = `  rr1: { role: rr,     image: deb, cpus: 1, memory: 1024, segments: [underlay] }
+  hv1: { role: host,   image: deb, cpus: 4, memory: 16384, segments: [underlay], services: [agent.service] }
+  sw1: { role: switch, image: deb, cpus: 2, memory: 1024 }
 `
 
 type fixture struct {
@@ -278,10 +278,10 @@ func TestStatus(t *testing.T) {
 	if w < 3 {
 		w = 3
 	}
-	want := fmt.Sprintf("node  role        state    %-*s  ssh\n", w, "pid") +
-		fmt.Sprintf("rr1   rr          stopped  %-*s  127.0.0.1:2200\n", w, "-") +
-		fmt.Sprintf("hv1   hypervisor  running  %-*s  127.0.0.1:2201\n", w, pid) +
-		fmt.Sprintf("sw1   switch      stopped  %-*s  127.0.0.1:2202\n", w, "-")
+	want := fmt.Sprintf("node  role    state    %-*s  ssh\n", w, "pid") +
+		fmt.Sprintf("rr1   rr      stopped  %-*s  127.0.0.1:2200\n", w, "-") +
+		fmt.Sprintf("hv1   host    running  %-*s  127.0.0.1:2201\n", w, pid) +
+		fmt.Sprintf("sw1   switch  stopped  %-*s  127.0.0.1:2202\n", w, "-")
 	if out.String() != want {
 		t.Errorf("status:\n%s\nwant:\n%s", out.String(), want)
 	}

@@ -55,8 +55,8 @@ segments:
 nodes:
   sw1: { role: switch,     image: deb, cpus: 2, memory: 1024 }
   rr1: { role: rr,         image: deb, cpus: 1, memory: 1024, segments: [underlay] }
-  hv1: { role: hypervisor, image: deb, cpus: 4, memory: 16384, segments: [underlay], release: 0.2.0rc002 }
-  hv2: { role: hypervisor, image: deb, cpus: 4, memory: 16384, segments: [underlay], release: 0.2.0rc002 }
+  hv1: { role: host, image: deb, cpus: 4, memory: 16384, segments: [underlay] }
+  hv2: { role: host, image: deb, cpus: 4, memory: 16384, segments: [underlay] }
 `
 
 func TestCompute_TwoHypervisorsPlan(t *testing.T) {
@@ -102,7 +102,7 @@ func TestCompute_TwoHypervisorsPlan(t *testing.T) {
 			t.Errorf("%s ssh port = %d, want %d", name, got, port)
 		}
 	}
-	if hv := nodeOf(t, p, "hv1"); hv.Role != "hypervisor" || hv.CPUs != 4 || hv.Memory != 16384 || hv.Image != "deb" {
+	if hv := nodeOf(t, p, "hv1"); hv.Role != "host" || hv.CPUs != 4 || hv.Memory != 16384 || hv.Image != "deb" {
 		t.Errorf("hv1 = %+v", hv)
 	}
 }
@@ -165,7 +165,7 @@ segments:
   blue: { switch: sw, cidr: 10.2.0.0/24, mtu: 1500 }
 nodes:
   sw: { role: switch, image: deb, cpus: 1, memory: 512 }
-  hv: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [blue, red], release: 0.2.0rc002 }
+  hv: { role: host, image: deb, cpus: 1, memory: 512, segments: [blue, red] }
   rr: { role: rr, image: deb, cpus: 1, memory: 512, segments: [red] }
 `)
 	got := make([]string, 0, len(p.Cables))
@@ -193,7 +193,7 @@ nodes:
   sw: { role: switch, image: deb, cpus: 1, memory: 512 }
   n1: { role: rr, image: deb, cpus: 1, memory: 512, segments: [a, b] }
   n2: { role: rr, image: deb, cpus: 1, memory: 512, segments: [a, b] }
-  n3: { role: hypervisor, image: deb, cpus: 1, memory: 512, segments: [b, a], release: 0.2.0rc002 }
+  n3: { role: host, image: deb, cpus: 1, memory: 512, segments: [b, a] }
 `)
 	macs := map[string]bool{}
 	ports := map[int]bool{}
@@ -308,16 +308,11 @@ func TestWrite_TwoHypervisorsPlan(t *testing.T) {
 	want := `lab lab-test: nodes 4, segments 1, cables 3
 
 nodes
-  name  role        image  cpus  memory     ssh
-  sw1   switch      deb    2     1024 MiB   127.0.0.1:2200
-  rr1   rr          deb    1     1024 MiB   127.0.0.1:2201
-  hv1   hypervisor  deb    4     16384 MiB  127.0.0.1:2202
-  hv2   hypervisor  deb    4     16384 MiB  127.0.0.1:2203
-
-roles
-  name  loopback  secondary  frr  release     agent
-  hv1   -         -          -    0.2.0rc002  -
-  hv2   -         -          -    0.2.0rc002  -
+  name  role    image  cpus  memory     ssh
+  sw1   switch  deb    2     1024 MiB   127.0.0.1:2200
+  rr1   rr      deb    1     1024 MiB   127.0.0.1:2201
+  hv1   host    deb    4     16384 MiB  127.0.0.1:2202
+  hv2   host    deb    4     16384 MiB  127.0.0.1:2203
 
 segment underlay: 10.250.0.0/24, mtu 9000, switch sw1, bridge br-underlay, gateway 10.250.0.1
   node  interface  address        mac                udp         switch port  mac                udp

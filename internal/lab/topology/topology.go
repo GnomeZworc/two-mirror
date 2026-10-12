@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	RoleSwitch     = "switch"
-	RoleRR         = "rr"
-	RoleHypervisor = "hypervisor"
+	RoleSwitch = "switch"
+	RoleRR     = "rr"
+	RoleHost   = "host"
 
 	DefaultMTU = 9000
 )
@@ -39,18 +39,20 @@ type Segment struct {
 }
 
 type Node struct {
-	Name      string
-	Role      string
-	Image     string
-	CPUs      int
-	Memory    int
-	Segments  []string
-	Addresses map[string]string
-	Secondary map[string][]string
-	Loopback  string
-	FRR       string
-	Release   string
-	Agent     string
+	Name          string
+	Role          string
+	Image         string
+	CPUs          int
+	Memory        int
+	Segments      []string
+	Addresses     map[string]string
+	Secondary     map[string][]string
+	Loopback      string
+	FRR           string
+	Provision     string
+	PostProvision string
+	Files         map[string]string
+	Services      []string
 }
 
 type fileImage struct {
@@ -65,17 +67,19 @@ type fileSegment struct {
 }
 
 type fileNode struct {
-	Role      string              `yaml:"role"`
-	Image     string              `yaml:"image"`
-	CPUs      int                 `yaml:"cpus"`
-	Memory    int                 `yaml:"memory"`
-	Segments  []string            `yaml:"segments"`
-	Addresses map[string]string   `yaml:"addresses"`
-	Secondary map[string][]string `yaml:"secondary"`
-	Loopback  string              `yaml:"loopback"`
-	FRR       string              `yaml:"frr"`
-	Release   string              `yaml:"release"`
-	Agent     string              `yaml:"agent"`
+	Role          string              `yaml:"role"`
+	Image         string              `yaml:"image"`
+	CPUs          int                 `yaml:"cpus"`
+	Memory        int                 `yaml:"memory"`
+	Segments      []string            `yaml:"segments"`
+	Addresses     map[string]string   `yaml:"addresses"`
+	Secondary     map[string][]string `yaml:"secondary"`
+	Loopback      string              `yaml:"loopback"`
+	FRR           string              `yaml:"frr"`
+	Provision     string              `yaml:"provision"`
+	PostProvision string              `yaml:"post_provision"`
+	Files         map[string]string   `yaml:"files"`
+	Services      []string            `yaml:"services"`
 }
 
 type file struct {
@@ -94,15 +98,23 @@ func Load(path string) (*Topology, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
+	dir := filepath.Dir(path)
 	for i, n := range t.Nodes {
-		if n.FRR != "" && !filepath.IsAbs(n.FRR) {
-			t.Nodes[i].FRR = filepath.Join(filepath.Dir(path), n.FRR)
-		}
-		if n.Agent != "" && !filepath.IsAbs(n.Agent) {
-			t.Nodes[i].Agent = filepath.Join(filepath.Dir(path), n.Agent)
+		t.Nodes[i].FRR = relativeTo(dir, n.FRR)
+		t.Nodes[i].Provision = relativeTo(dir, n.Provision)
+		t.Nodes[i].PostProvision = relativeTo(dir, n.PostProvision)
+		for name, src := range n.Files {
+			t.Nodes[i].Files[name] = relativeTo(dir, src)
 		}
 	}
 	return t, nil
+}
+
+func relativeTo(dir, path string) string {
+	if path == "" || filepath.IsAbs(path) {
+		return path
+	}
+	return filepath.Join(dir, path)
 }
 
 func Parse(data []byte) (*Topology, error) {
@@ -138,18 +150,20 @@ func Parse(data []byte) (*Topology, error) {
 	for _, name := range order["nodes"] {
 		n := f.Nodes[name]
 		t.Nodes = append(t.Nodes, Node{
-			Name:      name,
-			Role:      n.Role,
-			Image:     n.Image,
-			CPUs:      n.CPUs,
-			Memory:    n.Memory,
-			Segments:  n.Segments,
-			Addresses: n.Addresses,
-			Secondary: n.Secondary,
-			Loopback:  n.Loopback,
-			FRR:       n.FRR,
-			Release:   n.Release,
-			Agent:     n.Agent,
+			Name:          name,
+			Role:          n.Role,
+			Image:         n.Image,
+			CPUs:          n.CPUs,
+			Memory:        n.Memory,
+			Segments:      n.Segments,
+			Addresses:     n.Addresses,
+			Secondary:     n.Secondary,
+			Loopback:      n.Loopback,
+			FRR:           n.FRR,
+			Provision:     n.Provision,
+			PostProvision: n.PostProvision,
+			Files:         n.Files,
+			Services:      n.Services,
 		})
 	}
 	return t, nil
