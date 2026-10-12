@@ -26,6 +26,9 @@ func qemuArgs(p *topology.Plan, n topology.NodePlan, index int, dir string) []st
 		"-drive", "file=" + filepath.Join(dir, DiskFile) + ",if=virtio,format=qcow2",
 		"-drive", "file=" + filepath.Join(dir, SeedFile) + ",media=cdrom,readonly=on",
 	}
+	if len(n.Files) > 0 {
+		args = append(args, "-drive", "file="+filepath.Join(dir, FilesISO)+",media=cdrom,readonly=on")
+	}
 
 	restrict := "on"
 	if n.Role == topology.RoleSwitch {

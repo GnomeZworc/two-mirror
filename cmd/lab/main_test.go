@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/base64"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -10,8 +9,6 @@ import (
 	"strings"
 	"syscall"
 	"testing"
-
-	"go.yaml.in/yaml/v3"
 )
 
 func runLab(args ...string) (int, string, string) {
@@ -336,25 +333,14 @@ func TestRun_RenderShipsTheExampleFRRConfigs(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		var cfg struct {
-			Files []struct {
-				Path    string `yaml:"path"`
-				Content string `yaml:"content"`
-			} `yaml:"write_files"`
+		if !strings.Contains(string(data), "mount -o ro LABEL=LABFILES /run/lab-files") {
+			t.Errorf("%s user-data does not mount its files", node)
 		}
-		if err := yaml.Unmarshal(data, &cfg); err != nil {
-			t.Fatal(err)
-		}
-		var agent []byte
-		for _, f := range cfg.Files {
-			if f.Path == "/etc/lab/files/agent.yml" {
-				if agent, err = base64.StdEncoding.DecodeString(f.Content); err != nil {
-					t.Fatal(err)
-				}
-			}
-		}
-		if !strings.Contains(string(agent), "route_reflectors: [10.255.255.1]") {
-			t.Errorf("%s agent.yml = %q", node, agent)
+	}
+	for _, agent := range []string{"two.yml", "bgp.yml"} {
+		data, err := os.ReadFile(filepath.Join("..", "..", "test", "e2e", "topologies", "agent", agent))
+		if err != nil || !strings.Contains(string(data), "route_reflectors: [10.255.255.1]") {
+			t.Errorf("agent/%s = %q, %v", agent, data, err)
 		}
 	}
 }

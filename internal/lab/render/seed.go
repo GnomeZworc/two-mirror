@@ -4,7 +4,6 @@ import (
 	_ "embed"
 	"encoding/base64"
 	"fmt"
-	"sort"
 	"strings"
 
 	"go.yaml.in/yaml/v3"
@@ -31,6 +30,7 @@ const (
 	NodeProvision     = "/usr/local/sbin/lab-node-provision"
 	NodePostProvision = "/usr/local/sbin/lab-node-post-provision"
 	FilesDir          = "/etc/lab/files"
+	FilesMount        = "/run/lab-files"
 )
 
 //go:embed frrouting.gpg
@@ -114,13 +114,13 @@ func userData(p *topology.Plan, n topology.NodePlan, o Options) ([]byte, error) 
 		}
 		steps = append(steps, "systemctl daemon-reload", "systemctl enable --now lab-node.service")
 	}
-	names := make([]string, 0, len(n.Files))
-	for name := range n.Files {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	for _, name := range names {
-		cfg.WriteFiles = append(cfg.WriteFiles, writeFile{Path: FilesDir + "/" + name, Permissions: "0644", Encoding: "b64", Content: base64.StdEncoding.EncodeToString(o.Files[n.Name][name])})
+	if len(n.Files) > 0 {
+		steps = append(steps,
+			"mkdir -p "+FilesDir+" "+FilesMount,
+			"mount -o ro LABEL="+FilesLabel+" "+FilesMount,
+			"cp -R "+FilesMount+"/. "+FilesDir+"/",
+			"umount "+FilesMount,
+		)
 	}
 	if n.Provision != "" {
 		cfg.WriteFiles = append(cfg.WriteFiles, writeFile{Path: NodeProvision, Permissions: "0755", Encoding: "b64", Content: base64.StdEncoding.EncodeToString([]byte(o.Provision[n.Name]))})

@@ -20,6 +20,8 @@ const (
 
 	DiskFile    = "disk.qcow2"
 	SeedFile    = "seed.iso"
+	FilesISO    = "files.iso"
+	FilesLabel  = "LABFILES"
 	ConsoleFile = "console.log"
 	QMPFile     = "qmp.sock"
 	PIDFile     = "qemu.pid"
@@ -33,12 +35,12 @@ type Options struct {
 	FRR            map[string]string
 	Provision      map[string]string
 	PostProvision  map[string]string
-	Files          map[string]map[string][]byte
 }
 
 type Node struct {
 	Name          string
 	Dir           string
+	Files         map[string]string
 	QEMU          []string
 	MetaData      []byte
 	UserData      []byte
@@ -59,11 +61,6 @@ func Render(p *topology.Plan, o Options) ([]Node, error) {
 		if _, ok := o.PostProvision[n.Name]; n.PostProvision != "" && !ok {
 			return nil, fmt.Errorf("node %s: post_provision script %s was not read", n.Name, n.PostProvision)
 		}
-		for name, src := range n.Files {
-			if _, ok := o.Files[n.Name][name]; !ok {
-				return nil, fmt.Errorf("node %s: file %s (%s) was not read", n.Name, name, src)
-			}
-		}
 	}
 	var nodes []Node
 	for index, n := range p.Nodes {
@@ -83,6 +80,7 @@ func Render(p *topology.Plan, o Options) ([]Node, error) {
 		nodes = append(nodes, Node{
 			Name:          n.Name,
 			Dir:           dir,
+			Files:         n.Files,
 			QEMU:          qemuArgs(p, n, index, dir),
 			MetaData:      meta,
 			UserData:      user,

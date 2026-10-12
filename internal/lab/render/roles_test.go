@@ -36,7 +36,6 @@ func roleOptions() Options {
 		FRR:            frrConfigs,
 		Provision:      map[string]string{"hv1": "#!/bin/sh\necho provision\n"},
 		PostProvision:  map[string]string{"hv1": "#!/bin/sh\necho post\n"},
-		Files:          map[string]map[string][]byte{"hv1": {"agent.yml": []byte("dhcp:\n  backend: two\n")}},
 	}
 }
 
@@ -155,9 +154,10 @@ func TestRoles_FRRKeyIsThePinnedRepositoryKey(t *testing.T) {
 func TestRoles_ProvisioningIsOneScriptThatStopsAtTheFirstFailure(t *testing.T) {
 	nodes := renderRoles(t)
 	env := "LAB_NODE=hv1 LAB_UPLINK=underlay LAB_FILES=/etc/lab/files "
+	files := "mkdir -p /etc/lab/files /run/lab-files\nmount -o ro LABEL=LABFILES /run/lab-files\ncp -R /run/lab-files/. /etc/lab/files/\numount /run/lab-files\n"
 	for name, steps := range map[string]string{
 		"sw1": "systemctl daemon-reload\nsystemctl enable --now lab-switch.service\n/usr/local/sbin/lab-frr\n",
-		"hv1": env + "/usr/local/sbin/lab-node-provision\n/usr/local/sbin/lab-frr\n" + env + "/usr/local/sbin/lab-node-post-provision\n",
+		"hv1": files + env + "/usr/local/sbin/lab-node-provision\n/usr/local/sbin/lab-frr\n" + env + "/usr/local/sbin/lab-node-post-provision\n",
 	} {
 		cfg := user(t, nodeNamed(t, nodes, name))
 		if !reflect.DeepEqual(cfg.Runcmd, [][]string{{"/usr/local/sbin/lab-provision"}}) {
@@ -173,7 +173,29 @@ func TestRoles_ProvisioningIsOneScriptThatStopsAtTheFirstFailure(t *testing.T) {
 	}
 }
 
-func TestRoles_HostReceivesItsScriptsAndFiles(t *testing.T) {
+func TestRoles_FilesTravelOnASecondCDROM(t *testing.T) {
+	nodes := renderRoles(t)
+	hv1 := nodeNamed(t, nodes, "hv1")
+	if !reflect.DeepEqual(hv1.Files, map[string]string{"agent.yml": "two.yml"}) {
+		t.Errorf("hv1 files = %v", hv1.Files)
+	}
+	drive := "file=/srv/lab/hv1/files.iso,media=cdrom,readonly=on"
+	if !strings.Contains(strings.Join(hv1.QEMU, " "), "-drive "+drive) {
+		t.Errorf("hv1 qemu lacks %s:\n%s", drive, strings.Join(hv1.QEMU, "\n"))
+	}
+	for _, f := range user(t, hv1).WriteFiles {
+		if strings.HasPrefix(f.Path, "/etc/lab/files/") {
+			t.Errorf("hv1 user-data carries %s, files belong to the ISO", f.Path)
+		}
+	}
+	for _, name := range []string{"sw1", "rr1", "hv2"} {
+		if n := nodeNamed(t, nodes, name); strings.Contains(strings.Join(n.QEMU, " "), "files.iso") || n.Files != nil {
+			t.Errorf("%s gets a files ISO", name)
+		}
+	}
+}
+
+func TestRoles_HostReceivesItsScripts(t *testing.T) {
 	cfg := user(t, nodeNamed(t, renderRoles(t), "hv1"))
 	for path, want := range map[string]struct {
 		content     string
@@ -181,7 +203,6 @@ func TestRoles_HostReceivesItsScriptsAndFiles(t *testing.T) {
 	}{
 		"/usr/local/sbin/lab-node-provision":      {"#!/bin/sh\necho provision\n", "0755"},
 		"/usr/local/sbin/lab-node-post-provision": {"#!/bin/sh\necho post\n", "0755"},
-		"/etc/lab/files/agent.yml":                {"dhcp:\n  backend: two\n", "0644"},
 	} {
 		f := fileAt(t, cfg, path)
 		got, err := base64.StdEncoding.DecodeString(f.Content)
@@ -280,7 +301,6 @@ func TestRoles_RefusesUnreadProvisionInputs(t *testing.T) {
 	}{
 		"provision": {func(o *Options) { o.Provision = nil }, "node hv1: provision script hv.sh was not read"},
 		"post":      {func(o *Options) { o.PostProvision = nil }, "node hv1: post_provision script hv-post.sh was not read"},
-		"file":      {func(o *Options) { o.Files = nil }, "node hv1: file agent.yml (two.yml) was not read"},
 	}
 	for name, c := range cases {
 		o := roleOptions()

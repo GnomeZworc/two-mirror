@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"git.g3e.fr/syonad/two/internal/lab/render"
@@ -99,17 +100,11 @@ func ReadInputs(p *topology.Plan, o *render.Options) error {
 	if o.PostProvision, err = readNodeFiles(p, func(n topology.NodePlan) string { return n.PostProvision }); err != nil {
 		return err
 	}
-	o.Files = map[string]map[string][]byte{}
 	for _, n := range p.Nodes {
 		for name, src := range n.Files {
-			data, err := os.ReadFile(src)
-			if err != nil {
+			if _, err := os.Stat(src); err != nil {
 				return fmt.Errorf("node %s: file %s: %w", n.Name, name, err)
 			}
-			if o.Files[n.Name] == nil {
-				o.Files[n.Name] = map[string][]byte{}
-			}
-			o.Files[n.Name][name] = data
 		}
 	}
 	return nil
@@ -183,6 +178,21 @@ func Stage(ctx context.Context, r Runner, n render.Node, base string) error {
 	args := []string{"-quiet", "-output", seed, "-volid", SeedLabel, "-joliet", "-rock"}
 	for _, f := range SeedFiles {
 		args = append(args, filepath.Join(n.Dir, f))
+	}
+	if err := r.Run(ctx, "genisoimage", args...); err != nil {
+		return err
+	}
+	if len(n.Files) == 0 {
+		return nil
+	}
+	names := make([]string, 0, len(n.Files))
+	for name := range n.Files {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	args = []string{"-quiet", "-output", filepath.Join(n.Dir, render.FilesISO), "-volid", render.FilesLabel, "-joliet", "-rock", "-graft-points"}
+	for _, name := range names {
+		args = append(args, name+"="+n.Files[name])
 	}
 	return r.Run(ctx, "genisoimage", args...)
 }

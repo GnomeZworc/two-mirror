@@ -280,6 +280,31 @@ func TestEnsureKey_ReportsAFailedGeneration(t *testing.T) {
 	}
 }
 
+func TestStage_BurnsTheNodeFilesIntoTheirOwnISO(t *testing.T) {
+	runner := &fakeRunner{}
+	dir := t.TempDir()
+	n := render.Node{Name: "hv1", Dir: dir, Files: map[string]string{"bin": "/src/bin", "agent.yml": "/src/two.yml"}}
+	if err := Stage(context.Background(), runner, n, "/cache/deb.qcow2"); err != nil {
+		t.Fatalf("Stage: %v", err)
+	}
+	isos := runner.commands("genisoimage")
+	want := []string{"genisoimage", "-quiet", "-output", filepath.Join(dir, "files.iso"), "-volid", "LABFILES", "-joliet", "-rock", "-graft-points",
+		"agent.yml=/src/two.yml", "bin=/src/bin"}
+	if len(isos) != 2 || !reflect.DeepEqual(isos[1], want) {
+		t.Errorf("genisoimage calls:\n%q\nwant second:\n%q", isos, want)
+	}
+}
+
+func TestStage_NoFilesNoFilesISO(t *testing.T) {
+	runner := &fakeRunner{}
+	if err := Stage(context.Background(), runner, render.Node{Name: "rr1", Dir: t.TempDir()}, "/cache/deb.qcow2"); err != nil {
+		t.Fatalf("Stage: %v", err)
+	}
+	if n := len(runner.commands("genisoimage")); n != 1 {
+		t.Errorf("genisoimage ran %d times, want only the seed", n)
+	}
+}
+
 func TestStage_RefusesARelativeBaseImage(t *testing.T) {
 	runner := &fakeRunner{}
 	err := Stage(context.Background(), runner, render.Node{Name: "hv1", Dir: t.TempDir()}, "debian.qcow2")
@@ -387,7 +412,7 @@ func TestPrepare_PutsTheFRRConfigIntoTheSeed(t *testing.T) {
 	t.Errorf("hv1 user-data has no /etc/lab/frr.conf:\n%s", data)
 }
 
-func TestReadInputs_ReadsTheProvisionScriptsAndFiles(t *testing.T) {
+func TestReadInputs_ReadsTheScriptsAndChecksTheFiles(t *testing.T) {
 	dir := t.TempDir()
 	write := func(name, content string) string {
 		path := filepath.Join(dir, name)
@@ -402,6 +427,11 @@ func TestReadInputs_ReadsTheProvisionScriptsAndFiles(t *testing.T) {
 	p.Nodes[2].PostProvision = write("hv-post.sh", "#!/bin/sh\necho post\n")
 	p.Nodes[2].Files = map[string]string{"agent.yml": write("two.yml", "dhcp:\n  backend: two\n")}
 
+	if err := os.Mkdir(filepath.Join(dir, "bin"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	p.Nodes[2].Files["bin"] = filepath.Join(dir, "bin")
+
 	var o render.Options
 	if err := ReadInputs(p, &o); err != nil {
 		t.Fatal(err)
@@ -411,9 +441,6 @@ func TestReadInputs_ReadsTheProvisionScriptsAndFiles(t *testing.T) {
 	}
 	if !reflect.DeepEqual(o.PostProvision, map[string]string{"hv1": "#!/bin/sh\necho post\n"}) {
 		t.Errorf("post_provision = %q", o.PostProvision)
-	}
-	if !reflect.DeepEqual(o.Files, map[string]map[string][]byte{"hv1": {"agent.yml": []byte("dhcp:\n  backend: two\n")}}) {
-		t.Errorf("files = %q", o.Files)
 	}
 
 	p.Nodes[3].Files = map[string]string{"agent.yml": filepath.Join(dir, "absent.yml")}

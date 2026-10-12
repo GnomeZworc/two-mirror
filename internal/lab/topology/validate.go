@@ -214,6 +214,8 @@ func validateExtras(n Node, segments map[string]Segment, add func(string, ...any
 			add("node %s: file name %q must match %s", n.Name, name, filePattern)
 		case n.Files[name] == "":
 			add("node %s: file %s has no source", n.Name, name)
+		case strings.Contains(n.Files[name], "="):
+			add("node %s: file %s: source %q must not contain '='", n.Name, name, n.Files[name])
 		}
 	}
 	seenUnits := map[string]bool{}

@@ -250,8 +250,11 @@ Ce que le fichier déclare :
    * ``provision`` — le chemin d'un script, relatif au fichier de topologie, exécuté au premier
      démarrage **avant** FRR ;
    * ``post_provision`` — un second script, exécuté **après** FRR ;
-   * ``files`` — des fichiers déposés dans ``/etc/lab/files/<nom>`` avant les scripts, sous la
-     forme ``{<nom>: <chemin>}`` (``files: {agent.yml: agent/two.yml}``) ;
+   * ``files`` — des fichiers **ou répertoires** déposés dans ``/etc/lab/files/<nom>`` avant les
+     scripts, sous la forme ``{<nom>: <chemin>}`` (``files: {agent.yml: agent/two.yml, bin: bin}``).
+     Ils voyagent dans un ``files.iso`` propre au nœud (volume ``LABFILES``), attaché comme second
+     lecteur et recopié au premier démarrage : la taille n'est pas limitée par cloud-init, et un
+     binaire de plusieurs dizaines de Mio passe ;
    * ``services`` — les unités systemd que ``lab up`` vérifie actives sur le nœud.
 
    Les scripts reçoivent ``LAB_NODE`` (nom du nœud), ``LAB_UPLINK`` (interface de son premier
@@ -386,6 +389,20 @@ réponde, à travers le switch. Les deux fichiers ``agent/`` donnent à l'agent 
 (AS 64600, route reflector ``10.255.255.1``) et un watchdog toutes les 10 s ;
 ``agent/two.yml`` met en plus hv1 sur le serveur DHCP intégré (``dhcp.backend: two``),
 ``agent/bgp.yml`` laisse les autres sur dnsmasq.
+
+**Tester l'arbre courant plutôt que la release.** ``test/e2e/build.sh`` compile ``agent``,
+``dhcp`` et ``metadata`` pour linux/amd64 dans ``test/e2e/topologies/bin/`` (ignoré par git),
+que les hyperviseurs reçoivent par ``files: {bin: bin}``. Après ``deploy.sh``,
+``hypervisor.sh`` installe chaque binaire présent dans ``/opt/two/local/bin/`` et y fait pointer
+``/opt/two/bin/<nom>`` ; le reste (units, scripts) vient de la release. ``build.sh --clean`` vide
+le répertoire : le lab suivant teste la release seule.
+
+.. code-block:: text
+
+   test/e2e/build.sh                                   # binaires de l'arbre courant
+   scripts/lab-host.sh push test/e2e/topologies/evpn-3hv.yml
+   scripts/lab-host.sh ssh './lab up topology/evpn-3hv.yml'
+   test/e2e/build.sh --clean                           # retour à la release seule
 
 FRR est installé **après** la provision : il démarre sur le réseau final. Démarré
 avant la migration, zebra peut perdre la route par défaut quand elle passe de l'uplink à

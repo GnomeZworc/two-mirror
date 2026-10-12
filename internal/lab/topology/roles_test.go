@@ -186,6 +186,10 @@ func TestValidate_ProvisionRejections(t *testing.T) {
 			`hv: { role: host, image: deb, cpus: 1, memory: 512, segments: [red], files: { agent.yml: "" } }`,
 			"node hv: file agent.yml has no source",
 		},
+		"file source with an equals sign": {
+			`hv: { role: host, image: deb, cpus: 1, memory: 512, segments: [red], files: { bin: "a=b" } }`,
+			`node hv: file bin: source "a=b" must not contain '='`,
+		},
 		"service with shell characters": {
 			`hv: { role: host, image: deb, cpus: 1, memory: 512, segments: [red], services: ["agent.service; reboot"] }`,
 			`node hv: service "agent.service; reboot" must match`,
