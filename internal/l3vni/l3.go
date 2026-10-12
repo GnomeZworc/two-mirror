@@ -1,6 +1,7 @@
 package l3vni
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -29,8 +30,11 @@ type l3VPC struct {
 
 func loadL3(db *badger.DB, name, id string) (l3VPC, bool, error) {
 	raw, err := kv.GetFromDB(db, "vpc/"+name+"/l3vni")
-	if err != nil {
+	if errors.Is(err, badger.ErrKeyNotFound) {
 		return l3VPC{}, false, nil
+	}
+	if err != nil {
+		return l3VPC{}, false, fmt.Errorf("vpc %q: reading l3vni: %w", name, err)
 	}
 	vni, err := strconv.ParseUint(raw, 10, 32)
 	if err != nil {
