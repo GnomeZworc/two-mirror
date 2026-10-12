@@ -220,11 +220,11 @@ func TestDeleteL3RequiresTheBGPSection(t *testing.T) {
 }
 
 func TestRouterMAC(t *testing.T) {
-	mac, err := routerMAC(net.ParseIP("192.168.14.11"))
+	mac, err := RouterMAC(net.ParseIP("192.168.14.11"))
 	if err != nil || mac.String() != "02:02:c0:a8:0e:0b" {
-		t.Errorf("routerMAC = %v, %v", mac, err)
+		t.Errorf("RouterMAC = %v, %v", mac, err)
 	}
-	if _, err := routerMAC(net.ParseIP("fd00::1")); err == nil {
+	if _, err := RouterMAC(net.ParseIP("fd00::1")); err == nil {
 		t.Error("VTEP IPv6 accepté")
 	}
 }

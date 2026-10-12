@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"net"
 	"strings"
-)
 
-const maxVNI = 1<<24 - 1
+	"git.g3e.fr/syonad/two/internal/netif"
+)
 
 type Base struct {
 	ASN             uint32
@@ -116,7 +116,7 @@ func (v VRF) validate() error {
 	if err := v.validateName(); err != nil {
 		return err
 	}
-	if v.L3VNI == 0 || v.L3VNI > maxVNI {
+	if v.L3VNI == 0 || v.L3VNI > netif.MaxVNI {
 		return fmt.Errorf("frr: l3vni %d does not fit in 24 bits", v.L3VNI)
 	}
 	if v.VTEP.To4() == nil {

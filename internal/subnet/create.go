@@ -80,7 +80,7 @@ func createSubnet(db *badger.DB, subnetName string, d subnetData, backend dhcpba
 		if err != nil {
 			return fmt.Errorf("vtep of %s: %w", d.localIface, err)
 		}
-		if gatewayMAC, err = hostGatewayMAC(vtep); err != nil {
+		if gatewayMAC, err = netif.HostMAC(netif.RoleHostGateway, vtep); err != nil {
 			return err
 		}
 	}
