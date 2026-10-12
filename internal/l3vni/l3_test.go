@@ -173,16 +173,16 @@ func TestCreateL3StopsAtTheFirstFailure(t *testing.T) {
 
 func TestDeleteL3WithdrawsFRRThenTheKernelThenTheVRF(t *testing.T) {
 	f := &fakeHost{}
-	if err := deleteL3(f, bgpConfig(), labL3(t)); err != nil {
+	if err := deleteL3(f, labL3(t)); err != nil {
 		t.Fatal(err)
 	}
 	want := []string{
-		"frr withdraw asn=64600 id=s7 vni=0",
+		"frr withdraw asn=0 id=s7 vni=0",
 		"del l3-s7-o",
 		"del vxl3-s7",
 		"del brl3-s7",
 		"del vrf-s7",
-		"frr remove asn=64600 id=s7 vni=0",
+		"frr remove asn=0 id=s7 vni=0",
 	}
 	if !reflect.DeepEqual(f.calls, want) {
 		t.Errorf("appels :\n%s\nattendu :\n%s", strings.Join(f.calls, "\n"), strings.Join(want, "\n"))
@@ -191,7 +191,7 @@ func TestDeleteL3WithdrawsFRRThenTheKernelThenTheVRF(t *testing.T) {
 
 func TestDeleteL3KeepsTheKernelWhenFRRRefusesTheWithdrawal(t *testing.T) {
 	f := &fakeHost{fail: map[string]error{"frr withdraw": errors.New("% Please unconfigure l3vni 2700")}}
-	err := deleteL3(f, bgpConfig(), labL3(t))
+	err := deleteL3(f, labL3(t))
 	if err == nil || !strings.Contains(err.Error(), "withdraw frr") {
 		t.Errorf("erreur %v", err)
 	}
@@ -202,7 +202,7 @@ func TestDeleteL3KeepsTheKernelWhenFRRRefusesTheWithdrawal(t *testing.T) {
 
 func TestDeleteL3KeepsTheFRRVRFWhenAKernelLinkCannotBeDeleted(t *testing.T) {
 	f := &fakeHost{fail: map[string]error{"del brl3-s7": errors.New("device busy")}}
-	if err := deleteL3(f, bgpConfig(), labL3(t)); err == nil || !strings.Contains(err.Error(), "delete brl3-s7") {
+	if err := deleteL3(f, labL3(t)); err == nil || !strings.Contains(err.Error(), "delete brl3-s7") {
 		t.Errorf("erreur %v", err)
 	}
 	for _, c := range f.calls {
@@ -212,9 +212,9 @@ func TestDeleteL3KeepsTheFRRVRFWhenAKernelLinkCannotBeDeleted(t *testing.T) {
 	}
 }
 
-func TestDeleteL3RequiresTheBGPSection(t *testing.T) {
+func TestDeleteL3DoesNotDependOnTheAgentBGPSection(t *testing.T) {
 	f := &fakeHost{}
-	if err := deleteL3(f, &configuration.Config{}, labL3(t)); err == nil || len(f.calls) != 0 {
+	if err := deleteL3(f, labL3(t)); err != nil || len(f.calls) != 6 {
 		t.Errorf("erreur %v, appels %q", err, f.calls)
 	}
 }

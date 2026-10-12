@@ -2,6 +2,7 @@ package frr
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -9,16 +10,17 @@ type step []string
 
 func routingTeardown(v VRF, running string) []step {
 	lines := strings.Split(running, "\n")
-	bgp := hasLine(lines, v.bgpInstance())
+	instance := vrfInstance(lines, v.Name())
+	bgp := instance != ""
 	var steps []step
 	if bgp {
-		steps = append(steps, step{v.bgpInstance(), "address-family ipv4 unicast", "no redistribute kernel"})
+		steps = append(steps, step{instance, "address-family ipv4 unicast", "no redistribute kernel"})
 	}
 	if vni := vrfVNI(lines, v.Name()); vni != "" {
 		steps = append(steps, step{"vrf " + v.Name(), "no vni " + vni})
 	}
 	if bgp {
-		steps = append(steps, step{"no " + v.bgpInstance()})
+		steps = append(steps, step{"no " + instance})
 	}
 	if hasPrefix(lines, "route-map "+v.routeMap()+" ") {
 		steps = append(steps, step{"no route-map " + v.routeMap()})
@@ -34,6 +36,19 @@ func vrfTeardown(v VRF, running string) []step {
 		return []step{{"no vrf " + v.Name()}}
 	}
 	return nil
+}
+
+func vrfInstance(lines []string, name string) string {
+	for _, l := range lines {
+		f := strings.Fields(l)
+		if len(f) != 5 || f[0] != "router" || f[1] != "bgp" || f[3] != "vrf" || f[4] != name {
+			continue
+		}
+		if _, err := strconv.ParseUint(f[2], 10, 32); err == nil {
+			return strings.Join(f, " ")
+		}
+	}
+	return ""
 }
 
 func hasLine(lines []string, want string) bool {

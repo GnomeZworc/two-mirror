@@ -133,7 +133,7 @@ func (c DeleteVPCCommand) Execute(db *badger.DB, cfg *configuration.Config) erro
 		case <-time.After(time.Duration(cfg.Dispatcher.PollSeconds) * time.Second):
 		}
 	}
-	if err := vpc.DeleteVPC(db, c.Name, cfg); err != nil {
+	if err := vpc.DeleteVPC(db, c.Name); err != nil {
 		return err
 	}
 	current, err := state.Get(db, c.Key())

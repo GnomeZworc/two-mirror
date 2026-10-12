@@ -83,8 +83,8 @@ func (c *Client) RemoveVRF(v VRF) error {
 }
 
 func (c *Client) teardown(v VRF, plan func(VRF, string) []step) error {
-	if err := v.validateName(); err != nil {
-		return err
+	if v.ID == "" {
+		return fmt.Errorf("frr: vrf id must not be empty")
 	}
 	running, err := c.runningConfig()
 	if err != nil {

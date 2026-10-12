@@ -172,10 +172,10 @@ func TestRemoveVRFFailsWhenRoutingConfigurationIsStillThere(t *testing.T) {
 	}
 }
 
-func TestTeardownNeedsOnlyTheASNAndTheID(t *testing.T) {
+func TestTeardownNeedsOnlyTheID(t *testing.T) {
 	f := &fakeVtysh{running: []string{"", ""}}
-	if err := f.client().WithdrawVRF(VRF{ASN: 64600, ID: "a1b2"}); err != nil {
-		t.Errorf("démontage refusé : %v", err)
+	if err := f.client().WithdrawVRF(VRF{ID: "a1b2"}); err != nil {
+		t.Errorf("démontage sans asn refusé : %v", err)
 	}
 	f = &fakeVtysh{}
 	if err := f.client().WithdrawVRF(VRF{ASN: 64600}); err == nil || len(f.calls) != 0 {

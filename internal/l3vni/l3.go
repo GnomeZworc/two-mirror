@@ -115,12 +115,8 @@ func createL3(h host, cfg *configuration.Config, v l3VPC) error {
 	return nil
 }
 
-func deleteL3(h host, cfg *configuration.Config, v l3VPC) error {
-	asn, err := bgpASN(cfg)
-	if err != nil {
-		return err
-	}
-	frrVRF := frr.VRF{ASN: asn, ID: v.id}
+func deleteL3(h host, v l3VPC) error {
+	frrVRF := frr.VRF{ID: v.id}
 	if err := h.WithdrawVRF(frrVRF); err != nil {
 		return fmt.Errorf("l3vni %d: withdraw frr: %w", v.vni, err)
 	}
@@ -143,12 +139,12 @@ func Create(db *badger.DB, vpcName string, cfg *configuration.Config) error {
 	return createL3(newSystem(), cfg, v)
 }
 
-func Delete(db *badger.DB, vpcName string, cfg *configuration.Config) error {
+func Delete(db *badger.DB, vpcName string) error {
 	v, ok, err := loadRouted(db, vpcName)
 	if err != nil || !ok {
 		return err
 	}
-	return deleteL3(newSystem(), cfg, v)
+	return deleteL3(newSystem(), v)
 }
 
 type Routing struct {
