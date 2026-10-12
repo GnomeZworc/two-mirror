@@ -8,7 +8,7 @@ import (
 )
 
 func RouteAdd(_ string, _ *net.IPNet) error {
-	return nil
+	return errors.New("not supported on this platform")
 }
 
 func TableRoutesVia(_ int, _ string) ([]*net.IPNet, error) {
