@@ -73,6 +73,8 @@ if method == "GET" and path == zone + "/os":
 if method == "GET" and path == "/iam/v1alpha1/ssh-keys":
     reply(200, {"ssh_keys": st["keys"], "total_count": len(st["keys"])})
 if method == "GET" and path == zone + "/servers":
+    if st.get("zones", {}).get(zname, {}).get("list_fail"):
+        reply(503, {"message": "service unavailable"})
     if st["list_errors"] > 0:
         st["list_errors"] -= 1
         reply(503, {"message": "service unavailable"})
@@ -467,6 +469,33 @@ test_down_fails_loudly_when_listing_never_works () {
     mutate ".servers[\"srv-lab\"] = ${LAB_SERVER} | .list_errors = 100000"
     LAB_DELETE_TIMEOUT=1 run_lab down && fail "down a réussi"
     grep -q "TOUJOURS FACTURÉ" "${WORK}/out.log" || fail "pas d'alerte de facturation"
+    teardown
+}
+
+test_down_deletes_what_answering_zones_list_when_one_zone_fails () {
+    setup "down : une zone en erreur n'empêche pas de supprimer les serveurs des autres"
+    mutate ".servers[\"srv-lab\"] = ${LAB_SERVER} | .zones = {\"nl-ams-2\": {list_fail: true}}"
+    LAB_ZONES="fr-par-1 nl-ams-2" LAB_DELETE_TIMEOUT=1 run_lab down && fail "down a réussi malgré une zone en erreur"
+    [[ $(remaining) == "foreign-1,foreign-2" ]] || fail "restants : $(remaining)"
+    grep -q "zone nl-ams-2" "${WORK}/out.log" || fail "zone en erreur non signalée"
+    grep -q "TOUJOURS FACTURÉ" "${WORK}/out.log" || fail "pas d'alerte de facturation"
+    teardown
+}
+
+test_status_lists_answering_zones_and_fails_when_one_zone_fails () {
+    setup "status : liste les zones qui répondent, échoue si une zone est en erreur"
+    mutate ".servers[\"srv-lab\"] = ${LAB_SERVER} | .zones = {\"nl-ams-2\": {list_fail: true}}"
+    LAB_ZONES="fr-par-1 nl-ams-2" run_lab status && fail "status a réussi malgré une zone en erreur"
+    grep -q "^fr-par-1  srv-lab " "${WORK}/out.log" || fail "srv-lab non listé"
+    grep -q "liste incomplète" "${WORK}/out.log" || fail "liste incomplète non signalée"
+    teardown
+}
+
+test_up_refuses_when_one_zone_cannot_be_listed () {
+    setup "up : refus si une zone ne peut pas être listée"
+    mutate '.zones = {"nl-ams-2": {list_fail: true}} | .progress = [["ready","completed"]]'
+    LAB_ZONES="fr-par-1 nl-ams-2" run_lab up && fail "up a réussi"
+    grep -q "^POST" "${WORK}/calls.log" && fail "serveur créé sans connaître toutes les zones"
     teardown
 }
 
