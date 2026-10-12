@@ -252,3 +252,14 @@ func TestLoadL3(t *testing.T) {
 		t.Errorf("VPC sans cidr : %v", err)
 	}
 }
+
+func TestLoadL3ReportsAReadErrorInsteadOfAVPCWithoutL3VNI(t *testing.T) {
+	db := kv.InitDB(kv.Config{Path: t.TempDir()}, false)
+	kv.AddInDB(db, "vpc/vp-a/cidr", "10.241.0.0/16")
+	kv.AddInDB(db, "vpc/vp-a/l3vni", "2700")
+	db.Close()
+	_, ok, err := loadL3(db, "vp-a", "a")
+	if ok || err == nil || !strings.Contains(err.Error(), "reading l3vni") {
+		t.Errorf("base fermée : ok=%v err=%v, erreur de lecture attendue", ok, err)
+	}
+}
