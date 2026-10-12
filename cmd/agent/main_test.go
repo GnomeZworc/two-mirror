@@ -5,6 +5,8 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -115,5 +117,29 @@ func TestApplyBGPBase_RefusesAnInvalidSectionBeforeTouchingFRR(t *testing.T) {
 	}
 	if f.called {
 		t.Error("ApplyBase appelé avec une section bgp invalide")
+	}
+}
+
+func TestRunExitsNonZeroWhenTheConfigCannotBeLoaded(t *testing.T) {
+	conf := filepath.Join(t.TempDir(), "agent.yml")
+	if err := os.WriteFile(conf, []byte("bgp: [non: valide\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if code := run(conf); code != 1 {
+		t.Errorf("code de sortie %d, 1 attendu", code)
+	}
+}
+
+func TestRunExitsNonZeroWhenTheBGPBaseCannotBeApplied(t *testing.T) {
+	dir := t.TempDir()
+	conf := filepath.Join(dir, "agent.yml")
+	yml := "database:\n  path: " + filepath.Join(dir, "db") + "\n" +
+		"default_interface: two-test-absent0\n" +
+		"bgp:\n  asn: 64600\n  route_reflectors: [10.255.255.1]\n"
+	if err := os.WriteFile(conf, []byte(yml), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if code := run(conf); code != 1 {
+		t.Errorf("code de sortie %d, 1 attendu", code)
 	}
 }

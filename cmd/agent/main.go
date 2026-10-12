@@ -31,11 +31,14 @@ const shutdownTimeout = 20 * time.Second
 func main() {
 	confFile := flag.String("config", "/etc/two/agent.yml", "config file path")
 	flag.Parse()
+	os.Exit(run(*confFile))
+}
 
-	cfg, err := configuration.LoadConfig(*confFile)
+func run(confFile string) int {
+	cfg, err := configuration.LoadConfig(confFile)
 	if err != nil {
 		slog.Error("failed to load config", "error", err)
-		return
+		return 1
 	}
 
 	log := logger.New(cfg.Logger.Level, cfg.Logger.Debug)
@@ -52,18 +55,18 @@ func main() {
 	// d'états, et des ressources transitoires orphelines d'un arrêt précédent.
 	if err := migration.MigrateStates(db, log.With(slog.String("component", "migration"))); err != nil {
 		log.Error("failed to migrate states", "error", err)
-		return
+		return 1
 	}
 
 	if err := migration.MigrateVMNICs(db, log.With(slog.String("component", "migration"))); err != nil {
 		log.Error("vm nic migration failed", "error", err)
-		return
+		return 1
 	}
 
 	if cfg.BGP.Enabled() {
 		if err := applyBGPBase(cfg, frr.NewClient()); err != nil {
 			log.Error("failed to apply the bgp base configuration", "error", err)
-			return
+			return 1
 		}
 		log.Info("bgp base configuration applied", "asn", cfg.BGP.ASN, "route_reflectors", cfg.BGP.RouteReflectors)
 	}
@@ -118,6 +121,7 @@ func main() {
 		servers["admin"] = adminSrv
 	}
 	closeDB = shutdown(log, q, servers, shutdownTimeout)
+	return 0
 }
 
 type baseApplier interface {
