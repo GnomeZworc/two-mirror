@@ -11,7 +11,7 @@ usage: ${0##*/} <scénario>... | all
 
   scénarios : $(cd "${SCENARIO_DIR}" && ls -- *.sh | sed 's/\.sh$//' | tr '\n' ' ')
 
-Chaque scénario s'exécute depuis le Mac sur le lab en cours (lab-host.sh up, push, ./lab up).
+Chaque scénario s'exécute depuis le Mac sur le lab en cours (lab-host.sh up, push, ./labctl up).
 Une ligne RÉUSSI ou ÉCHOUÉ par vérification ; code de sortie 1 si une vérification échoue ou
 si aucune n'a été faite.
 USAGE
@@ -27,7 +27,7 @@ on () {
         done
         cat "${LAB_DIR}/lib/node.sh"
         cat
-    } | "${LAB_HOST}" ssh "./lab ssh ${node} 'sudo bash -s'" 2>&1 | tee -a "${SCENARIO_LOG}"
+    } | "${LAB_HOST}" ssh "./labctl ssh ${node} 'sudo bash -s'" 2>&1 | tee -a "${SCENARIO_LOG}"
 }
 
 run_scenario () {

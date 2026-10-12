@@ -24,7 +24,7 @@ import (
 	"git.g3e.fr/syonad/two/internal/lab/topology"
 )
 
-const labKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFG/JMmjfko96WkJV8DiL6rip/H/q/R++y8s27Z+Cj6O two-lab"
+const labKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFG/JMmjfko96WkJV8DiL6rip/H/q/R++y8s27Z+Cj6O labctl"
 
 type exitErr int
 

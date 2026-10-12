@@ -14,8 +14,8 @@ comment s'en servir.
 .. note::
 
    État actuel : le lab de #50 est livré — serveur loué à l'heure (``scripts/lab-host.sh``),
-   topologie déclarative et plan déterministe (``lab plan``), VM rendues et lancées sur le
-   serveur (``lab render``, ``lab up`` / ``status`` / ``down`` / ``ssh``), rôles installés au
+   topologie déclarative et plan déterministe (``labctl plan``), VM rendues et lancées sur le
+   serveur (``labctl render``, ``labctl up`` / ``status`` / ``down`` / ``ssh``), rôles installés au
    démarrage (FRR sur le switch et le route reflector, two par ``deploy.sh`` sur les
    hyperviseurs) et scénarios versionnés (``test/e2e/run.sh``). La redondance du plan de
    contrôle — deux route reflectors, deux switchs — est l'objet de
@@ -62,9 +62,9 @@ Prérequis côté Scaleway
 Fichiers locaux
 ---------------
 
-Tout ce dont le script a besoin vit sous ``~/.config/two-lab/``, hors du dépôt.
+Tout ce dont le script a besoin vit sous ``~/.config/labctl/``, hors du dépôt.
 
-``~/.config/two-lab/scaleway.env``
+``~/.config/labctl/scaleway.env``
    Identifiants Scaleway, une ligne ``CLÉ=valeur`` chacun :
 
    .. code-block:: bash
@@ -82,7 +82,7 @@ Tout ce dont le script a besoin vit sous ``~/.config/two-lab/``, hors du dépôt
 
    Pour changer de clé, remplacer la ligne ``SCW_SECRET_KEY=`` ; rien d'autre à modifier.
 
-``~/.config/two-lab/ssh/lab_ed25519``
+``~/.config/labctl/ssh/lab_ed25519``
    Clé SSH dédiée au lab, **sans phrase de passe**, pour que les sessions tournent sans
    intervention. Sa partie publique doit être enregistrée dans le projet. Quand elle existe, le
    script l'utilise **seule** (``IdentitiesOnly``, agent désactivé) ; sinon il retombe sur
@@ -94,10 +94,10 @@ Tout ce dont le script a besoin vit sous ``~/.config/two-lab/``, hors du dépôt
 
    .. code-block:: bash
 
-      mkdir -p ~/.config/two-lab/ssh && chmod 700 ~/.config/two-lab ~/.config/two-lab/ssh
-      ssh-keygen -t ed25519 -N '' -C two-lab-automation -f ~/.config/two-lab/ssh/lab_ed25519
+      mkdir -p ~/.config/labctl/ssh && chmod 700 ~/.config/labctl ~/.config/labctl/ssh
+      ssh-keygen -t ed25519 -N '' -C lab-automation -f ~/.config/labctl/ssh/lab_ed25519
 
-``~/.cache/two-lab/``
+``~/.cache/labctl/``
    État de la session en cours : adresse et utilisateur du serveur, ``known_hosts`` dédié. Vidé
    par ``down``.
 
@@ -115,11 +115,11 @@ Commandes
      status            liste les serveurs de lab du projet, dans toutes les zones candidates
      ssh [commande]    se connecte au serveur de lab ; avec une commande, un terminal n'est demandé
                        que si l'entrée standard en est un
-     prepare           installe sur le serveur ce dont lab a besoin (qemu, genisoimage), vérifie
+     prepare           installe sur le serveur ce dont labctl a besoin (qemu, genisoimage), vérifie
                        /dev/kvm, la virtualisation imbriquée et un CPU x86-64-v3 ; lancé aussi par up
-     push <topologie>  compile cmd/lab pour linux/amd64 et dépose sur le serveur ~/lab et le
+     push <topologie>  compile cmd/labctl pour linux/amd64 et dépose sur le serveur ~/labctl et le
                        répertoire de la topologie dans ~/topology/ (avec les fichiers qu'elle
-                       référence) ; ensuite : ssh './lab up topology/<topologie>'
+                       référence) ; ensuite : ssh './labctl up topology/<topologie>'
      down              supprime tous les serveurs de lab du projet, dans toutes les zones candidates,
                        et attend leur disparition
      session [cmd]     up, puis la commande distante (ou un shell), puis down quoi qu'il arrive
@@ -190,16 +190,16 @@ environ 100 secondes la première fois — d'où l'attente intégrée à ``up``.
 ``up``, ``ssh`` et ``down`` séparément servent au debug interactif — et laissent la suppression
 à la charge de l'utilisateur.
 
-Une campagne sur le lab enchaîne ces commandes depuis le Mac ; ``lab`` s'exécute sur le serveur
+Une campagne sur le lab enchaîne ces commandes depuis le Mac ; ``labctl`` s'exécute sur le serveur
 (voir `Lancement des VM`_) :
 
 .. code-block:: text
 
    scripts/lab-host.sh up
    scripts/lab-host.sh push test/e2e/topologies/evpn-2hv.yml
-   scripts/lab-host.sh ssh './lab up topology/evpn-2hv.yml'
-   scripts/lab-host.sh ssh './lab ssh hv1'          # shell interactif sur hv1
-   scripts/lab-host.sh ssh './lab ssh hv1 ip -br a' # commande, code de retour propagé
+   scripts/lab-host.sh ssh './labctl up topology/evpn-2hv.yml'
+   scripts/lab-host.sh ssh './labctl ssh hv1'          # shell interactif sur hv1
+   scripts/lab-host.sh ssh './labctl ssh hv1 ip -br a' # commande, code de retour propagé
    scripts/lab-host.sh down
 
 ``push`` transfère par la connexion SSH du script — mêmes options, même clé, même
@@ -255,7 +255,7 @@ Ce que le fichier déclare :
      Ils voyagent dans un ``files.iso`` propre au nœud (volume ``LABFILES``), attaché comme second
      lecteur et recopié au premier démarrage : la taille n'est pas limitée par cloud-init, et un
      binaire de plusieurs dizaines de Mio passe ;
-   * ``services`` — les unités systemd que ``lab up`` vérifie actives sur le nœud.
+   * ``services`` — les unités systemd que ``labctl up`` vérifie actives sur le nœud.
 
    Les scripts reçoivent ``LAB_NODE`` (nom du nœud), ``LAB_UPLINK`` (interface de son premier
    segment, qui porte la route par défaut) et ``LAB_FILES`` (``/etc/lab/files``). L'outil ne sait
@@ -288,15 +288,15 @@ Ce que l'outil en déduit, de façon déterministe — même fichier, même plan
 .. warning::
 
    Réordonner les nœuds ou les segments dans le fichier **change les adresses, les MAC et les
-   ports**. C'est assumé pour un lab ; ``lab plan`` montre le résultat avant tout lancement.
+   ports**. C'est assumé pour un lab ; ``labctl plan`` montre le résultat avant tout lancement.
 
 Limites : 1000 nœuds, 256 segments, et autant de câbles que la plage UDP le permet (22 768).
 
-``lab plan`` valide le fichier et affiche le plan, sans rien lancer :
+``labctl plan`` valide le fichier et affiche le plan, sans rien lancer :
 
 .. code-block:: text
 
-   $ go run ./cmd/lab plan test/e2e/topologies/evpn-2hv.yml
+   $ go run ./cmd/labctl plan test/e2e/topologies/evpn-2hv.yml
    lab evpn-2hv: nodes 4, segments 1, cables 3
 
    nodes
@@ -324,8 +324,8 @@ champs inconnus et les clés en double sont refusés aussi :
 
 .. code-block:: text
 
-   $ lab plan cassee.yml
-   lab: cassee.yml:
+   $ labctl plan cassee.yml
+   labctl: cassee.yml:
    segment underlay: rr1 is a rr, not a switch
    segment underlay: cidr 10.250.0.0/31 prefix length out of range [/8, /30]
    node sw1: switch carries no segment
@@ -356,7 +356,7 @@ dépose le ``frr.conf`` du nœud et redémarre FRR. La mise à jour des index de
 pendant cinq minutes : un nœud peut démarrer avant que le switch, par lequel il sort, n'ait posé
 son NAT.
 
-La **clé du dépôt FRR** n'est pas téléchargée au démarrage : elle est enregistrée dans ``lab``
+La **clé du dépôt FRR** n'est pas téléchargée au démarrage : elle est enregistrée dans ``labctl``
 (``internal/lab/render/frrouting.gpg``) et déposée par cloud-init. Elle a été récupérée le
 2026-10-04 sur ``deb.frrouting.org`` ; les empreintes de ses clés primaires sont publiées sous la
 même valeur sur ``keys.openpgp.org`` et ``keyserver.ubuntu.com`` :
@@ -401,7 +401,7 @@ le répertoire : le lab suivant teste la release seule.
 
    test/e2e/build.sh                                   # binaires de l'arbre courant
    scripts/lab-host.sh push test/e2e/topologies/evpn-3hv.yml
-   scripts/lab-host.sh ssh './lab up topology/evpn-3hv.yml'
+   scripts/lab-host.sh ssh './labctl up topology/evpn-3hv.yml'
    test/e2e/build.sh --clean                           # retour à la release seule
 
 FRR est installé **après** la provision : il démarre sur le réseau final. Démarré
@@ -418,7 +418,7 @@ FRR installé avec succès passerait pour un démarrage réussi. Chaque nœud re
 de la loopback, ``provision``, FRR, ``post_provision`` ; ``runcmd`` n'appelle
 que lui, et la première étape en échec met cloud-init en erreur.
 
-**Ce que vérifie** ``lab up``, une fois cloud-init terminé sans erreur : les ``services`` déclarés
+**Ce que vérifie** ``labctl up``, une fois cloud-init terminé sans erreur : les ``services`` déclarés
 par chaque nœud (``agent.service`` sur les hyperviseurs), et ``frr`` sur chaque nœud qui en a un. Ce contrôle couvre ce que
 cloud-init ne voit pas — si la migration réseau échoue, ``deploy.sh`` arme un redémarrage de
 secours, et la VM redémarrée ne rejoue pas ``runcmd``.
@@ -428,13 +428,13 @@ secours, et la VM redémarrée ne rejoue pas ``runcmd``.
    **Un hyperviseur du lab ne survit pas à un redémarrage.** En production, la racine est en
    tmpfs et ``deploy.sh --bootstrap`` est rejoué à chaque démarrage ; dans le lab, ``-i`` n'est
    exécuté qu'au premier, et la migration réseau, qui n'est pas persistée, est perdue. Recréer le
-   lab : ``lab down`` puis ``lab up``.
+   lab : ``labctl down`` puis ``labctl up``.
 
 Vérifié le 2026-10-04 sur le serveur de lab, topologie ``evpn-2hv``, release ``0.2.0rc002`` :
 
 .. code-block:: text
 
-   $ scripts/lab-host.sh ssh './lab up -timeout 25m topology/evpn-2hv.yml'
+   $ scripts/lab-host.sh ssh './labctl up -timeout 25m topology/evpn-2hv.yml'
    sw1: started
    rr1: started
    hv1: started
@@ -450,7 +450,7 @@ Vérifié le 2026-10-04 sur le serveur de lab, topologie ``evpn-2hv``, release `
 
    * - Vérification
      - Résultat
-   * - ``lab up`` complet : FRR, ``deploy.sh`` et vérification des services de chaque rôle
+   * - ``labctl up`` complet : FRR, ``deploy.sh`` et vérification des services de chaque rôle
      - 6 min 15
    * - session switch ↔ route reflector, IPv4 unicast, BFD
      - Established, BFD up ; le switch reçoit la seule loopback du route reflector
@@ -481,11 +481,11 @@ Vérifié le 2026-10-04 sur le serveur de lab, topologie ``evpn-2hv``, release `
 Rendu des VM
 ------------
 
-``lab render`` produit, pour chaque nœud, ce qu'il faut pour démarrer sa VM — sans rien lancer :
+``labctl render`` produit, pour chaque nœud, ce qu'il faut pour démarrer sa VM — sans rien lancer :
 
 .. code-block:: text
 
-   $ go run ./cmd/lab render -key ~/.config/two-lab/ssh/lab_ed25519.pub test/e2e/topologies/evpn-2hv.yml <répertoire>
+   $ go run ./cmd/labctl render -key ~/.config/labctl/ssh/lab_ed25519.pub test/e2e/topologies/evpn-2hv.yml <répertoire>
 
 ``<répertoire>/<nœud>/`` reçoit :
 
@@ -547,7 +547,7 @@ Vérifié sur de vraies VM
 
 Le switch et le route reflector n'ont pas besoin de KVM imbriqué : ``sw1`` et ``rr1`` de
 l'exemple ont été démarrés **sur un Mac**, en émulation (TCG), avec Debian 12 ``generic`` et
-les fichiers produits par ``lab render``.
+les fichiers produits par ``labctl render``.
 
 .. list-table::
    :header-rows: 1
@@ -586,7 +586,7 @@ Reste à vérifier sur le serveur de lab : les hyperviseurs, qui exigent KVM imb
 Lancement des VM
 ----------------
 
-``lab`` s'exécute **sur le serveur de lab**. Il garde l'état du lab dans un répertoire
+``labctl`` s'exécute **sur le serveur de lab**. Il garde l'état du lab dans un répertoire
 (``-run``, par défaut ``~/lab-run``) : ``status``, ``down`` et ``ssh`` n'ont donc pas besoin de la
 topologie.
 
@@ -597,13 +597,13 @@ topologie.
    lab down [-run dir]
    lab ssh [-run dir] <nœud> [commande…]
 
-``lab up``
+``labctl up``
    1. refuse de continuer si un lab tourne déjà dans le répertoire ;
-   2. télécharge chaque image dans le cache (``-cache``, par défaut ``~/.cache/two-lab``) et la
+   2. télécharge chaque image dans le cache (``-cache``, par défaut ``~/.cache/labctl``) et la
       vérifie contre ``SHA512SUMS`` ; une image déjà présente et toujours conforme n'est pas
       retéléchargée, la liste des sommes est relue à chaque fois ;
    3. génère une paire de clés SSH dans le répertoire du lab, si elle n'existe pas encore ;
-   4. pour chaque nœud : fichiers de ``lab render``, disque **neuf** en overlay qcow2 sur
+   4. pour chaque nœud : fichiers de ``labctl render``, disque **neuf** en overlay qcow2 sur
       l'image (``qemu-img create -b``, 20 Gio annoncés), image ``cidata`` (``genisoimage``) ;
    5. démarre les QEMU, **switchs d'abord**, détachés (``-daemonize``) : ils survivent à la
       session SSH qui les a lancés ;
@@ -611,35 +611,35 @@ topologie.
       jusqu'au délai ``-timeout``.
 
    La topologie est copiée dans ``<run>/topology.yml``. Un échec laisse les nœuds démarrés en
-   place : ``lab status``, puis ``lab down``.
+   place : ``labctl status``, puis ``labctl down``.
 
-``lab status``
+``labctl status``
    Pour chaque nœud : rôle, état du processus QEMU, PID, port SSH sur la boucle locale.
 
-``lab down``
+``labctl down``
    Arrête chaque QEMU par ``SIGTERM``, puis ``SIGKILL`` au bout de 30 s. Les disques sont
    conservés jusqu'au prochain ``up``, qui les recrée.
 
-``lab ssh``
-   Ouvre un shell sur un nœud, ou y exécute une commande, avec la clé générée par ``up``. ``lab``
+``labctl ssh``
+   Ouvre un shell sur un nœud, ou y exécute une commande, avec la clé générée par ``up``. ``labctl``
    cède la place à ``ssh``, dont le code de retour est donc celui de la commande. Un terminal
-   n'est demandé (``-t``) que si l'entrée de ``lab`` en est un : depuis un script, ni
+   n'est demandé (``-t``) que si l'entrée de ``labctl`` en est un : depuis un script, ni
    pseudo-terminal ni ``\r\n`` dans la sortie.
 
-   Comme ``ssh``, ``lab ssh`` recolle ses arguments par des espaces et les confie à un shell
+   Comme ``ssh``, ``labctl ssh`` recolle ses arguments par des espaces et les confie à un shell
    distant — et depuis le Mac, il y en a **deux** : celui du serveur, puis celui de la VM.
    Une commande qui contient elle-même des guillemets se passe en une seule chaîne :
 
    .. code-block:: text
 
-      $ echo | scripts/lab-host.sh ssh './lab ssh hv1 sh -c "exit 42"'; echo "rc 42=$?"
+      $ echo | scripts/lab-host.sh ssh './labctl ssh hv1 sh -c "exit 42"'; echo "rc 42=$?"
       rc 42=0
-      $ echo | scripts/lab-host.sh ssh "./lab ssh hv1 'sh -c \"exit 42\"'"; echo "rc 42=$?"
+      $ echo | scripts/lab-host.sh ssh "./labctl ssh hv1 'sh -c \"exit 42\"'"; echo "rc 42=$?"
       rc 42=42
 
    Dans le premier cas, la VM reçoit ``sh -c exit 42`` : ``exit`` sans argument, ``42`` en
    ``$0``. Pour plus d'une commande, passer un script sur l'entrée standard :
-   ``scripts/lab-host.sh ssh "./lab ssh hv1 'sudo bash -s'" < script.sh``.
+   ``scripts/lab-host.sh ssh "./labctl ssh hv1 'sudo bash -s'" < script.sh``.
 
 Un processus n'est tenu pour celui d'un nœud que si son PID, lu dans ``qemu.pid``, désigne un
 processus vivant dont la ligne de commande (``/proc/<pid>/cmdline``) contient ``-name <nœud>``.
@@ -667,7 +667,7 @@ Une campagne réelle, de la création du serveur à la première commande sur un
    $ scripts/lab-host.sh push test/e2e/topologies/evpn-2hv.yml
    == compilation de lab (linux/amd64)
    == déposés sur le serveur : ~/lab, ~/evpn-2hv.yml — ensuite : lab-host.sh ssh './lab up evpn-2hv.yml'
-   $ scripts/lab-host.sh ssh './lab up evpn-2hv.yml'
+   $ scripts/lab-host.sh ssh './labctl up evpn-2hv.yml'
    sw1: started
    rr1: started
    hv1: started
@@ -676,14 +676,14 @@ Une campagne réelle, de la création du serveur à la première commande sur un
    rr1: ready
    hv1: ready
    hv2: ready
-   $ scripts/lab-host.sh ssh './lab status'
+   $ scripts/lab-host.sh ssh './labctl status'
    node  role        state    pid   ssh
    sw1   switch      running  5158  127.0.0.1:2200
    rr1   rr          running  5171  127.0.0.1:2201
    hv1   hypervisor  running  5182  127.0.0.1:2202
    hv2   hypervisor  running  5196  127.0.0.1:2203
 
-``lab up`` a pris **49 secondes**, téléchargement et vérification de l'image (427 Mio) compris ;
+``labctl up`` a pris **49 secondes**, téléchargement et vérification de l'image (427 Mio) compris ;
 l'essentiel du temps d'une campagne est la livraison du serveur (environ 25 minutes avec
 ``prepare``).
 
@@ -713,17 +713,17 @@ Le 2026-10-04, sur un Xeon E5-2640 v3, Debian 12 et QEMU 7.2 sur le serveur, top
      - présent, ``Y``
    * - racine de hv1 (overlay de 20 Gio)
      - 20 Go : ``growpart`` agrandit la partition au premier démarrage
-   * - code de retour à travers ``lab-host.sh ssh`` et ``lab ssh``, sans terminal
+   * - code de retour à travers ``lab-host.sh ssh`` et ``labctl ssh``, sans terminal
      - propagé jusqu'au Mac
-   * - ``scripts/lab-host.sh ssh './lab ssh hv1'`` depuis un terminal
+   * - ``scripts/lab-host.sh ssh './labctl ssh hv1'`` depuis un terminal
      - shell interactif
-   * - ``lab down`` puis ``lab up`` d'une autre topologie
+   * - ``labctl down`` puis ``labctl up`` d'une autre topologie
      - conforme
 
 Scénarios
 ---------
 
-Les scénarios se lancent **depuis le Mac**, sur un lab démarré (``up``, ``push``, ``./lab up``) :
+Les scénarios se lancent **depuis le Mac**, sur un lab démarré (``up``, ``push``, ``./labctl up``) :
 
 .. code-block:: text
 
@@ -906,7 +906,7 @@ Les VM sont accessibles depuis le netns de leur VPC, sur l'hyperviseur, avec l'u
 
 .. code-block:: text
 
-   scripts/lab-host.sh ssh "./lab ssh hv1 'sudo ip netns exec vp-s4 ssh -i /root/.ssh/lab-vm syonad@10.240.1.10'"
+   scripts/lab-host.sh ssh "./labctl ssh hv1 'sudo ip netns exec vp-s4 ssh -i /root/.ssh/lab-vm syonad@10.240.1.10'"
 
 Écrire un scénario
 ~~~~~~~~~~~~~~~~~~
@@ -965,7 +965,7 @@ Ce que le script garantit :
   création. La CLI ``scw`` n'est pas utilisée pour cette raison : son ``server create type=…``
   choisit l'offre par son seul nom et peut tomber sur la mensuelle, qui engage un mois ;
 * il refuse de créer un second serveur si un serveur de lab existe déjà ;
-* ``down`` agit sur **tous** les serveurs portant le tag ``two-lab`` dans le projet, et
+* ``down`` agit sur **tous** les serveurs portant le tag ``labctl`` dans le projet, et
   ``session`` y ajoute l'identifiant reçu à la création : un serveur créé juste avant une
   interruption est rattrapé ;
 * une suppression refusée pendant la livraison ou l'installation est réessayée tant qu'elle dure,
@@ -1020,10 +1020,10 @@ Sécurité
   production.
 * Une clé secrète qui a circulé ailleurs que dans ``scaleway.env`` (conversation, terminal
   partagé, capture d'écran) se régénère.
-* **Clé SSH des VM** : générée par ``lab up`` sur le serveur, c'est la seule clé autorisée dans
+* **Clé SSH des VM** : générée par ``labctl up`` sur le serveur, c'est la seule clé autorisée dans
   les VM. Elle ne quitte jamais le serveur, n'ouvre que les VM du lab — qui n'écoutent qu'en
   boucle locale — et disparaît avec lui. La clé publique du Mac n'est jamais envoyée aux VM.
-* **Clés d'hôte des VM non vérifiées** par ``lab ssh`` (``known_hosts`` jetable) : elles changent
+* **Clés d'hôte des VM non vérifiées** par ``labctl ssh`` (``known_hosts`` jetable) : elles changent
   à chaque ``up``. Acceptable uniquement parce que la connexion reste sur la boucle locale d'un
   serveur auquel on s'est authentifié.
 * **Code exécuté sans épinglage par** ``deploy.sh`` : la bibliothèque ``shflags`` est récupérée
@@ -1041,7 +1041,7 @@ Tests
 
    bash scripts/lab-host_test.sh
    bash test/e2e/run_test.sh
-   go test ./internal/lab/... ./cmd/lab/
+   go test ./internal/lab/... ./cmd/labctl/
 
 Environ une minute et demie, sans réseau : la suite remplace ``curl`` par une fausse API Scaleway
 qui se place dans le pire cas (offre mensuelle listée avant l'horaire, serveurs d'autres projets,

@@ -46,7 +46,7 @@ test_on_sends_assignments_library_and_block_to_the_node () {
     setup "on : variables, bibliothèque et bloc envoyés au bon nœud"
     printf '%s\n' "on hv2 KEY='ssh-ed25519 AAAA x' NAME=vm <<'NODE'" 'echo "${NAME}"' 'NODE' > "${WORK}/scenarios/t1.sh"
     FAKE_OUT='RÉUSSI: un' run t1 || fail "code de sortie $?"
-    [[ $(cat "${WORK}/calls.log") == "ssh ./lab ssh hv2 'sudo bash -s'" ]] || fail "appel : $(cat "${WORK}/calls.log")"
+    [[ $(cat "${WORK}/calls.log") == "ssh ./labctl ssh hv2 'sudo bash -s'" ]] || fail "appel : $(cat "${WORK}/calls.log")"
     grep -q '^check () {' "${WORK}/payload.1" || fail "node.sh absent du bloc"
     [[ $(tail -n 1 "${WORK}/payload.1") == 'echo "${NAME}"' ]] || fail "bloc du scénario absent en fin d'envoi"
     [[ $(bash -c "$(grep '^export ' "${WORK}/payload.1"); printf '%s|%s' \"\${KEY}\" \"\${NAME}\"") == "ssh-ed25519 AAAA x|vm" ]] \

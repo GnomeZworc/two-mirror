@@ -78,7 +78,7 @@ func TestRun_MissingFile(t *testing.T) {
 func TestRun_RenderWritesEveryNodeFiles(t *testing.T) {
 	dir := t.TempDir()
 	key := filepath.Join(dir, "lab.pub")
-	if err := os.WriteFile(key, []byte("# lab key\n\nssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFG/JMmjfko96WkJV8DiL6rip/H/q/R++y8s27Z+Cj6O two-lab-automation\n"), 0o600); err != nil {
+	if err := os.WriteFile(key, []byte("# lab key\n\nssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFG/JMmjfko96WkJV8DiL6rip/H/q/R++y8s27Z+Cj6O lab-automation\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	out := filepath.Join(dir, "run")
@@ -112,7 +112,7 @@ func TestRun_RenderWritesEveryNodeFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(userData), "two-lab-automation") || strings.Contains(string(userData), "# lab key") {
+	if !strings.Contains(string(userData), "lab-automation") || strings.Contains(string(userData), "# lab key") {
 		t.Errorf("keys not read as an authorized_keys file:\n%s", userData)
 	}
 }
@@ -157,7 +157,7 @@ func TestRun_CommandsWithoutALabInTheRunDir(t *testing.T) {
 			args = append(args, "hv1")
 		}
 		code, _, stderr := runLab(args...)
-		if code != 1 || !strings.Contains(stderr, "lab: no lab in "+run) {
+		if code != 1 || !strings.Contains(stderr, "labctl: no lab in "+run) {
 			t.Errorf("%s: code %d, stderr %q", cmd, code, stderr)
 		}
 	}
@@ -304,7 +304,7 @@ func TestRun_UpRefusesToReplaceARunningLab(t *testing.T) {
 func TestRun_RenderShipsTheExampleFRRConfigs(t *testing.T) {
 	dir := t.TempDir()
 	key := filepath.Join(dir, "lab.pub")
-	if err := os.WriteFile(key, []byte("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFG/JMmjfko96WkJV8DiL6rip/H/q/R++y8s27Z+Cj6O two-lab-automation\n"), 0o600); err != nil {
+	if err := os.WriteFile(key, []byte("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFG/JMmjfko96WkJV8DiL6rip/H/q/R++y8s27Z+Cj6O lab-automation\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	out := filepath.Join(dir, "run")

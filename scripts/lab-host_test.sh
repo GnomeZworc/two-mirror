@@ -193,7 +193,7 @@ base_state () {
       ],
       keys: [{id: "key-1", disabled: false}, {id: "key-off", disabled: true}],
       servers: {
-        "foreign-1": {id: "foreign-1", name: "prod-db", project_id: $o, tags: ["two-lab"], status: "ready", install: {status: "completed"}, ips: []},
+        "foreign-1": {id: "foreign-1", name: "prod-db", project_id: $o, tags: ["labctl"], status: "ready", install: {status: "completed"}, ips: []},
         "foreign-2": {id: "foreign-2", name: "autre", project_id: $p, tags: ["autre"], status: "ready", install: {status: "completed"}, ips: []}
       }
     }'
@@ -305,16 +305,16 @@ test_up_creates_and_waits_for_installation () {
     mutate '.progress = [["delivering","to_install"],["ready","installing"],["ready","completed"]]'
     run_lab up || fail "code de sortie $?"
     [[ $(jq -r '.offer_id' "${WORK}/create.json") == "${HOURLY_ID}" ]] || fail "offre créée incorrecte"
-    [[ $(jq -r '.tags | join(",")' "${WORK}/create.json") == "two-lab" ]] || fail "tag absent"
+    [[ $(jq -r '.tags | join(",")' "${WORK}/create.json") == "labctl" ]] || fail "tag absent"
     [[ $(jq -r '.project_id' "${WORK}/create.json") == "${PROJECT}" ]] || fail "projet incorrect"
-    [[ $(cat "${WORK}/.cache/two-lab/ip" 2>/dev/null) == "203.0.113.7" ]] || fail "IPv4 non retenue"
-    [[ $(cat "${WORK}/.cache/two-lab/user" 2>/dev/null) == "debian" ]] || fail "utilisateur non retenu"
+    [[ $(cat "${WORK}/.cache/labctl/ip" 2>/dev/null) == "203.0.113.7" ]] || fail "IPv4 non retenue"
+    [[ $(cat "${WORK}/.cache/labctl/user" 2>/dev/null) == "debian" ]] || fail "utilisateur non retenu"
     teardown
 }
 
 test_up_refuses_when_lab_server_exists () {
     setup "up : refus si un serveur de lab existe déjà"
-    mutate '.servers["srv-old"] = {id: "srv-old", name: "two-lab", project_id: "'"${PROJECT}"'", tags: ["two-lab"], status: "ready", install: {status: "completed"}, ips: []}'
+    mutate '.servers["srv-old"] = {id: "srv-old", name: "labctl", project_id: "'"${PROJECT}"'", tags: ["labctl"], status: "ready", install: {status: "completed"}, ips: []}'
     run_lab up && fail "up a réussi"
     grep -q "^POST" "${WORK}/calls.log" && fail "second serveur créé"
     teardown
@@ -331,7 +331,7 @@ test_secret_never_in_argv () {
 
 test_down_deletes_only_lab_servers_of_project () {
     setup "down : ne supprime que les serveurs de lab du projet"
-    mutate '.servers["srv-lab"] = {id: "srv-lab", name: "two-lab", project_id: "'"${PROJECT}"'", tags: ["two-lab"], status: "ready", install: {status: "completed"}, ips: []}'
+    mutate '.servers["srv-lab"] = {id: "srv-lab", name: "labctl", project_id: "'"${PROJECT}"'", tags: ["labctl"], status: "ready", install: {status: "completed"}, ips: []}'
     run_lab down || fail "code de sortie $?"
     [[ $(remaining) == "foreign-1,foreign-2" ]] || fail "restants : $(remaining)"
     teardown
@@ -339,7 +339,7 @@ test_down_deletes_only_lab_servers_of_project () {
 
 test_down_retries_refused_deletion () {
     setup "down : réessaie une suppression refusée"
-    mutate '.delete_refusals = 2 | .servers["srv-lab"] = {id: "srv-lab", name: "two-lab", project_id: "'"${PROJECT}"'", tags: ["two-lab"], status: "ready", install: {status: "installing"}, ips: []}'
+    mutate '.delete_refusals = 2 | .servers["srv-lab"] = {id: "srv-lab", name: "labctl", project_id: "'"${PROJECT}"'", tags: ["labctl"], status: "ready", install: {status: "installing"}, ips: []}'
     run_lab down || fail "code de sortie $?"
     [[ $(grep -c "^DELETE" "${WORK}/calls.log") -eq 3 ]] || fail "$(grep -c "^DELETE" "${WORK}/calls.log") DELETE au lieu de 3"
     [[ $(remaining) == "foreign-1,foreign-2" ]] || fail "restants : $(remaining)"
@@ -348,7 +348,7 @@ test_down_retries_refused_deletion () {
 
 test_down_fails_loudly_when_deletion_keeps_failing () {
     setup "down : échec bruyant si la suppression n'aboutit jamais"
-    mutate '.delete_refusals = 1000 | .servers["srv-lab"] = {id: "srv-lab", name: "two-lab", project_id: "'"${PROJECT}"'", tags: ["two-lab"], status: "ready", install: {status: "installing"}, ips: []}'
+    mutate '.delete_refusals = 1000 | .servers["srv-lab"] = {id: "srv-lab", name: "labctl", project_id: "'"${PROJECT}"'", tags: ["labctl"], status: "ready", install: {status: "installing"}, ips: []}'
     LAB_DELETE_TIMEOUT=1 run_lab down && fail "down a réussi"
     grep -q "TOUJOURS FACTURÉ" "${WORK}/out.log" || fail "pas d'alerte de facturation"
     teardown
@@ -356,7 +356,7 @@ test_down_fails_loudly_when_deletion_keeps_failing () {
 
 test_down_waits_until_server_is_gone () {
     setup "down : attend que le serveur ait disparu"
-    mutate '.linger = 3 | .servers["srv-lab"] = {id: "srv-lab", name: "two-lab", project_id: "'"${PROJECT}"'", tags: ["two-lab"], status: "ready", install: {status: "completed"}, ips: []}'
+    mutate '.linger = 3 | .servers["srv-lab"] = {id: "srv-lab", name: "labctl", project_id: "'"${PROJECT}"'", tags: ["labctl"], status: "ready", install: {status: "completed"}, ips: []}'
     run_lab down || fail "code de sortie $?"
     [[ $(grep -c "^GET /baremetal/v1/zones/fr-par-1/servers/srv-lab$" "${WORK}/calls.log") -ge 4 ]] || fail "disparition non attendue"
     [[ $(remaining) == "foreign-1,foreign-2" ]] || fail "restants : $(remaining)"
@@ -365,7 +365,7 @@ test_down_waits_until_server_is_gone () {
 
 test_down_fails_loudly_when_server_never_disappears () {
     setup "down : échec bruyant si le serveur ne disparaît jamais"
-    mutate '.linger = 100000 | .servers["srv-lab"] = {id: "srv-lab", name: "two-lab", project_id: "'"${PROJECT}"'", tags: ["two-lab"], status: "ready", install: {status: "completed"}, ips: []}'
+    mutate '.linger = 100000 | .servers["srv-lab"] = {id: "srv-lab", name: "labctl", project_id: "'"${PROJECT}"'", tags: ["labctl"], status: "ready", install: {status: "completed"}, ips: []}'
     LAB_DELETE_TIMEOUT=1 run_lab down && fail "down a réussi"
     grep -q "TOUJOURS FACTURÉ" "${WORK}/out.log" || fail "pas d'alerte de facturation"
     teardown
@@ -373,7 +373,7 @@ test_down_fails_loudly_when_server_never_disappears () {
 
 test_down_does_not_mistake_api_error_for_disappearance () {
     setup "down : une erreur de l'API n'est pas prise pour une disparition"
-    mutate '.linger = 100000 | .get_errors = 1 | .servers["srv-lab"] = {id: "srv-lab", name: "two-lab", project_id: "'"${PROJECT}"'", tags: ["two-lab"], status: "ready", install: {status: "completed"}, ips: []}'
+    mutate '.linger = 100000 | .get_errors = 1 | .servers["srv-lab"] = {id: "srv-lab", name: "labctl", project_id: "'"${PROJECT}"'", tags: ["labctl"], status: "ready", install: {status: "completed"}, ips: []}'
     LAB_DELETE_TIMEOUT=1 run_lab down && fail "down a réussi alors que le serveur existe encore"
     grep -q "TOUJOURS FACTURÉ" "${WORK}/out.log" || fail "pas d'alerte de facturation"
     teardown
@@ -417,7 +417,7 @@ test_session_deletes_server_when_installation_times_out () {
 
 test_session_does_not_touch_existing_lab_server () {
     setup "session : ne supprime pas un serveur de lab lancé à côté"
-    mutate '.servers["srv-old"] = {id: "srv-old", name: "two-lab", project_id: "'"${PROJECT}"'", tags: ["two-lab"], status: "ready", install: {status: "completed"}, ips: []}'
+    mutate '.servers["srv-old"] = {id: "srv-old", name: "labctl", project_id: "'"${PROJECT}"'", tags: ["labctl"], status: "ready", install: {status: "completed"}, ips: []}'
     run_lab session true && fail "session a réussi"
     grep -q "^DELETE" "${WORK}/calls.log" && fail "suppression lancée"
     [[ $(remaining) == "foreign-1,foreign-2,srv-old" ]] || fail "restants : $(remaining)"
@@ -432,8 +432,8 @@ test_missing_credentials_are_refused_before_any_call () {
     teardown
 }
 
-LAB_SERVER='{id: "srv-lab", name: "two-lab", project_id: "'"${PROJECT}"'", tags: ["two-lab"], status: "ready", install: {status: "completed"}, ips: []}'
-INSTALLING_LAB_SERVER='{id: "srv-lab", name: "two-lab", project_id: "'"${PROJECT}"'", tags: ["two-lab"], status: "ready", install: {status: "installing"}, ips: []}'
+LAB_SERVER='{id: "srv-lab", name: "labctl", project_id: "'"${PROJECT}"'", tags: ["labctl"], status: "ready", install: {status: "completed"}, ips: []}'
+INSTALLING_LAB_SERVER='{id: "srv-lab", name: "labctl", project_id: "'"${PROJECT}"'", tags: ["labctl"], status: "ready", install: {status: "installing"}, ips: []}'
 
 test_down_keeps_retrying_while_server_is_installing () {
     setup "down : réessaie au-delà du délai tant que le serveur s'installe"
@@ -619,11 +619,11 @@ test_session_deletes_server_when_ssh_never_answers () {
 test_ssh_uses_dedicated_lab_key_only_when_present () {
     setup "ssh : clé dédiée du lab utilisée seule quand elle existe"
     mutate '.progress = [["ready","completed"]]'
-    mkdir -p "${WORK}/.config/two-lab/ssh"
-    : > "${WORK}/.config/two-lab/ssh/lab_ed25519"
+    mkdir -p "${WORK}/.config/labctl/ssh"
+    : > "${WORK}/.config/labctl/ssh/lab_ed25519"
     run_lab session uname || fail "code de sortie $?"
     grep -q " uname" "${WORK}/ssh.log" || fail "commande non lancée"
-    [[ $(grep -c -- "-i ${WORK}/.config/two-lab/ssh/lab_ed25519 -o IdentitiesOnly=yes -o IdentityAgent=none" "${WORK}/ssh.log") -eq $(wc -l < "${WORK}/ssh.log") ]] \
+    [[ $(grep -c -- "-i ${WORK}/.config/labctl/ssh/lab_ed25519 -o IdentitiesOnly=yes -o IdentityAgent=none" "${WORK}/ssh.log") -eq $(wc -l < "${WORK}/ssh.log") ]] \
         || fail "une connexion n'a pas utilisé la clé dédiée seule"
     teardown
 }
@@ -638,10 +638,10 @@ test_ssh_falls_back_to_agent_without_lab_key () {
 }
 
 known_server () {
-    mkdir -p "${WORK}/.cache/two-lab"
-    echo 203.0.113.7 > "${WORK}/.cache/two-lab/ip"
-    echo debian > "${WORK}/.cache/two-lab/user"
-    : > "${WORK}/.cache/two-lab/known_hosts"
+    mkdir -p "${WORK}/.cache/labctl"
+    echo 203.0.113.7 > "${WORK}/.cache/labctl/ip"
+    echo debian > "${WORK}/.cache/labctl/user"
+    : > "${WORK}/.cache/labctl/known_hosts"
 }
 
 test_up_prepares_the_server_after_ssh () {
@@ -691,7 +691,7 @@ test_prepare_without_known_server_is_refused () {
 }
 
 test_push_builds_for_linux_and_sends_binary_and_topology () {
-    setup "push : compile lab pour linux/amd64, envoie le binaire et le répertoire de la topologie"
+    setup "push : compile labctl pour linux/amd64, envoie le binaire et le répertoire de la topologie"
     known_server
     mkdir -p "${WORK}/conf/frr"
     printf 'name: evpn-2hv\n' > "${WORK}/conf/evpn-2hv.yml"
@@ -700,9 +700,9 @@ test_push_builds_for_linux_and_sends_binary_and_topology () {
     run_lab push "${WORK}/conf/evpn-2hv.yml" || fail "code de sortie $?"
     local REPO LISTING
     REPO="$(cd "$(dirname "${SCRIPT}")/.." && pwd)"
-    [[ $(cat "${WORK}/go.log") == "${REPO}|build -o ${WORK}/.cache/two-lab/lab ./cmd/lab|CGO_ENABLED=0 GOOS=linux GOARCH=amd64" ]] \
+    [[ $(cat "${WORK}/go.log") == "${REPO}|build -o ${WORK}/.cache/labctl/labctl ./cmd/labctl|CGO_ENABLED=0 GOOS=linux GOARCH=amd64" ]] \
         || fail "compilation : $(cat "${WORK}/go.log")"
-    grep -q "debian@203.0.113.7 cat > 'lab.part' && chmod 755 'lab.part' && mv 'lab.part' 'lab'" "${WORK}/ssh.log" || fail "envoi de lab absent"
+    grep -q "debian@203.0.113.7 cat > 'labctl.part' && chmod 755 'labctl.part' && mv 'labctl.part' 'labctl'" "${WORK}/ssh.log" || fail "envoi de labctl absent"
     grep -q "debian@203.0.113.7 rm -rf topology.part && mkdir topology.part && tar -C topology.part --no-same-owner -xf - && rm -rf topology && mv topology.part topology" "${WORK}/ssh.log" \
         || fail "envoi du répertoire absent"
     [[ $(cat "${WORK}/pushed.1") == "binaire-lab" ]] || fail "contenu de lab : $(cat "${WORK}/pushed.1")"
@@ -711,7 +711,7 @@ test_push_builds_for_linux_and_sends_binary_and_topology () {
     grep -aq 'LIBARCHIVE.xattr' "${WORK}/pushed.2" && fail "attributs étendus macOS dans l'archive"
     mkdir "${WORK}/x" && tar -C "${WORK}/x" -xf "${WORK}/pushed.2"
     [[ $(cat "${WORK}/x/frr/rr1.conf") == "hostname rr1" ]] || fail "frr/rr1.conf altéré"
-    grep -q "ssh './lab up topology/evpn-2hv.yml'" "${WORK}/out.log" || fail "consigne finale absente"
+    grep -q "ssh './labctl up topology/evpn-2hv.yml'" "${WORK}/out.log" || fail "consigne finale absente"
     teardown
 }
 
@@ -721,7 +721,7 @@ test_push_stops_when_the_build_fails () {
     printf 'name: x\n' > "${WORK}/x.yml"
     FAKE_GO_FAIL=1 run_lab push "${WORK}/x.yml" && fail "push a réussi"
     [[ -s "${WORK}/ssh.log" ]] && fail "ssh lancé"
-    grep -q "compilation de lab échouée" "${WORK}/out.log" || fail "message absent"
+    grep -q "compilation de labctl échouée" "${WORK}/out.log" || fail "message absent"
     teardown
 }
 
@@ -730,7 +730,7 @@ test_push_fails_when_a_transfer_fails () {
     known_server
     printf 'name: x\n' > "${WORK}/x.yml"
     FAKE_PUSH_RC=1 run_lab push "${WORK}/x.yml" && fail "push a réussi"
-    grep -q "envoi de lab échoué" "${WORK}/out.log" || fail "message absent"
+    grep -q "envoi de labctl échoué" "${WORK}/out.log" || fail "message absent"
     teardown
 }
 
@@ -753,8 +753,8 @@ test_push_refusals () {
 test_ssh_without_terminal_does_not_ask_for_one () {
     setup "ssh : pas de -t quand l'entrée n'est pas un terminal"
     known_server
-    run_lab ssh './lab status' < /dev/null || fail "code de sortie $?"
-    [[ $(cat "${WORK}/ssh.log") == *"debian@203.0.113.7 ./lab status" ]] || fail "commande : $(cat "${WORK}/ssh.log")"
+    run_lab ssh './labctl status' < /dev/null || fail "code de sortie $?"
+    [[ $(cat "${WORK}/ssh.log") == *"debian@203.0.113.7 ./labctl status" ]] || fail "commande : $(cat "${WORK}/ssh.log")"
     grep -q -- " -t " "${WORK}/ssh.log" && fail "-t demandé sans terminal"
     teardown
 }
@@ -766,9 +766,9 @@ run_lab_without_env_credentials () {
 }
 
 write_credentials () {
-    mkdir -p "${WORK}/.config/two-lab"
-    printf '%s\n' "$@" > "${WORK}/.config/two-lab/scaleway.env"
-    chmod 600 "${WORK}/.config/two-lab/scaleway.env"
+    mkdir -p "${WORK}/.config/labctl"
+    printf '%s\n' "$@" > "${WORK}/.config/labctl/scaleway.env"
+    chmod 600 "${WORK}/.config/labctl/scaleway.env"
 }
 
 test_credentials_file_is_used_when_environment_is_empty () {
@@ -782,9 +782,9 @@ test_credentials_file_is_used_when_environment_is_empty () {
 
 test_credentials_file_without_final_newline_is_read () {
     setup "identifiants : dernière ligne sans retour à la ligne lue quand même"
-    mkdir -p "${WORK}/.config/two-lab"
-    printf 'SCW_DEFAULT_PROJECT_ID=%s\nSCW_SECRET_KEY=%s' "${PROJECT}" "${SECRET}" > "${WORK}/.config/two-lab/scaleway.env"
-    chmod 600 "${WORK}/.config/two-lab/scaleway.env"
+    mkdir -p "${WORK}/.config/labctl"
+    printf 'SCW_DEFAULT_PROJECT_ID=%s\nSCW_SECRET_KEY=%s' "${PROJECT}" "${SECRET}" > "${WORK}/.config/labctl/scaleway.env"
+    chmod 600 "${WORK}/.config/labctl/scaleway.env"
     run_lab_without_env_credentials || fail "code de sortie $?"
     teardown
 }
@@ -808,7 +808,7 @@ test_environment_value_kept_when_file_completes_the_rest () {
 test_credentials_file_readable_by_others_is_refused () {
     setup "identifiants : fichier lisible par d'autres refusé, sans aucun appel"
     write_credentials "SCW_SECRET_KEY=${SECRET}" "SCW_DEFAULT_PROJECT_ID=${PROJECT}"
-    chmod 644 "${WORK}/.config/two-lab/scaleway.env"
+    chmod 644 "${WORK}/.config/labctl/scaleway.env"
     run_lab_without_env_credentials && fail "plan a réussi"
     grep -q "chmod 600" "${WORK}/out.log" || fail "pas de consigne de droits"
     [[ -s "${WORK}/calls.log" ]] && fail "appel réseau avec un fichier exposé"
@@ -892,9 +892,9 @@ test_no_zone_with_stock_is_refused_without_creation () {
 
 test_down_and_status_cover_every_candidate_zone () {
     setup "down et status : serveurs de lab de toutes les zones candidates"
-    mutate ".servers[\"lab-ams\"] = {id: \"lab-ams\", name: \"two-lab\", project_id: \"${PROJECT}\", tags: [\"two-lab\"],
+    mutate ".servers[\"lab-ams\"] = {id: \"lab-ams\", name: \"labctl\", project_id: \"${PROJECT}\", tags: [\"labctl\"],
         status: \"ready\", install: {status: \"completed\"}, ips: [], zone: \"nl-ams-2\", offer_name: \"EM-B420E-NVME\", created_at: \"now\"}"
-    mutate ".servers[\"lab-par\"] = {id: \"lab-par\", name: \"two-lab\", project_id: \"${PROJECT}\", tags: [\"two-lab\"],
+    mutate ".servers[\"lab-par\"] = {id: \"lab-par\", name: \"labctl\", project_id: \"${PROJECT}\", tags: [\"labctl\"],
         status: \"ready\", install: {status: \"completed\"}, ips: [], offer_name: \"EM-B212X-SSD\", created_at: \"now\"}"
     LAB_ZONES="fr-par-1 nl-ams-2" run_lab status
     grep -q '^nl-ams-2  lab-ams' "${WORK}/out.log" || fail "status : $(cat "${WORK}/out.log")"

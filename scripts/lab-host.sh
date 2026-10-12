@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
 
 API_URL="${SCW_API_URL:-https://api.scaleway.com}"
-CREDENTIALS_FILE="${LAB_CREDENTIALS_FILE:-${HOME}/.config/two-lab/scaleway.env}"
+CREDENTIALS_FILE="${LAB_CREDENTIALS_FILE:-${HOME}/.config/labctl/scaleway.env}"
 OFFER_NAME="${LAB_OFFER:-EM-B420E-NVME}"
 ALL_ZONES="fr-par-1 fr-par-2 nl-ams-1 nl-ams-2 pl-waw-2 pl-waw-3"
 OS_NAME="${LAB_OS_NAME:-Debian}"
 OS_VERSION="${LAB_OS_VERSION:-12}"
-LAB_NAME="${LAB_NAME:-two-lab}"
-LAB_TAG="${LAB_TAG:-two-lab}"
+LAB_NAME="${LAB_NAME:-labctl}"
+LAB_TAG="${LAB_TAG:-labctl}"
 INSTALL_TIMEOUT="${LAB_INSTALL_TIMEOUT:-3600}"
 DELETE_TIMEOUT="${LAB_DELETE_TIMEOUT:-900}"
 SSH_TIMEOUT="${LAB_SSH_TIMEOUT:-600}"
 POLL_INTERVAL="${LAB_POLL_INTERVAL:-20}"
 HTTP_CONNECT_TIMEOUT="${LAB_HTTP_CONNECT_TIMEOUT:-10}"
 HTTP_TIMEOUT="${LAB_HTTP_TIMEOUT:-60}"
-STATE_DIR="${LAB_STATE_DIR:-${HOME}/.cache/two-lab}"
-SSH_KEY="${LAB_SSH_KEY:-${HOME}/.config/two-lab/ssh/lab_ed25519}"
+STATE_DIR="${LAB_STATE_DIR:-${HOME}/.cache/labctl}"
+SSH_KEY="${LAB_SSH_KEY:-${HOME}/.config/labctl/ssh/lab_ed25519}"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CREATED_ID=""
 
@@ -34,11 +34,11 @@ usage: ${0##*/} <commande> [arguments]
   status            liste les serveurs de lab du projet, dans toutes les zones candidates
   ssh [commande]    se connecte au serveur de lab ; avec une commande, un terminal n'est demandé
                     que si l'entrée standard en est un
-  prepare           installe sur le serveur ce dont lab a besoin (qemu, genisoimage), vérifie
+  prepare           installe sur le serveur ce dont labctl a besoin (qemu, genisoimage), vérifie
                     /dev/kvm, la virtualisation imbriquée et un CPU x86-64-v3 ; lancé aussi par up
-  push <topologie>  compile cmd/lab pour linux/amd64 et dépose sur le serveur ~/lab et le
+  push <topologie>  compile cmd/labctl pour linux/amd64 et dépose sur le serveur ~/labctl et le
                     répertoire de la topologie dans ~/topology/ (avec les fichiers qu'elle
-                    référence) ; ensuite : ssh './lab up topology/<topologie>'
+                    référence) ; ensuite : ssh './labctl up topology/<topologie>'
   down              supprime tous les serveurs de lab du projet, dans toutes les zones candidates,
                     et attend leur disparition
   session [cmd]     up, puis la commande distante (ou un shell), puis down quoi qu'il arrive
@@ -170,7 +170,7 @@ build_request () {
     local KEYS="${3}"
     jq -nc --argjson offer "${OFFER}" --argjson os "${OS}" --argjson keys "${KEYS}" \
         --arg project "${PROJECT_ID}" --arg name "${LAB_NAME}" --arg tag "${LAB_TAG}" \
-        '{offer_id: $offer.id, project_id: $project, name: $name, description: "lab two (#50)",
+        '{offer_id: $offer.id, project_id: $project, name: $name, description: "labctl",
           tags: [$tag], install: {os_id: $os.id, hostname: $name, ssh_key_ids: $keys}}'
 }
 
@@ -383,17 +383,17 @@ push_dir () {
 cmd_push () {
     local TOPOLOGY="${1:-}"
     local NAME="${TOPOLOGY##*/}"
-    local BINARY="${STATE_DIR}/lab"
+    local BINARY="${STATE_DIR}/labctl"
     [[ $# -eq 1 && -n "${TOPOLOGY}" ]] || usage
     [[ -f "${TOPOLOGY}" ]] || die "topologie introuvable : ${TOPOLOGY}"
     [[ "${NAME}" =~ ^[A-Za-z0-9._-]+$ ]] || die "nom de topologie refusé : ${NAME} (lettres, chiffres, '.', '_', '-')"
     require_known_server
-    info "compilation de lab (linux/amd64)"
-    (cd "${REPO_DIR}" && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "${BINARY}" ./cmd/lab) \
-        || die "compilation de lab échouée"
-    push_file "${BINARY}" lab 755 || die "envoi de lab échoué"
+    info "compilation de labctl (linux/amd64)"
+    (cd "${REPO_DIR}" && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "${BINARY}" ./cmd/labctl) \
+        || die "compilation de labctl échouée"
+    push_file "${BINARY}" labctl 755 || die "envoi de labctl échoué"
     push_dir "$(dirname "${TOPOLOGY}")" || die "envoi du répertoire de ${NAME} échoué"
-    info "déposés sur le serveur : ~/lab, ~/topology/ — ensuite : ${0##*/} ssh './lab up topology/${NAME}'"
+    info "déposés sur le serveur : ~/labctl, ~/topology/ — ensuite : ${0##*/} ssh './labctl up topology/${NAME}'"
 }
 
 delete_server () {

@@ -46,7 +46,7 @@ func flags(name string, stderr io.Writer) (*flag.FlagSet, *string) {
 func lab(runDir string, plan string, stdout, stderr io.Writer) (machine.Lab, bool) {
 	dir, err := filepath.Abs(runDir)
 	if err != nil {
-		fmt.Fprintf(stderr, "lab: %v\n", err)
+		fmt.Fprintf(stderr, "labctl: %v\n", err)
 		return machine.Lab{}, false
 	}
 	p, ok := load(plan, stderr)
@@ -67,7 +67,7 @@ func lab(runDir string, plan string, stdout, stderr io.Writer) (machine.Lab, boo
 func current(runDir string, stdout, stderr io.Writer) (machine.Lab, bool) {
 	saved := filepath.Join(runDir, topologyFile)
 	if _, err := os.Stat(saved); err != nil {
-		fmt.Fprintf(stderr, "lab: no lab in %s: %v\n", runDir, err)
+		fmt.Fprintf(stderr, "labctl: no lab in %s: %v\n", runDir, err)
 		return machine.Lab{}, false
 	}
 	return lab(runDir, saved, stdout, stderr)
@@ -75,7 +75,7 @@ func current(runDir string, stdout, stderr io.Writer) (machine.Lab, bool) {
 
 func upCmd(args []string, stdout, stderr io.Writer) int {
 	fs, runDir := flags("up", stderr)
-	cacheDir := fs.String("cache", defaultDir(".cache", "two-lab"), "image cache directory")
+	cacheDir := fs.String("cache", defaultDir(".cache", "labctl"), "image cache directory")
 	timeout := fs.Duration("timeout", 20*time.Minute, "how long to wait for the nodes to be ready")
 	if err := fs.Parse(args); err != nil || fs.NArg() != 1 {
 		fs.Usage()
@@ -83,7 +83,7 @@ func upCmd(args []string, stdout, stderr io.Writer) int {
 	}
 	cache, err := filepath.Abs(*cacheDir)
 	if err != nil {
-		fmt.Fprintf(stderr, "lab: %v\n", err)
+		fmt.Fprintf(stderr, "labctl: %v\n", err)
 		return 1
 	}
 
@@ -94,11 +94,11 @@ func upCmd(args []string, stdout, stderr io.Writer) int {
 		}
 		running, err := previous.Running()
 		if err != nil {
-			fmt.Fprintf(stderr, "lab: %v\n", err)
+			fmt.Fprintf(stderr, "labctl: %v\n", err)
 			return 1
 		}
 		if len(running) > 0 {
-			fmt.Fprintf(stderr, "lab: lab %s is still running in %s: 'lab down' first\n", previous.Plan.Name, previous.RunDir)
+			fmt.Fprintf(stderr, "labctl: lab %s is still running in %s: 'lab down' first\n", previous.Plan.Name, previous.RunDir)
 			return 1
 		}
 	}
@@ -109,15 +109,15 @@ func upCmd(args []string, stdout, stderr io.Writer) int {
 	}
 	source, err := os.ReadFile(fs.Arg(0))
 	if err != nil {
-		fmt.Fprintf(stderr, "lab: %v\n", err)
+		fmt.Fprintf(stderr, "labctl: %v\n", err)
 		return 1
 	}
 	if err := os.MkdirAll(l.RunDir, 0o700); err != nil {
-		fmt.Fprintf(stderr, "lab: %v\n", err)
+		fmt.Fprintf(stderr, "labctl: %v\n", err)
 		return 1
 	}
 	if err := os.WriteFile(filepath.Join(l.RunDir, topologyFile), source, 0o600); err != nil {
-		fmt.Fprintf(stderr, "lab: %v\n", err)
+		fmt.Fprintf(stderr, "labctl: %v\n", err)
 		return 1
 	}
 
@@ -125,7 +125,7 @@ func upCmd(args []string, stdout, stderr io.Writer) int {
 	defer stop()
 	fetcher := provision.Fetcher{Client: &http.Client{}, CacheDir: cache}
 	if err := l.Up(ctx, fetcher, *timeout); err != nil {
-		fmt.Fprintf(stderr, "lab: %v\nlab: started nodes keep running: 'lab status', 'lab down'\n", err)
+		fmt.Fprintf(stderr, "labctl: %v\nlab: started nodes keep running: 'lab status', 'lab down'\n", err)
 		return 1
 	}
 	return 0
@@ -142,7 +142,7 @@ func statusCmd(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	if err := l.Status(stdout); err != nil {
-		fmt.Fprintf(stderr, "lab: %v\n", err)
+		fmt.Fprintf(stderr, "labctl: %v\n", err)
 		return 1
 	}
 	return 0
@@ -159,7 +159,7 @@ func downCmd(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	if err := l.Down(context.Background()); err != nil {
-		fmt.Fprintf(stderr, "lab: %v\n", err)
+		fmt.Fprintf(stderr, "labctl: %v\n", err)
 		return 1
 	}
 	return 0
@@ -177,16 +177,16 @@ func sshCmd(args []string, stdout, stderr io.Writer) int {
 	}
 	argv, err := l.SSH(fs.Arg(0), isTerminal(os.Stdin), fs.Args()[1:])
 	if err != nil {
-		fmt.Fprintf(stderr, "lab: %v\n", err)
+		fmt.Fprintf(stderr, "labctl: %v\n", err)
 		return 1
 	}
 	path, err := exec.LookPath(argv[0])
 	if err != nil {
-		fmt.Fprintf(stderr, "lab: %v\n", err)
+		fmt.Fprintf(stderr, "labctl: %v\n", err)
 		return 1
 	}
 	if err := execve(path, argv, os.Environ()); err != nil {
-		fmt.Fprintf(stderr, "lab: %v\n", err)
+		fmt.Fprintf(stderr, "labctl: %v\n", err)
 		return 1
 	}
 	return 0

@@ -16,7 +16,7 @@ import (
 
 const (
 	KeyFile   = "lab_ed25519"
-	KeyLabel  = "two-lab"
+	KeyLabel  = "labctl"
 	DiskSize  = "20G"
 	SeedLabel = "cidata"
 

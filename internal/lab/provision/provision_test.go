@@ -15,7 +15,7 @@ import (
 	"git.g3e.fr/syonad/two/internal/lab/topology"
 )
 
-const generatedKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFG/JMmjfko96WkJV8DiL6rip/H/q/R++y8s27Z+Cj6O two-lab"
+const generatedKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFG/JMmjfko96WkJV8DiL6rip/H/q/R++y8s27Z+Cj6O labctl"
 
 type fakeRunner struct {
 	calls [][]string
@@ -98,7 +98,7 @@ func TestPrepare_StagesEveryNode(t *testing.T) {
 
 	base := filepath.Join(cache, "debian12", "debian-12-generic-amd64.qcow2")
 	want := [][]string{
-		{"ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "two-lab", "-f", filepath.Join(run, "lab_ed25519")},
+		{"ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", "labctl", "-f", filepath.Join(run, "lab_ed25519")},
 	}
 	for _, n := range []string{"sw1", "rr1", "hv1", "hv2"} {
 		dir := filepath.Join(run, n)
@@ -332,7 +332,7 @@ func TestEnsureKey_WithTheRealSSHKeygen(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EnsureKey: %v", err)
 	}
-	if !strings.HasPrefix(key, "ssh-ed25519 ") || !strings.HasSuffix(key, " two-lab") {
+	if !strings.HasPrefix(key, "ssh-ed25519 ") || !strings.HasSuffix(key, " labctl") {
 		t.Errorf("key = %q", key)
 	}
 	info, err := os.Stat(filepath.Join(dir, "lab_ed25519"))
