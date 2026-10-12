@@ -7,6 +7,7 @@ import (
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/frr"
+	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 
 	"github.com/dgraph-io/badger/v4"
@@ -55,14 +56,6 @@ func (v l3VPC) vxlan() string     { return "vxl3-" + v.id }
 func (v l3VPC) vethHost() string  { return "l3-" + v.id + "-o" }
 func (v l3VPC) vethNetns() string { return "l3-" + v.id + "-i" }
 
-func routerMAC(vtep net.IP) (net.HardwareAddr, error) {
-	ip := vtep.To4()
-	if ip == nil {
-		return nil, fmt.Errorf("vtep %v is not an IPv4 address", vtep)
-	}
-	return net.HardwareAddr{0x02, 0x02, ip[0], ip[1], ip[2], ip[3]}, nil
-}
-
 func bgpASN(cfg *configuration.Config) (uint32, error) {
 	if cfg == nil || !cfg.BGP.Enabled() {
 		return 0, fmt.Errorf("the vpc has an l3vni but the agent configuration has no bgp section")
@@ -79,7 +72,7 @@ func createL3(h host, cfg *configuration.Config, v l3VPC) error {
 	if err != nil {
 		return fmt.Errorf("vtep: %w", err)
 	}
-	rmac, err := routerMAC(vtep)
+	rmac, err := RouterMAC(vtep)
 	if err != nil {
 		return err
 	}
@@ -181,5 +174,5 @@ func LoadRouting(db *badger.DB, vpcName string) (Routing, bool, error) {
 }
 
 func RouterMAC(vtep net.IP) (net.HardwareAddr, error) {
-	return routerMAC(vtep)
+	return netif.HostMAC(netif.RoleRouter, vtep)
 }
