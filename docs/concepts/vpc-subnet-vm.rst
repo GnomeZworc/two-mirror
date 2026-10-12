@@ -29,6 +29,11 @@ plus besoin de porter un subnet pour joindre ses VM. Sans ``l3vni``, le VPC se c
 avant. Le champ exige la section ``bgp`` de l'agent (:doc:`/exploitation/configuration`) et ne
 se change pas après création.
 
+**Plan de VNI.** L3VNI et ``vxlan_id`` des subnets partagent l'espace des VNI VXLAN : la plage
+**1–65535** (sauf 253–255, tables du noyau) est réservée aux L3VNI des VPC, **65536–16777215** aux
+subnets. L'agent n'impose que la première borne (le RD ``<VTEP>:<l3vni>`` porte un numéro sur
+16 bits) ; le respect du plan revient à l'appelant, qui alloue les deux.
+
 À la création, l'agent pose sur l'hyperviseur, pour un VPC ``vp-<id>`` :
 
 .. code-block:: text
