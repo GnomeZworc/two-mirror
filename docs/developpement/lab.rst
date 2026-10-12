@@ -72,7 +72,7 @@ et ``evpn-3hv.yml`` (trois, pour ``s8`` et ``s9``). Le format est celui de ``lab
 Les ASN, la loopback du route reflector, le lien ``169.254.0.0/28`` et le subnet des hyperviseurs
 de l'exemple sont **ceux de la production** (décision du 2026-10-04, #50) : les fichiers de
 ``test/e2e/topologies/`` restent ainsi au plus près de ce qui tourne réellement. Toutes les adresses y sont
-**fixées** par ``addresses`` — le route reflector en ``.2``, les hyperviseurs à partir de ``.11`` —
+**fixées** par ``addresses`` — les route reflectors en ``.2`` et ``.3``, les hyperviseurs à partir de ``.11`` —
 pour que le modèle se lise sans le plan et ne dépende pas de l'ordre de déclaration : le
 ``frr.conf`` d'un hyperviseur, écrit à la main, porte son adresse en ``router-id``. Seul le switch
 n'en déclare pas : il porte toujours la passerelle, la première adresse du segment.
@@ -108,7 +108,7 @@ script par celui de ``main``. L'uplink ``-u`` est l'interface qui porte la route
 que ``deploy.sh`` y lit l'adresse et la passerelle qu'il déplace sur ``br-000000``. ``deploy.sh``
 télécharge la release sur ``git.g3e.fr`` sans réessayer : le script attend d'abord que le serveur
 réponde, à travers le switch. Les deux fichiers ``agent/`` donnent à l'agent la section ``bgp``
-(AS 64600, route reflector ``10.255.255.1``) et un watchdog toutes les 10 s ;
+(AS 64600, route reflectors ``10.255.255.1`` et ``10.255.255.2``) et un watchdog toutes les 10 s ;
 ``agent/two.yml`` met en plus hv1 sur le serveur DHCP intégré (``dhcp.backend: two``),
 ``agent/bgp.yml`` laisse les autres sur dnsmasq.
 
@@ -234,10 +234,12 @@ sortie vaut 1 si une vérification échoue **ou si aucune n'a été faite**.
        VPC sur l'autre hyperviseur (témoin) et pas celle de l'autre VPC — aucune résolution ARP
      - hv1, hv2
    * - ``s6-rr-loss``
-     - FRR arrêté sur le route reflector, ping continu entre les VM de ``s4`` : la session tombe,
-       le trafic restant est **mesuré** (``INFO``) à 30 et 90 s ; au retour du route reflector, le
-       VTEP distant est réappris et le trafic repasse — délai mesuré
-     - hv1, hv2, rr1
+     - FRR arrêté sur rr1, puis sur rr2, ping continu entre les VM
+       de ``s4`` : la session vers le route reflector arrêté tombe, celle vers l'autre reste
+       établie, le VTEP distant reste connu et **le trafic continue** (au moins 45 réponses sur 50
+       à 30 s) ; session rétablie au redémarrage, délai mesuré ; au plus 1 % de pertes sur tout le
+       scénario (#54)
+     - hv1, hv2, rr1, rr2
    * - ``s7-l3vni``
      - qualification de `#41 <https://git.g3e.fr/syonad/two/issues/41>`_ **par l'API** : VPC créées
        avec une ``l3vni``, l'agent pose VRF, L3VNI, transit, FRR et les routes de type 5 (``/24``

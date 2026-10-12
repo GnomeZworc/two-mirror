@@ -58,7 +58,7 @@ on hv1 <<'NODE'
 check "hv1 : aucune MAC en double sur la VNI 2811" sh -c "! vtysh -c 'show evpn mac vni 2811 duplicate' | grep -qiE '([0-9a-f]{2}:){5}[0-9a-f]{2}'"
 NODE
 on hv3 <<'NODE'
-for i in $(seq 1 30); do [ "$(bgp_paths vp-s8 10.242.1.50/32)" = 2 ] && break; sleep 2; done
+for i in $(seq 1 30); do [ "$(bgp_paths vp-s8 10.242.1.50/32)" -ge 2 ] && break; sleep 2; done
 info "orchestrée : chemins BGP pour 10.242.1.50/32 : $(bgp_paths vp-s8 10.242.1.50/32) ; meilleur : $(bgp_best vp-s8 10.242.1.50/32) ; installés : $(vrf_nexthops vp-s8 10.242.1.50)"
 check "orchestrée : deux /32 annoncés, hv1 et hv2" wait_vrf_nexthops vp-s8 10.242.1.50 "192.168.14.11 192.168.14.12"
 check "deux /32, subnet présent des deux côtés : les 40 sources joignent 10.242.1.50, quel que soit le chemin ECMP" sh -c "[ \"\$1\" = 40/40 ]" _ "$(sources_reach vp-s8 br-s8t 10.242.2 10.242.1.50)"

@@ -18,9 +18,9 @@ Routeurs de bordure
 Routeur de cluster
 ------------------
 
-Le routeur de cluster est la passerelle des hyperviseurs et le voisin eBGP du route reflector, dont
-il apprend la loopback : c'est par lui que chaque hyperviseur joint ``10.255.255.1`` pour ouvrir sa
-session EVPN (:doc:`route-reflector`).
+Le routeur de cluster est la passerelle des hyperviseurs et le voisin eBGP des deux route
+reflectors, dont il apprend les loopbacks : c'est par lui que chaque hyperviseur joint
+``10.255.255.1`` et ``10.255.255.2`` pour ouvrir ses sessions EVPN (:doc:`route-reflector`).
 
 Adressage
 ~~~~~~~~~
@@ -37,8 +37,8 @@ Adressage
      - passerelle par défaut des hyperviseurs et du route reflector
    * - ``169.254.0.1/28``
      - même interface, **adresse secondaire**
-     - lien avec le route reflector (``169.254.0.3``) ; ``router-id`` ; le second routeur prend
-       ``169.254.0.2``
+     - lien avec les route reflectors (``169.254.0.3`` et ``.4``) ; ``router-id`` ; le second
+       routeur prend ``169.254.0.2``
 
 Le MTU minimal du segment, imposé par VXLAN, est donné plus bas.
 
@@ -52,13 +52,15 @@ Configuration de FRR
 
 Ce qu'elle établit :
 
-* **Route reflector** : eBGP de l'AS 65100 vers l'AS 65000, avec BFD, en IPv4 unicast.
-* **En entrée**, seule la loopback du route reflector est acceptée (``RR-IN``) ; **en sortie**,
+* **Route reflectors** : une session eBGP vers chacun, de l'AS 65100 vers l'AS 65000, avec BFD,
+  en IPv4 unicast.
+* **En entrée**, seules les loopbacks des route reflectors sont acceptées (``RR-IN``) ; **en sortie**,
   rien n'est annoncé (``NO-OUT``). Symétrique de ``RR-LOOPBACK-OUT`` et ``NO-IN`` côté route
   reflector : chaque côté filtre, aucun ne dépend du filtre de l'autre.
 * **Aucune session avec les hyperviseurs** : le routeur leur sert de passerelle, pas de voisin BGP.
 
-Le route reflector déclare aussi le second routeur (``169.254.0.2``). La redondance est l'objet de
+Les route reflectors déclarent aussi le second routeur (``169.254.0.2``). La redondance des
+routeurs — et le mécanisme qui fait basculer la passerelle ``192.168.14.1`` — est l'objet de
 `#54 <https://git.g3e.fr/syonad/two/issues/54>`_.
 
 .. note::
