@@ -33,6 +33,7 @@ type Subnet struct {
 	VxlanID      int    `json:"vxlan_id"`
 	LocalIface   string `json:"local_iface"`
 	InterfaceIP  string `json:"interface_ip"`
+	RelayIP      string `json:"relay_ip,omitempty"`
 	CIDR         string `json:"cidr"`
 	DefaultRoute bool   `json:"default_route"`
 	Gateway      string `json:"gateway"`

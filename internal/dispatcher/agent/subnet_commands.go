@@ -38,6 +38,20 @@ func (c CreateSubnetCommand) Prepare(db *badger.DB, cfg *configuration.Config) e
 	if _, err := kv.GetFromDB(db, "subnet/"+c.Name+"/state"); err == nil {
 		return fmt.Errorf("subnet %q already exists", c.Name)
 	}
+	relayIP := ""
+	if c.Mode == subnet.ModeVxlan {
+		if c.InterfaceIP != "" {
+			return fmt.Errorf("interface_ip is computed for vxlan subnets, do not set it")
+		}
+		addrs, err := subnet.AnycastAddresses(c.CIDR)
+		if err != nil {
+			return err
+		}
+		c.InterfaceIP = addrs.Gateway.String()
+		relayIP = addrs.Relay.String()
+	} else if c.InterfaceIP == "" {
+		return fmt.Errorf("interface_ip is required for %s subnets", c.Mode)
+	}
 	vpcState, err := state.Get(db, "vpc/"+c.VPC)
 	if err != nil {
 		return fmt.Errorf("vpc %q not found", c.VPC)
@@ -58,6 +72,7 @@ func (c CreateSubnetCommand) Prepare(db *badger.DB, cfg *configuration.Config) e
 	kv.AddInDB(db, "subnet/"+c.Name+"/default_route", strconv.FormatBool(c.DefaultRoute))
 	if c.Mode == subnet.ModeVxlan {
 		kv.AddInDB(db, "subnet/"+c.Name+"/vxlan_id", strconv.Itoa(c.VxlanID))
+		kv.AddInDB(db, "subnet/"+c.Name+"/relay_ip", relayIP)
 	}
 	if c.Gateway != "" {
 		if err := kv.AddInDB(db, "subnet/"+c.Name+"/gateway", c.Gateway); err != nil {

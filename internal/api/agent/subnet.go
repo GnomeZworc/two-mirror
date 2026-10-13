@@ -55,6 +55,8 @@ func (s *Server) getSubnet(w http.ResponseWriter, _ *http.Request, name string) 
 			sub.LocalIface = value
 		case "interface_ip":
 			sub.InterfaceIP = value
+		case "relay_ip":
+			sub.RelayIP = value
 		case "cidr":
 			sub.CIDR = value
 		case "default_route":

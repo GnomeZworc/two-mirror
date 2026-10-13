@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	dispatcher "git.g3e.fr/syonad/two/internal/dispatcher/agent"
+	"git.g3e.fr/syonad/two/internal/subnet"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 )
 
@@ -52,6 +53,8 @@ func (s *Server) listSubnets(w http.ResponseWriter, _ *http.Request) {
 			subnets[name].LocalIface = value
 		case "interface_ip":
 			subnets[name].InterfaceIP = value
+		case "relay_ip":
+			subnets[name].RelayIP = value
 		case "cidr":
 			subnets[name].CIDR = value
 		case "default_route":
@@ -73,9 +76,25 @@ func (s *Server) postSubnet(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(ErrorResponse{Error: "invalid request body"})
 		return
 	}
-	if req.Name == "" || req.VPC == "" || req.InterfaceIP == "" || req.CIDR == "" {
+	if req.Name == "" || req.VPC == "" || req.CIDR == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrorResponse{Error: "name, vpc, interface_ip and cidr are required"})
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "name, vpc and cidr are required"})
+		return
+	}
+	if req.Mode != "" && !subnet.ValidMode(req.Mode) {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "unknown subnet mode " + strconv.Quote(req.Mode)})
+		return
+	}
+	vxlan := req.Mode == "" || req.Mode == subnet.ModeVxlan
+	if !vxlan && req.InterfaceIP == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "interface_ip is required for " + req.Mode + " subnets"})
+		return
+	}
+	if vxlan && req.InterfaceIP != "" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "interface_ip is computed for vxlan subnets, do not set it"})
 		return
 	}
 	cmd := dispatcher.CreateSubnetCommand{
@@ -124,6 +143,8 @@ func (s *Server) postSubnet(w http.ResponseWriter, r *http.Request) {
 			sub.LocalIface = value
 		case "interface_ip":
 			sub.InterfaceIP = value
+		case "relay_ip":
+			sub.RelayIP = value
 		case "cidr":
 			sub.CIDR = value
 		case "default_route":

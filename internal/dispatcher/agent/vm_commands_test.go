@@ -13,6 +13,7 @@ func TestStartVMCommand_Prepare_SingleDisk(t *testing.T) {
 	_, db := newTestDispatcher(t)
 	kv.AddInDB(db, "subnet/sn-1/state", "running")
 	kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-1")
+	kv.AddInDB(db, "subnet/sn-1/cidr", "10.0.0.0/24")
 
 	cmd := StartVMCommand{
 		Name:  "vm-1",
@@ -36,6 +37,7 @@ func TestStartVMCommand_Prepare_MultiDisk(t *testing.T) {
 	_, db := newTestDispatcher(t)
 	kv.AddInDB(db, "subnet/sn-1/state", "running")
 	kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-1")
+	kv.AddInDB(db, "subnet/sn-1/cidr", "10.0.0.0/24")
 
 	cmd := StartVMCommand{
 		Name: "vm-2",
@@ -67,6 +69,7 @@ func TestStartVMCommand_Prepare_SlotGap(t *testing.T) {
 	_, db := newTestDispatcher(t)
 	kv.AddInDB(db, "subnet/sn-1/state", "running")
 	kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-1")
+	kv.AddInDB(db, "subnet/sn-1/cidr", "10.0.0.0/24")
 
 	// sdb absent au boot — slot réservé pour hotplug
 	cmd := StartVMCommand{
@@ -96,6 +99,7 @@ func TestStartVMCommand_Prepare_NoVolumePath(t *testing.T) {
 	_, db := newTestDispatcher(t)
 	kv.AddInDB(db, "subnet/sn-1/state", "running")
 	kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-1")
+	kv.AddInDB(db, "subnet/sn-1/cidr", "10.0.0.0/24")
 
 	cmd := StartVMCommand{
 		Name:  "vm-4",
@@ -177,6 +181,7 @@ func prepareWithDocuments(t *testing.T, docs map[string]string) *badger.DB {
 	_, db := newTestDispatcher(t)
 	kv.AddInDB(db, "subnet/sn-1/state", "running")
 	kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-1")
+	kv.AddInDB(db, "subnet/sn-1/cidr", "10.0.0.0/24")
 
 	cmd := StartVMCommand{
 		Name:      "vm-doc",

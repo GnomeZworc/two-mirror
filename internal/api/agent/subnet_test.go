@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"git.g3e.fr/syonad/two/pkg/db/kv"
@@ -57,11 +58,10 @@ func TestPostSubnet_Created(t *testing.T) {
 	s, db := newTestServer(t)
 	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	req := SubnetCreateRequest{
-		Name:        "sn-new",
-		VPC:         "vpc-1",
-		IfaceType:   "vms",
-		InterfaceIP: "10.0.0.1",
-		CIDR:        "10.0.0.0/24",
+		Name:      "sn-new",
+		VPC:       "vpc-1",
+		IfaceType: "vms",
+		CIDR:      "10.0.0.0/24",
 	}
 	body, _ := json.Marshal(req)
 	w := httptest.NewRecorder()
@@ -93,10 +93,9 @@ func TestPostSubnet_IfaceTypeOptional(t *testing.T) {
 	s, db := newTestServer(t)
 	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	req := SubnetCreateRequest{
-		Name:        "sn-opt",
-		VPC:         "vpc-1",
-		InterfaceIP: "10.0.0.1",
-		CIDR:        "10.0.0.0/24",
+		Name: "sn-opt",
+		VPC:  "vpc-1",
+		CIDR: "10.0.0.0/24",
 		// IfaceType omis — doit utiliser default_interface
 	}
 	body, _ := json.Marshal(req)
@@ -110,11 +109,10 @@ func TestPostSubnet_IfaceTypeOptional(t *testing.T) {
 func TestPostSubnet_VPCNotFound(t *testing.T) {
 	s, _ := newTestServer(t)
 	req := SubnetCreateRequest{
-		Name:        "sn-1",
-		VPC:         "vpc-inexistant",
-		IfaceType:   "vms",
-		InterfaceIP: "10.0.0.1",
-		CIDR:        "10.0.0.0/24",
+		Name:      "sn-1",
+		VPC:       "vpc-inexistant",
+		IfaceType: "vms",
+		CIDR:      "10.0.0.0/24",
 	}
 	body, _ := json.Marshal(req)
 	w := httptest.NewRecorder()
@@ -129,11 +127,10 @@ func TestPostSubnet_Duplicate(t *testing.T) {
 	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	kv.AddInDB(db, "subnet/sn-exist/state", "running")
 	req := SubnetCreateRequest{
-		Name:        "sn-exist",
-		VPC:         "vpc-1",
-		IfaceType:   "vms",
-		InterfaceIP: "10.0.0.1",
-		CIDR:        "10.0.0.0/24",
+		Name:      "sn-exist",
+		VPC:       "vpc-1",
+		IfaceType: "vms",
+		CIDR:      "10.0.0.0/24",
 	}
 	body, _ := json.Marshal(req)
 	w := httptest.NewRecorder()
@@ -147,11 +144,10 @@ func TestPostSubnet_VPCDeleting(t *testing.T) {
 	s, db := newTestServer(t)
 	kv.AddInDB(db, "vpc/vpc-dying/state", "deleting")
 	req := SubnetCreateRequest{
-		Name:        "sn-1",
-		VPC:         "vpc-dying",
-		IfaceType:   "vms",
-		InterfaceIP: "10.0.0.1",
-		CIDR:        "10.0.0.0/24",
+		Name:      "sn-1",
+		VPC:       "vpc-dying",
+		IfaceType: "vms",
+		CIDR:      "10.0.0.0/24",
 	}
 	body, _ := json.Marshal(req)
 	w := httptest.NewRecorder()
@@ -203,6 +199,17 @@ func TestPostSubnet_UnknownMode(t *testing.T) {
 	s.SubnetsHandler(w, httptest.NewRequest(http.MethodPost, "/subnets", bytes.NewReader(body)))
 	if w.Code != http.StatusUnprocessableEntity {
 		t.Errorf("attendu 422, obtenu %d", w.Code)
+	}
+}
+
+func TestPostSubnet_UnknownModeWithoutInterfaceIP(t *testing.T) {
+	s, db := newTestServer(t)
+	kv.AddInDB(db, "vpc/vpc-1/state", "running")
+	body, _ := json.Marshal(SubnetCreateRequest{Name: "sn-1", VPC: "vpc-1", Mode: "vlan", CIDR: "10.0.0.0/24"})
+	w := httptest.NewRecorder()
+	s.SubnetsHandler(w, httptest.NewRequest(http.MethodPost, "/subnets", bytes.NewReader(body)))
+	if w.Code != http.StatusUnprocessableEntity || !strings.Contains(w.Body.String(), "unknown subnet mode") {
+		t.Errorf("attendu 422 mode inconnu, obtenu %d : %s", w.Code, w.Body.String())
 	}
 }
 
@@ -335,5 +342,101 @@ func TestCreateSubnet_GatewayRoundTrip(t *testing.T) {
 	}
 	if got.Gateway != "203.0.113.1" {
 		t.Errorf("gateway absente de la réponse GET : %+v", got)
+	}
+}
+
+func postSubnetRequest(t *testing.T, s *Server, req SubnetCreateRequest) *httptest.ResponseRecorder {
+	t.Helper()
+	body, _ := json.Marshal(req)
+	w := httptest.NewRecorder()
+	s.SubnetsHandler(w, httptest.NewRequest(http.MethodPost, "/subnets", bytes.NewReader(body)))
+	return w
+}
+
+func TestPostSubnet_VxlanRejectsInterfaceIP(t *testing.T) {
+	for _, mode := range []string{"", "vxlan"} {
+		s, db := newTestServer(t)
+		kv.AddInDB(db, "vpc/vpc-1/state", "running")
+		w := postSubnetRequest(t, s, SubnetCreateRequest{
+			Name: "sn-1", VPC: "vpc-1", Mode: mode,
+			InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+		})
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("mode %q : attendu 400, obtenu %d : %s", mode, w.Code, w.Body.String())
+		}
+		if _, err := kv.GetFromDB(db, "subnet/sn-1/state"); err == nil {
+			t.Errorf("mode %q : aucun subnet ne doit être créé", mode)
+		}
+	}
+}
+
+func TestPostSubnet_BridgeRequiresInterfaceIP(t *testing.T) {
+	s, db := newTestServer(t)
+	kv.AddInDB(db, "vpc/vpc-1/state", "running")
+	w := postSubnetRequest(t, s, SubnetCreateRequest{
+		Name: "sn-br", VPC: "vpc-1", Mode: "bridge", CIDR: "10.0.0.0/24",
+	})
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("attendu 400, obtenu %d : %s", w.Code, w.Body.String())
+	}
+}
+
+func TestPostSubnet_VxlanReturnsComputedAddresses(t *testing.T) {
+	s, db := newTestServer(t)
+	kv.AddInDB(db, "vpc/vpc-1/state", "running")
+	w := postSubnetRequest(t, s, SubnetCreateRequest{
+		Name: "sn-vx", VPC: "vpc-1", Mode: "vxlan", CIDR: "10.0.0.0/24",
+	})
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("attendu 202, obtenu %d : %s", w.Code, w.Body.String())
+	}
+	var got Subnet
+	json.NewDecoder(w.Body).Decode(&got)
+	if got.InterfaceIP != "10.0.0.254" {
+		t.Errorf("interface_ip attendue 10.0.0.254, obtenu %q", got.InterfaceIP)
+	}
+	if got.RelayIP != "10.0.0.253" {
+		t.Errorf("relay_ip attendu 10.0.0.253, obtenu %q", got.RelayIP)
+	}
+}
+
+func TestGetSubnet_RelayIPOnlyForVxlan(t *testing.T) {
+	s, db := newTestServer(t)
+	kv.AddInDB(db, "vpc/vpc-1/state", "running")
+	if w := postSubnetRequest(t, s, SubnetCreateRequest{
+		Name: "sn-vx", VPC: "vpc-1", CIDR: "10.0.0.0/24",
+	}); w.Code != http.StatusAccepted {
+		t.Fatalf("vxlan : attendu 202, obtenu %d : %s", w.Code, w.Body.String())
+	}
+	if w := postSubnetRequest(t, s, SubnetCreateRequest{
+		Name: "sn-br", VPC: "vpc-1", Mode: "bridge", InterfaceIP: "10.1.0.1", CIDR: "10.1.0.0/24",
+	}); w.Code != http.StatusAccepted {
+		t.Fatalf("bridge : attendu 202, obtenu %d : %s", w.Code, w.Body.String())
+	}
+
+	w := httptest.NewRecorder()
+	s.SubnetByNameHandler(w, httptest.NewRequest(http.MethodGet, "/subnets/sn-vx", nil))
+	var vx Subnet
+	json.NewDecoder(w.Body).Decode(&vx)
+	if vx.RelayIP != "10.0.0.253" {
+		t.Errorf("relay_ip attendu 10.0.0.253, obtenu %q", vx.RelayIP)
+	}
+
+	w = httptest.NewRecorder()
+	s.SubnetByNameHandler(w, httptest.NewRequest(http.MethodGet, "/subnets/sn-br", nil))
+	if strings.Contains(w.Body.String(), "relay_ip") {
+		t.Errorf("relay_ip ne doit pas apparaître pour un subnet bridge : %s", w.Body.String())
+	}
+
+	w = httptest.NewRecorder()
+	s.SubnetsHandler(w, httptest.NewRequest(http.MethodGet, "/subnets", nil))
+	var list []Subnet
+	json.NewDecoder(w.Body).Decode(&list)
+	relays := map[string]string{}
+	for _, sub := range list {
+		relays[sub.Name] = sub.RelayIP
+	}
+	if relays["sn-vx"] != "10.0.0.253" || relays["sn-br"] != "" {
+		t.Errorf("relay_ip inattendus dans la liste : %v", relays)
 	}
 }
