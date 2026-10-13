@@ -316,3 +316,27 @@ func TestGenerateConfig_MissingInterfaceIPIsAnError(t *testing.T) {
 		t.Error("sans interface_ip aucune route metadata n'est possible : il faut échouer, pas écrire une conf muette")
 	}
 }
+
+func TestGenerateConfig_ListensOnTheAnycastGateway(t *testing.T) {
+	conf := newConf(t, "192.168.1.0/29")
+	conf.Listen = "gw-s9r1"
+	conf.Except = "br-s9r1"
+	path, _, _ := GenerateConfig(conf)
+	content, _ := os.ReadFile(path)
+
+	for _, line := range []string{"\ninterface=gw-s9r1\n", "\nexcept-interface=br-s9r1\n"} {
+		if !strings.Contains(string(content), line) {
+			t.Errorf("%q absente du fichier généré :\n%s", strings.TrimSpace(line), content)
+		}
+	}
+}
+
+func TestGenerateConfig_NoInterfaceLinesByDefault(t *testing.T) {
+	conf := newConf(t, "192.168.1.0/29")
+	path, _, _ := GenerateConfig(conf)
+	content, _ := os.ReadFile(path)
+
+	if strings.Contains(string(content), "interface=") {
+		t.Errorf("aucune directive d'interface attendue sans Listen :\n%s", content)
+	}
+}

@@ -28,7 +28,7 @@ func (Dnsmasq) Unit(s Subnet) string {
 }
 
 func (b Dnsmasq) config(s Subnet) dhcp.Config {
-	return dhcp.Config{
+	c := dhcp.Config{
 		Network:        s.Network,
 		Name:           s.Instance(),
 		ConfDir:        b.confDir(),
@@ -36,6 +36,11 @@ func (b Dnsmasq) config(s Subnet) dhcp.Config {
 		VPCRoute:       s.VPCRoute,
 		DefaultGateway: s.DefaultGateway,
 	}
+	if s.Listen != "" && s.Listen != s.Bridge {
+		c.Listen = s.Listen
+		c.Except = s.Bridge
+	}
+	return c
 }
 
 func (b Dnsmasq) ConfigureSubnet(s Subnet) error {
