@@ -3,22 +3,22 @@ two_image || { echo "ÉCHOUÉ: image compatible two (hv1)"; exit 0; }
 KEY=$(vm_key)
 check "hv1 : base BGP posée par l'agent et enregistrée dans frr.conf" grep -qx ' neighbor 10.255.255.1 peer-group fabric' /etc/frr/frr.conf
 check "hv1 : VPC vp-s7, l3vni 2700" vpc_create vp-s7 10.241.0.0/16 2700
-check "hv1 : subnet sn-s7d (VNI 2711), seulement sur hv1" subnet_create sn-s7d vp-s7 2711 10.241.1.1 10.241.1.0/24
+check "hv1 : subnet sn-s7d (VNI 2711), seulement sur hv1" subnet_create sn-s7d vp-s7 2711 10.241.1.0/24
 check "hv1 : VM s7-a" vm_create s7-a sn-s7d 10.241.1.10 "${KEY}"
 NODE
 on hv2 <<'NODE'
 two_image || { echo "ÉCHOUÉ: image compatible two (hv2)"; exit 0; }
 check "hv2 : VPC vp-s7, l3vni 2700" vpc_create vp-s7 10.241.0.0/16 2700
-check "hv2 : subnet sn-s7e (VNI 2712), seulement sur hv2" subnet_create sn-s7e vp-s7 2712 10.241.2.1 10.241.2.0/24
+check "hv2 : subnet sn-s7e (VNI 2712), seulement sur hv2" subnet_create sn-s7e vp-s7 2712 10.241.2.0/24
 check "hv2 : VM s7-b" vm_create s7-b sn-s7e 10.241.2.10
 check "hv2 : VPC vp-s7b, même plage, l3vni 2701" vpc_create vp-s7b 10.241.0.0/16 2701
-check "hv2 : subnet sn-s7x (VNI 2713), même plage que sn-s7e" subnet_create sn-s7x vp-s7b 2713 10.241.2.1 10.241.2.0/24
+check "hv2 : subnet sn-s7x (VNI 2713), même plage que sn-s7e" subnet_create sn-s7x vp-s7b 2713 10.241.2.0/24
 check "hv2 : VM s7-x dans vp-s7b" vm_create s7-x sn-s7x 10.241.2.20
 check "hv2 : l3vni 2700 déjà prise par vp-s7, refusée (409)" test "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{"name":"vp-s7c","cidr":"10.249.0.0/16","l3vni":2700}' "${API}/vpcs")" = 409
 NODE
 on hv1 <<'NODE'
 check "s7-a joignable" vm_wait vp-s7 10.241.1.10
-check "s7-a : route vers la VPC 10.241.0.0/16 via interface_ip (DHCP)" route_via vp-s7 10.241.1.10 10.241.0.0/16 10.241.1.1
+check "s7-a : route vers la VPC 10.241.0.0/16 via la gateway (DHCP)" route_via vp-s7 10.241.1.10 10.241.0.0/16 10.241.1.254
 check "hv1 : vrf-s7 contient exactement brl3-s7 et l3-s7-o" sh -c "[ \"\$1\" = 'brl3-s7 l3-s7-o' ]" _ "$(vrf_members vp-s7)"
 check "hv1 : brl3-s7 sans adresse IPv4" sh -c "! ip -4 -o addr show dev brl3-s7 | grep -q inet"
 check "hv1 : RMAC de brl3-s7 dérivée du VTEP 192.168.14.11" sh -c "ip -o link show brl3-s7 | grep -q 'link/ether 02:02:c0:a8:0e:0b '"
@@ -51,7 +51,7 @@ for i in $(seq 1 24); do vm_ssh vp-s7 10.241.1.10 'ping -c 1 -W 2 10.241.2.10' >
 check "s7-a (sn-s7d, hv1) joint s7-b (sn-s7e, hv2) par le L3VNI, forwarding par interface" vm_ssh vp-s7 10.241.1.10 'ping -c 3 -W 2 10.241.2.10'
 check "trame pleine taille : 1472 octets en -M do" vm_ssh vp-s7 10.241.1.10 'ping -M do -s 1472 -c 2 -W 2 10.241.2.10'
 check "1473 octets refusés localement (MTU 1500)" vm_grep vp-s7 10.241.1.10 'ping -M do -s 1473 -c 1 -W 2 10.241.2.10' 'message too long'
-check "TTL 1 : expire à la gateway du subnet, netns de hv1 (10.241.1.1)" vm_grep vp-s7 10.241.1.10 'ping -n -c 3 -i 1.2 -W 2 -t 1 10.241.2.10' 'From 10.241.1.1 .*exceeded'
+check "TTL 1 : expire à la gateway du subnet, netns de hv1 (10.241.1.254)" vm_grep vp-s7 10.241.1.10 'ping -n -c 3 -i 1.2 -W 2 -t 1 10.241.2.10' 'From 10.241.1.254 .*exceeded'
 check "TTL 2 : expire dans la VRF de hv1 (169.254.0.1)" vm_grep vp-s7 10.241.1.10 'ping -n -c 3 -i 1.2 -W 2 -t 2 10.241.2.10' 'From 169.254.0.1 .*exceeded'
 check "TTL 5 : atteint s7-b — quatre routeurs : gateway hv1, VRF hv1, VRF hv2, netns hv2" vm_ssh vp-s7 10.241.1.10 'ping -n -c 1 -W 2 -t 5 10.241.2.10'
 check "hv1 : vrf-s7 n'importe pas 10.241.2.20/32 de vp-s7b (RT 64600:2701)" sh -c "[ -z \"\$(ip -4 route show vrf vrf-s7 10.241.2.20)\" ]"

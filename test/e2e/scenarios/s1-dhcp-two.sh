@@ -2,8 +2,8 @@ on hv1 <<'NODE'
 two_image || { echo "ÉCHOUÉ: image compatible two"; exit 0; }
 KEY=$(vm_key)
 check "VPC vp-s1" vpc_create vp-s1 10.210.0.0/16
-check "subnet sn-s1a" subnet_create sn-s1a vp-s1 2101 10.210.1.1 10.210.1.0/24
-check "subnet sn-s1b" subnet_create sn-s1b vp-s1 2102 10.210.2.1 10.210.2.0/24
+check "subnet sn-s1a" subnet_create sn-s1a vp-s1 2101 10.210.1.0/24
+check "subnet sn-s1b" subnet_create sn-s1b vp-s1 2102 10.210.2.0/24
 check "backend two : socket de contrôle de sn-s1a" test -S /run/two/dhcp/vp-s1_br-s1a.sock
 check "backend two : socket de contrôle de sn-s1b" test -S /run/two/dhcp/vp-s1_br-s1b.sock
 check "VM s1-a1, démarrée seule" vm_create s1-a1 sn-s1a 10.210.1.10 "${KEY}"
@@ -16,7 +16,7 @@ wait "${A}"; RA=$?
 wait "${B}"; RB=$?
 check "VM s1-a2, démarrée en même temps que s1-b2" test "${RA}" -eq 0
 check "VM s1-b2, démarrée en même temps que s1-a2" test "${RB}" -eq 0
-for vm in 10.210.1.10:10.210.1.1 10.210.1.11:10.210.1.1 10.210.2.10:10.210.2.1 10.210.2.11:10.210.2.1; do
+for vm in 10.210.1.10:10.210.1.254 10.210.1.11:10.210.1.254 10.210.2.10:10.210.2.254 10.210.2.11:10.210.2.254; do
     ip=${vm%%:*}; gw=${vm#*:}
     check "${ip} joignable" vm_wait vp-s1 "${ip}"
     check "${ip} : adresse de son propre subnet" has_addr vp-s1 "${ip}"

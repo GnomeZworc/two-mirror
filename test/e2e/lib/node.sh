@@ -54,10 +54,14 @@ vpc_create () {
 }
 
 subnet_create () {
-    local name="${1}" vpc="${2}" vni="${3}" gw="${4}" cidr="${5}" extra="${6:-}"
+    local name="${1}" vpc="${2}" vni="${3}" cidr="${4}" extra="${5:-}"
     api_state "subnets/${name}" | grep -qx running && return 0
-    api_post subnets "{\"name\":\"${name}\",\"vpc\":\"${vpc}\",\"mode\":\"vxlan\",\"vxlan_id\":${vni},\"iface_type\":\"vms\",\"interface_ip\":\"${gw}\",\"cidr\":\"${cidr}\"${extra}}" \
+    api_post subnets "{\"name\":\"${name}\",\"vpc\":\"${vpc}\",\"mode\":\"vxlan\",\"vxlan_id\":${vni},\"iface_type\":\"vms\",\"cidr\":\"${cidr}\"${extra}}" \
         && wait_state "subnets/${name}" running
+}
+
+anycast_mac () {
+    printf '02:01:00:%02x:%02x:%02x\n' $(( ${1} >> 16 & 255 )) $(( ${1} >> 8 & 255 )) $(( ${1} & 255 ))
 }
 
 two_image () {
