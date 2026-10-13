@@ -58,3 +58,34 @@ func DeleteDHCP(iface, ip string) error {
 		"--ip-source", ip,
 		"-j", "DROP")
 }
+
+func confineRules(iface, mac string) [][]string {
+	return [][]string{
+		{"-t", "nat", "PREROUTING", "--in-interface", iface, "-s", mac, "-j", "DROP"},
+		{"-t", "filter", "FORWARD", "--out-interface", iface, "-s", mac, "-j", "DROP"},
+		{"-t", "filter", "OUTPUT", "--out-interface", iface, "-s", mac, "-j", "DROP"},
+	}
+}
+
+func withAction(action string, rule []string) []string {
+	return append([]string{rule[0], rule[1], action}, rule[2:]...)
+}
+
+func ConfineMAC(iface, mac string) error {
+	for _, rule := range confineRules(iface, mac) {
+		if err := exec.Command("ebtables", withAction("-A", rule)...).Run(); err != nil {
+			return fmt.Errorf("ebtables confine %s on %s (%s %s): %w", mac, iface, rule[1], rule[2], err)
+		}
+	}
+	return nil
+}
+
+func DeleteConfineMAC(iface, mac string) error {
+	var first error
+	for _, rule := range confineRules(iface, mac) {
+		if err := exec.Command("ebtables", withAction("-D", rule)...).Run(); err != nil && first == nil {
+			first = fmt.Errorf("ebtables unconfine %s on %s (%s %s): %w", mac, iface, rule[1], rule[2], err)
+		}
+	}
+	return first
+}

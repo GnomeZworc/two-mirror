@@ -79,7 +79,11 @@ func deleteSubnetVxlan(d subnetData) error {
 	vxlanIface := fmt.Sprintf("vxlan-%d", d.vxlanID)
 	vethI := "v-" + d.subnetID + "-i"
 
-	if err := netns.Call(d.vpc, func() error {
+	if d.anycast() {
+		if err := deleteAnycastGateway(d, vethI); err != nil {
+			return fmt.Errorf("delete netns resources: %w", err)
+		}
+	} else if err := netns.Call(d.vpc, func() error {
 		if err := ebtables.DeleteARPToGateway(vethI, d.interfaceIP.String()); err != nil {
 			return fmt.Errorf("delete ebtables arp rule: %w", err)
 		}
