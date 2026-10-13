@@ -387,7 +387,7 @@ l’agent désactive l’apprentissage et ne configure aucun voisin — cf.
 démarrage, à partir de la section <code class="docutils literal notranslate"><span class="pre">bgp</span></code> de <code class="docutils literal notranslate"><span class="pre">agent.yml</span></code> (<a class="reference internal" href="../exploitation/configuration.html"><span class="doc">Configuration</span></a>) :</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">bgp</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">asn</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">64600</span>
-<span class="w">  </span><span class="nt">route_reflectors</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">10.255.255.1</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">route_reflectors</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">10.255.255.1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">10.255.255.2</span><span class="p p-Indicator">]</span>
 </pre></div>
 </div>
 <p>L’agent en déduit la configuration ci-dessous ; le <code class="docutils literal notranslate"><span class="pre">router-id</span></code> est l’adresse IPv4 primaire de
@@ -400,6 +400,7 @@ démarrage, à partir de la section <code class="docutils literal notranslate"><
  neighbor fabric remote-as 64600
  neighbor fabric capability extended-nexthop
  neighbor 10.255.255.1 peer-group fabric
+ neighbor 10.255.255.2 peer-group fabric
  !
  address-family l2vpn evpn
   neighbor fabric activate
@@ -417,9 +418,9 @@ route par défaut quand elle change d’interface, et ne plus joindre le route r
 </div>
 <p>Ce qu’elle établit :</p>
 <ul class="simple">
-<li><p><strong>Une seule session</strong>, en iBGP dans l’AS 64600, vers la loopback du route reflector
-(<code class="docutils literal notranslate"><span class="pre">10.255.255.1</span></code>), jointe par la passerelle par défaut — le routeur de cluster l’a apprise du
-route reflector (<a class="reference internal" href="routeurs.html"><span class="doc">Routeurs</span></a>). Aucune adresse d’un autre hyperviseur n’est écrite : ajouter
+<li><p><strong>Une session par route reflector</strong>, en iBGP dans l’AS 64600, vers sa loopback
+(<code class="docutils literal notranslate"><span class="pre">10.255.255.1</span></code>, <code class="docutils literal notranslate"><span class="pre">10.255.255.2</span></code>), jointe par la passerelle par défaut — le routeur de
+cluster l’a apprise du route reflector (<a class="reference internal" href="routeurs.html"><span class="doc">Routeurs</span></a>). Aucune adresse d’un autre hyperviseur n’est écrite : ajouter
 un nœud ne touche pas la configuration des autres.</p></li>
 <li><p><strong>EVPN seulement</strong> : l’IPv4 unicast n’est pas activé (<code class="docutils literal notranslate"><span class="pre">no</span> <span class="pre">bgp</span> <span class="pre">default</span> <span class="pre">ipv4-unicast</span></code>).
 <code class="docutils literal notranslate"><span class="pre">advertise-all-vni</span></code> annonce les VNI de toutes les interfaces VXLAN que FRR voit, et donc

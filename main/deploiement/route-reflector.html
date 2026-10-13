@@ -360,12 +360,14 @@
 <h1>VM route reflector<a class="headerlink" href="#vm-route-reflector" title="Lien vers cette rubrique">#</a></h1>
 <p>Le route reflector est le point de rendez-vous du plan de contrôle : plutôt que de maintenir une
 session entre chaque paire d’hyperviseurs, chaque hyperviseur ouvre une session vers le route
-reflector, qui redistribue.</p>
+reflector, qui redistribue. Le cluster en compte <strong>deux</strong>, configurés à l’identique hormis leurs
+adresses : chaque hyperviseur ouvre une session vers chacun, et la perte de l’un ne doit pas
+interrompre le plan de contrôle (<a class="reference external" href="https://git.g3e.fr/syonad/two/issues/54">#54</a>).</p>
 <p>Il tourne lui-même en machine virtuelle, ce qui crée une dépendance circulaire à traiter
 explicitement : la VM qui porte le plan de contrôle du cluster est hébergée par le cluster.</p>
 <section id="adressage">
 <h2>Adressage<a class="headerlink" href="#adressage" title="Lien vers cette rubrique">#</a></h2>
-<p>Le route reflector est <strong>sur le même segment L2 que les hyperviseurs</strong>, avec trois adresses :</p>
+<p>Chaque route reflector est <strong>sur le même segment L2 que les hyperviseurs</strong>, avec trois adresses :</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <colgroup>
 <col style="width: 30.0%" />
@@ -383,19 +385,20 @@ explicitement : la VM qui porte le plan de contrôle du cluster est hébergée p
 <td><p>interface principale</p></td>
 <td><p>celle de n’importe quelle machine du segment ; les réponses aux hyperviseurs en partent</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">169.254.0.3/28</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">169.254.0.3/28</span></code> (rr1), <code class="docutils literal notranslate"><span class="pre">169.254.0.4/28</span></code> (rr2)</p></td>
 <td><p>interface principale, <strong>adresse secondaire</strong></p></td>
 <td><p>le lien avec les routeurs de cluster (<code class="docutils literal notranslate"><span class="pre">169.254.0.1</span></code> et <code class="docutils literal notranslate"><span class="pre">.2</span></code>), sur le même L2</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">10.255.255.1/32</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">10.255.255.1/32</span></code> (rr1), <code class="docutils literal notranslate"><span class="pre">10.255.255.2/32</span></code> (rr2)</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">lo1</span></code>, interface <code class="docutils literal notranslate"><span class="pre">dummy</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">router-id</span></code>, <code class="docutils literal notranslate"><span class="pre">cluster-id</span></code> et source des sessions EVPN ; seule route annoncée aux routeurs</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p>Les hyperviseurs ne connaissent que la loopback : ils ouvrent leur session vers <code class="docutils literal notranslate"><span class="pre">10.255.255.1</span></code>
-par leur passerelle (<code class="docutils literal notranslate"><span class="pre">192.168.14.1</span></code>), les routeurs l’ayant apprise du route reflector en eBGP.
+<p>Les hyperviseurs ne connaissent que les loopbacks : ils ouvrent leurs sessions vers
+<code class="docutils literal notranslate"><span class="pre">10.255.255.1</span></code> et <code class="docutils literal notranslate"><span class="pre">10.255.255.2</span></code> par leur passerelle (<code class="docutils literal notranslate"><span class="pre">192.168.14.1</span></code>), les routeurs les
+ayant apprises des route reflectors en eBGP.
 Aucune adresse d’hyperviseur n’est déclarée côté route reflector : il accepte toute session venant
 du segment (<code class="docutils literal notranslate"><span class="pre">bgp</span> <span class="pre">listen</span> <span class="pre">range</span></code>).</p>
 <p>L’adresse du lien est une <strong>adresse secondaire</strong> de l’interface principale, pas une interface à
@@ -461,6 +464,9 @@ exit
 !
 </pre></div>
 </div>
+<p>Celle de rr2 (<code class="docutils literal notranslate"><span class="pre">test/e2e/topologies/frr/rr2.conf</span></code>) ne diffère que par <code class="docutils literal notranslate"><span class="pre">hostname</span></code> et
+l’adresse de sa loopback, partout où elle apparaît : <code class="docutils literal notranslate"><span class="pre">router-id</span></code>, <code class="docutils literal notranslate"><span class="pre">cluster-id</span></code>,
+<code class="docutils literal notranslate"><span class="pre">update-source</span></code>, <code class="docutils literal notranslate"><span class="pre">network</span></code> et <code class="docutils literal notranslate"><span class="pre">RR-LOOPBACK-OUT</span></code>.</p>
 <p>Ce qu’elle établit :</p>
 <ul class="simple">
 <li><p><strong>Routeurs de cluster</strong> (groupe <code class="docutils literal notranslate"><span class="pre">CLUSTER</span></code>) : eBGP vers l’AS 65100, avec BFD, en IPv4
@@ -472,6 +478,9 @@ que, du point de vue des hyperviseurs, la session est en iBGP dans l’AS 64600 
 configuration — alors que le route reflector est en AS 65000 face aux routeurs.</p></li>
 <li><p><strong>EVPN</strong> : seule famille activée vers les hyperviseurs, qui sont ses clients
 (<code class="docutils literal notranslate"><span class="pre">route-reflector-client</span></code>) : il réfléchit les routes EVPN de chacun vers tous les autres.</p></li>
+<li><p><strong>Un</strong> <code class="docutils literal notranslate"><span class="pre">cluster-id</span></code> <strong>propre à chaque route reflector</strong> (sa loopback), et aucune session
+entre eux : chaque hyperviseur étant client des deux, chacun reçoit chaque route en double, une
+fois par route reflector ; si l’un tombe, les routes reçues de l’autre restent en place.</p></li>
 </ul>
 <div class="admonition warning">
 <p class="admonition-title">Avertissement</p>
@@ -490,7 +499,8 @@ même hyperviseur n’est pas concerné. La redondance (deux route reflectors) o
 <li><p>la création de la VM : ressources, subnet et mode utilisés (<code class="docutils literal notranslate"><span class="pre">bridge</span></code>, pour pouvoir la
 lancer sur n’importe quel hyperviseur), et s’il s’agit d’une VM créée par l’agent comme les
 autres ou d’un cas particulier — l’image, elle, est l’image golden de <a class="reference internal" href="image-qcow2.html"><span class="doc">Construction de l’image qcow2</span></a> ;</p></li>
-<li><p>la redondance : une seule VM route reflector, ou deux, et sur quels hyperviseurs ;</p></li>
+<li><p>le placement des deux VM : jamais sur le même hyperviseur, et de préférence pas sur un
+hyperviseur dont la perte isolerait l’autre ;</p></li>
 <li><p>la procédure de reconstruction — l’état du cluster pendant l’absence du route reflector est
 décrit ci-dessus : plus de trafic entre hyperviseurs ;</p></li>
 <li><p>la procédure d’amorçage : ce qui fonctionne, et dans quel ordre, quand on démarre un cluster

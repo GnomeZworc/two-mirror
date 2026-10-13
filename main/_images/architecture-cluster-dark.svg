@@ -37,7 +37,7 @@
   <text class="grp" x="580" y="44">VM ROUTE REFLECTOR · AS 65000</text>
   <text class="lbl" x="580" y="70">lo1 · 10.255.255.1/32</text>
   <text class="sub" x="580" y="87">router-id, cluster-id, source des sessions EVPN</text>
-  <text class="lbl" x="580" y="111">192.168.14.2/24 · 169.254.0.3/28</text>
+  <text class="lbl" x="580" y="111">192.168.14.4/24 · 169.254.0.3/28</text>
   <text class="sub" x="580" y="128">principale, et secondaire pour le lien avec les routeurs</text>
   <text class="sub" x="580" y="150">hébergée par le cluster lui-même</text>
 

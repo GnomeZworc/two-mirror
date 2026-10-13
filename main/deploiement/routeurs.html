@@ -375,9 +375,9 @@ données VXLAN.</p>
 </dl>
 <section id="routeur-de-cluster">
 <h2>Routeur de cluster<a class="headerlink" href="#routeur-de-cluster" title="Lien vers cette rubrique">#</a></h2>
-<p>Le routeur de cluster est la passerelle des hyperviseurs et le voisin eBGP du route reflector, dont
-il apprend la loopback : c’est par lui que chaque hyperviseur joint <code class="docutils literal notranslate"><span class="pre">10.255.255.1</span></code> pour ouvrir sa
-session EVPN (<a class="reference internal" href="route-reflector.html"><span class="doc">VM route reflector</span></a>).</p>
+<p>Le routeur de cluster est la passerelle des hyperviseurs et le voisin eBGP des deux route
+reflectors, dont il apprend les loopbacks : c’est par lui que chaque hyperviseur joint
+<code class="docutils literal notranslate"><span class="pre">10.255.255.1</span></code> et <code class="docutils literal notranslate"><span class="pre">10.255.255.2</span></code> pour ouvrir ses sessions EVPN (<a class="reference internal" href="route-reflector.html"><span class="doc">VM route reflector</span></a>).</p>
 <section id="adressage">
 <h3>Adressage<a class="headerlink" href="#adressage" title="Lien vers cette rubrique">#</a></h3>
 <div class="pst-scrollable-table-container"><table class="table">
@@ -399,8 +399,8 @@ session EVPN (<a class="reference internal" href="route-reflector.html"><span cl
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">169.254.0.1/28</span></code></p></td>
 <td><p>même interface, <strong>adresse secondaire</strong></p></td>
-<td><p>lien avec le route reflector (<code class="docutils literal notranslate"><span class="pre">169.254.0.3</span></code>) ; <code class="docutils literal notranslate"><span class="pre">router-id</span></code> ; le second routeur prend
-<code class="docutils literal notranslate"><span class="pre">169.254.0.2</span></code></p></td>
+<td><p>lien avec les route reflectors (<code class="docutils literal notranslate"><span class="pre">169.254.0.3</span></code> et <code class="docutils literal notranslate"><span class="pre">.4</span></code>) ; <code class="docutils literal notranslate"><span class="pre">router-id</span></code> ; le second
+routeur prend <code class="docutils literal notranslate"><span class="pre">169.254.0.2</span></code></p></td>
 </tr>
 </tbody>
 </table>
@@ -415,6 +415,7 @@ hostname sw1
 log syslog informational
 !
 ip prefix-list RR-LOOPBACK-IN seq 10 permit 10.255.255.1/32
+ip prefix-list RR-LOOPBACK-IN seq 20 permit 10.255.255.2/32
 !
 route-map RR-IN permit 10
  match ip address prefix-list RR-LOOPBACK-IN
@@ -429,11 +430,17 @@ router bgp 65100
  neighbor 169.254.0.3 remote-as 65000
  neighbor 169.254.0.3 description rr1
  neighbor 169.254.0.3 bfd
+ neighbor 169.254.0.4 remote-as 65000
+ neighbor 169.254.0.4 description rr2
+ neighbor 169.254.0.4 bfd
  !
  address-family ipv4 unicast
   neighbor 169.254.0.3 activate
   neighbor 169.254.0.3 route-map RR-IN in
   neighbor 169.254.0.3 route-map NO-OUT out
+  neighbor 169.254.0.4 activate
+  neighbor 169.254.0.4 route-map RR-IN in
+  neighbor 169.254.0.4 route-map NO-OUT out
  exit-address-family
  !
 exit
@@ -442,13 +449,16 @@ exit
 </div>
 <p>Ce qu’elle établit :</p>
 <ul class="simple">
-<li><p><strong>Route reflector</strong> : eBGP de l’AS 65100 vers l’AS 65000, avec BFD, en IPv4 unicast.</p></li>
-<li><p><strong>En entrée</strong>, seule la loopback du route reflector est acceptée (<code class="docutils literal notranslate"><span class="pre">RR-IN</span></code>) ; <strong>en sortie</strong>,
+<li><p><strong>Route reflectors</strong> : une session eBGP vers chacun, de l’AS 65100 vers l’AS 65000, avec BFD,
+en IPv4 unicast.</p></li>
+<li><p><strong>En entrée</strong>, seules les loopbacks des route reflectors sont acceptées (<code class="docutils literal notranslate"><span class="pre">RR-IN</span></code>) ; <strong>en sortie</strong>,
 rien n’est annoncé (<code class="docutils literal notranslate"><span class="pre">NO-OUT</span></code>). Symétrique de <code class="docutils literal notranslate"><span class="pre">RR-LOOPBACK-OUT</span></code> et <code class="docutils literal notranslate"><span class="pre">NO-IN</span></code> côté route
 reflector : chaque côté filtre, aucun ne dépend du filtre de l’autre.</p></li>
 <li><p><strong>Aucune session avec les hyperviseurs</strong> : le routeur leur sert de passerelle, pas de voisin BGP.</p></li>
 </ul>
-<p>Le route reflector déclare aussi le second routeur (<code class="docutils literal notranslate"><span class="pre">169.254.0.2</span></code>). La redondance est l’objet de
+<p>Celle du second routeur (<code class="docutils literal notranslate"><span class="pre">test/e2e/topologies/frr/sw2.conf</span></code>) ne diffère que par <code class="docutils literal notranslate"><span class="pre">hostname</span></code> et
+<code class="docutils literal notranslate"><span class="pre">router-id</span></code> (<code class="docutils literal notranslate"><span class="pre">169.254.0.2</span></code>), que les route reflectors déclarent aussi. La redondance des
+routeurs — et le mécanisme qui fait basculer la passerelle <code class="docutils literal notranslate"><span class="pre">192.168.14.1</span></code> — est l’objet de
 <a class="reference external" href="https://git.g3e.fr/syonad/two/issues/54">#54</a>.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
