@@ -72,10 +72,13 @@ et ``evpn-3hv.yml`` (trois, pour ``s8`` et ``s9``). Le format est celui de ``lab
 Les ASN, la loopback du route reflector, le lien ``169.254.0.0/28`` et le subnet des hyperviseurs
 de l'exemple sont **ceux de la production** (décision du 2026-10-04, #50) : les fichiers de
 ``test/e2e/topologies/`` restent ainsi au plus près de ce qui tourne réellement. Toutes les adresses y sont
-**fixées** par ``addresses`` — les route reflectors en ``.2`` et ``.3``, les hyperviseurs à partir de ``.11`` —
-pour que le modèle se lise sans le plan et ne dépende pas de l'ordre de déclaration : le
-``frr.conf`` d'un hyperviseur, écrit à la main, porte son adresse en ``router-id``. Seul le switch
-n'en déclare pas : il porte toujours la passerelle, la première adresse du segment.
+**fixées** par ``addresses`` — les switchs en ``.2`` et ``.3``, les route reflectors en ``.4`` et ``.5``,
+les hyperviseurs à partir de ``.11`` — pour que le modèle se lise sans le plan et ne dépende pas
+de l'ordre de déclaration : le ``frr.conf`` d'un hyperviseur, écrit à la main, porte son adresse en
+``router-id``. Les deux switchs ``sw1`` et ``sw2`` sont les routeurs du segment (rôle ``router`` de
+labctl) : la passerelle, la première adresse du segment, est portée en VRRP v3 par celui qui est
+maître, sans préemption — voir la section du guide de labctl sur les routeurs. Leurs
+``frr.conf`` ne diffèrent que par ``hostname`` et ``router-id`` ; labctl y ajoute la strophe VRRP.
 
 Rôles
 ~~~~~
@@ -182,9 +185,9 @@ Vérifié le 2026-10-04 sur le serveur de lab, topologie ``evpn-2hv``, release `
 
 .. note::
 
-   **Le switch du lab est un routeur Linux avec FRR, par choix.** Il joue le rôle générique de
-   routeur de cluster : passerelle des hyperviseurs, session eBGP avec BFD vers le route reflector,
-   dont il n'accepte que la loopback (``test/e2e/topologies/frr/sw1.conf``). L'équipement réel dépend de qui
+   **Les switchs du lab sont des routeurs Linux avec FRR, par choix.** Ils jouent le rôle générique
+   de routeur de cluster : passerelle des hyperviseurs, sessions eBGP avec BFD vers les route
+   reflectors, dont ils n'acceptent que les loopbacks (``test/e2e/topologies/frr/sw1.conf``). L'équipement réel dépend de qui
    déploie l'infrastructure (MikroTik aujourd'hui ; Cisco, Juniper, Arista… demain) : il n'a besoin
    que de BGP et d'EVPN, et sa configuration propre au constructeur n'a pas sa place dans le lab.
 

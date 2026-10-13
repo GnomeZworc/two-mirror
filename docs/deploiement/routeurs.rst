@@ -59,7 +59,8 @@ Ce qu'elle établit :
   reflector : chaque côté filtre, aucun ne dépend du filtre de l'autre.
 * **Aucune session avec les hyperviseurs** : le routeur leur sert de passerelle, pas de voisin BGP.
 
-Les route reflectors déclarent aussi le second routeur (``169.254.0.2``). La redondance des
+Celle du second routeur (``test/e2e/topologies/frr/sw2.conf``) ne diffère que par ``hostname`` et
+``router-id`` (``169.254.0.2``), que les route reflectors déclarent aussi. La redondance des
 routeurs — et le mécanisme qui fait basculer la passerelle ``192.168.14.1`` — est l'objet de
 `#54 <https://git.g3e.fr/syonad/two/issues/54>`_.
 
