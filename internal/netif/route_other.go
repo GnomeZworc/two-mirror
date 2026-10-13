@@ -11,6 +11,10 @@ func RouteAdd(_ string, _ *net.IPNet) error {
 	return errors.New("not supported on this platform")
 }
 
+func RouteAddFrom(_ string, _ *net.IPNet, _ net.IP) error {
+	return errors.New("not supported on this platform")
+}
+
 func TableRoutesVia(_ int, _ string) ([]*net.IPNet, error) {
 	return nil, errors.New("route listing is only implemented on linux")
 }

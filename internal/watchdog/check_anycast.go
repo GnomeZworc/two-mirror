@@ -16,6 +16,7 @@ import (
 
 type gatewayState struct {
 	MAC          string
+	LocalFDB     bool
 	GatewayAddrs []string
 	BridgeAddrs  []string
 }
@@ -34,6 +35,9 @@ func gatewayProblems(gw, bridge string, got gatewayState, wantMAC, gatewayIP, re
 	if got.MAC != wantMAC {
 		problems = append(problems, fmt.Sprintf("interface %s has mac %q, expected anycast %s", gw, got.MAC, wantMAC))
 	}
+	if !got.LocalFDB {
+		problems = append(problems, fmt.Sprintf("bridge %s has no local fdb entry for %s, frames to the gateway are flooded", bridge, wantMAC))
+	}
 	if !hasAddr(got.GatewayAddrs, gatewayIP) {
 		problems = append(problems, fmt.Sprintf("interface %s lacks the gateway address %s", gw, gatewayIP))
 	}
@@ -46,13 +50,16 @@ func gatewayProblems(gw, bridge string, got gatewayState, wantMAC, gatewayIP, re
 	return problems
 }
 
-func readGatewayState(gw, bridge string) (gatewayState, error) {
+func readGatewayState(gw, bridge string, anycast net.HardwareAddr) (gatewayState, error) {
 	var st gatewayState
 	mac, err := netif.LinkMAC(gw)
 	if err != nil {
 		return st, err
 	}
 	st.MAC = mac.String()
+	if st.LocalFDB, err = netif.BridgeHasLocalMAC(bridge, anycast); err != nil {
+		return st, err
+	}
 	for _, side := range []struct {
 		iface string
 		dst   *[]string
@@ -106,7 +113,7 @@ func checkAnycastGateway(db *badger.DB, name, vpc, bridge string, n notify.Notif
 			n.Notify(kindSubnet, name, p+" (in netns "+vpc+")")
 			return nil
 		}
-		st, err := readGatewayState(gw, bridge)
+		st, err := readGatewayState(gw, bridge, wantMAC)
 		if err != nil {
 			n.Notify(kindSubnet, name, fmt.Sprintf("anycast gateway unreadable in netns %s: %v", vpc, err))
 			return nil

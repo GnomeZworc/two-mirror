@@ -8,6 +8,7 @@ import (
 func TestGatewayProblems_Healthy(t *testing.T) {
 	st := gatewayState{
 		MAC:          "02:01:00:00:0b:5f",
+		LocalFDB:     true,
 		GatewayAddrs: []string{"10.0.0.254"},
 		BridgeAddrs:  []string{"10.0.0.253"},
 	}
@@ -20,6 +21,7 @@ func TestGatewayProblems_EachDefectIsReported(t *testing.T) {
 	healthy := func() gatewayState {
 		return gatewayState{
 			MAC:          "02:01:00:00:0b:5f",
+			LocalFDB:     true,
 			GatewayAddrs: []string{"10.0.0.254"},
 			BridgeAddrs:  []string{"10.0.0.253"},
 		}
@@ -30,6 +32,7 @@ func TestGatewayProblems_EachDefectIsReported(t *testing.T) {
 		want   string
 	}{
 		{"MAC du macvlan changée", func(s *gatewayState) { s.MAC = "02:03:c0:a8:0e:0b" }, "expected anycast 02:01:00:00:0b:5f"},
+		{"entrée FDB locale absente du bridge", func(s *gatewayState) { s.LocalFDB = false }, "no local fdb entry for 02:01:00:00:0b:5f"},
 		{"gateway absente du macvlan", func(s *gatewayState) { s.GatewayAddrs = nil }, "lacks the gateway address 10.0.0.254"},
 		{"adresse d'émission absente du bridge", func(s *gatewayState) { s.BridgeAddrs = nil }, "lacks the relay address 10.0.0.253"},
 		{"gateway posée sur le bridge", func(s *gatewayState) { s.BridgeAddrs = append(s.BridgeAddrs, "10.0.0.254") }, "bypass the anycast mac"},
