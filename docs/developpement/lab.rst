@@ -267,6 +267,14 @@ sortie vaut 1 si une vérification échoue **ou si aucune n'a été faite**.
        non, même hôte ou non) ; chaque VM voit la MAC de gateway de son propre hôte ; aucune MAC en
        double sur les quatre VNI
      - hv2, hv3, rr1
+   * - ``s10-switch-loss``
+     - un seul switch maître VRRP de la passerelle (lu par ``show vrrp``, pas supposé) ; interface
+       ``underlay`` du maître coupée pendant un ping continu de hv1 vers la loopback de rr1 :
+       l'autre switch devient maître, les sessions EVPN de hv1 **ne tombent pas** (compteur
+       ``dropped`` inchangé), le trafic reprend (au moins 45 réponses sur 50 à 20 s), plus long
+       silence sous 5 s ; interface rétablie : ses sessions eBGP reviennent et il **reste en
+       attente**, sans reprendre la passerelle (#54)
+     - hv1, sw1, sw2
 
 ``s6`` réutilise les VM de ``s4`` : le lancer après.
 
@@ -373,6 +381,15 @@ Détails et suite : `#57 <https://git.g3e.fr/syonad/two/issues/57>`_.
    n'est **pas forcément un aléa du lab** : c'est la signature de ce problème. Ne pas le classer
    comme test instable ni ajouter un nouvel essai qui le masquerait ; regarder d'abord le cache ARP
    de la VM (``ip neigh show <gateway>``) et l'état de la session côté VM.
+
+Le 2026-10-13, labctl ``0.2.0``, release ``0.2.0rc008`` et binaires de l'arbre courant,
+``evpn-3hv.yml`` avec deux switchs et deux route reflectors (#54) : ``s1`` à ``s10`` **313
+réussi(s), 0 échoué(s)** ; lab monté en 8 min. Segments sur un bridge de l'hôte, sept taps ;
+``sw2`` maître VRRP au démarrage, ``sw1`` en attente avec sa passerelle coupée. ``s6`` : 0
+requête perdue sur 510 pendant l'arrêt de rr1 puis de rr2, session rétablie 14 s après le
+redémarrage de FRR. ``s10`` : ``sw2`` coupé, ``sw1`` maître, 14 requêtes perdues, plus long
+silence 2,8 s, sessions EVPN de hv1 jamais coupées ; ``sw2`` rétabli reste en attente.
+``s9`` sans ``Broken pipe`` cette fois : #57 n'est pas corrigé pour autant.
 
 Les VM sont accessibles depuis le netns de leur VPC, sur l'hyperviseur, avec l'utilisateur
 ``syonad`` créé par les métadonnées de two :
