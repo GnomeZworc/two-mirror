@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-LABCTL_VERSION="0.1.0rc001"
+LABCTL_VERSION="0.2.0"
 LABCTL_URL="https://git.g3e.fr/syonad/labctl/releases/download/${LABCTL_VERSION}"
-LABCTL_SUMS="e0c852a8f14f453dedb44e5ef70481293c72a63773dfef166cd298a4da4903e7  labctl_linux_amd64
+LABCTL_SUMS="29eef66b1ff7d6a260d5428ea230cf183c77dd006b29322fbf4a754e2fc97c52  labctl_linux_amd64
 3bb13f2088360e332c2c071c7cf070f54956677c6387665b6bef6a58f9e2a631  lab-host.sh"
 LABCTL_DIR="${LABCTL_DIR:-${HOME}/.cache/labctl/release/${LABCTL_VERSION}}"
 

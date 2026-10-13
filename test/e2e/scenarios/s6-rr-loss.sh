@@ -1,36 +1,48 @@
 on hv1 <<'NODE'
 check "prérequis : VM s4-p de S4 en marche" test "$(api_state vms/s4-p)" = running
-check "session EVPN de hv1 établie avant l'arrêt" sh -c "vtysh -c 'show bgp neighbors 10.255.255.1' | grep -q 'BGP state = Established'"
+for rr in 10.255.255.1 10.255.255.2; do
+    check "session EVPN de hv1 vers ${rr} établie" sh -c "vtysh -c 'show bgp neighbors ${rr}' | grep -q 'BGP state = Established'"
+done
 check "prérequis : s4-p joint s4-q" vm_ssh vp-s4 10.240.1.10 'ping -c 2 -W 2 10.240.1.11'
 vm_ssh vp-s4 10.240.1.10 'rm -f /tmp/s6.log; nohup ping -D -i 0.2 10.240.1.11 > /tmp/s6.log 2>&1 &'
 sleep 5
 NODE
-on rr1 <<'NODE'
-date +%s > /tmp/s6.stop
-check "arrêt de FRR sur le route reflector" systemctl stop frr
+
+for pair in rr1:10.255.255.1:10.255.255.2 rr2:10.255.255.2:10.255.255.1; do
+IFS=: read -r node lost kept <<<"${pair}"
+on "${node}" "NODE_NAME=${node}" <<'NODE'
+check "${NODE_NAME} : arrêt de FRR" systemctl stop frr
 NODE
 sleep 30
-on hv1 <<'NODE'
+on hv1 "NODE_NAME=${node}" "LOST=${lost}" "KEPT=${kept}" <<'NODE'
 recent () { vm_ssh vp-s4 10.240.1.10 "now=\$(date +%s); awk -F'[][]' -v now=\$now '/bytes from/ && \$2 > now - ${1}' /tmp/s6.log | wc -l"; }
-check "session EVPN de hv1 tombée" sh -c "! vtysh -c 'show bgp neighbors 10.255.255.1' | grep -q 'BGP state = Established'"
-info "30 s après l'arrêt du route reflector : $(recent 10) réponses dans les 10 dernières secondes (50 si le trafic passe intégralement)"
-info "VTEP distant encore connu : $(vtysh -c 'show evpn vni 2401' | grep -c 192.168.14.12) ; entrée d'inondation : $(bridge fdb show dev vxlan-2401 | grep -c '00:00:00:00:00:00 dst')"
-sleep 60
-info "90 s après l'arrêt : $(recent 10) réponses dans les 10 dernières secondes"
+check "${NODE_NAME} arrêté : session vers ${LOST} tombée" sh -c "! vtysh -c 'show bgp neighbors ${LOST}' | grep -q 'BGP state = Established'"
+check "${NODE_NAME} arrêté : session vers ${KEPT} toujours établie" sh -c "vtysh -c 'show bgp neighbors ${KEPT}' | grep -q 'BGP state = Established'"
+check "${NODE_NAME} arrêté : VTEP distant toujours connu" sh -c "vtysh -c 'show evpn vni 2401' | grep -q 192.168.14.12"
+n=$(recent 10)
+info "${NODE_NAME} arrêté depuis 30 s : ${n} réponses dans les 10 dernières secondes (50 si le trafic passe intégralement)"
+check "${NODE_NAME} arrêté : le trafic passe (au moins 45 réponses sur 50)" test "${n}" -ge 45
 NODE
-on rr1 <<'NODE'
-check "redémarrage de FRR sur le route reflector" systemctl start frr
-date +%s > /tmp/s6.start
+on "${node}" "NODE_NAME=${node}" <<'NODE'
+check "${NODE_NAME} : redémarrage de FRR" systemctl start frr
 NODE
-on hv1 <<'NODE'
-recent () { vm_ssh vp-s4 10.240.1.10 "now=\$(date +%s); awk -F'[][]' -v now=\$now '/bytes from/ && \$2 > now - ${1}' /tmp/s6.log | wc -l"; }
+on hv1 "NODE_NAME=${node}" "LOST=${lost}" <<'NODE'
 start=$(date +%s)
-for i in $(seq 1 90); do
-    vtysh -c "show evpn vni 2401" | grep -q 192.168.14.12 && [ "$(recent 3)" -gt 0 ] && break
+for i in $(seq 1 60); do
+    vtysh -c "show bgp neighbors ${LOST}" | grep -q 'BGP state = Established' && break
     sleep 2
 done
-info "retour du VTEP distant et du trafic $(( $(date +%s) - start )) s après le redémarrage de FRR"
-check "après le retour du route reflector : VTEP distant réappris" sh -c "vtysh -c 'show evpn vni 2401' | grep -q 192.168.14.12"
-check "après le retour du route reflector : le trafic passe" test "$(recent 5)" -gt 0
+info "${NODE_NAME} : session vers ${LOST} rétablie $(( $(date +%s) - start )) s après le redémarrage de FRR"
+check "${NODE_NAME} redémarré : session vers ${LOST} rétablie" sh -c "vtysh -c 'show bgp neighbors ${LOST}' | grep -q 'BGP state = Established'"
+NODE
+done
+
+on hv1 <<'NODE'
 vm_ssh vp-s4 10.240.1.10 'pkill -x ping' || true
+sleep 1
+stats=$(vm_ssh vp-s4 10.240.1.10 "awk -F'icmp_seq=' '/bytes from/ {split(\$2, a, \" \"); n++; if (a[1] > max) max = a[1]} END {print n, max}' /tmp/s6.log")
+received=${stats% *}
+sent=${stats#* }
+info "pendant tout le scénario : ${received} réponses pour ${sent} requêtes, $(( sent - received )) perdues"
+check "aucune perte mesurable sur l'ensemble du scénario (au plus 1 %)" test $(( (sent - received) * 100 )) -le "${sent}"
 NODE

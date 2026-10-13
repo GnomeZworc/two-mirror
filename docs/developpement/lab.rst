@@ -72,10 +72,13 @@ et ``evpn-3hv.yml`` (trois, pour ``s8`` et ``s9``). Le format est celui de ``lab
 Les ASN, la loopback du route reflector, le lien ``169.254.0.0/28`` et le subnet des hyperviseurs
 de l'exemple sont **ceux de la production** (décision du 2026-10-04, #50) : les fichiers de
 ``test/e2e/topologies/`` restent ainsi au plus près de ce qui tourne réellement. Toutes les adresses y sont
-**fixées** par ``addresses`` — le route reflector en ``.2``, les hyperviseurs à partir de ``.11`` —
-pour que le modèle se lise sans le plan et ne dépende pas de l'ordre de déclaration : le
-``frr.conf`` d'un hyperviseur, écrit à la main, porte son adresse en ``router-id``. Seul le switch
-n'en déclare pas : il porte toujours la passerelle, la première adresse du segment.
+**fixées** par ``addresses`` — les switchs en ``.2`` et ``.3``, les route reflectors en ``.4`` et ``.5``,
+les hyperviseurs à partir de ``.11`` — pour que le modèle se lise sans le plan et ne dépende pas
+de l'ordre de déclaration : le ``frr.conf`` d'un hyperviseur, écrit à la main, porte son adresse en
+``router-id``. Les deux switchs ``sw1`` et ``sw2`` sont les routeurs du segment (rôle ``router`` de
+labctl) : la passerelle, la première adresse du segment, est portée en VRRP v3 par celui qui est
+maître, sans préemption — voir la section du guide de labctl sur les routeurs. Leurs
+``frr.conf`` ne diffèrent que par ``hostname`` et ``router-id`` ; labctl y ajoute la strophe VRRP.
 
 Rôles
 ~~~~~
@@ -108,7 +111,7 @@ script par celui de ``main``. L'uplink ``-u`` est l'interface qui porte la route
 que ``deploy.sh`` y lit l'adresse et la passerelle qu'il déplace sur ``br-000000``. ``deploy.sh``
 télécharge la release sur ``git.g3e.fr`` sans réessayer : le script attend d'abord que le serveur
 réponde, à travers le switch. Les deux fichiers ``agent/`` donnent à l'agent la section ``bgp``
-(AS 64600, route reflector ``10.255.255.1``) et un watchdog toutes les 10 s ;
+(AS 64600, route reflectors ``10.255.255.1`` et ``10.255.255.2``) et un watchdog toutes les 10 s ;
 ``agent/two.yml`` met en plus hv1 sur le serveur DHCP intégré (``dhcp.backend: two``),
 ``agent/bgp.yml`` laisse les autres sur dnsmasq.
 
@@ -182,9 +185,9 @@ Vérifié le 2026-10-04 sur le serveur de lab, topologie ``evpn-2hv``, release `
 
 .. note::
 
-   **Le switch du lab est un routeur Linux avec FRR, par choix.** Il joue le rôle générique de
-   routeur de cluster : passerelle des hyperviseurs, session eBGP avec BFD vers le route reflector,
-   dont il n'accepte que la loopback (``test/e2e/topologies/frr/sw1.conf``). L'équipement réel dépend de qui
+   **Les switchs du lab sont des routeurs Linux avec FRR, par choix.** Ils jouent le rôle générique
+   de routeur de cluster : passerelle des hyperviseurs, sessions eBGP avec BFD vers les route
+   reflectors, dont ils n'acceptent que les loopbacks (``test/e2e/topologies/frr/sw1.conf``). L'équipement réel dépend de qui
    déploie l'infrastructure (MikroTik aujourd'hui ; Cisco, Juniper, Arista… demain) : il n'a besoin
    que de BGP et d'EVPN, et sa configuration propre au constructeur n'a pas sa place dans le lab.
 
@@ -234,10 +237,12 @@ sortie vaut 1 si une vérification échoue **ou si aucune n'a été faite**.
        VPC sur l'autre hyperviseur (témoin) et pas celle de l'autre VPC — aucune résolution ARP
      - hv1, hv2
    * - ``s6-rr-loss``
-     - FRR arrêté sur le route reflector, ping continu entre les VM de ``s4`` : la session tombe,
-       le trafic restant est **mesuré** (``INFO``) à 30 et 90 s ; au retour du route reflector, le
-       VTEP distant est réappris et le trafic repasse — délai mesuré
-     - hv1, hv2, rr1
+     - FRR arrêté sur rr1, puis sur rr2, ping continu entre les VM
+       de ``s4`` : la session vers le route reflector arrêté tombe, celle vers l'autre reste
+       établie, le VTEP distant reste connu et **le trafic continue** (au moins 45 réponses sur 50
+       à 30 s) ; session rétablie au redémarrage, délai mesuré ; au plus 1 % de pertes sur tout le
+       scénario (#54)
+     - hv1, hv2, rr1, rr2
    * - ``s7-l3vni``
      - qualification de `#41 <https://git.g3e.fr/syonad/two/issues/41>`_ **par l'API** : VPC créées
        avec une ``l3vni``, l'agent pose VRF, L3VNI, transit, FRR et les routes de type 5 (``/24``
@@ -262,6 +267,14 @@ sortie vaut 1 si une vérification échoue **ou si aucune n'a été faite**.
        non, même hôte ou non) ; chaque VM voit la MAC de gateway de son propre hôte ; aucune MAC en
        double sur les quatre VNI
      - hv2, hv3, rr1
+   * - ``s10-switch-loss``
+     - un seul switch maître VRRP de la passerelle (lu par ``show vrrp``, pas supposé) ; interface
+       ``underlay`` du maître coupée pendant un ping continu de hv1 vers la loopback de rr1 :
+       l'autre switch devient maître, les sessions EVPN de hv1 **ne tombent pas** (compteur
+       ``dropped`` inchangé), le trafic reprend (au moins 45 réponses sur 50 à 20 s), plus long
+       silence sous 5 s ; interface rétablie : ses sessions eBGP reviennent et il **reste en
+       attente**, sans reprendre la passerelle (#54)
+     - hv1, sw1, sw2
 
 ``s6`` réutilise les VM de ``s4`` : le lancer après.
 
@@ -368,6 +381,15 @@ Détails et suite : `#57 <https://git.g3e.fr/syonad/two/issues/57>`_.
    n'est **pas forcément un aléa du lab** : c'est la signature de ce problème. Ne pas le classer
    comme test instable ni ajouter un nouvel essai qui le masquerait ; regarder d'abord le cache ARP
    de la VM (``ip neigh show <gateway>``) et l'état de la session côté VM.
+
+Le 2026-10-13, labctl ``0.2.0``, release ``0.2.0rc008`` et binaires de l'arbre courant,
+``evpn-3hv.yml`` avec deux switchs et deux route reflectors (#54) : ``s1`` à ``s10`` **313
+réussi(s), 0 échoué(s)** ; lab monté en 8 min. Segments sur un bridge de l'hôte, sept taps ;
+``sw2`` maître VRRP au démarrage, ``sw1`` en attente avec sa passerelle coupée. ``s6`` : 0
+requête perdue sur 510 pendant l'arrêt de rr1 puis de rr2, session rétablie 14 s après le
+redémarrage de FRR. ``s10`` : ``sw2`` coupé, ``sw1`` maître, 14 requêtes perdues, plus long
+silence 2,8 s, sessions EVPN de hv1 jamais coupées ; ``sw2`` rétabli reste en attente.
+``s9`` sans ``Broken pipe`` cette fois : #57 n'est pas corrigé pour autant.
 
 Les VM sont accessibles depuis le netns de leur VPC, sur l'hyperviseur, avec l'utilisateur
 ``syonad`` créé par les métadonnées de two :

@@ -3,7 +3,9 @@ VM route reflector
 
 Le route reflector est le point de rendez-vous du plan de contrôle : plutôt que de maintenir une
 session entre chaque paire d'hyperviseurs, chaque hyperviseur ouvre une session vers le route
-reflector, qui redistribue.
+reflector, qui redistribue. Le cluster en compte **deux**, configurés à l'identique hormis leurs
+adresses : chaque hyperviseur ouvre une session vers chacun, et la perte de l'un ne doit pas
+interrompre le plan de contrôle (`#54 <https://git.g3e.fr/syonad/two/issues/54>`_).
 
 Il tourne lui-même en machine virtuelle, ce qui crée une dépendance circulaire à traiter
 explicitement : la VM qui porte le plan de contrôle du cluster est hébergée par le cluster.
@@ -11,7 +13,7 @@ explicitement : la VM qui porte le plan de contrôle du cluster est hébergée p
 Adressage
 ---------
 
-Le route reflector est **sur le même segment L2 que les hyperviseurs**, avec trois adresses :
+Chaque route reflector est **sur le même segment L2 que les hyperviseurs**, avec trois adresses :
 
 .. list-table::
    :header-rows: 1
@@ -23,15 +25,16 @@ Le route reflector est **sur le même segment L2 que les hyperviseurs**, avec tr
    * - une adresse de ``192.168.14.0/24``
      - interface principale
      - celle de n'importe quelle machine du segment ; les réponses aux hyperviseurs en partent
-   * - ``169.254.0.3/28``
+   * - ``169.254.0.3/28`` (rr1), ``169.254.0.4/28`` (rr2)
      - interface principale, **adresse secondaire**
      - le lien avec les routeurs de cluster (``169.254.0.1`` et ``.2``), sur le même L2
-   * - ``10.255.255.1/32``
+   * - ``10.255.255.1/32`` (rr1), ``10.255.255.2/32`` (rr2)
      - ``lo1``, interface ``dummy``
      - ``router-id``, ``cluster-id`` et source des sessions EVPN ; seule route annoncée aux routeurs
 
-Les hyperviseurs ne connaissent que la loopback : ils ouvrent leur session vers ``10.255.255.1``
-par leur passerelle (``192.168.14.1``), les routeurs l'ayant apprise du route reflector en eBGP.
+Les hyperviseurs ne connaissent que les loopbacks : ils ouvrent leurs sessions vers
+``10.255.255.1`` et ``10.255.255.2`` par leur passerelle (``192.168.14.1``), les routeurs les
+ayant apprises des route reflectors en eBGP.
 Aucune adresse d'hyperviseur n'est déclarée côté route reflector : il accepte toute session venant
 du segment (``bgp listen range``).
 
@@ -60,6 +63,10 @@ Configuration de FRR
 .. literalinclude:: ../../test/e2e/topologies/frr/rr1.conf
    :language: text
 
+Celle de rr2 (``test/e2e/topologies/frr/rr2.conf``) ne diffère que par ``hostname`` et
+l'adresse de sa loopback, partout où elle apparaît : ``router-id``, ``cluster-id``,
+``update-source``, ``network`` et ``RR-LOOPBACK-OUT``.
+
 Ce qu'elle établit :
 
 * **Routeurs de cluster** (groupe ``CLUSTER``) : eBGP vers l'AS 65100, avec BFD, en IPv4
@@ -71,6 +78,9 @@ Ce qu'elle établit :
   configuration — alors que le route reflector est en AS 65000 face aux routeurs.
 * **EVPN** : seule famille activée vers les hyperviseurs, qui sont ses clients
   (``route-reflector-client``) : il réfléchit les routes EVPN de chacun vers tous les autres.
+* **Un** ``cluster-id`` **propre à chaque route reflector** (sa loopback), et aucune session
+  entre eux : chaque hyperviseur étant client des deux, chacun reçoit chaque route en double, une
+  fois par route reflector ; si l'un tombe, les routes reçues de l'autre restent en place.
 
 .. warning::
 
@@ -89,7 +99,8 @@ Ce qu'elle établit :
    * la création de la VM : ressources, subnet et mode utilisés (``bridge``, pour pouvoir la
      lancer sur n'importe quel hyperviseur), et s'il s'agit d'une VM créée par l'agent comme les
      autres ou d'un cas particulier — l'image, elle, est l'image golden de :doc:`image-qcow2` ;
-   * la redondance : une seule VM route reflector, ou deux, et sur quels hyperviseurs ;
+   * le placement des deux VM : jamais sur le même hyperviseur, et de préférence pas sur un
+     hyperviseur dont la perte isolerait l'autre ;
    * la procédure de reconstruction — l'état du cluster pendant l'absence du route reflector est
      décrit ci-dessus : plus de trafic entre hyperviseurs ;
    * la procédure d'amorçage : ce qui fonctionne, et dans quel ordre, quand on démarre un cluster

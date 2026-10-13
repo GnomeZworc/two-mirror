@@ -34,7 +34,7 @@ démarrage, à partir de la section ``bgp`` de ``agent.yml`` (:doc:`/exploitatio
 
    bgp:
      asn: 64600
-     route_reflectors: [10.255.255.1]
+     route_reflectors: [10.255.255.1, 10.255.255.2]
 
 L'agent en déduit la configuration ci-dessous ; le ``router-id`` est l'adresse IPv4 primaire de
 ``default_interface``, la seule valeur qui change d'un hyperviseur à l'autre. ``hostname`` et
@@ -49,6 +49,7 @@ L'agent en déduit la configuration ci-dessous ; le ``router-id`` est l'adresse 
     neighbor fabric remote-as 64600
     neighbor fabric capability extended-nexthop
     neighbor 10.255.255.1 peer-group fabric
+    neighbor 10.255.255.2 peer-group fabric
     !
     address-family l2vpn evpn
      neighbor fabric activate
@@ -65,9 +66,9 @@ L'agent en déduit la configuration ci-dessous ; le ``router-id`` est l'adresse 
 
 Ce qu'elle établit :
 
-* **Une seule session**, en iBGP dans l'AS 64600, vers la loopback du route reflector
-  (``10.255.255.1``), jointe par la passerelle par défaut — le routeur de cluster l'a apprise du
-  route reflector (:doc:`routeurs`). Aucune adresse d'un autre hyperviseur n'est écrite : ajouter
+* **Une session par route reflector**, en iBGP dans l'AS 64600, vers sa loopback
+  (``10.255.255.1``, ``10.255.255.2``), jointe par la passerelle par défaut — le routeur de
+  cluster l'a apprise du route reflector (:doc:`routeurs`). Aucune adresse d'un autre hyperviseur n'est écrite : ajouter
   un nœud ne touche pas la configuration des autres.
 * **EVPN seulement** : l'IPv4 unicast n'est pas activé (``no bgp default ipv4-unicast``).
   ``advertise-all-vni`` annonce les VNI de toutes les interfaces VXLAN que FRR voit, et donc
