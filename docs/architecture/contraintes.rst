@@ -23,6 +23,17 @@ Réseau
 * **La route vers le CIDR du VPC garde ``interface_ip`` comme next-hop** dans tous les modes sauf
   ``bridge`` : sur un subnet à IP publique, le trafic interne ne doit pas sortir par la gateway
   publique.
+* **La MAC anycast d'une gateway ``vxlan`` ne sort jamais du netns** : règles ebtables sur le veth
+  du subnet (source anycast rejetée en entrée et en sortie) **et** entrée FDB locale dans le bridge
+  du netns. Sans l'entrée FDB, que le macvlan ne crée pas, toute trame d'une VM vers sa gateway est
+  inondée vers le fabric et traitée par la gateway de chaque hôte.
+* **La gateway ``vxlan`` n'est jamais sur le bridge** : ``arp_ignore=1`` sur ``br-<subnet>``, la
+  gateway en ``/32`` sur ``gw-<subnet>``, l'adresse d'émission seule sur le bridge. Posée sur le
+  bridge, la gateway répondrait aux VM avec la MAC de l'hôte et l'anycast serait contourné sans
+  autre symptôme.
+* **La route du subnet garde la gateway pour source** (``src``) : le netns parle à ses VM depuis
+  la gateway, leurs réponses reviennent à l'hôte local. Depuis l'adresse d'émission, partagée par
+  tous les hôtes, une réponse peut partir vers un autre hôte.
 * ``169.254.169.254`` est centralisé dans ``metadata.ServiceIP`` — ne pas le réécrire en dur.
 
 QEMU et VM

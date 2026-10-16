@@ -36,22 +36,85 @@ vxlan
 .. mermaid::
 
    graph LR
-     VM --- TAP[tap] --- BR["br-&lt;subnet&gt;<br/>interface_ip"]
-     BR --- VX["vxlan&lt;vni&gt;"] --- HBR["bridge host<br/>(iface_type)"] --- UP[uplink]
+     VM --- TAP[tap] --- BR["br-&lt;subnet&gt;<br/>adresse d'émission"]
+     GW["gw-&lt;subnet&gt;<br/>gateway, MAC anycast"] -. macvlan .- BR
+     BR --- VETH["v-&lt;subnet&gt;-i / -e"] --- VX["vxlan-&lt;vni&gt;"] --- UP[uplink]
 
 Le subnet vit dans le netns du VPC. La VM n'est donc **pas joignable depuis l'host** sans route
 explicite — point à connaître avant de câbler un outil externe dessus.
 
-Le bridge du subnet, qui porte ``interface_ip``, a une **MAC de gateway propre à l'hôte**, calculée
-depuis son VTEP — l'IPv4 primaire du ``local_iface`` : ``02:03`` suivi des quatre octets de
-l'adresse (VTEP ``192.168.14.12`` → ``02:03:c0:a8:0e:0c``). Unique dans le fabric, elle est la
-même pour tous les subnets d'un hôte, chacun étant un domaine L2 distinct. Elle n'est posée qu'à la
-création du subnet — un subnet créé avant garde la MAC choisie par le noyau jusqu'à sa recréation.
+Adressage
+~~~~~~~~~
 
-Une MAC de gateway **identique sur tous les hôtes** (anycast) a été essayée puis retirée : apprise
-sur le veth du subnet, elle était annoncée en EVPN par chaque hôte et détectée en double ; et une
-gateway ne pouvait plus joindre en L2 une VM d'un autre hôte, la réponse revenant à la gateway
-locale de la VM. Le cache ARP d'une VM migrée à chaud est un sujet de la migration, pas du subnet.
+L'agent calcule deux adresses à partir du ``cidr`` ; ``interface_ip`` n'est pas fourni par
+l'appelant (refusé en 400) :
+
+* la **gateway**, avant-dernière adresse du préfixe (``.254`` en ``/24``), exposée comme
+  ``interface_ip`` ;
+* l'**adresse d'émission**, juste avant (``.253``), exposée comme ``relay_ip``.
+
+Le ``cidr`` doit être sans bits d'hôte et faire au plus ``/29``. Une VM ne peut prendre ni l'une
+ni l'autre de ces adresses, ni l'adresse de réseau, de broadcast ou la ``gateway`` explicite du
+subnet (422).
+
+Gateway anycast
+~~~~~~~~~~~~~~~
+
+La gateway est portée par un macvlan ``gw-<subnet>`` posé sur le bridge du netns. Sa MAC est
+**identique sur tous les hôtes qui portent le subnet** : ``02:01:00`` suivi de la VNI sur 24 bits
+(VNI ``2911`` → ``02:01:00:00:0b:5f``). Où qu'elle tourne, une VM résout sa gateway vers l'hôte
+qui l'héberge, et une entrée ARP restée en cache reste valable si la VM change d'hôte.
+
+Le bridge ``br-<subnet>`` garde une **MAC propre à l'hôte**, ``02:03`` suivi des quatre octets du
+VTEP — l'IPv4 primaire du ``local_iface`` (``192.168.14.12`` → ``02:03:c0:a8:0e:0c``) — et porte
+l'adresse d'émission :
+
+* le netns émet ses requêtes ARP depuis l'adresse d'émission (``arp_announce=2``) et le bridge ne
+  répond pas pour la gateway (``arp_ignore=1``). Quand un hôte relaie en L2 vers une VM d'un autre
+  hôte — trafic routé vers un subnet présent sur plusieurs hôtes, filet du ``/24`` d'un VPC
+  routé —, la VM répond à la MAC de cet hôte, sans que sa gateway change ;
+* la route du subnet a la gateway pour source : le netns parle à **ses** VM depuis la gateway, et
+  leurs réponses reviennent à la MAC anycast, donc à l'hôte local ;
+* le DHCP écoute sur ``gw-<subnet>`` et s'annonce avec la gateway comme identifiant de serveur :
+  un renouvellement unicast reste servi par l'hôte de la VM.
+
+L'adresse d'émission est la même sur tous les hôtes : une VM qui reçoit la requête ARP d'un autre
+hôte associe ``.253`` à la MAC de celui-ci. C'est sans effet — la VM ne parle jamais d'elle-même à
+``.253`` et le netns lui parle depuis la gateway. Mesuré en lab (``s11-fenetre-arp``) : pendant
+cette fenêtre, métadonnées, renouvellement DHCP et connexions depuis le netns passent sans perte.
+
+.. note::
+
+   Depuis le netns d'un hôte, une VM d'un **autre** hôte ne répond qu'à l'adresse d'émission
+   (``ping -I <relay_ip>``) : à la gateway, sa réponse repartirait vers son propre hôte. Le
+   trafic routé entre VM n'est pas concerné, il garde sa source.
+
+Confinement de la MAC anycast
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+La MAC anycast ne doit **jamais** sortir du netns : vue depuis le fabric, elle serait annoncée en
+EVPN par chaque hôte, détectée en double, et déplacerait l'apprentissage des bridges. Trois
+mécanismes la confinent :
+
+* ebtables, sur le veth du subnet : toute trame de **source** anycast est rejetée à l'entrée
+  (``nat PREROUTING``) et à la sortie (``FORWARD`` et ``OUTPUT``) ;
+* une **entrée FDB locale** pour la MAC anycast dans le bridge du netns. Le macvlan ne la crée pas
+  lui-même : sans elle, toute trame d'une VM vers sa gateway est inondée vers le fabric et les
+  autres VM, et traitée par la gateway de chaque hôte ;
+* les requêtes ARP vers la gateway ou l'adresse d'émission, et les réponses DHCP qui en viennent,
+  sont bloquées vers le veth, comme avant.
+
+IPv6 n'est pas désactivé sur le macvlan : ses trames (DAD, ND) sont arrêtées par le confinement.
+Le watchdog contrôle le macvlan, sa MAC, les deux adresses et l'entrée FDB ; il ne relit pas les
+règles ebtables.
+
+Subnets créés avant la gateway anycast
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Un subnet ``vxlan`` sans ``relay_ip`` garde le modèle précédent jusqu'à sa recréation :
+``interface_ip`` choisie à la création, portée par le bridge, avec la MAC propre à l'hôte. Une VM
+qui reçoit alors la requête ARP d'un autre hôte associe **sa gateway** à cet hôte pendant
+quelques secondes (#57).
 
 bridge
 ------
@@ -81,7 +144,7 @@ Une route par défaut est **toujours** annoncée. Le champ ``default_route`` ne 
 next-hop :
 
 ``default_route: false`` (défaut)
-   next-hop = ``interface_ip`` du subnet.
+   next-hop = ``interface_ip`` du subnet, la gateway calculée en ``vxlan``.
 
 ``default_route: true``
    next-hop = le champ ``gateway`` s'il est fourni, sinon la gateway lue dans la table de routage
@@ -100,7 +163,8 @@ Pourquoi la route ``/32`` vers le serveur de metadata est indispensable
 Elle paraît redondante avec la route par défaut. Elle ne l'est pas.
 
 La DNAT vers le serveur de metadata est posée dans le netns du VPC, en ``PREROUTING``. Le paquet
-n'y est traité en L3 que si son next-hop est ``interface_ip``, portée par le bridge du netns.
+n'y est traité en L3 que si son next-hop est ``interface_ip``, locale au netns — sur le macvlan de
+la gateway en ``vxlan``, sur le bridge dans les autres modes.
 Avec un autre next-hop, la trame est commutée en **L2** sans traverser ``PREROUTING`` : le
 serveur de metadata devient injoignable et tout le provisionnement cloud-init échoue,
 silencieusement.

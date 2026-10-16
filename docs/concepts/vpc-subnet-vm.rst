@@ -6,7 +6,7 @@ Trois types de ressources, une hiérarchie stricte.
 .. mermaid::
 
    graph TD
-     VPC["VPC<br/><i>network namespace</i><br/>cidr"] --> SN1["Subnet<br/><i>bridge + VXLAN</i><br/>interface_ip, cidr"]
+     VPC["VPC<br/><i>network namespace</i><br/>cidr"] --> SN1["Subnet<br/><i>bridge + VXLAN</i><br/>cidr, gateway"]
      VPC --> SN2["Subnet"]
      SN1 --> VM1["VM<br/><i>QEMU/KVM</i>"]
      SN1 --> VM2["VM"]
@@ -57,8 +57,9 @@ configurée fait planter ``bgpd`` (FRR 10.7.1).
 Subnet
 ------
 
-Un subnet appartient à un VPC et pose, dans son netns, un bridge qui porte ``interface_ip`` — la
-gateway vue par les VM. Il fournit aussi le DHCP — dnsmasq ou le serveur intégré selon
+Un subnet appartient à un VPC et pose, dans son netns, un bridge et la gateway vue par les VM,
+``interface_ip`` — calculée par l'agent et portée par un macvlan à MAC anycast en mode ``vxlan``,
+fournie par l'appelant et portée par le bridge dans les autres modes. Il fournit aussi le DHCP — dnsmasq ou le serveur intégré selon
 ``dhcp.backend`` — et les routes annoncées aux guests.
 
 ``iface_type`` est une clé **logique** (``vms``, ``internet``, ``admin``…), traduite en nom de
