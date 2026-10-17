@@ -32,7 +32,7 @@ for vm in 10.22.1.10:10.22.1.254 10.22.1.11:10.22.1.254 10.22.2.10:10.22.2.254 1
     check "${ip} : bail DHCP tenu par systemd-networkd" vm_ssh vp-t22 "${ip}" 'ls /run/systemd/netif/leases/ | grep -q .'
     check "${ip} : bail servi par la gateway ${gw} (server-id)" test "$(vm_lease vp-t22 "${ip}" SERVER_ADDRESS)" = "${gw}"
     check "${ip} : route par défaut via ${gw}" route_via vp-t22 "${ip}" default "${gw}"
-    check "${ip} : route vers la VPC via ${gw}" route_via vp-t22 "${ip}" 10.22.0.0/16 "${gw}"
+    check "${ip} : route vers le VPC via ${gw}" route_via vp-t22 "${ip}" 10.22.0.0/16 "${gw}"
     check "${ip} : route /32 vers les métadonnées via ${gw}" route_via vp-t22 "${ip}" 169.254.169.254 "${gw}"
 done
 check "10.22.1.10 : bail renouvelé (networkctl renew)" lease_renewed vp-t22 10.22.1.10

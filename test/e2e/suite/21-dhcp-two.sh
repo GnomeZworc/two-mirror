@@ -27,7 +27,7 @@ for vm in 10.21.1.10:10.21.1.254 10.21.1.11:10.21.1.254 10.21.2.10:10.21.2.254 1
     check "${ip} : bail DHCP tenu par systemd-networkd" vm_ssh vp-t21 "${ip}" 'ls /run/systemd/netif/leases/ | grep -q .'
     check "${ip} : bail servi par la gateway ${gw} (server-id)" test "$(vm_lease vp-t21 "${ip}" SERVER_ADDRESS)" = "${gw}"
     check "${ip} : route par défaut via ${gw}" route_via vp-t21 "${ip}" default "${gw}"
-    check "${ip} : route vers la VPC via ${gw}" route_via vp-t21 "${ip}" 10.21.0.0/16 "${gw}"
+    check "${ip} : route vers le VPC via ${gw}" route_via vp-t21 "${ip}" 10.21.0.0/16 "${gw}"
     check "${ip} : route /32 vers les métadonnées via ${gw}" route_via vp-t21 "${ip}" 169.254.169.254 "${gw}"
 done
 check "10.21.1.10 : bail renouvelé (networkctl renew)" lease_renewed vp-t21 10.21.1.10

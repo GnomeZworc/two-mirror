@@ -78,7 +78,7 @@
   <text class="lbl" x="150.0" y="535.0" text-anchor="middle">vxlan-&lt;vni&gt;</text>
   <text class="sub" x="150.0" y="552.0" text-anchor="middle">dans br-&lt;subnet&gt;, sans learning</text>
   <rect class="group" x="270" y="280" width="290" height="300" rx="8"/>
-  <text class="grp" x="290" y="304">NETNS DE LA VPC</text>
+  <text class="grp" x="290" y="304">NETNS DU VPC</text>
   <rect class="box" x="285" y="312" width="125" height="66" rx="6"/>
   <text class="lbl" x="347.5" y="334.0" text-anchor="middle">gw-&lt;subnet&gt;</text>
   <text class="sub" x="347.5" y="351.0" text-anchor="middle">gateway .254</text>
@@ -124,7 +124,7 @@
   <text class="lbl" x="730.0" y="535.0" text-anchor="middle">vxlan-&lt;vni&gt;</text>
   <text class="sub" x="730.0" y="552.0" text-anchor="middle">dans br-&lt;subnet&gt;, sans learning</text>
   <rect class="group" x="850" y="280" width="290" height="300" rx="8"/>
-  <text class="grp" x="870" y="304">NETNS DE LA VPC</text>
+  <text class="grp" x="870" y="304">NETNS DU VPC</text>
   <rect class="box" x="865" y="312" width="125" height="66" rx="6"/>
   <text class="lbl" x="927.5" y="334.0" text-anchor="middle">gw-&lt;subnet&gt;</text>
   <text class="sub" x="927.5" y="351.0" text-anchor="middle">gateway .254</text>
@@ -165,6 +165,6 @@
   <text class="sub" x="848" y="740" text-anchor="start">créé par l'agent</text>
   <text class="sub" x="60" y="780" text-anchor="start">Les hyperviseurs joignent les loopbacks des route reflectors par leur passerelle : les routeurs les ont apprises en eBGP, sans rien leur renvoyer.</text>
   <text class="sub" x="60" y="798" text-anchor="start">Les route reflectors acceptent toute session venant de l'underlay (bgp listen range) et réfléchissent les routes EVPN entre hyperviseurs ; chaque FRR en peuple la FDB des VXLAN locaux.</text>
-  <text class="sub" x="60" y="816" text-anchor="start">La gateway d'un subnet a la même IP et la même MAC sur tous les hôtes ; chaque netns émet depuis son adresse d'émission. Les subnets d'une VPC se joignent par son L3VNI.</text>
+  <text class="sub" x="60" y="816" text-anchor="start">La gateway d'un subnet a la même IP et la même MAC sur tous les hôtes ; chaque netns émet depuis son adresse d'émission. Les subnets d'un VPC se joignent par son L3VNI.</text>
   <text class="sub" x="60" y="834" text-anchor="start">ASN et loopbacks : valeurs de production (#50). Vue d'ensemble (bordures, Internet, orchestration, plusieurs clusters) : schéma précédent.</text>
 </svg>

@@ -40,7 +40,7 @@ Paquets
    * - ``internal/vpc``, ``internal/subnet``
      - création et suppression bas niveau (netns + netif)
    * - ``internal/l3vni``
-     - routage d'une VPC par L3VNI : VRF, L3VNI, transit, configuration FRR, export des routes
+     - routage d'un VPC par L3VNI : VRF, L3VNI, transit, configuration FRR, export des routes
        ``/24`` et ``/32``
    * - ``internal/frr``
      - génération des commandes FRR, seul point d'appel à ``vtysh``

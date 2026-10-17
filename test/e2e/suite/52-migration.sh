@@ -1,4 +1,4 @@
-# fonctionnalité: migration d'une adresse de VM entre hôtes d'une VPC routée — /32 retiré en premier, /24 en filet puis en ECMP, séquence orchestrée, 40 sources, suppression du subnet refusée tant qu'une VM l'utilise, MAC anycast hors EVPN
+# fonctionnalité: migration d'une adresse de VM entre hôtes d'un VPC routé — /32 retiré en premier, /24 en filet puis en ECMP, séquence orchestrée, 40 sources, suppression du subnet refusée tant qu'une VM l'utilise, MAC anycast hors EVPN
 # hôtes: hv1 hv2 hv3
 # tickets: #41, #57
 

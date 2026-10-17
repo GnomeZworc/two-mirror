@@ -33,5 +33,14 @@ schemas/<nom>-dark.svg   thème sombre  → .. figure:: /schemas/<nom>-dark.svg 
 `schemas/` est dans `exclude_patterns` : Sphinx n'y cherche pas de pages, mais copie les fichiers
 référencés par une directive `figure` ou `image`.
 
+Les schémas d'architecture (`architecture-ensemble` et `architecture-cluster`) sont générés : ne
+pas éditer leurs SVG, modifier `schemas/gen_ensemble.py` ou `schemas/gen_cluster.py` (même style,
+le second réutilise les fonctions du premier), puis régénérer les deux variantes :
+
+```bash
+python3 -B schemas/gen_ensemble.py schemas
+python3 -B schemas/gen_cluster.py schemas
+```
+
 Un export draw.io se dépose tel quel sous ce nom. Exporter en **SVG éditable** (« Include a copy
 of my diagram ») pour pouvoir rouvrir le fichier dans draw.io ensuite.

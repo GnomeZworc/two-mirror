@@ -1,4 +1,4 @@
-# fonctionnalité: subnets vxlan partagés par deux hôtes, deux VM par hôte, dans une VPC avec et une VPC sans l3vni — toutes les paires, gateway anycast vue par chaque VM et absente d'EVPN, aucune MAC en double
+# fonctionnalité: subnets vxlan partagés par deux hôtes, deux VM par hôte, dans un VPC avec et un VPC sans l3vni — toutes les paires, gateway anycast vue par chaque VM et absente d'EVPN, aucune MAC en double
 # hôtes: hv2 hv3
 # tickets: #57, #41
 

@@ -33,11 +33,11 @@ ticket :
   un VXLAN public (VNI 66001) et portent toutes la même IP et la même MAC de gateway. Elles restent
   sans état : tout NAT vit sur un hyperviseur. Trois façons de sortir :
 
-  * une VM qui porte une IP publique a une NIC sur un subnet public de sa VPC, relié au subnet
+  * une VM qui porte une IP publique a une NIC sur un subnet public de son VPC, relié au subnet
     public de l'hôte ;
   * une **IP flottante** est traduite 1:1, sans état, par l'hyperviseur de la VM ;
   * les autres VM sortent par la **passerelle NAT de leur VPC**, que la VRF atteint par une route
-    par défaut de type 5, si la VPC autorise Internet.
+    par défaut de type 5, si le VPC autorise Internet.
 
 * **Orchestration** (`#72 <https://git.g3e.fr/syonad/two/issues/72>`_). Le broker et
   l'orchestrateur sont des VM du VNI 66000, partagé entre clusters. Les agents s'y connectent

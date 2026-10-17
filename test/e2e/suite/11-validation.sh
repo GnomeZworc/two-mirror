@@ -10,7 +10,7 @@ check "VPC : l3vni 1100 déjà prise par vp-t11a, 409" expect_code 409 api_post_
 for vni in 0 253 254 255 65536; do
     check "VPC : l3vni ${vni} refusée, 400" expect_code 400 api_post_code vpcs "{\"name\":\"vp-t11x\",\"cidr\":\"10.12.0.0/16\",\"l3vni\":${vni}}"
 done
-check "VPC refusées : aucune trace de vp-t11x" expect_code 404 api_code GET vpcs/vp-t11x
+check "VPC refusés : aucune trace de vp-t11x" expect_code 404 api_code GET vpcs/vp-t11x
 
 check "subnet sn-t11a 10.11.1.0/24, VNI 1101 (témoin)" subnet_create sn-t11a vp-t11a 1101 10.11.1.0/24
 check "subnet sn-t11g 10.11.2.0/24, VNI 1102, gateway explicite 10.11.2.1 (témoin)" subnet_create sn-t11g vp-t11a 1102 10.11.2.0/24 ',"default_route":true,"gateway":"10.11.2.1"'
@@ -23,7 +23,7 @@ check "subnet : interface_ip absente en bridge, 400" expect_code 400 api_post_co
 check "subnet : préfixe /30 en vxlan, 422" expect_code 422 api_post_code subnets '{"name":"sn-t11x","vpc":"vp-t11a","mode":"vxlan","vxlan_id":1109,"cidr":"10.11.9.0/30"}'
 check "subnet : préfixe /29 en vxlan accepté (témoin)" expect_code 202 api_post_code subnets '{"name":"sn-t11p","vpc":"vp-t11a","mode":"vxlan","vxlan_id":1103,"cidr":"10.11.3.0/29"}'
 check "subnet : cidr avec bits d'hôte, 422" expect_code 422 api_post_code subnets '{"name":"sn-t11x","vpc":"vp-t11a","mode":"vxlan","vxlan_id":1109,"cidr":"10.11.9.1/24"}'
-check "subnet : VPC inconnue, 422" expect_code 422 api_post_code subnets '{"name":"sn-t11x","vpc":"vp-t11z","mode":"vxlan","vxlan_id":1109,"cidr":"10.11.9.0/24"}'
+check "subnet : VPC inconnu, 422" expect_code 422 api_post_code subnets '{"name":"sn-t11x","vpc":"vp-t11z","mode":"vxlan","vxlan_id":1109,"cidr":"10.11.9.0/24"}'
 check "subnet : champ cidr manquant, 400" expect_code 400 api_post_code subnets '{"name":"sn-t11x","vpc":"vp-t11a","mode":"vxlan","vxlan_id":1109}'
 check "subnets refusés : aucune trace de sn-t11x" expect_code 404 api_code GET subnets/sn-t11x
 check "sn-t11p running" wait_state subnets/sn-t11p running

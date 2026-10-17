@@ -332,7 +332,7 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - hv1
      - #57, #43
    * - ``32-vxlan-local``
-     - routage entre deux subnets vxlan d'une même VPC sur un même hôte, sans et avec l3vni — ICMP, TCP, saut unique par la gateway
+     - routage entre deux subnets vxlan d'un même VPC sur un même hôte, sans et avec l3vni — ICMP, TCP, saut unique par la gateway
      - hv1
      - #57, #41
    * - ``33-bridge``
@@ -340,7 +340,7 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - hv1 hv2
      - #70
    * - ``34-isolation-locale``
-     - isolation entre deux VPC sur un même hôte — ni ICMP ni TCP d'une VPC à l'autre
+     - isolation entre deux VPC sur un même hôte — ni ICMP ni TCP d'un VPC à l'autre
      - hv1
      - #50
    * - ``35-filtrage-port``
@@ -352,11 +352,11 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - hv1 hv2
      - #50, #51
    * - ``42-isolation-evpn``
-     - isolation entre VPC à travers EVPN — deux VPC sur la même plage, la VM d'une VPC ne joint pas celle de l'autre sur un hôte distant
+     - isolation entre VPC à travers EVPN — deux VPC sur la même plage, la VM d'un VPC ne joint pas celle de l'autre sur un hôte distant
      - hv1 hv2
      - #50, #51
    * - ``43-subnets-partages``
-     - subnets vxlan partagés par deux hôtes, deux VM par hôte, dans une VPC avec et une VPC sans l3vni — toutes les paires, gateway anycast vue par chaque VM et absente d'EVPN, aucune MAC en double
+     - subnets vxlan partagés par deux hôtes, deux VM par hôte, dans un VPC avec et un VPC sans l3vni — toutes les paires, gateway anycast vue par chaque VM et absente d'EVPN, aucune MAC en double
      - hv2 hv3
      - #57, #41
    * - ``44-fenetre-arp``
@@ -364,15 +364,15 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - hv1 hv2
      - #57
    * - ``51-l3vni``
-     - routage inter-subnet entre hôtes par L3VNI (IRB symétrique) — VRF, RMAC, exports /24 et /32, RT-5 réfléchies, TTL, isolation par RT, démontage d'une VPC routée
+     - routage inter-subnet entre hôtes par L3VNI (IRB symétrique) — VRF, RMAC, exports /24 et /32, RT-5 réfléchies, TTL, isolation par RT, démontage d'un VPC routé
      - hv1 hv2
      - #41
    * - ``52-migration``
-     - migration d'une adresse de VM entre hôtes d'une VPC routée — /32 retiré en premier, /24 en filet puis en ECMP, séquence orchestrée, 40 sources, suppression du subnet refusée tant qu'une VM l'utilise, MAC anycast hors EVPN
+     - migration d'une adresse de VM entre hôtes d'un VPC routé — /32 retiré en premier, /24 en filet puis en ECMP, séquence orchestrée, 40 sources, suppression du subnet refusée tant qu'une VM l'utilise, MAC anycast hors EVPN
      - hv1 hv2 hv3
      - #41, #57
    * - ``53-watchdog-l3``
-     - watchdog d'une VPC routée — /32 orphelin signalé comme trou noir, /32 manquant signalé, aucune fausse alerte BGP ni L3VNI, trafic intact après les essais
+     - watchdog d'un VPC routé — /32 orphelin signalé comme trou noir, /32 manquant signalé, aucune fausse alerte BGP ni L3VNI, trafic intact après les essais
      - hv1 hv3
      - #41
    * - ``61-redemarrage-agent``
@@ -520,7 +520,7 @@ inchangé :
   « martiens » les ICMP émis par les sauts distants (VRF et netns de l'hôte de sortie) : le
   noyau de l'hôte d'entrée possède la même adresse. Quatre routeurs sur le chemin, seuls les
   deux premiers répondent. Même effet attendu sur un ICMP « fragmentation nécessaire ».
-* **La route du supernet n'existe pas dans le netns** de la VPC avant la pose manuelle (premier
+* **La route du supernet n'existe pas dans le netns** du VPC avant la pose manuelle (premier
   run, lab neuf) : two ne pose que la route connectée du subnet.
 
 ``s8-l3vni-migration`` le 2026-10-06, ``evpn-3hv.yml`` : **61 réussi(s), 0 échoué(s)**. Le filet du
@@ -538,7 +538,7 @@ Le 2026-10-11, les mêmes qualifications **par l'API**, l'agent posant toute la 
 * Puis, release ``0.2.0rc005`` (correction du démontage FRR, ci-dessous), ``evpn-3hv.yml`` :
 * ``s7-l3vni`` : **52 réussi(s), 1 échoué(s)**. Routage inter-subnet par le
   L3VNI, MAC de routeur dérivée du VTEP, exports ``/24`` et ``/32`` automatiques, forwarding par
-  interface, L3VNI en double et subnet utilisé refusés (409), démontage complet d'une VPC sans
+  interface, L3VNI en double et subnet utilisé refusés (409), démontage complet d'un VPC sans
   redémarrage de bgpd. L'échec — « TTL 1 », un seul paquet — ne s'est pas reproduit au run
   précédent : probablement le débit limité des ICMP du noyau ; la vérification envoie désormais
   trois paquets.
