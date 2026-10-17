@@ -778,7 +778,13 @@ window.runMermaid = runMermaid;</script>
             </div>
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#vxlan">vxlan</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#vxlan">vxlan</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#adressage">Adressage</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#gateway-anycast">Gateway anycast</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#confinement-de-la-mac-anycast">Confinement de la MAC anycast</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#subnets-crees-avant-la-gateway-anycast">Subnets créés avant la gateway anycast</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#bridge">bridge</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#routes-annoncees-aux-vm">Routes annoncées aux VM</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#route-par-defaut-default-route-et-gateway">Route par défaut : <code class="docutils literal notranslate"><span class="pre">default_route</span></code> et <code class="docutils literal notranslate"><span class="pre">gateway</span></code></a></li>
@@ -840,19 +846,79 @@ configuration réseau côté host n’existe pas encore : la création part en <
 <h2>vxlan<a class="headerlink" href="#vxlan" title="Lien vers cette rubrique">#</a></h2>
 <pre  class="mermaid">
         graph LR
-  VM --- TAP[tap] --- BR[&quot;br-&amp;lt;subnet&amp;gt;&lt;br/&gt;interface_ip&quot;]
-  BR --- VX[&quot;vxlan&amp;lt;vni&amp;gt;&quot;] --- HBR[&quot;bridge host&lt;br/&gt;(iface_type)&quot;] --- UP[uplink]
+  VM --- TAP[tap] --- BR[&quot;br-&amp;lt;subnet&amp;gt;&lt;br/&gt;adresse d'émission&quot;]
+  GW[&quot;gw-&amp;lt;subnet&amp;gt;&lt;br/&gt;gateway, MAC anycast&quot;] -. macvlan .- BR
+  BR --- VETH[&quot;v-&amp;lt;subnet&amp;gt;-i / -e&quot;] --- VX[&quot;vxlan-&amp;lt;vni&amp;gt;&quot;] --- UP[uplink]
     </pre><p>Le subnet vit dans le netns du VPC. La VM n’est donc <strong>pas joignable depuis l’host</strong> sans route
 explicite — point à connaître avant de câbler un outil externe dessus.</p>
-<p>Le bridge du subnet, qui porte <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code>, a une <strong>MAC de gateway propre à l’hôte</strong>, calculée
-depuis son VTEP — l’IPv4 primaire du <code class="docutils literal notranslate"><span class="pre">local_iface</span></code> : <code class="docutils literal notranslate"><span class="pre">02:03</span></code> suivi des quatre octets de
-l’adresse (VTEP <code class="docutils literal notranslate"><span class="pre">192.168.14.12</span></code> → <code class="docutils literal notranslate"><span class="pre">02:03:c0:a8:0e:0c</span></code>). Unique dans le fabric, elle est la
-même pour tous les subnets d’un hôte, chacun étant un domaine L2 distinct. Elle n’est posée qu’à la
-création du subnet — un subnet créé avant garde la MAC choisie par le noyau jusqu’à sa recréation.</p>
-<p>Une MAC de gateway <strong>identique sur tous les hôtes</strong> (anycast) a été essayée puis retirée : apprise
-sur le veth du subnet, elle était annoncée en EVPN par chaque hôte et détectée en double ; et une
-gateway ne pouvait plus joindre en L2 une VM d’un autre hôte, la réponse revenant à la gateway
-locale de la VM. Le cache ARP d’une VM migrée à chaud est un sujet de la migration, pas du subnet.</p>
+<section id="adressage">
+<h3>Adressage<a class="headerlink" href="#adressage" title="Lien vers cette rubrique">#</a></h3>
+<p>L’agent calcule deux adresses à partir du <code class="docutils literal notranslate"><span class="pre">cidr</span></code> ; <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> n’est pas fourni par
+l’appelant (refusé en 400) :</p>
+<ul class="simple">
+<li><p>la <strong>gateway</strong>, avant-dernière adresse du préfixe (<code class="docutils literal notranslate"><span class="pre">.254</span></code> en <code class="docutils literal notranslate"><span class="pre">/24</span></code>), exposée comme
+<code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> ;</p></li>
+<li><p>l”<strong>adresse d’émission</strong>, juste avant (<code class="docutils literal notranslate"><span class="pre">.253</span></code>), exposée comme <code class="docutils literal notranslate"><span class="pre">relay_ip</span></code>.</p></li>
+</ul>
+<p>Le <code class="docutils literal notranslate"><span class="pre">cidr</span></code> doit être sans bits d’hôte et faire au plus <code class="docutils literal notranslate"><span class="pre">/29</span></code>. Une VM ne peut prendre ni l’une
+ni l’autre de ces adresses, ni l’adresse de réseau, de broadcast ou la <code class="docutils literal notranslate"><span class="pre">gateway</span></code> explicite du
+subnet (422).</p>
+</section>
+<section id="gateway-anycast">
+<h3>Gateway anycast<a class="headerlink" href="#gateway-anycast" title="Lien vers cette rubrique">#</a></h3>
+<p>La gateway est portée par un macvlan <code class="docutils literal notranslate"><span class="pre">gw-&lt;subnet&gt;</span></code> posé sur le bridge du netns. Sa MAC est
+<strong>identique sur tous les hôtes qui portent le subnet</strong> : <code class="docutils literal notranslate"><span class="pre">02:01:00</span></code> suivi de la VNI sur 24 bits
+(VNI <code class="docutils literal notranslate"><span class="pre">2911</span></code> → <code class="docutils literal notranslate"><span class="pre">02:01:00:00:0b:5f</span></code>). Où qu’elle tourne, une VM résout sa gateway vers l’hôte
+qui l’héberge, et une entrée ARP restée en cache reste valable si la VM change d’hôte.</p>
+<p>Le bridge <code class="docutils literal notranslate"><span class="pre">br-&lt;subnet&gt;</span></code> garde une <strong>MAC propre à l’hôte</strong>, <code class="docutils literal notranslate"><span class="pre">02:03</span></code> suivi des quatre octets du
+VTEP — l’IPv4 primaire du <code class="docutils literal notranslate"><span class="pre">local_iface</span></code> (<code class="docutils literal notranslate"><span class="pre">192.168.14.12</span></code> → <code class="docutils literal notranslate"><span class="pre">02:03:c0:a8:0e:0c</span></code>) — et porte
+l’adresse d’émission :</p>
+<ul class="simple">
+<li><p>le netns émet ses requêtes ARP depuis l’adresse d’émission (<code class="docutils literal notranslate"><span class="pre">arp_announce=2</span></code>) et le bridge ne
+répond pas pour la gateway (<code class="docutils literal notranslate"><span class="pre">arp_ignore=1</span></code>). Quand un hôte relaie en L2 vers une VM d’un autre
+hôte — trafic routé vers un subnet présent sur plusieurs hôtes, filet du <code class="docutils literal notranslate"><span class="pre">/24</span></code> d’un VPC
+routé —, la VM répond à la MAC de cet hôte, sans que sa gateway change ;</p></li>
+<li><p>la route du subnet a la gateway pour source : le netns parle à <strong>ses</strong> VM depuis la gateway, et
+leurs réponses reviennent à la MAC anycast, donc à l’hôte local ;</p></li>
+<li><p>le DHCP écoute sur <code class="docutils literal notranslate"><span class="pre">gw-&lt;subnet&gt;</span></code> et s’annonce avec la gateway comme identifiant de serveur :
+un renouvellement unicast reste servi par l’hôte de la VM.</p></li>
+</ul>
+<p>L’adresse d’émission est la même sur tous les hôtes : une VM qui reçoit la requête ARP d’un autre
+hôte associe <code class="docutils literal notranslate"><span class="pre">.253</span></code> à la MAC de celui-ci. C’est sans effet — la VM ne parle jamais d’elle-même à
+<code class="docutils literal notranslate"><span class="pre">.253</span></code> et le netns lui parle depuis la gateway. Mesuré en lab (<code class="docutils literal notranslate"><span class="pre">s11-fenetre-arp</span></code>) : pendant
+cette fenêtre, métadonnées, renouvellement DHCP et connexions depuis le netns passent sans perte.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Depuis le netns d’un hôte, une VM d’un <strong>autre</strong> hôte ne répond qu’à l’adresse d’émission
+(<code class="docutils literal notranslate"><span class="pre">ping</span> <span class="pre">-I</span> <span class="pre">&lt;relay_ip&gt;</span></code>) : à la gateway, sa réponse repartirait vers son propre hôte. Le
+trafic routé entre VM n’est pas concerné, il garde sa source.</p>
+</div>
+</section>
+<section id="confinement-de-la-mac-anycast">
+<h3>Confinement de la MAC anycast<a class="headerlink" href="#confinement-de-la-mac-anycast" title="Lien vers cette rubrique">#</a></h3>
+<p>La MAC anycast ne doit <strong>jamais</strong> sortir du netns : vue depuis le fabric, elle serait annoncée en
+EVPN par chaque hôte, détectée en double, et déplacerait l’apprentissage des bridges. Trois
+mécanismes la confinent :</p>
+<ul class="simple">
+<li><p>ebtables, sur le veth du subnet : toute trame de <strong>source</strong> anycast est rejetée à l’entrée
+(<code class="docutils literal notranslate"><span class="pre">nat</span> <span class="pre">PREROUTING</span></code>) et à la sortie (<code class="docutils literal notranslate"><span class="pre">FORWARD</span></code> et <code class="docutils literal notranslate"><span class="pre">OUTPUT</span></code>) ;</p></li>
+<li><p>une <strong>entrée FDB locale</strong> pour la MAC anycast dans le bridge du netns. Le macvlan ne la crée pas
+lui-même : sans elle, toute trame d’une VM vers sa gateway est inondée vers le fabric et les
+autres VM, et traitée par la gateway de chaque hôte ;</p></li>
+<li><p>les requêtes ARP vers la gateway ou l’adresse d’émission, et les réponses DHCP qui en viennent,
+sont bloquées vers le veth, comme avant.</p></li>
+</ul>
+<p>IPv6 n’est pas désactivé sur le macvlan : ses trames (DAD, ND) sont arrêtées par le confinement.
+Le watchdog contrôle le macvlan, sa MAC, les deux adresses et l’entrée FDB ; il ne relit pas les
+règles ebtables.</p>
+</section>
+<section id="subnets-crees-avant-la-gateway-anycast">
+<h3>Subnets créés avant la gateway anycast<a class="headerlink" href="#subnets-crees-avant-la-gateway-anycast" title="Lien vers cette rubrique">#</a></h3>
+<p>Un subnet <code class="docutils literal notranslate"><span class="pre">vxlan</span></code> sans <code class="docutils literal notranslate"><span class="pre">relay_ip</span></code> garde le modèle précédent jusqu’à sa recréation :
+<code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> choisie à la création, portée par le bridge, avec la MAC propre à l’hôte. Une VM
+qui reçoit alors la requête ARP d’un autre hôte associe <strong>sa gateway</strong> à cet hôte pendant
+quelques secondes (#57).</p>
+</section>
 </section>
 <section id="bridge">
 <h2>bridge<a class="headerlink" href="#bridge" title="Lien vers cette rubrique">#</a></h2>
@@ -879,7 +945,7 @@ dans l’option 121 ; l’option 3 ne sert que les clients qui n’implémentent
 <p>Une route par défaut est <strong>toujours</strong> annoncée. Le champ <code class="docutils literal notranslate"><span class="pre">default_route</span></code> ne choisit que son
 next-hop :</p>
 <dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">default_route:</span> <span class="pre">false</span></code> (défaut)</dt><dd><p>next-hop = <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> du subnet.</p>
+<dt><code class="docutils literal notranslate"><span class="pre">default_route:</span> <span class="pre">false</span></code> (défaut)</dt><dd><p>next-hop = <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> du subnet, la gateway calculée en <code class="docutils literal notranslate"><span class="pre">vxlan</span></code>.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">default_route:</span> <span class="pre">true</span></code></dt><dd><p>next-hop = le champ <code class="docutils literal notranslate"><span class="pre">gateway</span></code> s’il est fourni, sinon la gateway lue dans la table de routage
 de l’host.</p>
@@ -895,7 +961,8 @@ publique.</p>
 <h2>Pourquoi la route <code class="docutils literal notranslate"><span class="pre">/32</span></code> vers le serveur de metadata est indispensable<a class="headerlink" href="#pourquoi-la-route-32-vers-le-serveur-de-metadata-est-indispensable" title="Lien vers cette rubrique">#</a></h2>
 <p>Elle paraît redondante avec la route par défaut. Elle ne l’est pas.</p>
 <p>La DNAT vers le serveur de metadata est posée dans le netns du VPC, en <code class="docutils literal notranslate"><span class="pre">PREROUTING</span></code>. Le paquet
-n’y est traité en L3 que si son next-hop est <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code>, portée par le bridge du netns.
+n’y est traité en L3 que si son next-hop est <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code>, locale au netns — sur le macvlan de
+la gateway en <code class="docutils literal notranslate"><span class="pre">vxlan</span></code>, sur le bridge dans les autres modes.
 Avec un autre next-hop, la trame est commutée en <strong>L2</strong> sans traverser <code class="docutils literal notranslate"><span class="pre">PREROUTING</span></code> : le
 serveur de metadata devient injoignable et tout le provisionnement cloud-init échoue,
 silencieusement.</p>
@@ -953,7 +1020,13 @@ silencieusement.</p>
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#vxlan">vxlan</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#vxlan">vxlan</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#adressage">Adressage</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#gateway-anycast">Gateway anycast</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#confinement-de-la-mac-anycast">Confinement de la MAC anycast</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#subnets-crees-avant-la-gateway-anycast">Subnets créés avant la gateway anycast</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#bridge">bridge</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#routes-annoncees-aux-vm">Routes annoncées aux VM</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#route-par-defaut-default-route-et-gateway">Route par défaut : <code class="docutils literal notranslate"><span class="pre">default_route</span></code> et <code class="docutils literal notranslate"><span class="pre">gateway</span></code></a></li>

@@ -802,7 +802,7 @@ window.runMermaid = runMermaid;</script>
 <p>Trois types de ressources, une hiérarchie stricte.</p>
 <pre  class="mermaid">
         graph TD
-  VPC[&quot;VPC&lt;br/&gt;&lt;i&gt;network namespace&lt;/i&gt;&lt;br/&gt;cidr&quot;] --&gt; SN1[&quot;Subnet&lt;br/&gt;&lt;i&gt;bridge + VXLAN&lt;/i&gt;&lt;br/&gt;interface_ip, cidr&quot;]
+  VPC[&quot;VPC&lt;br/&gt;&lt;i&gt;network namespace&lt;/i&gt;&lt;br/&gt;cidr&quot;] --&gt; SN1[&quot;Subnet&lt;br/&gt;&lt;i&gt;bridge + VXLAN&lt;/i&gt;&lt;br/&gt;cidr, gateway&quot;]
   VPC --&gt; SN2[&quot;Subnet&quot;]
   SN1 --&gt; VM1[&quot;VM&lt;br/&gt;&lt;i&gt;QEMU/KVM&lt;/i&gt;&quot;]
   SN1 --&gt; VM2[&quot;VM&quot;]
@@ -843,8 +843,9 @@ configurée fait planter <code class="docutils literal notranslate"><span class=
 </section>
 <section id="subnet">
 <h2>Subnet<a class="headerlink" href="#subnet" title="Lien vers cette rubrique">#</a></h2>
-<p>Un subnet appartient à un VPC et pose, dans son netns, un bridge qui porte <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> — la
-gateway vue par les VM. Il fournit aussi le DHCP — dnsmasq ou le serveur intégré selon
+<p>Un subnet appartient à un VPC et pose, dans son netns, un bridge et la gateway vue par les VM,
+<code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> — calculée par l’agent et portée par un macvlan à MAC anycast en mode <code class="docutils literal notranslate"><span class="pre">vxlan</span></code>,
+fournie par l’appelant et portée par le bridge dans les autres modes. Il fournit aussi le DHCP — dnsmasq ou le serveur intégré selon
 <code class="docutils literal notranslate"><span class="pre">dhcp.backend</span></code> — et les routes annoncées aux guests.</p>
 <p><code class="docutils literal notranslate"><span class="pre">iface_type</span></code> est une clé <strong>logique</strong> (<code class="docutils literal notranslate"><span class="pre">vms</span></code>, <code class="docutils literal notranslate"><span class="pre">internet</span></code>, <code class="docutils literal notranslate"><span class="pre">admin</span></code>…), traduite en nom de
 bridge physique par la configuration de l’agent. Une clé absente ou inconnue retombe sur

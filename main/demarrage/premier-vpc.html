@@ -806,7 +806,7 @@ plan de contrôle du cluster en place, cf. <a class="reference internal" href=".
 <pre  class="mermaid">
         graph LR
   subgraph netns vp-admin
-    BR[&quot;br-sn000001&lt;br/&gt;10.1.1.1&quot;]
+    BR[&quot;br-sn000001&lt;br/&gt;10.1.1.254&quot;]
     MD[&quot;metadata&#64;i-web&lt;br/&gt;169.254.169.254&quot;]
   end
   VM[&quot;VM i-web&lt;br/&gt;10.1.1.2&quot;] --- BR
@@ -841,14 +841,18 @@ prêt est refusé en <strong>422</strong>. Le modèle d’attente est décrit da
 <span class="s1">       "mode": "vxlan",</span>
 <span class="s1">       "vxlan_id": 1,</span>
 <span class="s1">       "iface_type": "vms",</span>
-<span class="s1">       "interface_ip": "10.1.1.1",</span>
 <span class="s1">       "cidr": "10.1.0.0/23"}'</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">iface_type</span></code> est une clé <strong>logique</strong> résolue dans la configuration de l’agent (section
 <code class="docutils literal notranslate"><span class="pre">interfaces</span></code>) vers un bridge physique de l’host ; une clé inconnue retombe sur
-<code class="docutils literal notranslate"><span class="pre">default_interface</span></code>. <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> est la gateway du subnet, portée par le bridge créé dans
-le netns.</p>
+<code class="docutils literal notranslate"><span class="pre">default_interface</span></code>.</p>
+<p>En mode <code class="docutils literal notranslate"><span class="pre">vxlan</span></code>, les adresses de la gateway sont <strong>calculées</strong> et ne se fournissent pas (un
+<code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> est refusé) : la gateway vue par les VM est l’avant-dernière adresse du CIDR
+(<code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> = <code class="docutils literal notranslate"><span class="pre">10.1.1.254</span></code> ici), l’adresse d’émission propre au netns la précédente
+(<code class="docutils literal notranslate"><span class="pre">relay_ip</span></code> = <code class="docutils literal notranslate"><span class="pre">10.1.1.253</span></code>) ; le CIDR doit valoir au plus <code class="docutils literal notranslate"><span class="pre">/29</span></code>. Aucune VM ne peut prendre
+ces deux adresses, ni celles du réseau et du broadcast. En mode <code class="docutils literal notranslate"><span class="pre">bridge</span></code>, <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> reste
+obligatoire.</p>
 <p>Les modes disponibles et leurs conséquences sur le routage sont détaillés dans
 <a class="reference internal" href="../concepts/modes-reseau.html"><span class="doc">Modes réseau</span></a>.</p>
 <p>Là encore, attendez <code class="docutils literal notranslate"><span class="pre">running</span></code> :</p>

@@ -662,13 +662,15 @@ sortie vaut 1 si une vérification échoue <strong>ou si aucune n’a été fait
 <td><p>backend DHCP <code class="docutils literal notranslate"><span class="pre">two</span></code>, une VPC et deux subnets : chaque VM reçoit l’adresse de <strong>son</strong>
 subnet, démarrée seule ou en même temps qu’une autre ; le bail est tenu par
 systemd-networkd ; route par défaut, route vers la VPC et <code class="docutils literal notranslate"><span class="pre">/32</span></code> vers les métadonnées
-via <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> ; l’état de chaque serveur DHCP ne connaît que les MAC de son subnet
-(#46)</p></td>
+via la gateway calculée (<code class="docutils literal notranslate"><span class="pre">.254</span></code>) ; l’état de chaque serveur DHCP ne connaît que les MAC de
+son subnet (#46)</p></td>
 <td><p>hv1</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">s2-gateway</span></code></p></td>
-<td><p>route par défaut via <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code>, ou via <code class="docutils literal notranslate"><span class="pre">gateway</span></code> avec <code class="docutils literal notranslate"><span class="pre">default_route</span></code> ; route
-vers la VPC toujours via <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> ; même résultat après recréation du subnet (#31)</p></td>
+<td><p>gateway (<code class="docutils literal notranslate"><span class="pre">.254</span></code>) et adresse d’émission (<code class="docutils literal notranslate"><span class="pre">.253</span></code>) calculées par l’agent, refusées pour
+une VM ; <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> refusé sur un subnet <code class="docutils literal notranslate"><span class="pre">vxlan</span></code> (#57) ; route par défaut via la
+gateway, ou via <code class="docutils literal notranslate"><span class="pre">gateway</span></code> avec <code class="docutils literal notranslate"><span class="pre">default_route</span></code> ; route vers la VPC toujours via la
+gateway du subnet ; macvlan retiré à la suppression, même résultat après recréation (#31)</p></td>
 <td><p>hv1</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">s3-isolation-local</span></code></p></td>
@@ -709,16 +711,17 @@ bgpd</p></td>
 <td><p>suite de <code class="docutils literal notranslate"><span class="pre">s7</span></code>, topologie <code class="docutils literal notranslate"><span class="pre">evpn-3hv.yml</span></code> : migration d’une VM de hv1 vers hv2 par l’API,
 observée depuis hv3 qui n’a pas le subnet : migration simple (VM supprimée puis recréée,
 <code class="docutils literal notranslate"><span class="pre">/24</span></code> comme filet), séquence orchestrée (deux VM de même IP, deux <code class="docutils literal notranslate"><span class="pre">/32</span></code> en ECMP, 40
-sources sur 40) ; l’ancien « pire cas » devient un refus (409) ; MAC de gateway propre à
-chaque hôte, sans doublon EVPN ; watchdog : <code class="docutils literal notranslate"><span class="pre">/32</span></code> orphelin signalé comme trou noir, <code class="docutils literal notranslate"><span class="pre">/32</span></code> manquant
+sources sur 40) ; l’ancien « pire cas » devient un refus (409) ; MAC anycast de la gateway
+absente d’EVPN (aucune route de type 2 sur rr1, absente de la table de hv1), sans doublon
+(#57) ; watchdog : <code class="docutils literal notranslate"><span class="pre">/32</span></code> orphelin signalé comme trou noir, <code class="docutils literal notranslate"><span class="pre">/32</span></code> manquant
 signalé</p></td>
 <td><p>hv1, hv2, hv3, rr1</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">s9-subnets-partages</span></code></p></td>
 <td><p>deux VPC, avec et sans <code class="docutils literal notranslate"><span class="pre">l3vni</span></code>, chacune avec deux subnets présents sur <strong>les deux</strong>
 hyperviseurs et une VM par subnet et par hôte : ping entre toutes les paires (même subnet ou
-non, même hôte ou non) ; chaque VM voit la MAC de gateway de son propre hôte ; aucune MAC en
-double sur les quatre VNI</p></td>
+non, même hôte ou non) ; chaque VM voit la MAC anycast de sa gateway ; aucune MAC en
+double et aucune MAC anycast dans EVPN sur les quatre VNI (#57)</p></td>
 <td><p>hv2, hv3, rr1</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">s10-switch-loss</span></code></p></td>
@@ -729,6 +732,15 @@ l’autre switch devient maître, les sessions EVPN de hv1 <strong>ne tombent pa
 silence sous 5 s ; interface rétablie : ses sessions eBGP reviennent et il <strong>reste en
 attente</strong>, sans reprendre la passerelle (#54)</p></td>
 <td><p>hv1, sw1, sw2</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">s11-fenetre-arp</span></code></p></td>
+<td><p>fenêtre ARP de #57 : sur hv1, entrées ARP du netns retirées, puis une VM de hv1 joint une VM
+de hv2 dans l’autre subnet (relais L2 depuis l’adresse d’émission de hv1). La VM de hv2
+associe alors <code class="docutils literal notranslate"><span class="pre">.253</span></code> à la MAC de hv1 (fenêtre ouverte, vérifiée), mais sa gateway reste
+la MAC anycast ; pendant la fenêtre, métadonnées servies, bail DHCP renouvelé auprès de
+<code class="docutils literal notranslate"><span class="pre">.254</span></code>, et <strong>aucune</strong> des 80 connexions TCP du netns de hv2 vers sa VM n’est perdue ; MAC
+anycast inscrite dans la FDB du bridge du netns</p></td>
+<td><p>hv1, hv2</p></td>
 </tr>
 </tbody>
 </table>

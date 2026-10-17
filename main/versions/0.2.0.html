@@ -417,12 +417,25 @@ de FRR. Absente, l’agent ne touche pas à FRR</p></li>
 <li><p>Le démarrage échoue si la section est incomplète, si FRR tourne déjà sous un autre AS ou si
 <code class="docutils literal notranslate"><span class="pre">vtysh</span></code> ne répond pas</p></li>
 </ul>
-<p><strong>Gateway des subnets <code class="docutils literal notranslate"><span class="pre">vxlan</span></code></strong></p>
+<p><strong>Gateway anycast des subnets <code class="docutils literal notranslate"><span class="pre">vxlan</span></code> (#57)</strong></p>
 <ul class="simple">
-<li><p>Le bridge du subnet porte une <strong>MAC propre à l’hôte</strong>, <code class="docutils literal notranslate"><span class="pre">02:03:&lt;IPv4</span> <span class="pre">du</span> <span class="pre">VTEP&gt;</span></code>, posée à la
-création du subnet. Une MAC identique sur tous les hôtes (anycast) a été essayée puis retirée :
-annoncée en double en EVPN, elle empêchait aussi une gateway de joindre en L2 une VM d’un autre
-hôte (#57)</p></li>
+<li><p>La gateway et l’adresse d’émission sont <strong>calculées</strong> par l’agent : avant-dernière adresse du
+<code class="docutils literal notranslate"><span class="pre">cidr</span></code> (<code class="docutils literal notranslate"><span class="pre">.254</span></code> en <code class="docutils literal notranslate"><span class="pre">/24</span></code>) pour la gateway, exposée comme <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code>, et celle d’avant
+(<code class="docutils literal notranslate"><span class="pre">.253</span></code>) pour l’adresse d’émission, exposée comme nouveau champ <code class="docutils literal notranslate"><span class="pre">relay_ip</span></code>. Le <code class="docutils literal notranslate"><span class="pre">cidr</span></code> doit
+être sans bits d’hôte et faire au plus <code class="docutils literal notranslate"><span class="pre">/29</span></code></p></li>
+<li><p>La gateway est portée par un macvlan <code class="docutils literal notranslate"><span class="pre">gw-&lt;subnet&gt;</span></code> à <strong>MAC anycast</strong> <code class="docutils literal notranslate"><span class="pre">02:01:00:&lt;VNI</span> <span class="pre">sur</span> <span class="pre">24</span> <span class="pre">bits&gt;</span></code>,
+identique sur tous les hôtes qui portent le subnet : une VM résout toujours sa gateway vers son
+hôte. Le bridge garde une MAC propre à l’hôte, <code class="docutils literal notranslate"><span class="pre">02:03:&lt;IPv4</span> <span class="pre">du</span> <span class="pre">VTEP&gt;</span></code>, et porte l’adresse
+d’émission, d’où partent les requêtes ARP du netns</p></li>
+<li><p>Une VM qui reçoit la requête ARP d’un autre hôte ne change plus de gateway : jusqu’ici, elle
+envoyait pendant quelques secondes son trafic à cet hôte, coupant métadonnées, renouvellement
+DHCP et sessions depuis le netns. Mesuré en lab : aucune perte pendant cette fenêtre</p></li>
+<li><p>La MAC anycast est confinée au netns — règles ebtables sur le veth du subnet et entrée FDB
+locale dans le bridge — et n’apparaît jamais en EVPN. Le DHCP écoute sur <code class="docutils literal notranslate"><span class="pre">gw-&lt;subnet&gt;</span></code> ; la
+route du subnet a la gateway pour source</p></li>
+<li><p>Une VM ne peut prendre ni la gateway, ni l’adresse d’émission, ni la <code class="docutils literal notranslate"><span class="pre">gateway</span></code> explicite, ni
+l’adresse de réseau ou de broadcast du subnet, ni une adresse hors de son <code class="docutils literal notranslate"><span class="pre">cidr</span></code> (422)</p></li>
+<li><p>Le watchdog contrôle le macvlan, sa MAC, les deux adresses et l’entrée FDB</p></li>
 </ul>
 <p><strong>Exploitation</strong></p>
 <ul class="simple">
@@ -473,9 +486,8 @@ d’état, dans un <code class="docutils literal notranslate"><span class="pre">
 <h2>Périmètre et limites connues<a class="headerlink" href="#perimetre-et-limites-connues" title="Lien vers cette rubrique">#</a></h2>
 <p>Celles de la 0.1.0 restent valables, sauf mention contraire ci-dessus. S’y ajoutent :</p>
 <ul class="simple">
-<li><p><strong>L3VNI</strong> : pas de migration à chaud ; le cache ARP d’une VM qui changerait d’hôte reste à
-traiter (#57). MTU 1500 de bout en bout (#56). Un seul route reflector qualifié (#54). Le
-transit <code class="docutils literal notranslate"><span class="pre">169.254.0.0/30</span></code> étant identique sur tous les hôtes, les ICMP des sauts distants sont
+<li><p><strong>L3VNI</strong> : pas de migration à chaud ; la gateway anycast (#57) la prépare côté réseau. MTU
+1500 de bout en bout (#56). Le transit <code class="docutils literal notranslate"><span class="pre">169.254.0.0/30</span></code> étant identique sur tous les hôtes, les ICMP des sauts distants sont
 rejetés comme « martiens » (traceroute partiel)</p></li>
 <li><p>Avec une section <code class="docutils literal notranslate"><span class="pre">bgp</span></code>, l’agent ne démarre pas sans FRR et <code class="docutils literal notranslate"><span class="pre">agent.service</span></code> ne le relance pas :
 au démarrage, l’ordre est migration réseau, puis FRR, puis l’agent (#52)</p></li>
@@ -500,10 +512,16 @@ le dialogue avec le serveur intégré, est couvert sur toute plateforme</p></li>
 bash<span class="w"> </span>./deploy.sh<span class="w"> </span>-t<span class="w"> </span><span class="m">0</span>.2.0
 </pre></div>
 </div>
-<p>Aucune action n’est requise : sans <code class="docutils literal notranslate"><span class="pre">dhcp.backend</span></code> ni <code class="docutils literal notranslate"><span class="pre">bgp</span></code> dans <code class="docutils literal notranslate"><span class="pre">/etc/two/agent.yml</span></code>, le
-comportement est celui de la 0.1.0, à une exception près — <strong>un subnet encore utilisé par une VM
-ne se supprime plus</strong> : supprimer les VM d’abord. Les subnets <code class="docutils literal notranslate"><span class="pre">vxlan</span></code> existants gardent leur MAC
-de gateway jusqu’à leur recréation.</p>
+<p>Sans <code class="docutils literal notranslate"><span class="pre">dhcp.backend</span></code> ni <code class="docutils literal notranslate"><span class="pre">bgp</span></code> dans <code class="docutils literal notranslate"><span class="pre">/etc/two/agent.yml</span></code>, le comportement est celui de la 0.1.0, à
+deux exceptions près, qui touchent les appelants de l’API :</p>
+<ul class="simple">
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> ne se fournit plus pour un subnet <code class="docutils literal notranslate"><span class="pre">vxlan</span></code></strong> : il est refusé (400), l’agent le
+calcule. Le retirer des appels de création, et ne plus placer de VM sur les deux dernières
+adresses utilisables du subnet. Il reste obligatoire en <code class="docutils literal notranslate"><span class="pre">bridge</span></code> et <code class="docutils literal notranslate"><span class="pre">public_ip</span></code></p></li>
+<li><p><strong>un subnet encore utilisé par une VM ne se supprime plus</strong> : supprimer les VM d’abord</p></li>
+</ul>
+<p>Les subnets <code class="docutils literal notranslate"><span class="pre">vxlan</span></code> existants gardent leur adressage et le modèle précédent (gateway sur le
+bridge) jusqu’à leur recréation.</p>
 <p>Pour router entre hyperviseurs : ajouter la section <code class="docutils literal notranslate"><span class="pre">bgp</span></code>, réduire <code class="docutils literal notranslate"><span class="pre">frr.conf</span></code> à <code class="docutils literal notranslate"><span class="pre">hostname</span></code> et
 <code class="docutils literal notranslate"><span class="pre">log</span></code> (l’agent pose le reste), puis créer les VPC avec <code class="docutils literal notranslate"><span class="pre">l3vni</span></code>. Pour passer au serveur intégré, suivre la procédure de bascule dans la
 documentation d’exploitation — elle suppose un hyperviseur vidé.</p>

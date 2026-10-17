@@ -382,6 +382,17 @@ doit donc figurer dans la 121 ; l’option 3 ne sert que les clients qui n’imp
 <li><p><strong>La route vers le CIDR du VPC garde ``interface_ip`` comme next-hop</strong> dans tous les modes sauf
 <code class="docutils literal notranslate"><span class="pre">bridge</span></code> : sur un subnet à IP publique, le trafic interne ne doit pas sortir par la gateway
 publique.</p></li>
+<li><p><strong>La MAC anycast d’une gateway ``vxlan`` ne sort jamais du netns</strong> : règles ebtables sur le veth
+du subnet (source anycast rejetée en entrée et en sortie) <strong>et</strong> entrée FDB locale dans le bridge
+du netns. Sans l’entrée FDB, que le macvlan ne crée pas, toute trame d’une VM vers sa gateway est
+inondée vers le fabric et traitée par la gateway de chaque hôte.</p></li>
+<li><p><strong>La gateway ``vxlan`` n’est jamais sur le bridge</strong> : <code class="docutils literal notranslate"><span class="pre">arp_ignore=1</span></code> sur <code class="docutils literal notranslate"><span class="pre">br-&lt;subnet&gt;</span></code>, la
+gateway en <code class="docutils literal notranslate"><span class="pre">/32</span></code> sur <code class="docutils literal notranslate"><span class="pre">gw-&lt;subnet&gt;</span></code>, l’adresse d’émission seule sur le bridge. Posée sur le
+bridge, la gateway répondrait aux VM avec la MAC de l’hôte et l’anycast serait contourné sans
+autre symptôme.</p></li>
+<li><p><strong>La route du subnet garde la gateway pour source</strong> (<code class="docutils literal notranslate"><span class="pre">src</span></code>) : le netns parle à ses VM depuis
+la gateway, leurs réponses reviennent à l’hôte local. Depuis l’adresse d’émission, partagée par
+tous les hôtes, une réponse peut partir vers un autre hôte.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">169.254.169.254</span></code> est centralisé dans <code class="docutils literal notranslate"><span class="pre">metadata.ServiceIP</span></code> — ne pas le réécrire en dur.</p></li>
 </ul>
 </section>

@@ -367,7 +367,8 @@ subnet/&lt;name&gt;/vpc            → &lt;vpc-name&gt;
 subnet/&lt;name&gt;/mode           → vxlan | bridge | public_ip
 subnet/&lt;name&gt;/vxlan_id       → &lt;id&gt;            (mode vxlan uniquement)
 subnet/&lt;name&gt;/cidr           → &lt;cidr&gt;
-subnet/&lt;name&gt;/interface_ip   → &lt;ip&gt;            (gateway, portée par br-&lt;subnetID&gt;)
+subnet/&lt;name&gt;/interface_ip   → &lt;ip&gt;            (gateway ; calculée en vxlan : broadcast-1)
+subnet/&lt;name&gt;/relay_ip       → &lt;ip&gt;            (mode vxlan, calculée : broadcast-2)
 subnet/&lt;name&gt;/local_iface    → &lt;bridge-name&gt;
 subnet/&lt;name&gt;/default_route  → "true" | "false"
 subnet/&lt;name&gt;/gateway        → &lt;ip&gt;            (optionnel)
