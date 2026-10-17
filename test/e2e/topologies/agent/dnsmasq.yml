@@ -4,3 +4,7 @@ bgp:
 watchdog:
   enabled: true
   interval_seconds: 10
+dhcp:
+  backend: dnsmasq
+interfaces:
+  lan: br-lan

@@ -10,6 +10,17 @@ until curl -fsS -o /dev/null "${GIT_SERVER}"; do
     sleep 10
 done
 install -D -m 0640 "${LAB_FILES}/agent.yml" /etc/two/agent.yml
+if [ -e /sys/class/net/lan ]; then
+    addr=$(ip -4 -o addr show dev lan | awk '{print $4}' | head -n 1)
+    ip link show br-lan >/dev/null 2>&1 || ip link add name br-lan type bridge stp_state 0
+    ip link set dev br-lan mtu "$(cat /sys/class/net/lan/mtu)"
+    ip link set dev lan master br-lan
+    ip link set dev br-lan up
+    if [ -n "${addr}" ]; then
+        ip addr del "${addr}" dev lan
+        ip addr replace "${addr}" dev br-lan
+    fi
+fi
 mkdir -p /opt/two/scripts
 cd /opt/two/scripts
 for script in deploy.sh bootstrap_kvm.sh; do
