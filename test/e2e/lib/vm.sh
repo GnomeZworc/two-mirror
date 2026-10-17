@@ -142,21 +142,20 @@ wait_reboot () {
     return 1
 }
 
-lease_mtime () {
-    vm_ssh "${1}" "${2}" "sudo stat -c %Y /run/systemd/netif/leases/\$(cat /sys/class/net/${3:-ens3}/ifindex)"
+dhcp_acks () {
+    journalctl --since "@${1}" --no-pager -o cat -u 'dhcp@*' -u 'dnsmasq@*' | grep -cE "\"type\":5,\"ip\":\"${2}\"|DHCPACK\([^)]*\) ${2} "
 }
 
 lease_renewed () {
-    local before after i
-    before=$(lease_mtime "${1}" "${2}") || return 1
-    sleep 2
+    local t0 i
+    t0=$(date +%s)
+    sleep 1
     vm_ssh "${1}" "${2}" "sudo networkctl renew ${3:-ens3}" || return 1
     for i in $(seq 1 15); do
-        after=$(lease_mtime "${1}" "${2}")
-        [ -n "${after}" ] && [ "${after}" != "${before}" ] && return 0
+        [ "$(dhcp_acks "${t0}" "${2}")" -gt 0 ] && return 0
         sleep 2
     done
-    echo "${2} : bail non renouvelé (fichier inchangé depuis ${before})" >&2
+    echo "${2} : aucun DHCPACK du serveur depuis la demande de renouvellement" >&2
     return 1
 }
 

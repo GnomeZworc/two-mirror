@@ -187,7 +187,7 @@ ebt_rules () {
 }
 
 ebt_confined () {
-    ebt_rules "${1}" "${2}" | grep -ci -- "-s $(ebt_mac "${3}") .*DROP"
+    ebt_rules "${1}" "${2}" | grep -ciE -- "-s ($(ebt_mac "${3}")|${3}) .*DROP"
 }
 
 ebt_arp_drop () {

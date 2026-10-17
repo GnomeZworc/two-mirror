@@ -2,6 +2,8 @@
 # hôtes:
 # tickets: #54, #69
 
+. "${LAB_DIR}/lib/net.sh"
+
 vrrp_state () {
     on "${1}" <<'NODE' | sed -n 's/^VRRP: //p'
 echo "VRRP: $(vtysh -c 'show vrrp' | awk '/Status \(v4\)/ {print $3}')"

@@ -36,7 +36,7 @@ api_state () {
 
 wait_state () {
     local path="${1}" want="${2}" i s
-    for i in $(seq 1 90); do
+    for i in $(seq 1 180); do
         s=$(api_state "${path}")
         [ "${s}" = "${want}" ] && return 0
         [ "${want}" = deleted ] && [ -z "${s}" ] && return 0

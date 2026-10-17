@@ -396,14 +396,25 @@ test_wait_reboot_needs_a_new_boot_id () {
     teardown
 }
 
-test_lease_renewed_requires_a_newer_lease_file () {
-    setup "lease_renewed : renouvellement demandé, fichier de bail modifié"
+test_lease_renewed_requires_a_server_ack () {
+    setup "lease_renewed : renouvellement demandé, DHCPACK du serveur pour cette adresse"
     local f
     f=$(mktemp)
-    [[ $(node "sleep () { :; }; lease_mtime () { echo x >> '${f}.n'; wc -l < '${f}.n'; }; vm_ssh () { echo \"\$3\" >> '${f}'; }; lease_renewed vp ip && echo OUI") == OUI ]] || fail "renouvellement non vu"
+    [[ $(node "sleep () { :; }; dhcp_acks () { echo 1; }; vm_ssh () { echo \"\$3\" >> '${f}'; }; lease_renewed vp ip && echo OUI") == OUI ]] || fail "renouvellement non vu"
     grep -qx 'sudo networkctl renew ens3' "${f}" || fail "renouvellement non demandé : $(cat "${f}")"
-    [[ $(node "sleep () { :; }; lease_mtime () { echo 5; }; vm_ssh () { :; }; lease_renewed vp ip 2>&1 || echo NON") == *NON ]] || fail "bail inchangé accepté"
-    rm -f "${f}" "${f}.n"
+    [[ $(node "sleep () { :; }; dhcp_acks () { echo 0; }; vm_ssh () { :; }; lease_renewed vp ip 2>&1 || echo NON") == *NON ]] || fail "aucun ACK accepté"
+    rm -f "${f}"
+    teardown
+}
+
+test_dhcp_acks_counts_both_backends_for_the_ip_only () {
+    setup "dhcp_acks : ACK du serveur intégré et de dnsmasq, pour cette adresse seulement"
+    local log='{"msg":"dhcp reply sent","type":5,"ip":"10.21.1.10","target":{}}
+{"msg":"dhcp reply sent","type":2,"ip":"10.21.1.10","target":{}}
+{"msg":"dhcp reply sent","type":5,"ip":"10.21.1.100","target":{}}
+dnsmasq-dhcp[1]: DHCPACK(gw-t22a) 10.21.1.10 00:22:33:00:00:0a
+dnsmasq-dhcp[1]: DHCPACK(gw-t22a) 10.21.1.101 00:22:33:00:00:0b'
+    [[ $(node "journalctl () { printf '%s\n' '${log}'; }; dhcp_acks 0 10.21.1.10") == 2 ]] || fail "$(node "journalctl () { printf '%s\n' '${log}'; }; dhcp_acks 0 10.21.1.10")"
     teardown
 }
 
@@ -422,6 +433,13 @@ test_subnet_create_bridge_sends_mode_iface_type_and_interface_ip () {
         || fail "défaut : $(node "${stub}subnet_create_bridge sn-t33a vp-t33 10.33.0.0/24 10.33.0.1")"
     [[ $(node "${stub}subnet_create_bridge sn-x vp-x 10.1.0.0/24 10.1.0.1 vms") == *'"iface_type":"vms"'* ]] || fail "iface_type explicite ignoré"
     [[ $(node 'api_state () { echo running; }; api_post () { echo POST; }; subnet_create_bridge sn-x vp-x 10.1.0.0/24 10.1.0.1 && echo OK') == OK ]] || fail "subnet existant recréé"
+    teardown
+}
+
+test_ebt_confined_reads_both_mac_forms () {
+    setup "ebt_confined : MAC avec ou sans zéros de tête (ebtables legacy et nft)"
+    local stub='ebt_rules () { printf "%s\\n" "-s 02:01:00:00:0c:27 -o v-x-i -j DROP" "-s 2:1:0:0:c:27 -i v-x-i -j DROP" "-s 02:01:00:00:0c:28 -o v-x-i -j DROP"; }; '
+    [[ $(node "${stub}ebt_confined ns v-x-i 02:01:00:00:0C:27") == 2 ]] || fail "$(node "${stub}ebt_confined ns v-x-i 02:01:00:00:0C:27")"
     teardown
 }
 

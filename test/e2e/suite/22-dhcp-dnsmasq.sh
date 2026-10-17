@@ -39,7 +39,7 @@ check "10.22.1.10 : bail renouvelé (networkctl renew)" lease_renewed vp-t22 10.
 check "10.22.1.10 : même adresse après le renouvellement" has_addr vp-t22 10.22.1.10
 check "10.22.1.10 : renouvellement servi par la gateway" test "$(vm_lease vp-t22 10.22.1.10 SERVER_ADDRESS)" = 10.22.1.254
 vm_host () { echo "$(vm_ssh vp-t22 "${1}" 'cat /sys/class/net/ens3/address'),${1}"; }
-reserved () { cat /etc/dnsmasq.d/"${1}".hosts.d/* | tr 'A-F' 'a-f' | sort | tr '\n' ' ' | sed 's/ $//'; }
+reserved () { cat /etc/dnsmasq.d/"${1}".hosts.d/* | grep -hoiE '([0-9a-f]{2}:){5}[0-9a-f]{2},[0-9.]+' | tr 'A-F' 'a-f' | sort | tr '\n' ' ' | sed 's/ $//'; }
 A_HOSTS=$(printf '%s\n' "$(vm_host 10.22.1.10)" "$(vm_host 10.22.1.11)" | sort | tr '\n' ' ' | sed 's/ $//')
 B_HOSTS=$(printf '%s\n' "$(vm_host 10.22.2.10)" "$(vm_host 10.22.2.11)" | sort | tr '\n' ' ' | sed 's/ $//')
 info "sn-t22a : ${A_HOSTS} ; sn-t22b : ${B_HOSTS}"

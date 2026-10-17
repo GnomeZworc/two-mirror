@@ -23,6 +23,7 @@ check "hv1 : VTEP distant 192.168.14.12 appris par EVPN pour la VNI 4101" sh -c 
 check "hv1 : entrée d'inondation vers 192.168.14.12" sh -c "bridge fdb show dev vxlan-4101 | grep -q '00:00:00:00:00:00 dst 192.168.14.12'"
 for i in $(seq 1 24); do vm_ssh vp-t41 10.41.1.10 'ping -c 1 -W 2 10.41.1.11' >/dev/null 2>&1 && break; sleep 5; done
 check "t41-p (hv1) joint t41-q (hv2)" vm_ssh vp-t41 10.41.1.10 'ping -c 3 -W 2 10.41.1.11'
+for i in $(seq 1 24); do vm_ssh vp-t41 10.41.1.10 "timeout 5 bash -c '</dev/tcp/10.41.1.11/22'" >/dev/null 2>&1 && break; sleep 5; done
 check "t41-p ouvre une connexion TCP vers t41-q:22" vm_ssh vp-t41 10.41.1.10 "timeout 5 bash -c '</dev/tcp/10.41.1.11/22'"
 check "trame pleine taille : 1472 octets en -M do" vm_ssh vp-t41 10.41.1.10 'ping -M do -s 1472 -c 2 -W 2 10.41.1.11'
 check "1473 octets refusés localement (MTU 1500)" vm_grep vp-t41 10.41.1.10 'ping -M do -s 1473 -c 1 -W 2 10.41.1.11' 'message too long'

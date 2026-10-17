@@ -68,7 +68,7 @@ info "trafic routé t61-a → t61-b pendant le redémarrage : ${received} répon
 check "trafic routé pendant le redémarrage : au moins 100 requêtes émises (témoin)" test "${sent:-0}" -ge 100
 check "trafic routé pendant le redémarrage : au plus 1 % de perte" test $(( (${sent:-0} - ${received:-0}) * 100 )) -le "${sent:-0}"
 check "après redémarrage : suppression de t61-d acceptée et menée à terme" vm_delete t61-d
-check "après redémarrage : processus QEMU de t61-d arrêté" sh -c "! pgrep -f '${VOLUMES}/t61-d.qcow2' >/dev/null"
+check "après redémarrage : processus QEMU de t61-d arrêté" sh -c "! pgrep -f '${VOLUMES}/[t]61-d.qcow2' >/dev/null"
 check "après redémarrage : unité two-vm-t61-d.scope retirée" sh -c "! systemctl list-units --all --plain --no-legend 'two-vm-t61-d.scope' | grep -q ."
 check "après redémarrage : VM t61-c créée sur le même subnet" vm_create t61-c sn-t61a 10.61.1.12 "$(vm_key)"
 check "t61-c joignable" vm_wait vp-t61 10.61.1.12

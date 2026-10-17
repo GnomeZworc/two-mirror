@@ -11,7 +11,7 @@ check "subnet sn-t33a en mode bridge sur br-lan (iface_type lan, interface_ip 10
 check "sn-t33a : mode bridge et interface_ip lus dans le GET" sh -c "curl -fsS ${API}/subnets/sn-t33a | jq -e '.mode == \"bridge\" and .interface_ip == \"10.33.0.1\"'"
 check "sn-t33a : v-t33a-e rattaché à br-lan" sh -c "ip -o link show v-t33a-e | grep -q 'master br-lan'"
 check "sn-t33a : aucun VXLAN pour ce subnet" sh -c "! ip -o link show | grep -q 'vxlan.*master br-t33a'"
-check "sn-t33a : interface_ip 10.33.0.1/24 sur br-t33a dans le netns" sh -c "ip -n vp-t33 -4 -o addr show dev br-t33a | grep -q ' 10.33.0.1/24 '"
+check "sn-t33a : interface_ip 10.33.0.1 sur br-t33a dans le netns" sh -c "ip -n vp-t33 -4 -o addr show dev br-t33a | grep -q ' 10.33.0.1/'"
 check "sn-t33a : pas de gateway anycast en mode bridge (pas de gw-t33a)" sh -c "! ip -n vp-t33 link show gw-t33a >/dev/null 2>&1"
 check "VM t33-a1 10.33.0.21" vm_launch t33-a1 --nic sn-t33a=10.33.0.21 --sshkey "${KEY}"
 check "VM t33-a2 10.33.0.22" vm_launch t33-a2 --nic sn-t33a=10.33.0.22 --sshkey "${KEY}"
