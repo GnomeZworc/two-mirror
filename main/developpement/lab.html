@@ -802,7 +802,7 @@ fait en fermant le ticket. Chaque ticket concerné liste ses marqueurs en commen
 <td><p>#57, #43</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">32-vxlan-local</span></code></p></td>
-<td><p>routage entre deux subnets vxlan d’une même VPC sur un même hôte, sans et avec l3vni — ICMP, TCP, saut unique par la gateway</p></td>
+<td><p>routage entre deux subnets vxlan d’un même VPC sur un même hôte, sans et avec l3vni — ICMP, TCP, saut unique par la gateway</p></td>
 <td><p>hv1</p></td>
 <td><p>#57, #41</p></td>
 </tr>
@@ -812,7 +812,7 @@ fait en fermant le ticket. Chaque ticket concerné liste ses marqueurs en commen
 <td><p>#70</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">34-isolation-locale</span></code></p></td>
-<td><p>isolation entre deux VPC sur un même hôte — ni ICMP ni TCP d’une VPC à l’autre</p></td>
+<td><p>isolation entre deux VPC sur un même hôte — ni ICMP ni TCP d’un VPC à l’autre</p></td>
 <td><p>hv1</p></td>
 <td><p>#50</p></td>
 </tr>
@@ -827,12 +827,12 @@ fait en fermant le ticket. Chaque ticket concerné liste ses marqueurs en commen
 <td><p>#50, #51</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">42-isolation-evpn</span></code></p></td>
-<td><p>isolation entre VPC à travers EVPN — deux VPC sur la même plage, la VM d’une VPC ne joint pas celle de l’autre sur un hôte distant</p></td>
+<td><p>isolation entre VPC à travers EVPN — deux VPC sur la même plage, la VM d’un VPC ne joint pas celle de l’autre sur un hôte distant</p></td>
 <td><p>hv1 hv2</p></td>
 <td><p>#50, #51</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">43-subnets-partages</span></code></p></td>
-<td><p>subnets vxlan partagés par deux hôtes, deux VM par hôte, dans une VPC avec et une VPC sans l3vni — toutes les paires, gateway anycast vue par chaque VM et absente d’EVPN, aucune MAC en double</p></td>
+<td><p>subnets vxlan partagés par deux hôtes, deux VM par hôte, dans un VPC avec et un VPC sans l3vni — toutes les paires, gateway anycast vue par chaque VM et absente d’EVPN, aucune MAC en double</p></td>
 <td><p>hv2 hv3</p></td>
 <td><p>#57, #41</p></td>
 </tr>
@@ -842,17 +842,17 @@ fait en fermant le ticket. Chaque ticket concerné liste ses marqueurs en commen
 <td><p>#57</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">51-l3vni</span></code></p></td>
-<td><p>routage inter-subnet entre hôtes par L3VNI (IRB symétrique) — VRF, RMAC, exports /24 et /32, RT-5 réfléchies, TTL, isolation par RT, démontage d’une VPC routée</p></td>
+<td><p>routage inter-subnet entre hôtes par L3VNI (IRB symétrique) — VRF, RMAC, exports /24 et /32, RT-5 réfléchies, TTL, isolation par RT, démontage d’un VPC routé</p></td>
 <td><p>hv1 hv2</p></td>
 <td><p>#41</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">52-migration</span></code></p></td>
-<td><p>migration d’une adresse de VM entre hôtes d’une VPC routée — /32 retiré en premier, /24 en filet puis en ECMP, séquence orchestrée, 40 sources, suppression du subnet refusée tant qu’une VM l’utilise, MAC anycast hors EVPN</p></td>
+<td><p>migration d’une adresse de VM entre hôtes d’un VPC routé — /32 retiré en premier, /24 en filet puis en ECMP, séquence orchestrée, 40 sources, suppression du subnet refusée tant qu’une VM l’utilise, MAC anycast hors EVPN</p></td>
 <td><p>hv1 hv2 hv3</p></td>
 <td><p>#41, #57</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">53-watchdog-l3</span></code></p></td>
-<td><p>watchdog d’une VPC routée — /32 orphelin signalé comme trou noir, /32 manquant signalé, aucune fausse alerte BGP ni L3VNI, trafic intact après les essais</p></td>
+<td><p>watchdog d’un VPC routé — /32 orphelin signalé comme trou noir, /32 manquant signalé, aucune fausse alerte BGP ni L3VNI, trafic intact après les essais</p></td>
 <td><p>hv1 hv3</p></td>
 <td><p>#41</p></td>
 </tr>
@@ -1000,7 +1000,7 @@ relit <code class="docutils literal notranslate"><span class="pre">frr.conf</spa
 « martiens » les ICMP émis par les sauts distants (VRF et netns de l’hôte de sortie) : le
 noyau de l’hôte d’entrée possède la même adresse. Quatre routeurs sur le chemin, seuls les
 deux premiers répondent. Même effet attendu sur un ICMP « fragmentation nécessaire ».</p></li>
-<li><p><strong>La route du supernet n’existe pas dans le netns</strong> de la VPC avant la pose manuelle (premier
+<li><p><strong>La route du supernet n’existe pas dans le netns</strong> du VPC avant la pose manuelle (premier
 run, lab neuf) : two ne pose que la route connectée du subnet.</p></li>
 </ul>
 <p><code class="docutils literal notranslate"><span class="pre">s8-l3vni-migration</span></code> le 2026-10-06, <code class="docutils literal notranslate"><span class="pre">evpn-3hv.yml</span></code> : <strong>61 réussi(s), 0 échoué(s)</strong>. Le filet du
@@ -1017,7 +1017,7 @@ l’agent : 37, 22, 12, 14, 13 et 8 réussis, aucun échec.</p></li>
 <li><p>Puis, release <code class="docutils literal notranslate"><span class="pre">0.2.0rc005</span></code> (correction du démontage FRR, ci-dessous), <code class="docutils literal notranslate"><span class="pre">evpn-3hv.yml</span></code> :</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">s7-l3vni</span></code> : <strong>52 réussi(s), 1 échoué(s)</strong>. Routage inter-subnet par le
 L3VNI, MAC de routeur dérivée du VTEP, exports <code class="docutils literal notranslate"><span class="pre">/24</span></code> et <code class="docutils literal notranslate"><span class="pre">/32</span></code> automatiques, forwarding par
-interface, L3VNI en double et subnet utilisé refusés (409), démontage complet d’une VPC sans
+interface, L3VNI en double et subnet utilisé refusés (409), démontage complet d’un VPC sans
 redémarrage de bgpd. L’échec — « TTL 1 », un seul paquet — ne s’est pas reproduit au run
 précédent : probablement le débit limité des ICMP du noyau ; la vérification envoie désormais
 trois paquets.</p></li>
