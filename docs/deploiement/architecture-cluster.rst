@@ -55,22 +55,22 @@ Topologie
 ---------
 
 .. figure:: /schemas/architecture-cluster.svg
-   :alt: Architecture du cluster : routeurs, route reflector, hyperviseurs, plans de données et de contrôle
+   :alt: Détail d'un cluster : routeurs, route reflectors, hyperviseurs, netns et VRF des VPC, plans de données et de contrôle
    :align: center
    :width: 100%
    :class: only-light
 
-   Architecture cible. Trait bleu : plan de données (VXLAN). Tirets violets : plan de contrôle
-   (sessions BGP). Pointillé gris : interfaces créées par l'agent.
+   Détail d'un cluster et de deux hyperviseurs. Trait bleu : plan de données (VXLAN). Tirets
+   violets : plan de contrôle (sessions BGP). Pointillé gris : créé par l'agent.
 
 .. figure:: /schemas/architecture-cluster-dark.svg
-   :alt: Architecture du cluster : routeurs, route reflector, hyperviseurs, plans de données et de contrôle
+   :alt: Détail d'un cluster : routeurs, route reflectors, hyperviseurs, netns et VRF des VPC, plans de données et de contrôle
    :align: center
    :width: 100%
    :class: only-dark
 
-   Architecture cible. Trait bleu : plan de données (VXLAN). Tirets violets : plan de contrôle
-   (sessions BGP). Pointillé gris : interfaces créées par l'agent.
+   Détail d'un cluster et de deux hyperviseurs. Trait bleu : plan de données (VXLAN). Tirets
+   violets : plan de contrôle (sessions BGP). Pointillé gris : créé par l'agent.
 
 Deux plans distincts, à ne pas confondre au moment du diagnostic :
 
