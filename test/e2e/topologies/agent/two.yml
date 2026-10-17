@@ -6,3 +6,5 @@ bgp:
 watchdog:
   enabled: true
   interval_seconds: 10
+interfaces:
+  lan: br-lan
