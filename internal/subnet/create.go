@@ -105,8 +105,12 @@ func createSubnet(db *badger.DB, subnetName string, d subnetData, backend dhcpba
 		return fmt.Errorf("set up interfaces in netns: %w", err)
 	}
 
-	switch d.mode {
-	case "vxlan":
+	switch {
+	case d.anycast():
+		if err := setupAnycastGateway(d, vethI); err != nil {
+			return fmt.Errorf("configure netns: %w", err)
+		}
+	case d.mode == ModeVxlan:
 		if err := netns.Call(d.vpc, func() error {
 			if err := netif.AddrAdd(d.bridge, d.interfaceIP); err != nil {
 				return fmt.Errorf("add addr: %w", err)
@@ -121,7 +125,7 @@ func createSubnet(db *badger.DB, subnetName string, d subnetData, backend dhcpba
 		}); err != nil {
 			return fmt.Errorf("configure netns: %w", err)
 		}
-	case "bridge":
+	case d.mode == ModeBridge:
 		if err := netns.Call(d.vpc, func() error {
 			if err := netif.AddrAdd(d.bridge, d.interfaceIP); err != nil {
 				return fmt.Errorf("add addr: %w", err)
@@ -171,10 +175,15 @@ func startDHCP(db *badger.DB, subnetName string, d subnetData, backend dhcpbacke
 		return fmt.Errorf("store dhcp entries: %w", err)
 	}
 
+	listen := ""
+	if d.anycast() {
+		listen = d.gatewayLink()
+	}
 	return backend.ConfigureSubnet(dhcpbackend.Subnet{
 		Name:           subnetName,
 		VPC:            d.vpc,
 		Bridge:         d.bridge,
+		Listen:         listen,
 		Network:        d.cidr,
 		InterfaceIP:    d.interfaceIP,
 		VPCRoute:       vpcRoute,

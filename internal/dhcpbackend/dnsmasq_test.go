@@ -111,3 +111,22 @@ func TestDnsmasqSetVM_RejectsAVMWithoutReservation(t *testing.T) {
 		t.Fatal("a vm with no reservation would get no address: that must be reported")
 	}
 }
+
+func TestDnsmasqConfig_ListenOnGatewayExcludesTheBridge(t *testing.T) {
+	c := Dnsmasq{}.config(Subnet{VPC: "vp-s9", Bridge: "br-s9r1", Listen: "gw-s9r1"})
+	if c.Listen != "gw-s9r1" || c.Except != "br-s9r1" {
+		t.Errorf("Listen %q, Except %q : gw-s9r1 et br-s9r1 attendus", c.Listen, c.Except)
+	}
+	if c.Name != "vp-s9_br-s9r1" {
+		t.Errorf("instance %q : le nom doit rester celui du bridge", c.Name)
+	}
+}
+
+func TestDnsmasqConfig_NoListenKeepsTheCommandLineInterface(t *testing.T) {
+	for _, listen := range []string{"", "br-s9r1"} {
+		c := Dnsmasq{}.config(Subnet{VPC: "vp-s9", Bridge: "br-s9r1", Listen: listen})
+		if c.Listen != "" || c.Except != "" {
+			t.Errorf("Listen=%q : Listen %q, Except %q, vides attendus", listen, c.Listen, c.Except)
+		}
+	}
+}

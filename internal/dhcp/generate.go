@@ -18,6 +18,12 @@ func GenerateConfig(c Config) (string, map[string]string, error) {
 
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "no-resolv\n")
+	if c.Listen != "" {
+		fmt.Fprintf(&sb, "interface=%s\n", c.Listen)
+	}
+	if c.Except != "" {
+		fmt.Fprintf(&sb, "except-interface=%s\n", c.Except)
+	}
 	fmt.Fprintf(&sb, "dhcp-range=%s,static,%s,12h\n", c.Network.IP.String(), mask)
 	fmt.Fprintf(&sb, "dhcp-option=121,%s\n", strings.Join(classlessRoutes(c), ","))
 	if c.DefaultGateway != nil {

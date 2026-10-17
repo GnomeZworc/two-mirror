@@ -14,7 +14,7 @@ Ce que l'on construit
 
    graph LR
      subgraph netns vp-admin
-       BR["br-sn000001<br/>10.1.1.1"]
+       BR["br-sn000001<br/>10.1.1.254"]
        MD["metadata@i-web<br/>169.254.169.254"]
      end
      VM["VM i-web<br/>10.1.1.2"] --- BR
@@ -58,13 +58,18 @@ prêt est refusé en **422**. Le modèle d'attente est décrit dans :doc:`/explo
           "mode": "vxlan",
           "vxlan_id": 1,
           "iface_type": "vms",
-          "interface_ip": "10.1.1.1",
           "cidr": "10.1.0.0/23"}'
 
 ``iface_type`` est une clé **logique** résolue dans la configuration de l'agent (section
 ``interfaces``) vers un bridge physique de l'host ; une clé inconnue retombe sur
-``default_interface``. ``interface_ip`` est la gateway du subnet, portée par le bridge créé dans
-le netns.
+``default_interface``.
+
+En mode ``vxlan``, les adresses de la gateway sont **calculées** et ne se fournissent pas (un
+``interface_ip`` est refusé) : la gateway vue par les VM est l'avant-dernière adresse du CIDR
+(``interface_ip`` = ``10.1.1.254`` ici), l'adresse d'émission propre au netns la précédente
+(``relay_ip`` = ``10.1.1.253``) ; le CIDR doit valoir au plus ``/29``. Aucune VM ne peut prendre
+ces deux adresses, ni celles du réseau et du broadcast. En mode ``bridge``, ``interface_ip`` reste
+obligatoire.
 
 Les modes disponibles et leurs conséquences sur le routage sont détaillés dans
 :doc:`/concepts/modes-reseau`.

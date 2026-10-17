@@ -13,4 +13,6 @@ type Config struct {
 	DefaultGateway net.IP     // if non-nil, default route via option 3 and 0.0.0.0/0 in option 121
 	Name           string
 	ConfDir        string
+	Listen         string
+	Except         string
 }

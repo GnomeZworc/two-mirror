@@ -9,6 +9,7 @@ import (
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/state"
+	"git.g3e.fr/syonad/two/internal/subnet"
 	"git.g3e.fr/syonad/two/internal/vm"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 	"github.com/dgraph-io/badger/v4"
@@ -105,6 +106,16 @@ func (c StartVMCommand) validateNICs(db *badger.DB) error {
 		}
 		if subnetState != state.Creating && subnetState != state.Running {
 			return fmt.Errorf("subnet %q is %s", n.Subnet, subnetState)
+		}
+		cidr, err := kv.GetFromDB(db, "subnet/"+n.Subnet+"/cidr")
+		if err != nil {
+			return fmt.Errorf("subnet %q has no cidr", n.Subnet)
+		}
+		interfaceIP, _ := kv.GetFromDB(db, "subnet/"+n.Subnet+"/interface_ip")
+		relayIP, _ := kv.GetFromDB(db, "subnet/"+n.Subnet+"/relay_ip")
+		gateway, _ := kv.GetFromDB(db, "subnet/"+n.Subnet+"/gateway")
+		if err := subnet.CheckHostAddress(cidr, n.IP, interfaceIP, relayIP, gateway); err != nil {
+			return fmt.Errorf("vm %q on subnet %q: %w", c.Name, n.Subnet, err)
 		}
 	}
 	if primaries != 1 {

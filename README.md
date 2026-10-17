@@ -50,7 +50,7 @@ curl -X POST http://127.0.0.1:8080/vpcs \
 # Un subnet en VXLAN dans ce VPC
 curl -X POST http://127.0.0.1:8080/subnets \
   -d '{"name": "sn-000001", "vpc": "vp-admin", "mode": "vxlan", "vxlan_id": 1,
-       "iface_type": "vms", "interface_ip": "10.1.1.1", "cidr": "10.1.0.0/23"}'
+       "iface_type": "vms", "cidr": "10.1.0.0/23"}'
 
 # Une VM, avec une clé SSH et un user-data cloud-init en base64
 curl -X POST http://127.0.0.1:8080/vms \

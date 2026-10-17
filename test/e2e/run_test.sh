@@ -193,6 +193,23 @@ test_vpc_create_sends_the_l3vni_only_when_given () {
     teardown
 }
 
+test_subnet_create_lets_the_agent_compute_the_gateway () {
+    setup "subnet_create : vxlan sans interface_ip, champs supplémentaires ajoutés"
+    local stub='api_state () { echo; }; wait_state () { :; }; api_post () { echo "$1 $2"; }; '
+    [[ $(node "${stub}subnet_create sn-s1a vp-s1 2101 10.210.1.0/24") == 'subnets {"name":"sn-s1a","vpc":"vp-s1","mode":"vxlan","vxlan_id":2101,"iface_type":"vms","cidr":"10.210.1.0/24"}' ]] \
+        || fail "sans extra : $(node "${stub}subnet_create sn-s1a vp-s1 2101 10.210.1.0/24")"
+    [[ $(node "${stub}subnet_create sn-s2b vp-s2 2202 10.220.2.0/24 ',\"default_route\":true'") == 'subnets {"name":"sn-s2b","vpc":"vp-s2","mode":"vxlan","vxlan_id":2202,"iface_type":"vms","cidr":"10.220.2.0/24","default_route":true}' ]] \
+        || fail "avec extra : $(node "${stub}subnet_create sn-s2b vp-s2 2202 10.220.2.0/24 ',\"default_route\":true'")"
+    teardown
+}
+
+test_anycast_mac_encodes_the_vni_on_24_bits () {
+    setup "anycast_mac : 02:01:00 suivi de la VNI sur 24 bits"
+    [[ $(node 'anycast_mac 2911') == 02:01:00:00:0b:5f ]] || fail "2911 : $(node 'anycast_mac 2911')"
+    [[ $(node 'anycast_mac 16777215') == 02:01:00:ff:ff:ff ]] || fail "VNI max : $(node 'anycast_mac 16777215')"
+    teardown
+}
+
 test_api_code_returns_the_http_status () {
     setup "api_code : méthode, chemin et code HTTP"
     [[ $(node 'curl () { echo "$*" >&2; echo 409; }; api_code DELETE subnets/sn-a 2>/dev/null') == 409 ]] || fail "code"

@@ -15,7 +15,8 @@ de sérialisation structurée.
    subnet/<name>/mode           → vxlan | bridge | public_ip
    subnet/<name>/vxlan_id       → <id>            (mode vxlan uniquement)
    subnet/<name>/cidr           → <cidr>
-   subnet/<name>/interface_ip   → <ip>            (gateway, portée par br-<subnetID>)
+   subnet/<name>/interface_ip   → <ip>            (gateway ; calculée en vxlan : broadcast-1)
+   subnet/<name>/relay_ip       → <ip>            (mode vxlan, calculée : broadcast-2)
    subnet/<name>/local_iface    → <bridge-name>
    subnet/<name>/default_route  → "true" | "false"
    subnet/<name>/gateway        → <ip>            (optionnel)

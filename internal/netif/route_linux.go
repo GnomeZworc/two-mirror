@@ -9,6 +9,10 @@ import (
 )
 
 func RouteAdd(iface string, subnet *net.IPNet) error {
+	return RouteAddFrom(iface, subnet, nil)
+}
+
+func RouteAddFrom(iface string, subnet *net.IPNet, src net.IP) error {
 	link, err := netlink.LinkByName(iface)
 	if err != nil {
 		return err
@@ -16,6 +20,7 @@ func RouteAdd(iface string, subnet *net.IPNet) error {
 	return netlink.RouteAdd(&netlink.Route{
 		LinkIndex: link.Attrs().Index,
 		Dst:       subnet,
+		Src:       src,
 		Scope:     netlink.SCOPE_LINK,
 	})
 }

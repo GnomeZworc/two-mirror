@@ -217,12 +217,14 @@ sortie vaut 1 si une vérification échoue **ou si aucune n'a été faite**.
      - backend DHCP ``two``, une VPC et deux subnets : chaque VM reçoit l'adresse de **son**
        subnet, démarrée seule ou en même temps qu'une autre ; le bail est tenu par
        systemd-networkd ; route par défaut, route vers la VPC et ``/32`` vers les métadonnées
-       via ``interface_ip`` ; l'état de chaque serveur DHCP ne connaît que les MAC de son subnet
-       (#46)
+       via la gateway calculée (``.254``) ; l'état de chaque serveur DHCP ne connaît que les MAC de
+       son subnet (#46)
      - hv1
    * - ``s2-gateway``
-     - route par défaut via ``interface_ip``, ou via ``gateway`` avec ``default_route`` ; route
-       vers la VPC toujours via ``interface_ip`` ; même résultat après recréation du subnet (#31)
+     - gateway (``.254``) et adresse d'émission (``.253``) calculées par l'agent, refusées pour
+       une VM ; ``interface_ip`` refusé sur un subnet ``vxlan`` (#57) ; route par défaut via la
+       gateway, ou via ``gateway`` avec ``default_route`` ; route vers la VPC toujours via la
+       gateway du subnet ; macvlan retiré à la suppression, même résultat après recréation (#31)
      - hv1
    * - ``s3-isolation-local``
      - deux VPC sur le même hyperviseur ne se joignent pas, en ICMP comme en TCP ; chaque VM
@@ -257,15 +259,16 @@ sortie vaut 1 si une vérification échoue **ou si aucune n'a été faite**.
      - suite de ``s7``, topologie ``evpn-3hv.yml`` : migration d'une VM de hv1 vers hv2 par l'API,
        observée depuis hv3 qui n'a pas le subnet : migration simple (VM supprimée puis recréée,
        ``/24`` comme filet), séquence orchestrée (deux VM de même IP, deux ``/32`` en ECMP, 40
-       sources sur 40) ; l'ancien « pire cas » devient un refus (409) ; MAC de gateway propre à
-       chaque hôte, sans doublon EVPN ; watchdog : ``/32`` orphelin signalé comme trou noir, ``/32`` manquant
+       sources sur 40) ; l'ancien « pire cas » devient un refus (409) ; MAC anycast de la gateway
+       absente d'EVPN (aucune route de type 2 sur rr1, absente de la table de hv1), sans doublon
+       (#57) ; watchdog : ``/32`` orphelin signalé comme trou noir, ``/32`` manquant
        signalé
      - hv1, hv2, hv3, rr1
    * - ``s9-subnets-partages``
      - deux VPC, avec et sans ``l3vni``, chacune avec deux subnets présents sur **les deux**
        hyperviseurs et une VM par subnet et par hôte : ping entre toutes les paires (même subnet ou
-       non, même hôte ou non) ; chaque VM voit la MAC de gateway de son propre hôte ; aucune MAC en
-       double sur les quatre VNI
+       non, même hôte ou non) ; chaque VM voit la MAC anycast de sa gateway ; aucune MAC en
+       double et aucune MAC anycast dans EVPN sur les quatre VNI (#57)
      - hv2, hv3, rr1
    * - ``s10-switch-loss``
      - un seul switch maître VRRP de la passerelle (lu par ``show vrrp``, pas supposé) ; interface
@@ -275,6 +278,14 @@ sortie vaut 1 si une vérification échoue **ou si aucune n'a été faite**.
        silence sous 5 s ; interface rétablie : ses sessions eBGP reviennent et il **reste en
        attente**, sans reprendre la passerelle (#54)
      - hv1, sw1, sw2
+   * - ``s11-fenetre-arp``
+     - fenêtre ARP de #57 : sur hv1, entrées ARP du netns retirées, puis une VM de hv1 joint une VM
+       de hv2 dans l'autre subnet (relais L2 depuis l'adresse d'émission de hv1). La VM de hv2
+       associe alors ``.253`` à la MAC de hv1 (fenêtre ouverte, vérifiée), mais sa gateway reste
+       la MAC anycast ; pendant la fenêtre, métadonnées servies, bail DHCP renouvelé auprès de
+       ``.254``, et **aucune** des 80 connexions TCP du netns de hv2 vers sa VM n'est perdue ; MAC
+       anycast inscrite dans la FDB du bridge du netns
+     - hv1, hv2
 
 ``s6`` réutilise les VM de ``s4`` : le lancer après.
 

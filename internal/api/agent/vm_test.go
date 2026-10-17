@@ -99,6 +99,7 @@ func TestStartVM_MultiDisk(t *testing.T) {
 	s, db := newTestServer(t)
 	kv.AddInDB(db, "subnet/sn-1/state", "running")
 	kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-1")
+	kv.AddInDB(db, "subnet/sn-1/cidr", "10.0.0.0/24")
 
 	body, _ := json.Marshal(VMCreateRequest{
 		Name: "vm-10",
@@ -133,6 +134,7 @@ func TestStartVM_StorageReturnedInResponse(t *testing.T) {
 	s, db := newTestServer(t)
 	kv.AddInDB(db, "subnet/sn-1/state", "running")
 	kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-1")
+	kv.AddInDB(db, "subnet/sn-1/cidr", "10.0.0.0/24")
 
 	body, _ := json.Marshal(VMCreateRequest{
 		Name: "vm-11",
@@ -167,6 +169,7 @@ func postVM(t *testing.T, name string, meta VMMetadata) (*httptest.ResponseRecor
 	s, db := newTestServer(t)
 	kv.AddInDB(db, "subnet/sn-1/state", "running")
 	kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-1")
+	kv.AddInDB(db, "subnet/sn-1/cidr", "10.0.0.0/24")
 
 	body, _ := json.Marshal(VMCreateRequest{
 		Name:       name,
@@ -291,9 +294,10 @@ func TestVmFromDB_MultipleInterfacesSortedByIndex(t *testing.T) {
 
 func TestStartVM_StoresAllInterfaces(t *testing.T) {
 	s, db := newTestServer(t)
-	for _, sn := range []string{"sn-1", "sn-2"} {
+	for sn, cidr := range map[string]string{"sn-1": "10.1.0.0/24", "sn-2": "10.2.0.0/24"} {
 		kv.AddInDB(db, "subnet/"+sn+"/state", "running")
 		kv.AddInDB(db, "subnet/"+sn+"/vpc", "vpc-1")
+		kv.AddInDB(db, "subnet/"+sn+"/cidr", cidr)
 	}
 
 	body, _ := json.Marshal(VMCreateRequest{
@@ -332,9 +336,10 @@ func TestStartVM_RejectsZeroOrTwoPrimaries(t *testing.T) {
 	}
 	for label, ifaces := range cases {
 		s, db := newTestServer(t)
-		for _, sn := range []string{"sn-1", "sn-2"} {
+		for sn, cidr := range map[string]string{"sn-1": "10.1.0.0/24", "sn-2": "10.2.0.0/24"} {
 			kv.AddInDB(db, "subnet/"+sn+"/state", "running")
 			kv.AddInDB(db, "subnet/"+sn+"/vpc", "vpc-1")
+			kv.AddInDB(db, "subnet/"+sn+"/cidr", cidr)
 		}
 		body, _ := json.Marshal(VMCreateRequest{
 			Name:       "vm-bad",
@@ -346,5 +351,73 @@ func TestStartVM_RejectsZeroOrTwoPrimaries(t *testing.T) {
 		if w.Code != http.StatusBadRequest {
 			t.Errorf("%s : attendu 400, obtenu %d — %s", label, w.Code, w.Body.String())
 		}
+	}
+}
+
+func TestStartVM_RejectsReservedOrForeignAddresses(t *testing.T) {
+	cases := map[string]string{
+		"passerelle anycast": "10.0.0.254",
+		"relais":             "10.0.0.253",
+		"adresse réseau":     "10.0.0.0",
+		"broadcast":          "10.0.0.255",
+		"hors cidr":          "10.0.1.5",
+		"gateway explicite":  "10.0.0.1",
+	}
+	for label, ip := range cases {
+		s, db := newTestServer(t)
+		kv.AddInDB(db, "subnet/sn-1/state", "running")
+		kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-1")
+		kv.AddInDB(db, "subnet/sn-1/cidr", "10.0.0.0/24")
+		kv.AddInDB(db, "subnet/sn-1/interface_ip", "10.0.0.254")
+		kv.AddInDB(db, "subnet/sn-1/relay_ip", "10.0.0.253")
+		kv.AddInDB(db, "subnet/sn-1/gateway", "10.0.0.1")
+		body, _ := json.Marshal(VMCreateRequest{
+			Name:       "vm-ip",
+			Interfaces: []VMInterface{{Subnet: "sn-1", IP: ip, Primary: true}},
+			Storage:    []VMStorage{{Path: "/data/root.qcow2", Dev: "vda"}},
+		})
+		w := httptest.NewRecorder()
+		s.VmsHandler(w, httptest.NewRequest(http.MethodPost, "/vms", bytes.NewReader(body)))
+		if w.Code != http.StatusUnprocessableEntity {
+			t.Errorf("%s : attendu 422, obtenu %d — %s", label, w.Code, w.Body.String())
+		}
+		if _, err := kv.GetFromDB(db, "vm/vm-ip/state"); err == nil {
+			t.Errorf("%s : la VM ne doit pas être créée", label)
+		}
+	}
+}
+
+func TestStartVM_AcceptsHostAddressBesideReservedOnes(t *testing.T) {
+	s, db := newTestServer(t)
+	kv.AddInDB(db, "subnet/sn-1/state", "running")
+	kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-1")
+	kv.AddInDB(db, "subnet/sn-1/cidr", "10.0.0.0/24")
+	kv.AddInDB(db, "subnet/sn-1/interface_ip", "10.0.0.254")
+	kv.AddInDB(db, "subnet/sn-1/relay_ip", "10.0.0.253")
+	body, _ := json.Marshal(VMCreateRequest{
+		Name:       "vm-ip",
+		Interfaces: []VMInterface{{Subnet: "sn-1", IP: "10.0.0.252", Primary: true}},
+		Storage:    []VMStorage{{Path: "/data/root.qcow2", Dev: "vda"}},
+	})
+	w := httptest.NewRecorder()
+	s.VmsHandler(w, httptest.NewRequest(http.MethodPost, "/vms", bytes.NewReader(body)))
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("attendu 202, obtenu %d : %s", w.Code, w.Body.String())
+	}
+}
+
+func TestStartVM_RejectsSubnetWithoutCIDR(t *testing.T) {
+	s, db := newTestServer(t)
+	kv.AddInDB(db, "subnet/sn-1/state", "running")
+	kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-1")
+	body, _ := json.Marshal(VMCreateRequest{
+		Name:       "vm-ip",
+		Interfaces: []VMInterface{{Subnet: "sn-1", IP: "10.0.0.5", Primary: true}},
+		Storage:    []VMStorage{{Path: "/data/root.qcow2", Dev: "vda"}},
+	})
+	w := httptest.NewRecorder()
+	s.VmsHandler(w, httptest.NewRequest(http.MethodPost, "/vms", bytes.NewReader(body)))
+	if w.Code != http.StatusUnprocessableEntity || !strings.Contains(w.Body.String(), "has no cidr") {
+		t.Errorf("attendu 422 « has no cidr », obtenu %d : %s", w.Code, w.Body.String())
 	}
 }

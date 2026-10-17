@@ -18,6 +18,7 @@ type subnetData struct {
 	vxlanID      int
 	localIface   string
 	interfaceIP  net.IP
+	relayIP      net.IP
 	cidr         *net.IPNet
 	vpcCIDR      *net.IPNet
 	defaultRoute bool
@@ -69,6 +70,14 @@ func loadSubnet(db *badger.DB, name string) (subnetData, error) {
 		return d, fmt.Errorf("invalid interface_ip: %s", interfaceIPStr)
 	}
 	d.interfaceIP = interfaceIP
+
+	if relayStr, err := kv.GetFromDB(db, "subnet/"+name+"/relay_ip"); err == nil && relayStr != "" {
+		relayIP := net.ParseIP(relayStr)
+		if relayIP == nil {
+			return d, fmt.Errorf("invalid relay_ip: %s", relayStr)
+		}
+		d.relayIP = relayIP
+	}
 
 	cidrStr, err := kv.GetFromDB(db, "subnet/"+name+"/cidr")
 	if err != nil {

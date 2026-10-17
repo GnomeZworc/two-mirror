@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 
 	dhcpapi "git.g3e.fr/syonad/two/internal/api/dhcp"
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
@@ -66,13 +67,30 @@ func run() error {
 		}
 	}()
 
-	conn, err := server4.NewIPv4UDPConn(*iface, &net.UDPAddr{Port: dhcpv4.ServerPort})
+	listen := listenInterface(*iface, interfaceExists)
+	conn, err := server4.NewIPv4UDPConn(listen, &net.UDPAddr{Port: dhcpv4.ServerPort})
 	if err != nil {
-		return fmt.Errorf("bind udp/%d on %s: %w", dhcpv4.ServerPort, *iface, err)
+		return fmt.Errorf("bind udp/%d on %s: %w", dhcpv4.ServerPort, listen, err)
 	}
 	defer conn.Close()
 
-	log.Info("dhcp server started", "state", store.Path(), "socket", control.Addr())
+	log.Info("dhcp server started", "listen", listen, "state", store.Path(), "socket", control.Addr())
 
 	return store.Serve(conn, log)
+}
+
+func interfaceExists(name string) bool {
+	_, err := net.InterfaceByName(name)
+	return err == nil
+}
+
+func listenInterface(bridge string, exists func(string) bool) string {
+	id, ok := strings.CutPrefix(bridge, "br-")
+	if !ok {
+		return bridge
+	}
+	if gateway := "gw-" + id; exists(gateway) {
+		return gateway
+	}
+	return bridge
 }

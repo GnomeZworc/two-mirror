@@ -2,14 +2,14 @@ on hv1 <<'NODE'
 two_image || { echo "ÉCHOUÉ: image compatible two (hv1)"; exit 0; }
 KEY=$(vm_key)
 check "hv1 : VPC vp-s4" vpc_create vp-s4 10.240.0.0/16
-check "hv1 : subnet sn-s4" subnet_create sn-s4 vp-s4 2401 10.240.1.1 10.240.1.0/24
+check "hv1 : subnet sn-s4" subnet_create sn-s4 vp-s4 2401 10.240.1.0/24
 check "hv1 : vxlan-2401 porte l'adresse VTEP locale 192.168.14.11" sh -c "ip -d link show vxlan-2401 | grep -q 'local 192.168.14.11 '"
 check "hv1 : VM s4-p" vm_create s4-p sn-s4 10.240.1.10 "${KEY}"
 NODE
 on hv2 <<'NODE'
 two_image || { echo "ÉCHOUÉ: image compatible two (hv2)"; exit 0; }
 check "hv2 : VPC vp-s4" vpc_create vp-s4 10.240.0.0/16
-check "hv2 : subnet sn-s4" subnet_create sn-s4 vp-s4 2401 10.240.1.1 10.240.1.0/24
+check "hv2 : subnet sn-s4" subnet_create sn-s4 vp-s4 2401 10.240.1.0/24
 check "hv2 : vxlan-2401 porte l'adresse VTEP locale 192.168.14.12" sh -c "ip -d link show vxlan-2401 | grep -q 'local 192.168.14.12 '"
 check "hv2 : VM s4-q" vm_create s4-q sn-s4 10.240.1.11
 NODE

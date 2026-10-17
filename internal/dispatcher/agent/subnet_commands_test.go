@@ -22,7 +22,7 @@ func TestCreateSubnetCommand_Prepare_Success(t *testing.T) {
 	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	cmd := CreateSubnetCommand{
 		Name: "sn-1", VPC: "vpc-1", VxlanID: 100,
-		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+		IfaceType: "vms", CIDR: "10.0.0.0/24",
 	}
 	if err := cmd.Prepare(db, testCfg()); err != nil {
 		t.Fatalf("Prepare a échoué : %v", err)
@@ -35,6 +35,10 @@ func TestCreateSubnetCommand_Prepare_Success(t *testing.T) {
 	if vpc != "vpc-1" {
 		t.Errorf("vpc attendu vpc-1, obtenu %q", vpc)
 	}
+	ip, _ := kv.GetFromDB(db, "subnet/sn-1/interface_ip")
+	if ip != "10.0.0.254" {
+		t.Errorf("interface_ip attendue 10.0.0.254, obtenu %q", ip)
+	}
 }
 
 func TestCreateSubnetCommand_Prepare_UsesIfaceTypeMapping(t *testing.T) {
@@ -42,7 +46,7 @@ func TestCreateSubnetCommand_Prepare_UsesIfaceTypeMapping(t *testing.T) {
 	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	cmd := CreateSubnetCommand{
 		Name: "sn-1", VPC: "vpc-1", VxlanID: 100,
-		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+		IfaceType: "vms", CIDR: "10.0.0.0/24",
 	}
 	cmd.Prepare(db, testCfg())
 	iface, _ := kv.GetFromDB(db, "subnet/sn-1/local_iface")
@@ -56,7 +60,7 @@ func TestCreateSubnetCommand_Prepare_UsesDefaultIfaceWhenTypeUnknown(t *testing.
 	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	cmd := CreateSubnetCommand{
 		Name: "sn-1", VPC: "vpc-1", VxlanID: 100,
-		IfaceType: "inconnu", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+		IfaceType: "inconnu", CIDR: "10.0.0.0/24",
 	}
 	cmd.Prepare(db, testCfg())
 	iface, _ := kv.GetFromDB(db, "subnet/sn-1/local_iface")
@@ -71,7 +75,7 @@ func TestCreateSubnetCommand_Prepare_Duplicate(t *testing.T) {
 	kv.AddInDB(db, "subnet/sn-exist/state", "running")
 	cmd := CreateSubnetCommand{
 		Name: "sn-exist", VPC: "vpc-1", VxlanID: 100,
-		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+		IfaceType: "vms", CIDR: "10.0.0.0/24",
 	}
 	if err := cmd.Prepare(db, testCfg()); err == nil {
 		t.Error("Prepare devrait échouer sur un subnet déjà existant")
@@ -82,7 +86,7 @@ func TestCreateSubnetCommand_Prepare_VPCNotFound(t *testing.T) {
 	_, db := newTestDispatcher(t)
 	cmd := CreateSubnetCommand{
 		Name: "sn-1", VPC: "vpc-inexistant", VxlanID: 100,
-		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+		IfaceType: "vms", CIDR: "10.0.0.0/24",
 	}
 	if err := cmd.Prepare(db, testCfg()); err == nil {
 		t.Error("Prepare devrait échouer si le VPC n'existe pas")
@@ -94,7 +98,7 @@ func TestCreateSubnetCommand_Prepare_VPCDeleting(t *testing.T) {
 	kv.AddInDB(db, "vpc/vpc-dying/state", "deleting")
 	cmd := CreateSubnetCommand{
 		Name: "sn-1", VPC: "vpc-dying", VxlanID: 100,
-		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+		IfaceType: "vms", CIDR: "10.0.0.0/24",
 	}
 	if err := cmd.Prepare(db, testCfg()); err == nil {
 		t.Error("Prepare devrait échouer si le VPC est en cours de suppression")
@@ -106,7 +110,7 @@ func TestCreateSubnetCommand_Prepare_VPCDeleted(t *testing.T) {
 	kv.AddInDB(db, "vpc/vpc-gone/state", "deleted")
 	cmd := CreateSubnetCommand{
 		Name: "sn-1", VPC: "vpc-gone", VxlanID: 100,
-		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+		IfaceType: "vms", CIDR: "10.0.0.0/24",
 	}
 	if err := cmd.Prepare(db, testCfg()); err == nil {
 		t.Error("Prepare devrait échouer si le VPC est supprimé")
@@ -118,7 +122,7 @@ func TestCreateSubnetCommand_Prepare_DefaultsToVxlanMode(t *testing.T) {
 	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	cmd := CreateSubnetCommand{
 		Name: "sn-1", VPC: "vpc-1", VxlanID: 100,
-		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+		IfaceType: "vms", CIDR: "10.0.0.0/24",
 	}
 	cmd.Prepare(db, testCfg())
 	mode, _ := kv.GetFromDB(db, "subnet/sn-1/mode")
@@ -180,7 +184,7 @@ func TestCreateSubnetCommand_Prepare_DefaultRouteStored(t *testing.T) {
 	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	cmd := CreateSubnetCommand{
 		Name: "sn-1", VPC: "vpc-1", VxlanID: 100,
-		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+		IfaceType: "vms", CIDR: "10.0.0.0/24",
 		DefaultRoute: true,
 	}
 	if err := cmd.Prepare(db, testCfg()); err != nil {
@@ -200,12 +204,82 @@ func TestCreateSubnetCommand_Prepare_DefaultRouteFalseByDefault(t *testing.T) {
 	kv.AddInDB(db, "vpc/vpc-1/state", "running")
 	cmd := CreateSubnetCommand{
 		Name: "sn-1", VPC: "vpc-1", VxlanID: 100,
-		IfaceType: "vms", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+		IfaceType: "vms", CIDR: "10.0.0.0/24",
 	}
 	cmd.Prepare(db, testCfg())
 	val, _ := kv.GetFromDB(db, "subnet/sn-1/default_route")
 	if val != "false" {
 		t.Errorf("default_route attendu false, obtenu %q", val)
+	}
+}
+
+func TestCreateSubnetCommand_Prepare_VxlanComputesAnycastAddresses(t *testing.T) {
+	db, err := prepareSubnet(t, CreateSubnetCommand{
+		Name: "sn-any", VxlanID: 100, IfaceType: "vms", CIDR: "10.1.0.0/16",
+	})
+	if err != nil {
+		t.Fatalf("Prepare a échoué : %v", err)
+	}
+	if ip, _ := kv.GetFromDB(db, "subnet/sn-any/interface_ip"); ip != "10.1.255.254" {
+		t.Errorf("interface_ip attendue 10.1.255.254, obtenu %q", ip)
+	}
+	if relay, _ := kv.GetFromDB(db, "subnet/sn-any/relay_ip"); relay != "10.1.255.253" {
+		t.Errorf("relay_ip attendu 10.1.255.253, obtenu %q", relay)
+	}
+}
+
+func TestCreateSubnetCommand_Prepare_VxlanRefusesInterfaceIP(t *testing.T) {
+	for _, mode := range []string{"", "vxlan"} {
+		db, err := prepareSubnet(t, CreateSubnetCommand{
+			Name: "sn-ip", Mode: mode, VxlanID: 100, IfaceType: "vms",
+			InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+		})
+		if err == nil || !strings.Contains(err.Error(), "interface_ip is computed") {
+			t.Errorf("mode %q : une interface_ip fournie doit être refusée, obtenu %v", mode, err)
+		}
+		if _, err := kv.GetFromDB(db, "subnet/sn-ip/state"); err == nil {
+			t.Errorf("mode %q : rien ne doit être écrit après un refus", mode)
+		}
+	}
+}
+
+func TestCreateSubnetCommand_Prepare_VxlanRefusesSlash30(t *testing.T) {
+	db, err := prepareSubnet(t, CreateSubnetCommand{
+		Name: "sn-small", VxlanID: 100, IfaceType: "vms", CIDR: "10.0.0.0/30",
+	})
+	if err == nil {
+		t.Fatal("un /30 doit être refusé en mode vxlan")
+	}
+	if _, err := kv.GetFromDB(db, "subnet/sn-small/state"); err == nil {
+		t.Error("rien ne doit être écrit après un refus")
+	}
+}
+
+func TestCreateSubnetCommand_Prepare_BridgeRequiresInterfaceIP(t *testing.T) {
+	db, err := prepareSubnet(t, CreateSubnetCommand{
+		Name: "sn-br", Mode: "bridge", IfaceType: "vms", CIDR: "10.0.0.0/24",
+	})
+	if err == nil || !strings.Contains(err.Error(), "interface_ip is required") {
+		t.Errorf("une interface_ip absente doit être refusée en mode bridge, obtenu %v", err)
+	}
+	if _, err := kv.GetFromDB(db, "subnet/sn-br/state"); err == nil {
+		t.Error("rien ne doit être écrit après un refus")
+	}
+}
+
+func TestCreateSubnetCommand_Prepare_BridgeStoresGivenInterfaceIPWithoutRelay(t *testing.T) {
+	db, err := prepareSubnet(t, CreateSubnetCommand{
+		Name: "sn-br", Mode: "bridge", IfaceType: "vms",
+		InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+	})
+	if err != nil {
+		t.Fatalf("Prepare a échoué : %v", err)
+	}
+	if ip, _ := kv.GetFromDB(db, "subnet/sn-br/interface_ip"); ip != "10.0.0.1" {
+		t.Errorf("interface_ip attendue 10.0.0.1, obtenu %q", ip)
+	}
+	if _, err := kv.GetFromDB(db, "subnet/sn-br/relay_ip"); err == nil {
+		t.Error("relay_ip ne doit être écrit qu'en mode vxlan")
 	}
 }
 
@@ -273,7 +347,7 @@ func prepareSubnet(t *testing.T, cmd CreateSubnetCommand) (*badger.DB, error) {
 func TestCreateSubnetCommand_Prepare_StoresGateway(t *testing.T) {
 	db, err := prepareSubnet(t, CreateSubnetCommand{
 		Name: "sn-gw", VxlanID: 100, IfaceType: "vms",
-		InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+		CIDR:         "10.0.0.0/24",
 		DefaultRoute: true, Gateway: "10.0.0.254",
 	})
 	if err != nil {
@@ -291,7 +365,7 @@ func TestCreateSubnetCommand_Prepare_StoresGateway(t *testing.T) {
 func TestCreateSubnetCommand_Prepare_NoGatewayWritesNoKey(t *testing.T) {
 	db, err := prepareSubnet(t, CreateSubnetCommand{
 		Name: "sn-nogw", VxlanID: 100, IfaceType: "vms",
-		InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24",
+		CIDR: "10.0.0.0/24",
 	})
 	if err != nil {
 		t.Fatalf("Prepare a échoué : %v", err)

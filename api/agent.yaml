@@ -146,7 +146,10 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "422":
-          description: Subnet not found, or not in creating/running state
+          description: >
+            Subnet not found, or not in creating/running state; or an interface IP outside the
+            subnet CIDR, equal to its network or broadcast address, or reserved by the subnet
+            (interface_ip, relay_ip, gateway)
           content:
             application/json:
               schema:
@@ -229,7 +232,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/Subnet"
         "400":
-          description: Missing required field or unknown iface_type
+          description: >
+            Missing required field; interface_ip missing on a bridge or public_ip subnet, or
+            supplied on a vxlan subnet (it is computed)
           content:
             application/json:
               schema:
@@ -241,7 +246,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "422":
-          description: Parent VPC does not exist or is not ready
+          description: >
+            Unknown mode; parent VPC does not exist or is not ready; invalid CIDR, or a vxlan
+            CIDR smaller than /29
           content:
             application/json:
               schema:
@@ -349,7 +356,7 @@ components:
 
     SubnetCreateRequest:
       type: object
-      required: [name, vpc, interface_ip, cidr]
+      required: [name, vpc, cidr]
       properties:
         name:
           type: string
@@ -381,11 +388,16 @@ components:
         interface_ip:
           type: string
           format: ipv4
-          description: Gateway IP for the subnet
+          description: >
+            Gateway IP for the subnet. Required in bridge and public_ip modes. Rejected in vxlan
+            mode (400): the agent computes it as the last usable address of the CIDR
+            (broadcast - 1), carried by an anycast gateway identical on every host.
           example: "10.10.10.1"
         cidr:
           type: string
-          description: Subnet CIDR block
+          description: >
+            Subnet CIDR block. In vxlan mode, without host bits and at most /29: the last two
+            usable addresses are reserved for the gateway and the relay address.
           example: "10.10.10.0/24"
         default_route:
           type: boolean
@@ -403,7 +415,7 @@ components:
             Optional next-hop for the default route. Only used when default_route is true;
             supplied with default_route false, it is ignored. Not validated by the agent:
             reachability and coherence with the subnet CIDR are the caller's responsibility.
-          example: "10.10.10.254"
+          example: "10.10.10.1"
 
     Subnet:
       type: object
@@ -432,7 +444,14 @@ components:
           example: br-000000
         interface_ip:
           type: string
-          example: "10.10.10.1"
+          description: Subnet gateway. In vxlan mode, computed by the agent (broadcast - 1).
+          example: "10.10.10.254"
+        relay_ip:
+          type: string
+          description: >
+            vxlan mode only (broadcast - 2): address the subnet uses to reach guests on other
+            hosts, carried by the bridge of each host. Absent on subnets created before it existed.
+          example: "10.10.10.253"
         cidr:
           type: string
           example: "10.10.10.0/24"
@@ -441,7 +460,7 @@ components:
           example: false
         gateway:
           type: string
-          example: "10.10.10.254"
+          example: "10.10.10.1"
 
     VMCreateRequest:
       type: object

@@ -2,6 +2,7 @@ package netif
 
 import (
 	"net"
+	"syscall"
 
 	"github.com/vishvananda/netlink"
 )
@@ -12,4 +13,28 @@ func LinkIsUp(name string) (bool, error) {
 		return false, err
 	}
 	return link.Attrs().Flags&net.FlagUp != 0, nil
+}
+
+func LinkMAC(name string) (net.HardwareAddr, error) {
+	link, err := netlink.LinkByName(name)
+	if err != nil {
+		return nil, err
+	}
+	return link.Attrs().HardwareAddr, nil
+}
+
+func LinkIPv4(name string) ([]net.IP, error) {
+	link, err := netlink.LinkByName(name)
+	if err != nil {
+		return nil, err
+	}
+	addrs, err := netlink.AddrList(link, syscall.AF_INET)
+	if err != nil {
+		return nil, err
+	}
+	ips := make([]net.IP, 0, len(addrs))
+	for _, a := range addrs {
+		ips = append(ips, a.IP)
+	}
+	return ips, nil
 }

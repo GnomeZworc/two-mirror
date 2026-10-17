@@ -11,6 +11,7 @@ type Subnet struct {
 	Name           string
 	VPC            string
 	Bridge         string
+	Listen         string
 	Network        *net.IPNet
 	InterfaceIP    net.IP
 	VPCRoute       *net.IPNet
