@@ -89,6 +89,12 @@ def draw():
     text(750, 214, "même IP et même MAC de gateway · sans état", "sub", "middle")
     text(750, 230, "VTEP · VNI 66001 (public)", "sub", "middle")
 
+    # Poste de l'opérateur
+    group(1180, 20, 280, 100, "POSTE DE L'OPÉRATEUR")
+    box(1200, 50, 240, 52, "Terraform / OpenTofu", ["provider two · #72"], "future")
+    text(1164, 150, "API publique de l'orchestrateur", "nett", "end")
+    text(1164, 166, "par Internet et les bordures (VNI 66001)", "nett", "end")
+
     # Underlay A : routeurs
     group(40, 280, 480, 130, "CLUSTER A")
     box(60, 312, 210, 56, "routeur 1", ["169.254.0.1/28"])
@@ -171,6 +177,8 @@ def draw():
     # Orchestration : agent → routeurs de l'underlay A
     path(f"M320 {580 + dy} H332 V410", "orch", end=True)
     text(340, 596, "register · ordres · événements (mTLS, sortant)", "orcht")
+
+    path("M1180 76 H1172 V546 H1160", "net", end=True)
 
     # Légende
     ly = 840 + dy
