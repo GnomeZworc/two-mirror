@@ -347,8 +347,11 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#roles">Rôles</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#scenarios">Scénarios</a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#ecrire-un-scenario">Écrire un scénario</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#suite-de-tests">Suite de tests</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#matrice-de-couverture">Matrice de couverture</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#campagne-du-2026-10-17">Campagne du 2026-10-17</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#ecrire-un-test">Écrire un test</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#campagnes-precedentes">Campagnes précédentes</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#securite">Sécurité</a></li>
@@ -422,7 +425,7 @@ entamée comme une heure pleine. En cas de doute (session interrompue, poste mis
 <section id="topologies">
 <h2>Topologies<a class="headerlink" href="#topologies" title="Lien vers cette rubrique">#</a></h2>
 <p>Les topologies de two vivent dans <code class="docutils literal notranslate"><span class="pre">test/e2e/topologies/</span></code> : <code class="docutils literal notranslate"><span class="pre">evpn-2hv.yml</span></code> (deux hyperviseurs)
-et <code class="docutils literal notranslate"><span class="pre">evpn-3hv.yml</span></code> (trois, pour <code class="docutils literal notranslate"><span class="pre">s8</span></code> et <code class="docutils literal notranslate"><span class="pre">s9</span></code>). Le format est celui de <code class="docutils literal notranslate"><span class="pre">labctl</span></code> :</p>
+et <code class="docutils literal notranslate"><span class="pre">evpn-3hv.yml</span></code> (trois, celle de la suite). Le format est celui de <code class="docutils literal notranslate"><span class="pre">labctl</span></code> :</p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">evpn-2hv</span>
 
 <span class="nt">images</span><span class="p">:</span>
@@ -435,6 +438,9 @@ et <code class="docutils literal notranslate"><span class="pre">evpn-3hv.yml</sp
 <span class="w">    </span><span class="nt">routers</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">sw1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">sw2</span><span class="p p-Indicator">]</span>
 <span class="w">    </span><span class="nt">cidr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">192.168.14.0/24</span>
 <span class="w">    </span><span class="nt">mtu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">9000</span>
+<span class="w">  </span><span class="nt">lan</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">cidr</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10.33.0.0/24</span>
+<span class="w">    </span><span class="nt">mtu</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1500</span>
 
 <span class="nt">nodes</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">sw1</span><span class="p">:</span>
@@ -454,14 +460,16 @@ et <code class="docutils literal notranslate"><span class="pre">evpn-3hv.yml</sp
 <span class="nt">      addresses</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> underlay</span><span class="p">:</span><span class="w"> </span><span class="nv">192.168.14.5</span><span class="w"> </span><span class="p p-Indicator">},</span><span class="nt"> secondary</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> underlay</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">169.254.0.4/28</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">},</span>
 <span class="nt">      loopback</span><span class="p">:</span><span class="w"> </span><span class="nv">10.255.255.2/32</span><span class="p p-Indicator">,</span><span class="nt"> frr</span><span class="p">:</span><span class="w"> </span><span class="nv">frr/rr2.conf</span><span class="w"> </span><span class="p p-Indicator">}</span>
 <span class="w">  </span><span class="nt">hv1</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">{</span><span class="nt"> role</span><span class="p">:</span><span class="w"> </span><span class="nv">host</span><span class="p p-Indicator">,</span><span class="nt"> image</span><span class="p">:</span><span class="w"> </span><span class="nv">debian12</span><span class="p p-Indicator">,</span><span class="nt"> cpus</span><span class="p">:</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">,</span><span class="nt"> memory</span><span class="p">:</span><span class="w"> </span><span class="nv">16384</span><span class="p p-Indicator">,</span><span class="nt"> segments</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">underlay</span><span class="p p-Indicator">],</span>
-<span class="nt">      addresses</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> underlay</span><span class="p">:</span><span class="w"> </span><span class="nv">192.168.14.11</span><span class="w"> </span><span class="p p-Indicator">},</span><span class="nt"> frr</span><span class="p">:</span><span class="w"> </span><span class="nv">frr/hv1.conf</span><span class="p p-Indicator">,</span><span class="nt"> provision</span><span class="p">:</span><span class="w"> </span><span class="nv">provision/hypervisor.sh</span><span class="p p-Indicator">,</span>
+<span class="w">    </span><span class="p p-Indicator">{</span><span class="nt"> role</span><span class="p">:</span><span class="w"> </span><span class="nv">host</span><span class="p p-Indicator">,</span><span class="nt"> image</span><span class="p">:</span><span class="w"> </span><span class="nv">debian12</span><span class="p p-Indicator">,</span><span class="nt"> cpus</span><span class="p">:</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">,</span><span class="nt"> memory</span><span class="p">:</span><span class="w"> </span><span class="nv">16384</span><span class="p p-Indicator">,</span>
+<span class="nt">      segments</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">underlay</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">lan</span><span class="p p-Indicator">],</span><span class="nt"> addresses</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> underlay</span><span class="p">:</span><span class="w"> </span><span class="nv">192.168.14.11</span><span class="p p-Indicator">,</span><span class="nt"> lan</span><span class="p">:</span><span class="w"> </span><span class="nv">10.33.0.11</span><span class="w"> </span><span class="p p-Indicator">},</span>
+<span class="nt">      frr</span><span class="p">:</span><span class="w"> </span><span class="nv">frr/hv1.conf</span><span class="p p-Indicator">,</span><span class="nt"> provision</span><span class="p">:</span><span class="w"> </span><span class="nv">provision/hypervisor.sh</span><span class="p p-Indicator">,</span>
 <span class="nt">      post_provision</span><span class="p">:</span><span class="w"> </span><span class="nv">provision/hypervisor-post.sh</span><span class="p p-Indicator">,</span><span class="nt"> files</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> agent.yml</span><span class="p">:</span><span class="w"> </span><span class="nv">agent/two.yml</span><span class="p p-Indicator">,</span><span class="nt"> bin</span><span class="p">:</span><span class="w"> </span><span class="nv">bin</span><span class="w"> </span><span class="p p-Indicator">},</span>
 <span class="nt">      services</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">agent.service</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
 <span class="w">  </span><span class="nt">hv2</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">{</span><span class="nt"> role</span><span class="p">:</span><span class="w"> </span><span class="nv">host</span><span class="p p-Indicator">,</span><span class="nt"> image</span><span class="p">:</span><span class="w"> </span><span class="nv">debian12</span><span class="p p-Indicator">,</span><span class="nt"> cpus</span><span class="p">:</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">,</span><span class="nt"> memory</span><span class="p">:</span><span class="w"> </span><span class="nv">16384</span><span class="p p-Indicator">,</span><span class="nt"> segments</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">underlay</span><span class="p p-Indicator">],</span>
-<span class="nt">      addresses</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> underlay</span><span class="p">:</span><span class="w"> </span><span class="nv">192.168.14.12</span><span class="w"> </span><span class="p p-Indicator">},</span><span class="nt"> frr</span><span class="p">:</span><span class="w"> </span><span class="nv">frr/hv2.conf</span><span class="p p-Indicator">,</span><span class="nt"> provision</span><span class="p">:</span><span class="w"> </span><span class="nv">provision/hypervisor.sh</span><span class="p p-Indicator">,</span>
-<span class="nt">      post_provision</span><span class="p">:</span><span class="w"> </span><span class="nv">provision/hypervisor-post.sh</span><span class="p p-Indicator">,</span><span class="nt"> files</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> agent.yml</span><span class="p">:</span><span class="w"> </span><span class="nv">agent/bgp.yml</span><span class="p p-Indicator">,</span><span class="nt"> bin</span><span class="p">:</span><span class="w"> </span><span class="nv">bin</span><span class="w"> </span><span class="p p-Indicator">},</span>
+<span class="w">    </span><span class="p p-Indicator">{</span><span class="nt"> role</span><span class="p">:</span><span class="w"> </span><span class="nv">host</span><span class="p p-Indicator">,</span><span class="nt"> image</span><span class="p">:</span><span class="w"> </span><span class="nv">debian12</span><span class="p p-Indicator">,</span><span class="nt"> cpus</span><span class="p">:</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">,</span><span class="nt"> memory</span><span class="p">:</span><span class="w"> </span><span class="nv">16384</span><span class="p p-Indicator">,</span>
+<span class="nt">      segments</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">underlay</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">lan</span><span class="p p-Indicator">],</span><span class="nt"> addresses</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> underlay</span><span class="p">:</span><span class="w"> </span><span class="nv">192.168.14.12</span><span class="p p-Indicator">,</span><span class="nt"> lan</span><span class="p">:</span><span class="w"> </span><span class="nv">10.33.0.12</span><span class="w"> </span><span class="p p-Indicator">},</span>
+<span class="nt">      frr</span><span class="p">:</span><span class="w"> </span><span class="nv">frr/hv2.conf</span><span class="p p-Indicator">,</span><span class="nt"> provision</span><span class="p">:</span><span class="w"> </span><span class="nv">provision/hypervisor.sh</span><span class="p p-Indicator">,</span>
+<span class="nt">      post_provision</span><span class="p">:</span><span class="w"> </span><span class="nv">provision/hypervisor-post.sh</span><span class="p p-Indicator">,</span><span class="nt"> files</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> agent.yml</span><span class="p">:</span><span class="w"> </span><span class="nv">agent/dnsmasq.yml</span><span class="p p-Indicator">,</span><span class="nt"> bin</span><span class="p">:</span><span class="w"> </span><span class="nv">bin</span><span class="w"> </span><span class="p p-Indicator">},</span>
 <span class="nt">      services</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">agent.service</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
 </pre></div>
 </div>
@@ -545,7 +553,16 @@ télécharge la release sur <code class="docutils literal notranslate"><span cla
 réponde, à travers le switch. Les deux fichiers <code class="docutils literal notranslate"><span class="pre">agent/</span></code> donnent à l’agent la section <code class="docutils literal notranslate"><span class="pre">bgp</span></code>
 (AS 64600, route reflectors <code class="docutils literal notranslate"><span class="pre">10.255.255.1</span></code> et <code class="docutils literal notranslate"><span class="pre">10.255.255.2</span></code>) et un watchdog toutes les 10 s ;
 <code class="docutils literal notranslate"><span class="pre">agent/two.yml</span></code> met en plus hv1 sur le serveur DHCP intégré (<code class="docutils literal notranslate"><span class="pre">dhcp.backend:</span> <span class="pre">two</span></code>),
-<code class="docutils literal notranslate"><span class="pre">agent/bgp.yml</span></code> laisse les autres sur dnsmasq.</p>
+<code class="docutils literal notranslate"><span class="pre">agent/dnsmasq.yml</span></code> met explicitement les autres sur dnsmasq (<code class="docutils literal notranslate"><span class="pre">dhcp.backend:</span> <span class="pre">dnsmasq</span></code>).</p>
+<p><strong>Segment ``lan`` (mode ``bridge``).</strong> hv1 et hv2 sont aussi reliés à un second segment,
+<code class="docutils literal notranslate"><span class="pre">lan</span></code> (<code class="docutils literal notranslate"><span class="pre">10.33.0.0/24</span></code>, MTU 1500, <strong>sans routeur</strong> : L2 pur, sans passerelle ni NAT),
+déclaré après <code class="docutils literal notranslate"><span class="pre">underlay</span></code> pour ne changer ni ses adresses ni ses taps. Avant <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code>,
+<code class="docutils literal notranslate"><span class="pre">hypervisor.sh</span></code> crée le bridge <code class="docutils literal notranslate"><span class="pre">br-lan</span></code> (STP coupé, MTU de l’interface), y rattache
+l’interface <code class="docutils literal notranslate"><span class="pre">lan</span></code> et y déplace l’adresse que labctl lui a donnée (<code class="docutils literal notranslate"><span class="pre">10.33.0.11</span></code> sur hv1,
+<code class="docutils literal notranslate"><span class="pre">10.33.0.12</span></code> sur hv2). Les deux fichiers <code class="docutils literal notranslate"><span class="pre">agent/</span></code> déclarent <code class="docutils literal notranslate"><span class="pre">interfaces:</span> <span class="pre">{lan:</span> <span class="pre">br-lan}</span></code> :
+un subnet créé avec <code class="docutils literal notranslate"><span class="pre">mode:</span> <span class="pre">bridge</span></code> et <code class="docutils literal notranslate"><span class="pre">iface_type:</span> <span class="pre">lan</span></code> rattache son veth à <code class="docutils literal notranslate"><span class="pre">br-lan</span></code>. Les
+subnets <code class="docutils literal notranslate"><span class="pre">vxlan</span></code> (<code class="docutils literal notranslate"><span class="pre">iface_type:</span> <span class="pre">vms</span></code>, clé absente) restent sur <code class="docutils literal notranslate"><span class="pre">default_interface</span></code> : le VTEP
+ne change pas. Le bridge n’est créé qu’au premier démarrage, comme le reste du provisionnement.</p>
 <p><strong>Tester l’arbre courant plutôt que la release.</strong> <code class="docutils literal notranslate"><span class="pre">test/e2e/build.sh</span></code> compile <code class="docutils literal notranslate"><span class="pre">agent</span></code>,
 <code class="docutils literal notranslate"><span class="pre">dhcp</span></code> et <code class="docutils literal notranslate"><span class="pre">metadata</span></code> pour linux/amd64 dans <code class="docutils literal notranslate"><span class="pre">test/e2e/topologies/bin/</span></code> (ignoré par git),
 que les hyperviseurs reçoivent par <code class="docutils literal notranslate"><span class="pre">files:</span> <span class="pre">{bin:</span> <span class="pre">bin}</span></code>. Après <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code>,
@@ -634,127 +651,319 @@ que de BGP et d’EVPN, et sa configuration propre au constructeur n’a pas sa 
 </div>
 </section>
 </section>
-<section id="scenarios">
-<h2>Scénarios<a class="headerlink" href="#scenarios" title="Lien vers cette rubrique">#</a></h2>
-<p>Les scénarios se lancent <strong>depuis le Mac</strong>, sur un lab démarré (<code class="docutils literal notranslate"><span class="pre">up</span></code>, <code class="docutils literal notranslate"><span class="pre">push</span></code>, <code class="docutils literal notranslate"><span class="pre">./labctl</span> <span class="pre">up</span></code>) :</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>test/e2e/run.sh s1          # un scénario
-test/e2e/run.sh s1 s3       # plusieurs
-test/e2e/run.sh all         # tous, dans l'ordre
-</pre></div>
-</div>
-<p>Chacun affiche une ligne <code class="docutils literal notranslate"><span class="pre">RÉUSSI</span></code> ou <code class="docutils literal notranslate"><span class="pre">ÉCHOUÉ</span></code> par vérification — un échec porte la dernière
-ligne de la commande en cause —, des lignes <code class="docutils literal notranslate"><span class="pre">INFO</span></code> pour les mesures, puis son bilan. Le code de
-sortie vaut 1 si une vérification échoue <strong>ou si aucune n’a été faite</strong>.</p>
+<section id="suite-de-tests">
+<h2>Suite de tests<a class="headerlink" href="#suite-de-tests" title="Lien vers cette rubrique">#</a></h2>
+<p>La suite (<a class="reference external" href="https://git.g3e.fr/syonad/two/issues/70">#70</a>) vit dans <code class="docutils literal notranslate"><span class="pre">test/e2e/suite/</span></code> : <strong>un
+fichier par fonctionnalité</strong>, rangés en couches de bas en haut. Chaque couche ne s’appuie que sur
+les précédentes, et les tests de panne passent en dernier. Elle remplace les scénarios <code class="docutils literal notranslate"><span class="pre">s1</span></code> à
+<code class="docutils literal notranslate"><span class="pre">s11</span></code>, écrits au fil des tickets : chacune de leurs 251 vérifications est reprise (tableau de
+correspondance sur #70).</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <colgroup>
-<col style="width: 22.0%" />
-<col style="width: 58.0%" />
-<col style="width: 20.0%" />
+<col style="width: 18.0%" />
+<col style="width: 82.0%" />
 </colgroup>
 <thead>
-<tr class="row-odd"><th class="head"><p>Scénario</p></th>
-<th class="head"><p>Ce qui doit être vrai</p></th>
-<th class="head"><p>Hyperviseurs</p></th>
+<tr class="row-odd"><th class="head"><p>Couche</p></th>
+<th class="head"><p>Contenu</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">s1-dhcp-two</span></code></p></td>
-<td><p>backend DHCP <code class="docutils literal notranslate"><span class="pre">two</span></code>, une VPC et deux subnets : chaque VM reçoit l’adresse de <strong>son</strong>
-subnet, démarrée seule ou en même temps qu’une autre ; le bail est tenu par
-systemd-networkd ; route par défaut, route vers la VPC et <code class="docutils literal notranslate"><span class="pre">/32</span></code> vers les métadonnées
-via la gateway calculée (<code class="docutils literal notranslate"><span class="pre">.254</span></code>) ; l’état de chaque serveur DHCP ne connaît que les MAC de
-son subnet (#46)</p></td>
-<td><p>hv1</p></td>
+<tr class="row-even"><td><p>00 socle</p></td>
+<td><p>lab, prérequis d’environnement, image des VM</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">s2-gateway</span></code></p></td>
-<td><p>gateway (<code class="docutils literal notranslate"><span class="pre">.254</span></code>) et adresse d’émission (<code class="docutils literal notranslate"><span class="pre">.253</span></code>) calculées par l’agent, refusées pour
-une VM ; <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> refusé sur un subnet <code class="docutils literal notranslate"><span class="pre">vxlan</span></code> (#57) ; route par défaut via la
-gateway, ou via <code class="docutils literal notranslate"><span class="pre">gateway</span></code> avec <code class="docutils literal notranslate"><span class="pre">default_route</span></code> ; route vers la VPC toujours via la
-gateway du subnet ; macvlan retiré à la suppression, même résultat après recréation (#31)</p></td>
-<td><p>hv1</p></td>
+<tr class="row-odd"><td><p>10 API</p></td>
+<td><p>refus de l’API, machine d’états</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">s3-isolation-local</span></code></p></td>
-<td><p>deux VPC sur le même hyperviseur ne se joignent pas, en ICMP comme en TCP ; chaque VM
-joint sa passerelle (témoin)</p></td>
-<td><p>hv1</p></td>
+<tr class="row-even"><td><p>20 VM</p></td>
+<td><p>DHCP (backend <code class="docutils literal notranslate"><span class="pre">two</span></code> et dnsmasq), métadonnées, UEFI, multi-NIC, multi-disque, redémarrage</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">s4-evpn</span></code></p></td>
-<td><p>adresse VTEP locale sur les VXLAN (#51), VTEP distant appris par EVPN, ping VM ↔ VM
-entre hyperviseurs, trame de 1472 octets en <code class="docutils literal notranslate"><span class="pre">-M</span> <span class="pre">do</span></code>, 1473 refusés</p></td>
-<td><p>hv1, hv2</p></td>
+<tr class="row-odd"><td><p>30 réseau local</p></td>
+<td><p>gateway anycast, VXLAN sur un hôte, mode <code class="docutils literal notranslate"><span class="pre">bridge</span></code>, isolation, filtrage au port</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">s5-isolation-evpn</span></code></p></td>
-<td><p>deux VPC de même plage, VNI différentes, sur deux hyperviseurs : la VM joint celle de sa
-VPC sur l’autre hyperviseur (témoin) et pas celle de l’autre VPC — aucune résolution ARP</p></td>
-<td><p>hv1, hv2</p></td>
+<tr class="row-even"><td><p>40 EVPN L2</p></td>
+<td><p>subnet étendu entre hôtes, isolation, subnets partagés, fenêtre ARP</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">s6-rr-loss</span></code></p></td>
-<td><p>FRR arrêté sur rr1, puis sur rr2, ping continu entre les VM
-de <code class="docutils literal notranslate"><span class="pre">s4</span></code> : la session vers le route reflector arrêté tombe, celle vers l’autre reste
-établie, le VTEP distant reste connu et <strong>le trafic continue</strong> (au moins 45 réponses sur 50
-à 30 s) ; session rétablie au redémarrage, délai mesuré ; au plus 1 % de pertes sur tout le
-scénario (#54)</p></td>
-<td><p>hv1, hv2, rr1, rr2</p></td>
+<tr class="row-odd"><td><p>50 L3VNI</p></td>
+<td><p>routage entre subnets, migration, watchdog L3</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">s7-l3vni</span></code></p></td>
-<td><p>qualification de <a class="reference external" href="https://git.g3e.fr/syonad/two/issues/41">#41</a> <strong>par l’API</strong> : VPC créées
-avec une <code class="docutils literal notranslate"><span class="pre">l3vni</span></code>, l’agent pose VRF, L3VNI, transit, FRR et les routes de type 5 (<code class="docutils literal notranslate"><span class="pre">/24</span></code>
-des subnets, <code class="docutils literal notranslate"><span class="pre">/32</span></code> des VM). Deux subnets d’une même VPC, chacun sur un seul hyperviseur,
-se joignent par le L3VNI à travers le route reflector inchangé ; 1472 octets en <code class="docutils literal notranslate"><span class="pre">-M</span> <span class="pre">do</span></code> ;
-une seconde VPC de même plage sur un autre L3VNI n’est ni importée ni jointe ; L3VNI déjà
-prise refusée ; forwarding de l’hôte limité aux interfaces de la VRF ; suppression d’un
-subnet refusée tant qu’une VM l’utilise ; démontage complet d’une VPC sans redémarrage de
-bgpd</p></td>
-<td><p>hv1, hv2, rr1</p></td>
+<tr class="row-even"><td><p>60 cycle de vie</p></td>
+<td><p>redémarrage de l’agent, nettoyage global</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">s8-l3vni-migration</span></code></p></td>
-<td><p>suite de <code class="docutils literal notranslate"><span class="pre">s7</span></code>, topologie <code class="docutils literal notranslate"><span class="pre">evpn-3hv.yml</span></code> : migration d’une VM de hv1 vers hv2 par l’API,
-observée depuis hv3 qui n’a pas le subnet : migration simple (VM supprimée puis recréée,
-<code class="docutils literal notranslate"><span class="pre">/24</span></code> comme filet), séquence orchestrée (deux VM de même IP, deux <code class="docutils literal notranslate"><span class="pre">/32</span></code> en ECMP, 40
-sources sur 40) ; l’ancien « pire cas » devient un refus (409) ; MAC anycast de la gateway
-absente d’EVPN (aucune route de type 2 sur rr1, absente de la table de hv1), sans doublon
-(#57) ; watchdog : <code class="docutils literal notranslate"><span class="pre">/32</span></code> orphelin signalé comme trou noir, <code class="docutils literal notranslate"><span class="pre">/32</span></code> manquant
-signalé</p></td>
-<td><p>hv1, hv2, hv3, rr1</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">s9-subnets-partages</span></code></p></td>
-<td><p>deux VPC, avec et sans <code class="docutils literal notranslate"><span class="pre">l3vni</span></code>, chacune avec deux subnets présents sur <strong>les deux</strong>
-hyperviseurs et une VM par subnet et par hôte : ping entre toutes les paires (même subnet ou
-non, même hôte ou non) ; chaque VM voit la MAC anycast de sa gateway ; aucune MAC en
-double et aucune MAC anycast dans EVPN sur les quatre VNI (#57)</p></td>
-<td><p>hv2, hv3, rr1</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">s10-switch-loss</span></code></p></td>
-<td><p>un seul switch maître VRRP de la passerelle (lu par <code class="docutils literal notranslate"><span class="pre">show</span> <span class="pre">vrrp</span></code>, pas supposé) ; interface
-<code class="docutils literal notranslate"><span class="pre">underlay</span></code> du maître coupée pendant un ping continu de hv1 vers la loopback de rr1 :
-l’autre switch devient maître, les sessions EVPN de hv1 <strong>ne tombent pas</strong> (compteur
-<code class="docutils literal notranslate"><span class="pre">dropped</span></code> inchangé), le trafic reprend (au moins 45 réponses sur 50 à 20 s), plus long
-silence sous 5 s ; interface rétablie : ses sessions eBGP reviennent et il <strong>reste en
-attente</strong>, sans reprendre la passerelle (#54)</p></td>
-<td><p>hv1, sw1, sw2</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">s11-fenetre-arp</span></code></p></td>
-<td><p>fenêtre ARP de #57 : sur hv1, entrées ARP du netns retirées, puis une VM de hv1 joint une VM
-de hv2 dans l’autre subnet (relais L2 depuis l’adresse d’émission de hv1). La VM de hv2
-associe alors <code class="docutils literal notranslate"><span class="pre">.253</span></code> à la MAC de hv1 (fenêtre ouverte, vérifiée), mais sa gateway reste
-la MAC anycast ; pendant la fenêtre, métadonnées servies, bail DHCP renouvelé auprès de
-<code class="docutils literal notranslate"><span class="pre">.254</span></code>, et <strong>aucune</strong> des 80 connexions TCP du netns de hv2 vers sa VM n’est perdue ; MAC
-anycast inscrite dans la FDB du bridge du netns</p></td>
-<td><p>hv1, hv2</p></td>
+<tr class="row-odd"><td><p>70 résilience</p></td>
+<td><p>perte d’un route reflector, perte d’un switch</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">s6</span></code> réutilise les VM de <code class="docutils literal notranslate"><span class="pre">s4</span></code> : le lancer après.</p>
-<p><strong>Comment c’est fait.</strong> <code class="docutils literal notranslate"><span class="pre">test/e2e/run.sh</span></code> exécute chaque scénario sur le Mac ; un
-scénario envoie des blocs de shell aux nœuds par <code class="docutils literal notranslate"><span class="pre">on</span> <span class="pre">&lt;nœud&gt;</span> <span class="pre">[VAR=valeur…]</span> <span class="pre">&lt;&lt;'NODE'</span></code>, précédés de
-<code class="docutils literal notranslate"><span class="pre">test/e2e/lib/node.sh</span></code> — appels à l’API de l’agent, attente des états, image Debian compatible two
-(préparée une fois par hyperviseur, <code class="docutils literal notranslate"><span class="pre">seedfrom</span></code> avec barre oblique finale), clé SSH des VM,
-<code class="docutils literal notranslate"><span class="pre">check</span></code> et <code class="docutils literal notranslate"><span class="pre">vm_fails</span></code> ; pour #41, <code class="docutils literal notranslate"><span class="pre">vpc_create</span></code> avec une <code class="docutils literal notranslate"><span class="pre">l3vni</span></code>, <code class="docutils literal notranslate"><span class="pre">api_code</span></code> (code HTTP
-d’un refus attendu), l’observation des VRF et de BGP (<code class="docutils literal notranslate"><span class="pre">vrf_nexthops</span></code>, <code class="docutils literal notranslate"><span class="pre">bgp_paths</span></code>,
-<code class="docutils literal notranslate"><span class="pre">wait_l3vni</span></code>…) et <code class="docutils literal notranslate"><span class="pre">wait_watchdog</span></code> (alerte du watchdog dans le journal de l’agent). Une vérification négative (« ne joint pas ») passe par <code class="docutils literal notranslate"><span class="pre">vm_fails</span></code> :
-elle n’est réussie que si le SSH vers la VM a fonctionné <strong>et</strong> que la commande y a échoué — un
-SSH en panne ne passe jamais pour une isolation.</p>
+<p>Les tests se lancent <strong>depuis le Mac</strong>, sur un lab démarré (<code class="docutils literal notranslate"><span class="pre">up</span></code>, <code class="docutils literal notranslate"><span class="pre">push</span></code>, <code class="docutils literal notranslate"><span class="pre">./labctl</span> <span class="pre">up</span></code>) :</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>test/e2e/run.sh all              # toute la suite, dans l'ordre
+test/e2e/run.sh 40               # une couche
+test/e2e/run.sh 41 43            # des tests, par numéro ou par nom
+test/e2e/run.sh --from 30        # à partir d'un numéro
+test/e2e/run.sh --continue all   # sans s'arrêter sur une couche en échec
+test/e2e/run.sh --connus all     # les échecs connus comptent comme des échecs
+test/e2e/run.sh --matrice        # matrice de couverture, tirée des en-têtes
+</pre></div>
+</div>
+<p>Chaque test affiche une ligne <code class="docutils literal notranslate"><span class="pre">RÉUSSI</span></code> ou <code class="docutils literal notranslate"><span class="pre">ÉCHOUÉ</span></code> par vérification (un échec porte la
+dernière ligne de la commande en cause), des lignes <code class="docutils literal notranslate"><span class="pre">INFO</span></code> pour les mesures, puis son bilan. Le
+code de sortie vaut 1 si une vérification échoue <strong>ou si aucune n’a été faite</strong>. Avec <code class="docutils literal notranslate"><span class="pre">all</span></code> ou
+<code class="docutils literal notranslate"><span class="pre">--from</span></code>, une couche en échec arrête la suite à la fin de la couche.</p>
+<p><strong>Tests autonomes.</strong> Avant chaque test, le runner supprime les ressources <code class="docutils literal notranslate"><span class="pre">tNN</span></code> laissées par un
+passage précédent, puis relève l’état de chaque hôte de l’en-tête <code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">hôtes:</span></code>. Après le test, il
+supprime ses VM, ses subnets puis ses VPC, et vérifie que l’hôte est revenu à l’état relevé
+(<code class="docutils literal notranslate"><span class="pre">assert_clean</span></code> : netns, liens, adresses, routes, règles ebtables et iptables, configuration FRR et
+<code class="docutils literal notranslate"><span class="pre">frr.conf</span></code>, fichiers de <code class="docutils literal notranslate"><span class="pre">/run/two</span></code>, <code class="docutils literal notranslate"><span class="pre">dnsmasq.d</span></code> et des volumes, unités <code class="docutils literal notranslate"><span class="pre">two-vm-*</span></code>,
+processus dnsmasq et QEMU). Aucun test ne dépend d’un autre : n’importe lequel se lance seul.</p>
+<p><strong>Plages.</strong> Le test <code class="docutils literal notranslate"><span class="pre">NN</span></code> nomme ses ressources <code class="docutils literal notranslate"><span class="pre">vp-tNN*</span></code>, <code class="docutils literal notranslate"><span class="pre">sn-tNN*</span></code> et <code class="docutils literal notranslate"><span class="pre">tNN-*</span></code>, et utilise
+<code class="docutils literal notranslate"><span class="pre">10.NN.0.0/16</span></code> et les VNI <code class="docutils literal notranslate"><span class="pre">NN00</span></code> à <code class="docutils literal notranslate"><span class="pre">NN99</span></code> : aucune collision entre tests.</p>
+<p><strong>Échecs connus.</strong> Un contrôle dont l’échec est connu et rattaché à un ticket s’écrit <code class="docutils literal notranslate"><span class="pre">known</span>
+<span class="pre">&quot;#NN&quot;</span> <span class="pre">&quot;description&quot;</span> <span class="pre">commande…</span></code> au lieu de <code class="docutils literal notranslate"><span class="pre">check</span></code>. En échec, il sort en <code class="docutils literal notranslate"><span class="pre">CONNU</span></code> sans faire
+échouer le test (bilan : <code class="docutils literal notranslate"><span class="pre">N</span> <span class="pre">connu(s)</span></code>). Dès qu’il passe, il sort en <code class="docutils literal notranslate"><span class="pre">INATTENDU</span></code> et fait
+échouer le test : le marqueur est à retirer. Pour un échec <strong>intermittent</strong>, <code class="docutils literal notranslate"><span class="pre">known_flaky</span></code> sort
+en <code class="docutils literal notranslate"><span class="pre">RÉUSSI</span></code> (annoté) quand l’échec ne se reproduit pas, sans rappel automatique : le retrait se
+fait en fermant le ticket. Chaque ticket concerné liste ses marqueurs en commentaire.</p>
+<section id="matrice-de-couverture">
+<h3>Matrice de couverture<a class="headerlink" href="#matrice-de-couverture" title="Lien vers cette rubrique">#</a></h3>
+<p>Générée par <code class="docutils literal notranslate"><span class="pre">test/e2e/run.sh</span> <span class="pre">--matrice</span></code> à partir des en-têtes ; à régénérer quand un test change.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Test</p></th>
+<th class="head"><p>Fonctionnalité</p></th>
+<th class="head"><p>Hôtes</p></th>
+<th class="head"><p>Tickets</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">01-lab</span></code></p></td>
+<td><p>socle du lab — underlay, passerelle VRRP, sessions EVPN, base BGP posée par l’agent, backend DHCP, watchdog silencieux</p></td>
+<td><p>hv1 hv2 hv3</p></td>
+<td><p>#50, #51, #54, #41</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">02-prerequis</span></code></p></td>
+<td><p>hypothèses d’environnement de la suite — firmware UEFI, unités modèles de l’agent, journalctl, format de ebtables -L, br-lan, priorités VRRP lues dans FRR</p></td>
+<td><p>hv1 hv2 hv3</p></td>
+<td><p>#70</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">03-image</span></code></p></td>
+<td><p>hypothèses sur l’image de VM — outils (curl, python3), nom d’interface, effet réel de network-config, forme du compte verrouillé</p></td>
+<td><p>hv1</p></td>
+<td><p>#70</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">11-validation</span></code></p></td>
+<td><p>validation de l’API — refus synchrones (400, 409, 422) des VPC, subnets et VM, sans trace en base</p></td>
+<td><p>hv1</p></td>
+<td><p>#41, #57, #33</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">12-etats</span></code></p></td>
+<td><p>machine d’états — 409 pendant creating, suppression depuis error, dépendances VM → subnet → VPC, recréation sous le même nom</p></td>
+<td><p>hv1</p></td>
+<td><p>#41</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">21-dhcp-two</span></code></p></td>
+<td><p>DHCP par le serveur intégré (backend two) — bail, server-id, renouvellement, option 121, un serveur par subnet, démarrages simultanés</p></td>
+<td><p>hv1</p></td>
+<td><p>#46, #57</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">22-dhcp-dnsmasq</span></code></p></td>
+<td><p>DHCP par dnsmasq (backend dnsmasq) — bail, server-id, renouvellement, option 121, une instance par subnet écoutant sur la gateway anycast</p></td>
+<td><p>hv2</p></td>
+<td><p>#46, #57</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">23-metadonnees</span></code></p></td>
+<td><p>serveur de métadonnées et cloud-init — sshkey, password (hash), user_data servi tel quel, documents absents (templates), VM sans compte</p></td>
+<td><p>hv1</p></td>
+<td><p>#43, #46</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">24-uefi</span></code></p></td>
+<td><p>démarrage UEFI (OVMF) — firmware et variables par VM, VM démarrée en UEFI, témoin BIOS</p></td>
+<td><p>hv1</p></td>
+<td><p>UEFI (sans ticket)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">25-multi-nic</span></code></p></td>
+<td><p>VM à plusieurs interfaces — une NIC par subnet, adresses posées, route par défaut sur la primaire seule</p></td>
+<td><p>hv1</p></td>
+<td><p>#33, #62</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">26-multi-disque</span></code></p></td>
+<td><p>VM à plusieurs disques — virtio (vdX) et SCSI (sdX), tailles et bus vus par la VM, démarrage sur vda</p></td>
+<td><p>hv1</p></td>
+<td><p>#32</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">27-reboot</span></code></p></td>
+<td><p>redémarrage d’une VM depuis l’invité — même processus QEMU, même adresse, nouveau bail, user_data non rejoué</p></td>
+<td><p>hv1</p></td>
+<td><p>#46</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">31-gateway</span></code></p></td>
+<td><p>gateway d’un subnet vxlan — gateway anycast et adresse d’émission calculées, default_route et gateway explicite, routes DHCP, macvlan gw-, FDB locale, sysctls ARP, règles de confinement, suppression et recréation</p></td>
+<td><p>hv1</p></td>
+<td><p>#57, #43</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">32-vxlan-local</span></code></p></td>
+<td><p>routage entre deux subnets vxlan d’une même VPC sur un même hôte, sans et avec l3vni — ICMP, TCP, saut unique par la gateway</p></td>
+<td><p>hv1</p></td>
+<td><p>#57, #41</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">33-bridge</span></code></p></td>
+<td><p>subnet en mode bridge rattaché au bridge br-lan de l’hôte — un hôte, puis le même subnet sur deux hôtes (une seule réponse ARP pour interface_ip, métadonnées servies par l’hôte de la VM)</p></td>
+<td><p>hv1 hv2</p></td>
+<td><p>#70</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">34-isolation-locale</span></code></p></td>
+<td><p>isolation entre deux VPC sur un même hôte — ni ICMP ni TCP d’une VPC à l’autre</p></td>
+<td><p>hv1</p></td>
+<td><p>#50</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">35-filtrage-port</span></code></p></td>
+<td><p>filtrage au port — en sortie vers le fabric (v-&lt;id&gt;-i) : ARP vers la gateway et l’adresse d’émission, DHCP émis depuis ces adresses, MAC anycast confinée dans les deux sens ; entre VM d’un même hôte : faux serveur DHCP et usurpation ARP de la gateway (comportement attendu, non filtré à ce jour)</p></td>
+<td><p>hv1</p></td>
+<td><p>#57</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">41-evpn-l2</span></code></p></td>
+<td><p>subnet vxlan étendu entre deux hôtes par EVPN — VTEP local, VTEP distant et inondation appris, MAC des VM en type 2, trafic ICMP et TCP, MTU 1500 de bout en bout</p></td>
+<td><p>hv1 hv2</p></td>
+<td><p>#50, #51</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">42-isolation-evpn</span></code></p></td>
+<td><p>isolation entre VPC à travers EVPN — deux VPC sur la même plage, la VM d’une VPC ne joint pas celle de l’autre sur un hôte distant</p></td>
+<td><p>hv1 hv2</p></td>
+<td><p>#50, #51</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">43-subnets-partages</span></code></p></td>
+<td><p>subnets vxlan partagés par deux hôtes, deux VM par hôte, dans une VPC avec et une VPC sans l3vni — toutes les paires, gateway anycast vue par chaque VM et absente d’EVPN, aucune MAC en double</p></td>
+<td><p>hv2 hv3</p></td>
+<td><p>#57, #41</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">44-fenetre-arp</span></code></p></td>
+<td><p>fenêtre ARP de la gateway anycast entre deux hôtes — relais L2 depuis l’adresse d’émission d’un hôte, gateway de la VM inchangée, métadonnées, renouvellement DHCP et TCP local sans perte pendant la fenêtre</p></td>
+<td><p>hv1 hv2</p></td>
+<td><p>#57</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">51-l3vni</span></code></p></td>
+<td><p>routage inter-subnet entre hôtes par L3VNI (IRB symétrique) — VRF, RMAC, exports /24 et /32, RT-5 réfléchies, TTL, isolation par RT, démontage d’une VPC routée</p></td>
+<td><p>hv1 hv2</p></td>
+<td><p>#41</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">52-migration</span></code></p></td>
+<td><p>migration d’une adresse de VM entre hôtes d’une VPC routée — /32 retiré en premier, /24 en filet puis en ECMP, séquence orchestrée, 40 sources, suppression du subnet refusée tant qu’une VM l’utilise, MAC anycast hors EVPN</p></td>
+<td><p>hv1 hv2 hv3</p></td>
+<td><p>#41, #57</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">53-watchdog-l3</span></code></p></td>
+<td><p>watchdog d’une VPC routée — /32 orphelin signalé comme trou noir, /32 manquant signalé, aucune fausse alerte BGP ni L3VNI, trafic intact après les essais</p></td>
+<td><p>hv1 hv3</p></td>
+<td><p>#41</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">61-redemarrage-agent</span></code></p></td>
+<td><p>redémarrage de l’agent avec des VM en marche — rien ne disparaît ni n’est recréé, trafic routé sans perte, DHCP et métadonnées servis, base BGP réappliquée à l’identique, ressources toujours gérées</p></td>
+<td><p>hv1 hv2</p></td>
+<td><p>#41, #46</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">62-nettoyage-global</span></code></p></td>
+<td><p>nettoyage global en fin de suite — aucun hôte ne garde de ressource : API vide, ni netns, tap, VRF, unité, instance DHCP ou de métadonnées, processus QEMU, règle de port, volume ; FRR réduit à la base BGP</p></td>
+<td></td>
+<td><p>#70</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">71-perte-rr</span></code></p></td>
+<td><p>perte d’un route reflector — l’autre garde la session EVPN, le VTEP distant reste connu, le trafic L2 entre hôtes passe sans perte mesurable, retour du RR arrêté</p></td>
+<td><p>hv1 hv2</p></td>
+<td><p>#54</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">72-perte-switch</span></code></p></td>
+<td><p>perte d’un switch de la passerelle VRRP — bascule vers l’autre en moins de 5 s, sessions EVPN jamais coupées ; au retour, le plus prioritaire redevient maître, seconde bascule mesurée</p></td>
+<td></td>
+<td><p>#54, #69</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="campagne-du-2026-10-17">
+<h3>Campagne du 2026-10-17<a class="headerlink" href="#campagne-du-2026-10-17" title="Lien vers cette rubrique">#</a></h3>
+<p>Première campagne de la suite, <code class="docutils literal notranslate"><span class="pre">evpn-3hv.yml</span></code>, labctl <code class="docutils literal notranslate"><span class="pre">0.2.0</span></code>, binaires de l’arbre courant
+(code de l’agent identique à <code class="docutils literal notranslate"><span class="pre">main</span></code>). <code class="docutils literal notranslate"><span class="pre">run.sh</span> <span class="pre">--continue</span> <span class="pre">all</span></code> en 76 min, dont environ 15 min
+d’arrêts de VM à 300 s et 15 min d’attentes sur des tests en échec. Les hypothèses fausses des
+tests ont été corrigées sur le serveur et les tests concernés rejoués. Il reste :</p>
+<ul class="simple">
+<li><p>tout vert, sauf les échecs réels, marqués <code class="docutils literal notranslate"><span class="pre">known</span></code> et rattachés à leur ticket : multi-NIC
+(#73, #62), noms des disques SCSI (#74), mode <code class="docutils literal notranslate"><span class="pre">bridge</span></code> sur plusieurs hôtes (#75), filtrage au
+port (#76), socket DHCP (#77), fausse alerte du watchdog (#78) ;</p></li>
+<li><p>#69 vérifié : au retour de <code class="docutils literal notranslate"><span class="pre">sw1</span></code> (priorité 200), il redevient maître, seconde bascule en
+1,2 s, sessions EVPN jamais coupées ;</p></li>
+<li><p>une suppression de VM peut durer 300 s quand l’invité ignore l’arrêt ACPI (#79) : <code class="docutils literal notranslate"><span class="pre">wait_state</span></code>
+attend jusqu’à 360 s.</p></li>
+</ul>
+<p>Hypothèses vérifiées en lab, à garder en tête en écrivant un test :</p>
+<ul class="simple">
+<li><p>systemd-networkd <strong>ne réécrit pas</strong> un bail renouvelé à l’identique : un renouvellement se
+vérifie par le DHCPACK dans le journal du serveur (<code class="docutils literal notranslate"><span class="pre">lease_renewed</span></code>), pas par le fichier de bail ;</p></li>
+<li><p>l’agent n’accepte <strong>qu’un seul disque virtio</strong> (le disque système) ; les autres sont des <code class="docutils literal notranslate"><span class="pre">sdX</span></code> ;</p></li>
+<li><p>sur Debian 12, <code class="docutils literal notranslate"><span class="pre">ebtables</span> <span class="pre">-L</span></code> (nft) garde les zéros de tête des MAC ;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> est posée en <code class="docutils literal notranslate"><span class="pre">/32</span></code> sur le bridge du netns en mode <code class="docutils literal notranslate"><span class="pre">bridge</span></code> ;</p></li>
+<li><p>depuis le netns d’un hôte, une VM d’un autre hôte ne répond pas : la réponse repart vers la
+gateway de son propre hôte. Une vérification entre hôtes passe par une VM.</p></li>
+</ul>
+<p>Les VM sont accessibles depuis le netns de leur VPC, sur l’hyperviseur, avec l’utilisateur
+<code class="docutils literal notranslate"><span class="pre">syonad</span></code> créé par les métadonnées de two :</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>test/e2e/labctl.sh ssh "./labctl ssh hv1 'sudo ip netns exec vp-t41 ssh -i /root/.ssh/lab-vm syonad@10.41.1.10'"
+</pre></div>
+</div>
+</section>
+<section id="ecrire-un-test">
+<h3>Écrire un test<a class="headerlink" href="#ecrire-un-test" title="Lien vers cette rubrique">#</a></h3>
+<p>Un test est un fichier <code class="docutils literal notranslate"><span class="pre">test/e2e/suite/NN-nom.sh</span></code>, exécuté par <code class="docutils literal notranslate"><span class="pre">run.sh</span></code> sur le Mac. Il
+commence par un en-tête, puis envoie des blocs aux nœuds par <code class="docutils literal notranslate"><span class="pre">on</span> <span class="pre">&lt;nœud&gt;</span> <span class="pre">[VAR=valeur…]</span> <span class="pre">&lt;&lt;'NODE'</span></code>.
+Chaque bloc est précédé des bibliothèques de <code class="docutils literal notranslate"><span class="pre">test/e2e/lib/</span></code> :</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">core.sh</span></code> : <code class="docutils literal notranslate"><span class="pre">check</span></code>, <code class="docutils literal notranslate"><span class="pre">known</span></code>, <code class="docutils literal notranslate"><span class="pre">info</span></code>, appels à l’API, attente des états ;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">vm.sh</span></code> : image Debian compatible two, clé SSH, <code class="docutils literal notranslate"><span class="pre">vm_launch</span></code> (plusieurs NIC et disques, UEFI,
+<code class="docutils literal notranslate"><span class="pre">user_data</span></code>, mot de passe), SSH, bail, métadonnées ;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">net.sh</span></code> : VPC, subnets, MAC anycast, trames brutes, règles ebtables, VRRP ;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">evpn.sh</span></code> : VRF, BGP, L3VNI, watchdog ;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fixture.sh</span></code> : nettoyage et <code class="docutils literal notranslate"><span class="pre">assert_clean</span></code>, appelés par le runner.</p></li>
+</ul>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># fonctionnalité: trafic entre deux VM d'un même subnet sur un hôte</span>
+<span class="c1"># hôtes: hv1</span>
+<span class="c1"># tickets: #NN</span>
+
+on<span class="w"> </span>hv1<span class="w"> </span><span class="s">&lt;&lt;'NODE'</span>
+<span class="s">KEY=$(vm_key)</span>
+<span class="s">check "VPC vp-t99" vpc_create vp-t99 10.99.0.0/16</span>
+<span class="s">check "subnet sn-t99" subnet_create sn-t99 vp-t99 9901 10.99.1.0/24</span>
+<span class="s">check "VM t99-a" vm_launch t99-a --nic sn-t99=10.99.1.10 --sshkey "${KEY}"</span>
+<span class="s">check "VM t99-b" vm_launch t99-b --nic sn-t99=10.99.1.11 --sshkey "${KEY}"</span>
+<span class="s">check "t99-a joignable" vm_wait vp-t99 10.99.1.10</span>
+<span class="s">check "t99-a joint t99-b" vm_ssh vp-t99 10.99.1.10 'ping -c 2 -W 2 10.99.1.11'</span>
+<span class="s">check "t99-a ne joint pas 10.98.1.10" vm_fails vp-t99 10.99.1.10 'ping -c 2 -W 2 10.98.1.10'</span>
+<span class="s">NODE</span>
+</pre></div>
+</div>
+<p>Les règles :</p>
+<ul class="simple">
+<li><p><strong>une vérification par ligne</strong>, avec <code class="docutils literal notranslate"><span class="pre">check</span></code> : jamais un <code class="docutils literal notranslate"><span class="pre">echo</span> <span class="pre">RÉUSSI</span></code> écrit à la main ;</p></li>
+<li><p><strong>toute vérification négative a son témoin</strong> : avant « ne joint pas », une ligne qui prouve que
+la cible est vivante et que le chemin du test fonctionne ;</p></li>
+<li><p><strong>``vm_fails`` pour le négatif</strong>, jamais <code class="docutils literal notranslate"><span class="pre">!</span></code> devant un <code class="docutils literal notranslate"><span class="pre">vm_ssh</span></code> : un SSH en panne doit
+échouer, pas passer pour une isolation ;</p></li>
+<li><p><strong>une donnée qui distingue réellement les cas</strong> : two dérive la MAC du rang de l’IP, donc deux
+subnets ont les mêmes MAC ; comparer des couples MAC/IP, pas des MAC ;</p></li>
+<li><p><strong>les mesures en ``INFO``</strong>, les attentes en <code class="docutils literal notranslate"><span class="pre">check</span></code> : un temps de reconvergence se mesure,
+il ne se décrète pas ;</p></li>
+<li><p><strong>l’en-tête ``# hôtes:`` liste exactement les hôtes où le test crée des ressources</strong> : ce sont
+ceux que le runner nettoie et compare ;</p></li>
+<li><p><strong>un échec connu se marque</strong> <code class="docutils literal notranslate"><span class="pre">known</span></code> (ou <code class="docutils literal notranslate"><span class="pre">known_flaky</span></code>) avec son ticket, et le ticket liste
+le marqueur : jamais un contrôle retiré ou affaibli pour faire passer la suite ;</p></li>
+<li><p>variables vers un nœud : <code class="docutils literal notranslate"><span class="pre">on</span> <span class="pre">hv1</span> <span class="pre">NOM=valeur</span> <span class="pre">&lt;&lt;'NODE'</span></code> (valeurs échappées par <code class="docutils literal notranslate"><span class="pre">run.sh</span></code>) ;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bash</span> <span class="pre">test/e2e/run_test.sh</span></code> vérifie le runner, les bibliothèques et la syntaxe de chaque bloc
+réellement envoyé : à lancer avant toute session.</p></li>
+</ul>
+</section>
+<section id="campagnes-precedentes">
+<h3>Campagnes précédentes<a class="headerlink" href="#campagnes-precedentes" title="Lien vers cette rubrique">#</a></h3>
+<p>Résultats obtenus avec les anciens scénarios <code class="docutils literal notranslate"><span class="pre">s1</span></code> à <code class="docutils literal notranslate"><span class="pre">s11</span></code>, conservés pour leurs constats.
+Leurs vérifications sont reprises dans la suite.</p>
 <p>Résultats du 2026-10-04 sur le serveur de lab, release <code class="docutils literal notranslate"><span class="pre">0.2.0rc003</span></code>, hv1 sur le DHCP intégré et
 hv2 sur dnsmasq — toute la série en 8 minutes :</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>$ test/e2e/run.sh all | grep -E '^(=== s[0-9].* : |INFO)'
@@ -852,49 +1061,6 @@ requête perdue sur 510 pendant l’arrêt de rr1 puis de rr2, session rétablie
 redémarrage de FRR. <code class="docutils literal notranslate"><span class="pre">s10</span></code> : <code class="docutils literal notranslate"><span class="pre">sw2</span></code> coupé, <code class="docutils literal notranslate"><span class="pre">sw1</span></code> maître, 14 requêtes perdues, plus long
 silence 2,8 s, sessions EVPN de hv1 jamais coupées ; <code class="docutils literal notranslate"><span class="pre">sw2</span></code> rétabli reste en attente.
 <code class="docutils literal notranslate"><span class="pre">s9</span></code> sans <code class="docutils literal notranslate"><span class="pre">Broken</span> <span class="pre">pipe</span></code> cette fois : #57 n’est pas corrigé pour autant.</p>
-<p>Les VM sont accessibles depuis le netns de leur VPC, sur l’hyperviseur, avec l’utilisateur
-<code class="docutils literal notranslate"><span class="pre">syonad</span></code> créé par les métadonnées de two :</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>test/e2e/labctl.sh ssh "./labctl ssh hv1 'sudo ip netns exec vp-s4 ssh -i /root/.ssh/lab-vm syonad@10.240.1.10'"
-</pre></div>
-</div>
-<section id="ecrire-un-scenario">
-<h3>Écrire un scénario<a class="headerlink" href="#ecrire-un-scenario" title="Lien vers cette rubrique">#</a></h3>
-<p>Le lab sert à qualifier des comportements qui ne se voient qu’à plusieurs hyperviseurs — la
-campagne L3VNI de <a class="reference external" href="https://git.g3e.fr/syonad/two/issues/41">#41</a> en est le prochain exemple. Un
-scénario est un fichier <code class="docutils literal notranslate"><span class="pre">test/e2e/scenarios/&lt;n&gt;-&lt;nom&gt;.sh</span></code>, exécuté par <code class="docutils literal notranslate"><span class="pre">run.sh</span></code> sur le
-Mac ; il envoie des blocs aux nœuds :</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>on<span class="w"> </span>hv1<span class="w"> </span><span class="s">&lt;&lt;'NODE'</span>
-<span class="s">two_image || { echo "ÉCHOUÉ: image compatible two"; exit 0; }</span>
-<span class="s">KEY=$(vm_key)</span>
-<span class="s">check "VPC vp-x" vpc_create vp-x 10.250.0.0/16</span>
-<span class="s">check "subnet sn-x" subnet_create sn-x vp-x 2601 10.250.1.1 10.250.1.0/24</span>
-<span class="s">check "VM x1" vm_create x1 sn-x 10.250.1.10 "${KEY}"</span>
-<span class="s">check "x1 joignable" vm_wait vp-x 10.250.1.10</span>
-<span class="s">check "x1 joint sa passerelle" vm_ssh vp-x 10.250.1.10 'ping -c 2 -W 2 10.250.1.1'</span>
-<span class="s">check "x1 ne joint pas 10.251.1.10" vm_fails vp-x 10.250.1.10 'ping -c 2 -W 2 10.251.1.10'</span>
-<span class="s">info "mesure : $(vtysh -c 'show evpn vni 2601' | grep -c 'flood')"</span>
-<span class="s">NODE</span>
-</pre></div>
-</div>
-<p>Les règles qui ont fait leurs preuves en E5 :</p>
-<ul class="simple">
-<li><p><strong>une vérification par ligne</strong>, avec <code class="docutils literal notranslate"><span class="pre">check</span></code> — jamais un <code class="docutils literal notranslate"><span class="pre">echo</span> <span class="pre">RÉUSSI</span></code> écrit à la main ;</p></li>
-<li><p><strong>toute vérification négative a son témoin</strong> : avant « ne joint pas », une ligne qui prouve que
-la cible est vivante et que le chemin du test fonctionne ;</p></li>
-<li><p><strong>``vm_fails`` pour le négatif</strong>, jamais <code class="docutils literal notranslate"><span class="pre">!</span></code> devant un <code class="docutils literal notranslate"><span class="pre">vm_ssh</span></code> : un SSH en panne doit
-échouer, pas passer pour une isolation ;</p></li>
-<li><p><strong>une donnée qui distingue réellement les cas</strong> : two dérivant la MAC du rang de l’IP, deux
-subnets ont les mêmes MAC — comparer des couples MAC/IP, pas des MAC ;</p></li>
-<li><p><strong>les mesures en ``INFO``</strong>, les attentes en <code class="docutils literal notranslate"><span class="pre">check</span></code> : un temps de reconvergence se mesure,
-il ne se décrète pas ;</p></li>
-<li><p>chaque scénario crée ses propres VPC, plages et VNI, distinctes de celles des autres, pour que
-<code class="docutils literal notranslate"><span class="pre">all</span></code> les enchaîne sur le même lab ; un scénario qui dépend d’un autre le vérifie en tête
-(<code class="docutils literal notranslate"><span class="pre">check</span> <span class="pre">&quot;prérequis</span> <span class="pre">:</span> <span class="pre">…&quot;</span></code>) ;</p></li>
-<li><p>variables vers un nœud : <code class="docutils literal notranslate"><span class="pre">on</span> <span class="pre">hv1</span> <span class="pre">NOM=valeur</span> <span class="pre">&lt;&lt;'NODE'</span></code> (valeurs échappées par
-<code class="docutils literal notranslate"><span class="pre">run.sh</span></code>) ;</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">bash</span> <span class="pre">test/e2e/run_test.sh</span></code> vérifie la syntaxe de chaque bloc réellement envoyé — à
-lancer avant toute session.</p></li>
-</ul>
 </section>
 </section>
 <section id="securite">
@@ -916,8 +1082,8 @@ sont, eux, vérifiés contre <code class="docutils literal notranslate"><span cl
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>bash<span class="w"> </span>test/e2e/run_test.sh
 </pre></div>
 </div>
-<p>Sans réseau : vérifie la syntaxe de chaque bloc réellement envoyé aux nœuds par les scénarios et
-les fonctions de <code class="docutils literal notranslate"><span class="pre">test/e2e/lib/node.sh</span></code>. Les tests de l’outil sont dans le dépôt <code class="docutils literal notranslate"><span class="pre">labctl</span></code>.</p>
+<p>Sans réseau : vérifie le runner, les fonctions de <code class="docutils literal notranslate"><span class="pre">test/e2e/lib/</span></code> et la syntaxe de chaque bloc
+réellement envoyé aux nœuds par la suite. Les tests de l’outil sont dans le dépôt <code class="docutils literal notranslate"><span class="pre">labctl</span></code>.</p>
 </section>
 </section>
 
@@ -973,8 +1139,11 @@ les fonctions de <code class="docutils literal notranslate"><span class="pre">te
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#roles">Rôles</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#scenarios">Scénarios</a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#ecrire-un-scenario">Écrire un scénario</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#suite-de-tests">Suite de tests</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#matrice-de-couverture">Matrice de couverture</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#campagne-du-2026-10-17">Campagne du 2026-10-17</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#ecrire-un-test">Écrire un test</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#campagnes-precedentes">Campagnes précédentes</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#securite">Sécurité</a></li>

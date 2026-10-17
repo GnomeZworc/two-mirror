@@ -342,6 +342,7 @@
             </div>
             <nav aria-label="Page">
                 <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#vue-d-ensemble">Vue d’ensemble</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#topologie">Topologie</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ce-que-l-agent-suppose-deja-en-place">Ce que l’agent suppose déjà en place</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pourquoi-un-plan-de-controle-est-necessaire">Pourquoi un plan de contrôle est nécessaire</a></li>
@@ -361,22 +362,69 @@
                   
   <section id="architecture-du-cluster">
 <h1>Architecture du cluster<a class="headerlink" href="#architecture-du-cluster" title="Lien vers cette rubrique">#</a></h1>
-<section id="topologie">
-<h2>Topologie<a class="headerlink" href="#topologie" title="Lien vers cette rubrique">#</a></h2>
-<figure class="align-center" id="id1">
-<a class="only-light reference internal image-reference" href="../_images/architecture-cluster.svg"><img alt="Architecture du cluster : routeurs, route reflector, hyperviseurs, plans de données et de contrôle" class="only-light" src="../_images/architecture-cluster.svg" style="width: 100%;" />
+<section id="vue-d-ensemble">
+<h2>Vue d’ensemble<a class="headerlink" href="#vue-d-ensemble" title="Lien vers cette rubrique">#</a></h2>
+<figure class="align-center" id="id4">
+<a class="only-light reference internal image-reference" href="../_images/architecture-ensemble.svg"><img alt="Vue d'ensemble : Internet, bordures, deux clusters, route reflectors, services partagés et hyperviseurs" class="only-light" src="../_images/architecture-ensemble.svg" style="width: 100%;" />
 </a>
 <figcaption>
 <p><span class="caption-text">Architecture cible. Trait bleu : plan de données (VXLAN). Tirets violets : plan de contrôle
-(sessions BGP). Pointillé gris : interfaces créées par l’agent.</span><a class="headerlink" href="#id1" title="Lien vers cette image">#</a></p>
+(BGP). Tirets verts : orchestration. Trait orange : trafic Internet. Cadre en pointillés :
+élément à venir, avec son ticket.</span><a class="headerlink" href="#id4" title="Lien vers cette image">#</a></p>
 </figcaption>
 </figure>
-<figure class="align-center" id="id2">
-<a class="only-dark reference internal image-reference" href="../_images/architecture-cluster-dark.svg"><img alt="Architecture du cluster : routeurs, route reflector, hyperviseurs, plans de données et de contrôle" class="only-dark" src="../_images/architecture-cluster-dark.svg" style="width: 100%;" />
+<figure class="align-center" id="id5">
+<a class="only-dark reference internal image-reference" href="../_images/architecture-ensemble-dark.svg"><img alt="Vue d'ensemble : Internet, bordures, deux clusters, route reflectors, services partagés et hyperviseurs" class="only-dark" src="../_images/architecture-ensemble-dark.svg" style="width: 100%;" />
 </a>
 <figcaption>
 <p><span class="caption-text">Architecture cible. Trait bleu : plan de données (VXLAN). Tirets violets : plan de contrôle
-(sessions BGP). Pointillé gris : interfaces créées par l’agent.</span><a class="headerlink" href="#id2" title="Lien vers cette image">#</a></p>
+(BGP). Tirets verts : orchestration. Trait orange : trafic Internet. Cadre en pointillés :
+élément à venir, avec son ticket.</span><a class="headerlink" href="#id5" title="Lien vers cette image">#</a></p>
+</figcaption>
+</figure>
+<p>Plusieurs clusters, chacun avec son underlay, ses deux routeurs et un route reflector, sont reliés
+en eBGP entre eux et aux <strong>routeurs de bordure</strong>. Ce qui n’existe pas encore est décrit sur son
+ticket :</p>
+<ul class="simple">
+<li><p><strong>Internet</strong> (<a class="reference external" href="https://git.g3e.fr/syonad/two/issues/31">#31</a>,
+<a class="reference external" href="https://git.g3e.fr/syonad/two/issues/42">#42</a>). Les bordures partagent avec les hyperviseurs
+un VXLAN public (VNI 66001) et portent toutes la même IP et la même MAC de gateway. Elles restent
+sans état : tout NAT vit sur un hyperviseur. Trois façons de sortir :</p>
+<ul>
+<li><p>une VM qui porte une IP publique a une NIC sur un subnet public de sa VPC, relié au subnet
+public de l’hôte ;</p></li>
+<li><p>une <strong>IP flottante</strong> est traduite 1:1, sans état, par l’hyperviseur de la VM ;</p></li>
+<li><p>les autres VM sortent par la <strong>passerelle NAT de leur VPC</strong>, que la VRF atteint par une route
+par défaut de type 5, si la VPC autorise Internet.</p></li>
+</ul>
+</li>
+<li><p><strong>Orchestration</strong> (<a class="reference external" href="https://git.g3e.fr/syonad/two/issues/72">#72</a>). Le broker et
+l’orchestrateur sont des VM du VNI 66000, partagé entre clusters. Les agents s’y connectent
+<strong>en sortie</strong>, par leur passerelle ; les routeurs de chaque cluster les NAT vers le VNI 66000.
+L’orchestrateur a aussi une patte dans le VNI 66001 : son API est joignable depuis Internet.</p></li>
+<li><p><strong>Route reflectors.</strong> Un par cluster, pour qu’un incident sur un cluster ne coupe pas les deux
+sessions EVPN. Chaque lien entre routeurs et route reflector est en <code class="docutils literal notranslate"><span class="pre">169.254.0.0/28</span></code>, propre
+à son cluster.</p></li>
+</ul>
+<p>Le lab (<a class="reference internal" href="../developpement/lab.html"><span class="doc">Lab de test multi-nœud</span></a>) simplifie : un seul cluster, qui porte les deux route
+reflectors.</p>
+</section>
+<section id="topologie">
+<h2>Topologie<a class="headerlink" href="#topologie" title="Lien vers cette rubrique">#</a></h2>
+<figure class="align-center" id="id6">
+<a class="only-light reference internal image-reference" href="../_images/architecture-cluster.svg"><img alt="Détail d'un cluster : routeurs, route reflectors, hyperviseurs, netns et VRF des VPC, plans de données et de contrôle" class="only-light" src="../_images/architecture-cluster.svg" style="width: 100%;" />
+</a>
+<figcaption>
+<p><span class="caption-text">Détail d’un cluster et de deux hyperviseurs. Trait bleu : plan de données (VXLAN). Tirets
+violets : plan de contrôle (sessions BGP). Pointillé gris : créé par l’agent.</span><a class="headerlink" href="#id6" title="Lien vers cette image">#</a></p>
+</figcaption>
+</figure>
+<figure class="align-center" id="id7">
+<a class="only-dark reference internal image-reference" href="../_images/architecture-cluster-dark.svg"><img alt="Détail d'un cluster : routeurs, route reflectors, hyperviseurs, netns et VRF des VPC, plans de données et de contrôle" class="only-dark" src="../_images/architecture-cluster-dark.svg" style="width: 100%;" />
+</a>
+<figcaption>
+<p><span class="caption-text">Détail d’un cluster et de deux hyperviseurs. Trait bleu : plan de données (VXLAN). Tirets
+violets : plan de contrôle (sessions BGP). Pointillé gris : créé par l’agent.</span><a class="headerlink" href="#id7" title="Lien vers cette image">#</a></p>
 </figcaption>
 </figure>
 <p>Deux plans distincts, à ne pas confondre au moment du diagnostic :</p>
@@ -500,6 +548,7 @@ l’agent ne valide pas <code class="docutils literal notranslate"><span class="
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#vue-d-ensemble">Vue d’ensemble</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#topologie">Topologie</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ce-que-l-agent-suppose-deja-en-place">Ce que l’agent suppose déjà en place</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pourquoi-un-plan-de-controle-est-necessaire">Pourquoi un plan de contrôle est nécessaire</a></li>
