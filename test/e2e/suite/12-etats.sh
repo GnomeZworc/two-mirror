@@ -20,7 +20,7 @@ check "suppression de sn-t12a refusée tant que t12-a l'utilise, 409" expect_cod
 check "suppression de vp-t12a refusée tant que sn-t12a existe, 409" expect_code 409 api_code DELETE vpcs/vp-t12a
 check "suppression d'une VM inconnue, 404" expect_code 404 api_code DELETE vms/t12-inconnue
 check "suppression d'un subnet inconnu, 404" expect_code 404 api_code DELETE subnets/sn-t12z
-check "suppression d'une VPC inconnue, 404" expect_code 404 api_code DELETE vpcs/vp-t12z
+check "suppression d'un VPC inconnu, 404" expect_code 404 api_code DELETE vpcs/vp-t12z
 
 check "VM t12-err sur un disque absent : acceptée, 202 (pas de refus synchrone)" expect_code 202 api_post_code vms "$(vm_body t12-err sn-t12a 10.12.1.11 "${VOLUMES}/t12-absent.qcow2")"
 check "t12-err passe en error" wait_state vms/t12-err error

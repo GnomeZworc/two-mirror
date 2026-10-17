@@ -1,4 +1,4 @@
-# fonctionnalité: isolation entre VPC à travers EVPN — deux VPC sur la même plage, la VM d'une VPC ne joint pas celle de l'autre sur un hôte distant
+# fonctionnalité: isolation entre VPC à travers EVPN — deux VPC sur la même plage, la VM d'un VPC ne joint pas celle de l'autre sur un hôte distant
 # hôtes: hv1 hv2
 # tickets: #50, #51
 

@@ -1,4 +1,4 @@
-# fonctionnalité: watchdog d'une VPC routée — /32 orphelin signalé comme trou noir, /32 manquant signalé, aucune fausse alerte BGP ni L3VNI, trafic intact après les essais
+# fonctionnalité: watchdog d'un VPC routé — /32 orphelin signalé comme trou noir, /32 manquant signalé, aucune fausse alerte BGP ni L3VNI, trafic intact après les essais
 # hôtes: hv1 hv3
 # tickets: #41
 

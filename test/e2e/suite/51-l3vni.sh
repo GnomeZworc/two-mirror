@@ -1,4 +1,4 @@
-# fonctionnalité: routage inter-subnet entre hôtes par L3VNI (IRB symétrique) — VRF, RMAC, exports /24 et /32, RT-5 réfléchies, TTL, isolation par RT, démontage d'une VPC routée
+# fonctionnalité: routage inter-subnet entre hôtes par L3VNI (IRB symétrique) — VRF, RMAC, exports /24 et /32, RT-5 réfléchies, TTL, isolation par RT, démontage d'un VPC routé
 # hôtes: hv1 hv2
 # tickets: #41
 
@@ -18,7 +18,7 @@ check "hv2 : VM t51-x dans vp-t51b" vm_create t51-x sn-t51x 10.51.2.20
 NODE
 on hv1 <<'NODE'
 check "t51-a joignable" vm_wait vp-t51 10.51.1.10
-check "t51-a : route vers la VPC 10.51.0.0/18 via la gateway (DHCP)" route_via vp-t51 10.51.1.10 10.51.0.0/18 10.51.1.254
+check "t51-a : route vers le VPC 10.51.0.0/18 via la gateway (DHCP)" route_via vp-t51 10.51.1.10 10.51.0.0/18 10.51.1.254
 check "hv1 : vrf-t51 contient exactement brl3-t51 et l3-t51-o" sh -c "[ \"\$1\" = 'brl3-t51 l3-t51-o' ]" _ "$(vrf_members vp-t51)"
 check "hv1 : brl3-t51 sans adresse IPv4" sh -c "! ip -4 -o addr show dev brl3-t51 | grep -q inet"
 check "hv1 : RMAC de brl3-t51 dérivée du VTEP 192.168.14.11" sh -c "ip -o link show brl3-t51 | grep -q 'link/ether 02:02:c0:a8:0e:0b '"

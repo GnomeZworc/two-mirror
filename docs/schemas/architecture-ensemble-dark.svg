@@ -135,20 +135,20 @@
   <rect class="group" x="360" y="635" width="780" height="355" rx="8"/>
   <text class="grp" x="380" y="659">VPC · netns + VRF</text>
   <rect class="box" x="380" y="675" width="240" height="60" rx="6"/>
-  <text class="lbl" x="500.0" y="702.0" text-anchor="middle">netns de la VPC</text>
+  <text class="lbl" x="500.0" y="702.0" text-anchor="middle">netns du VPC</text>
   <text class="sub" x="500.0" y="719.0" text-anchor="middle">gateway .254 · DHCP · métadonnées</text>
   <rect class="box" x="380" y="770" width="240" height="60" rx="6"/>
   <text class="lbl" x="500.0" y="797.0" text-anchor="middle">VRF · L3VNI</text>
   <text class="sub" x="500.0" y="814.0" text-anchor="middle">routage entre subnets et hyperviseurs</text>
   <rect class="future" x="660" y="770" width="200" height="60" rx="6"/>
-  <text class="lbl" x="760.0" y="797.0" text-anchor="middle">passerelle NAT de la VPC</text>
+  <text class="lbl" x="760.0" y="797.0" text-anchor="middle">passerelle NAT du VPC</text>
   <text class="sub" x="760.0" y="814.0" text-anchor="middle">sur un des hyperviseurs · #42</text>
   <rect class="future" x="380" y="895" width="240" height="60" rx="6"/>
-  <text class="lbl" x="500.0" y="922.0" text-anchor="middle">subnet public de la VPC</text>
+  <text class="lbl" x="500.0" y="922.0" text-anchor="middle">subnet public du VPC</text>
   <text class="sub" x="500.0" y="939.0" text-anchor="middle">relié au subnet public de l'hôte</text>
   <rect class="box" x="880" y="675" width="240" height="60" rx="6"/>
   <text class="lbl" x="1000.0" y="702.0" text-anchor="middle">VM privée</text>
-  <text class="sub" x="1000.0" y="719.0" text-anchor="middle">adresse de la VPC</text>
+  <text class="sub" x="1000.0" y="719.0" text-anchor="middle">adresse du VPC</text>
   <rect class="future" x="880" y="895" width="240" height="60" rx="6"/>
   <text class="lbl" x="1000.0" y="922.0" text-anchor="middle">VM publique</text>
   <text class="sub" x="1000.0" y="939.0" text-anchor="middle">+ NIC sur le subnet public</text>
@@ -178,8 +178,8 @@
   <text class="sub" x="922" y="1049" text-anchor="start">à venir (ticket indiqué)</text>
   <text class="sub" x="60" y="1089" text-anchor="start">Les agents ne sont jamais joints par l'orchestrateur : ils se connectent au broker en sortie, via leur passerelle ; les routeurs de leur cluster les NAT vers le VNI 66000.</text>
   <text class="sub" x="60" y="1107" text-anchor="start">L'orchestrateur a une patte dans le VNI 66001 : son API est joignable depuis Internet, par les bordures.</text>
-  <text class="sub" x="60" y="1125" text-anchor="start">VM publique : un subnet public dans sa VPC, relié au subnet public de l'hôte (VNI 66001), dont la gateway anycast est portée par toutes les bordures.</text>
-  <text class="sub" x="60" y="1143" text-anchor="start">VM privée : route par défaut de type 5 vers la passerelle NAT de sa VPC (IP de sortie de la VPC) si la VPC autorise Internet, ou IP flottante 1:1 sur son hôte.</text>
+  <text class="sub" x="60" y="1125" text-anchor="start">VM publique : un subnet public dans son VPC, relié au subnet public de l'hôte (VNI 66001), dont la gateway anycast est portée par toutes les bordures.</text>
+  <text class="sub" x="60" y="1143" text-anchor="start">VM privée : route par défaut de type 5 vers la passerelle NAT de son VPC (IP de sortie du VPC) si le VPC autorise Internet, ou IP flottante 1:1 sur son hôte.</text>
   <text class="sub" x="60" y="1161" text-anchor="start">Les bordures restent sans état : tout NAT vit sur un hyperviseur. Broker et orchestrateur sont des VM du VNI 66000, partagé : elles tournent sur les hyperviseurs de n'importe quel cluster.</text>
   <text class="sub" x="60" y="1179" text-anchor="start">Un route reflector par cluster : un événement d'un cluster ne coupe pas les deux sessions. Chaque lien routeurs ↔ RR est en 169.254.0.0/28, propre à son cluster.</text>
 </svg>

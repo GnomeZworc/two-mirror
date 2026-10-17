@@ -28,10 +28,10 @@ check "VM t31-b" vm_create t31-b sn-t31b 10.31.2.10 "${KEY}"
 check "t31-a joignable" vm_wait vp-t31 10.31.1.10
 check "t31-b joignable" vm_wait vp-t31 10.31.2.10
 check "sn-t31a : route par défaut via la gateway 10.31.1.254" route_via vp-t31 10.31.1.10 default 10.31.1.254
-check "sn-t31a : route vers la VPC via la gateway" route_via vp-t31 10.31.1.10 10.31.0.0/16 10.31.1.254
+check "sn-t31a : route vers le VPC via la gateway" route_via vp-t31 10.31.1.10 10.31.0.0/16 10.31.1.254
 check "sn-t31a : route /32 vers les métadonnées via la gateway" route_via vp-t31 10.31.1.10 169.254.169.254 10.31.1.254
 check "sn-t31b : route par défaut via la gateway explicite 10.31.2.1" route_via vp-t31 10.31.2.10 default 10.31.2.1
-check "sn-t31b : route vers la VPC via la gateway du subnet, pas via la gateway explicite" route_via vp-t31 10.31.2.10 10.31.0.0/16 10.31.2.254
+check "sn-t31b : route vers le VPC via la gateway du subnet, pas via la gateway explicite" route_via vp-t31 10.31.2.10 10.31.0.0/16 10.31.2.254
 check "sn-t31b : route /32 vers les métadonnées via la gateway du subnet" route_via vp-t31 10.31.2.10 169.254.169.254 10.31.2.254
 check "t31-a résout sa gateway vers la MAC anycast ${MAC}" vm_grep vp-t31 10.31.1.10 'ping -n -c 1 -W 2 10.31.1.254 >/dev/null; ip neigh show 10.31.1.254' "lladdr ${MAC} "
 check "le netns émet vers t31-a depuis la gateway 10.31.1.254" sh -c "ip -n vp-t31 -4 route get 10.31.1.10 | grep -q 'src 10.31.1.254 '"
@@ -45,7 +45,7 @@ check "sn-t31a recréé" subnet_create sn-t31a vp-t31 3101 10.31.1.0/24
 check "VM t31-a2 sur le subnet recréé" vm_create t31-a2 sn-t31a 10.31.1.11 "${KEY}"
 check "t31-a2 joignable" vm_wait vp-t31 10.31.1.11
 check "après recréation : route par défaut via la gateway 10.31.1.254" route_via vp-t31 10.31.1.11 default 10.31.1.254
-check "après recréation : route vers la VPC via la gateway" route_via vp-t31 10.31.1.11 10.31.0.0/16 10.31.1.254
+check "après recréation : route vers le VPC via la gateway" route_via vp-t31 10.31.1.11 10.31.0.0/16 10.31.1.254
 check "après recréation : route /32 vers les métadonnées" route_via vp-t31 10.31.1.11 169.254.169.254 10.31.1.254
 check "après recréation : MAC anycast en FDB locale de br-t31a" sh -c 'ip netns exec vp-t31 bridge fdb show br br-t31a | grep -qi "^$1 dev br-t31a master br-t31a permanent"' _ "${MAC}"
 NODE

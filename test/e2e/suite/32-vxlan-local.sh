@@ -1,4 +1,4 @@
-# fonctionnalité: routage entre deux subnets vxlan d'une même VPC sur un même hôte, sans et avec l3vni — ICMP, TCP, saut unique par la gateway
+# fonctionnalité: routage entre deux subnets vxlan d'un même VPC sur un même hôte, sans et avec l3vni — ICMP, TCP, saut unique par la gateway
 # hôtes: hv1
 # tickets: #57, #41
 
