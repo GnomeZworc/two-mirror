@@ -1,6 +1,56 @@
 Architecture du cluster
 =======================
 
+Vue d'ensemble
+--------------
+
+.. figure:: /schemas/architecture-ensemble.svg
+   :alt: Vue d'ensemble : Internet, bordures, deux clusters, route reflectors, services partagés et hyperviseurs
+   :align: center
+   :width: 100%
+   :class: only-light
+
+   Architecture cible. Trait bleu : plan de données (VXLAN). Tirets violets : plan de contrôle
+   (BGP). Tirets verts : orchestration. Trait orange : trafic Internet. Cadre en pointillés :
+   élément à venir, avec son ticket.
+
+.. figure:: /schemas/architecture-ensemble-dark.svg
+   :alt: Vue d'ensemble : Internet, bordures, deux clusters, route reflectors, services partagés et hyperviseurs
+   :align: center
+   :width: 100%
+   :class: only-dark
+
+   Architecture cible. Trait bleu : plan de données (VXLAN). Tirets violets : plan de contrôle
+   (BGP). Tirets verts : orchestration. Trait orange : trafic Internet. Cadre en pointillés :
+   élément à venir, avec son ticket.
+
+Plusieurs clusters, chacun avec son underlay, ses deux routeurs et un route reflector, sont reliés
+en eBGP entre eux et aux **routeurs de bordure**. Ce qui n'existe pas encore est décrit sur son
+ticket :
+
+* **Internet** (`#31 <https://git.g3e.fr/syonad/two/issues/31>`_,
+  `#42 <https://git.g3e.fr/syonad/two/issues/42>`_). Les bordures partagent avec les hyperviseurs
+  un VXLAN public (VNI 66001) et portent toutes la même IP et la même MAC de gateway. Elles restent
+  sans état : tout NAT vit sur un hyperviseur. Trois façons de sortir :
+
+  * une VM qui porte une IP publique a une NIC sur un subnet public de sa VPC, relié au subnet
+    public de l'hôte ;
+  * une **IP flottante** est traduite 1:1, sans état, par l'hyperviseur de la VM ;
+  * les autres VM sortent par la **passerelle NAT de leur VPC**, que la VRF atteint par une route
+    par défaut de type 5, si la VPC autorise Internet.
+
+* **Orchestration** (`#72 <https://git.g3e.fr/syonad/two/issues/72>`_). Le broker et
+  l'orchestrateur sont des VM du VNI 66000, partagé entre clusters. Les agents s'y connectent
+  **en sortie**, par leur passerelle ; les routeurs de chaque cluster les NAT vers le VNI 66000.
+  L'orchestrateur a aussi une patte dans le VNI 66001 : son API est joignable depuis Internet.
+
+* **Route reflectors.** Un par cluster, pour qu'un incident sur un cluster ne coupe pas les deux
+  sessions EVPN. Chaque lien entre routeurs et route reflector est en ``169.254.0.0/28``, propre
+  à son cluster.
+
+Le lab (:doc:`/developpement/lab`) simplifie : un seul cluster, qui porte les deux route
+reflectors.
+
 Topologie
 ---------
 
