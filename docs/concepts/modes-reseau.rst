@@ -80,7 +80,7 @@ l'adresse d'émission :
 
 L'adresse d'émission est la même sur tous les hôtes : une VM qui reçoit la requête ARP d'un autre
 hôte associe ``.253`` à la MAC de celui-ci. C'est sans effet — la VM ne parle jamais d'elle-même à
-``.253`` et le netns lui parle depuis la gateway. Mesuré en lab (``s11-fenetre-arp``) : pendant
+``.253`` et le netns lui parle depuis la gateway. Mesuré en lab (``44-fenetre-arp``) : pendant
 cette fenêtre, métadonnées, renouvellement DHCP et connexions depuis le netns passent sans perte.
 
 .. note::

@@ -64,7 +64,7 @@ Topologies
 ----------
 
 Les topologies de two vivent dans ``test/e2e/topologies/`` : ``evpn-2hv.yml`` (deux hyperviseurs)
-et ``evpn-3hv.yml`` (trois, pour ``s8`` et ``s9``). Le format est celui de ``labctl`` :
+et ``evpn-3hv.yml`` (trois, celle de la suite). Le format est celui de ``labctl`` :
 
 .. literalinclude:: ../../test/e2e/topologies/evpn-2hv.yml
    :language: yaml
@@ -201,113 +201,285 @@ Vérifié le 2026-10-04 sur le serveur de lab, topologie ``evpn-2hv``, release `
    déploie l'infrastructure (MikroTik aujourd'hui ; Cisco, Juniper, Arista… demain) : il n'a besoin
    que de BGP et d'EVPN, et sa configuration propre au constructeur n'a pas sa place dans le lab.
 
-Scénarios
----------
+Suite de tests
+--------------
 
-Les scénarios se lancent **depuis le Mac**, sur un lab démarré (``up``, ``push``, ``./labctl up``) :
-
-.. code-block:: text
-
-   test/e2e/run.sh s1          # un scénario
-   test/e2e/run.sh s1 s3       # plusieurs
-   test/e2e/run.sh all         # tous, dans l'ordre
-
-Chacun affiche une ligne ``RÉUSSI`` ou ``ÉCHOUÉ`` par vérification — un échec porte la dernière
-ligne de la commande en cause —, des lignes ``INFO`` pour les mesures, puis son bilan. Le code de
-sortie vaut 1 si une vérification échoue **ou si aucune n'a été faite**.
+La suite (`#70 <https://git.g3e.fr/syonad/two/issues/70>`_) vit dans ``test/e2e/suite/`` : **un
+fichier par fonctionnalité**, rangés en couches de bas en haut. Chaque couche ne s'appuie que sur
+les précédentes, et les tests de panne passent en dernier. Elle remplace les scénarios ``s1`` à
+``s11``, écrits au fil des tickets : chacune de leurs 251 vérifications est reprise (tableau de
+correspondance sur #70).
 
 .. list-table::
    :header-rows: 1
-   :widths: 22 58 20
+   :widths: 18 82
 
-   * - Scénario
-     - Ce qui doit être vrai
-     - Hyperviseurs
-   * - ``s1-dhcp-two``
-     - backend DHCP ``two``, une VPC et deux subnets : chaque VM reçoit l'adresse de **son**
-       subnet, démarrée seule ou en même temps qu'une autre ; le bail est tenu par
-       systemd-networkd ; route par défaut, route vers la VPC et ``/32`` vers les métadonnées
-       via la gateway calculée (``.254``) ; l'état de chaque serveur DHCP ne connaît que les MAC de
-       son subnet (#46)
-     - hv1
-   * - ``s2-gateway``
-     - gateway (``.254``) et adresse d'émission (``.253``) calculées par l'agent, refusées pour
-       une VM ; ``interface_ip`` refusé sur un subnet ``vxlan`` (#57) ; route par défaut via la
-       gateway, ou via ``gateway`` avec ``default_route`` ; route vers la VPC toujours via la
-       gateway du subnet ; macvlan retiré à la suppression, même résultat après recréation (#31)
-     - hv1
-   * - ``s3-isolation-local``
-     - deux VPC sur le même hyperviseur ne se joignent pas, en ICMP comme en TCP ; chaque VM
-       joint sa passerelle (témoin)
-     - hv1
-   * - ``s4-evpn``
-     - adresse VTEP locale sur les VXLAN (#51), VTEP distant appris par EVPN, ping VM ↔ VM
-       entre hyperviseurs, trame de 1472 octets en ``-M do``, 1473 refusés
-     - hv1, hv2
-   * - ``s5-isolation-evpn``
-     - deux VPC de même plage, VNI différentes, sur deux hyperviseurs : la VM joint celle de sa
-       VPC sur l'autre hyperviseur (témoin) et pas celle de l'autre VPC — aucune résolution ARP
-     - hv1, hv2
-   * - ``s6-rr-loss``
-     - FRR arrêté sur rr1, puis sur rr2, ping continu entre les VM
-       de ``s4`` : la session vers le route reflector arrêté tombe, celle vers l'autre reste
-       établie, le VTEP distant reste connu et **le trafic continue** (au moins 45 réponses sur 50
-       à 30 s) ; session rétablie au redémarrage, délai mesuré ; au plus 1 % de pertes sur tout le
-       scénario (#54)
-     - hv1, hv2, rr1, rr2
-   * - ``s7-l3vni``
-     - qualification de `#41 <https://git.g3e.fr/syonad/two/issues/41>`_ **par l'API** : VPC créées
-       avec une ``l3vni``, l'agent pose VRF, L3VNI, transit, FRR et les routes de type 5 (``/24``
-       des subnets, ``/32`` des VM). Deux subnets d'une même VPC, chacun sur un seul hyperviseur,
-       se joignent par le L3VNI à travers le route reflector inchangé ; 1472 octets en ``-M do`` ;
-       une seconde VPC de même plage sur un autre L3VNI n'est ni importée ni jointe ; L3VNI déjà
-       prise refusée ; forwarding de l'hôte limité aux interfaces de la VRF ; suppression d'un
-       subnet refusée tant qu'une VM l'utilise ; démontage complet d'une VPC sans redémarrage de
-       bgpd
-     - hv1, hv2, rr1
-   * - ``s8-l3vni-migration``
-     - suite de ``s7``, topologie ``evpn-3hv.yml`` : migration d'une VM de hv1 vers hv2 par l'API,
-       observée depuis hv3 qui n'a pas le subnet : migration simple (VM supprimée puis recréée,
-       ``/24`` comme filet), séquence orchestrée (deux VM de même IP, deux ``/32`` en ECMP, 40
-       sources sur 40) ; l'ancien « pire cas » devient un refus (409) ; MAC anycast de la gateway
-       absente d'EVPN (aucune route de type 2 sur rr1, absente de la table de hv1), sans doublon
-       (#57) ; watchdog : ``/32`` orphelin signalé comme trou noir, ``/32`` manquant
-       signalé
-     - hv1, hv2, hv3, rr1
-   * - ``s9-subnets-partages``
-     - deux VPC, avec et sans ``l3vni``, chacune avec deux subnets présents sur **les deux**
-       hyperviseurs et une VM par subnet et par hôte : ping entre toutes les paires (même subnet ou
-       non, même hôte ou non) ; chaque VM voit la MAC anycast de sa gateway ; aucune MAC en
-       double et aucune MAC anycast dans EVPN sur les quatre VNI (#57)
-     - hv2, hv3, rr1
-   * - ``s10-switch-loss``
-     - un seul switch maître VRRP de la passerelle (lu par ``show vrrp``, pas supposé) ; interface
-       ``underlay`` du maître coupée pendant un ping continu de hv1 vers la loopback de rr1 :
-       l'autre switch devient maître, les sessions EVPN de hv1 **ne tombent pas** (compteur
-       ``dropped`` inchangé), le trafic reprend (au moins 45 réponses sur 50 à 20 s), plus long
-       silence sous 5 s ; interface rétablie : ses sessions eBGP reviennent et il **reste en
-       attente**, sans reprendre la passerelle (#54)
-     - hv1, sw1, sw2
-   * - ``s11-fenetre-arp``
-     - fenêtre ARP de #57 : sur hv1, entrées ARP du netns retirées, puis une VM de hv1 joint une VM
-       de hv2 dans l'autre subnet (relais L2 depuis l'adresse d'émission de hv1). La VM de hv2
-       associe alors ``.253`` à la MAC de hv1 (fenêtre ouverte, vérifiée), mais sa gateway reste
-       la MAC anycast ; pendant la fenêtre, métadonnées servies, bail DHCP renouvelé auprès de
-       ``.254``, et **aucune** des 80 connexions TCP du netns de hv2 vers sa VM n'est perdue ; MAC
-       anycast inscrite dans la FDB du bridge du netns
-     - hv1, hv2
+   * - Couche
+     - Contenu
+   * - 00 socle
+     - lab, prérequis d'environnement, image des VM
+   * - 10 API
+     - refus de l'API, machine d'états
+   * - 20 VM
+     - DHCP (backend ``two`` et dnsmasq), métadonnées, UEFI, multi-NIC, multi-disque, redémarrage
+   * - 30 réseau local
+     - gateway anycast, VXLAN sur un hôte, mode ``bridge``, isolation, filtrage au port
+   * - 40 EVPN L2
+     - subnet étendu entre hôtes, isolation, subnets partagés, fenêtre ARP
+   * - 50 L3VNI
+     - routage entre subnets, migration, watchdog L3
+   * - 60 cycle de vie
+     - redémarrage de l'agent, nettoyage global
+   * - 70 résilience
+     - perte d'un route reflector, perte d'un switch
 
-``s6`` réutilise les VM de ``s4`` : le lancer après.
+Les tests se lancent **depuis le Mac**, sur un lab démarré (``up``, ``push``, ``./labctl up``) :
 
-**Comment c'est fait.** ``test/e2e/run.sh`` exécute chaque scénario sur le Mac ; un
-scénario envoie des blocs de shell aux nœuds par ``on <nœud> [VAR=valeur…] <<'NODE'``, précédés de
-``test/e2e/lib/node.sh`` — appels à l'API de l'agent, attente des états, image Debian compatible two
-(préparée une fois par hyperviseur, ``seedfrom`` avec barre oblique finale), clé SSH des VM,
-``check`` et ``vm_fails`` ; pour #41, ``vpc_create`` avec une ``l3vni``, ``api_code`` (code HTTP
-d'un refus attendu), l'observation des VRF et de BGP (``vrf_nexthops``, ``bgp_paths``,
-``wait_l3vni``…) et ``wait_watchdog`` (alerte du watchdog dans le journal de l'agent). Une vérification négative (« ne joint pas ») passe par ``vm_fails`` :
-elle n'est réussie que si le SSH vers la VM a fonctionné **et** que la commande y a échoué — un
-SSH en panne ne passe jamais pour une isolation.
+.. code-block:: text
+
+   test/e2e/run.sh all              # toute la suite, dans l'ordre
+   test/e2e/run.sh 40               # une couche
+   test/e2e/run.sh 41 43            # des tests, par numéro ou par nom
+   test/e2e/run.sh --from 30        # à partir d'un numéro
+   test/e2e/run.sh --continue all   # sans s'arrêter sur une couche en échec
+   test/e2e/run.sh --connus all     # les échecs connus comptent comme des échecs
+   test/e2e/run.sh --matrice        # matrice de couverture, tirée des en-têtes
+
+Chaque test affiche une ligne ``RÉUSSI`` ou ``ÉCHOUÉ`` par vérification (un échec porte la
+dernière ligne de la commande en cause), des lignes ``INFO`` pour les mesures, puis son bilan. Le
+code de sortie vaut 1 si une vérification échoue **ou si aucune n'a été faite**. Avec ``all`` ou
+``--from``, une couche en échec arrête la suite à la fin de la couche.
+
+**Tests autonomes.** Avant chaque test, le runner supprime les ressources ``tNN`` laissées par un
+passage précédent, puis relève l'état de chaque hôte de l'en-tête ``# hôtes:``. Après le test, il
+supprime ses VM, ses subnets puis ses VPC, et vérifie que l'hôte est revenu à l'état relevé
+(``assert_clean`` : netns, liens, adresses, routes, règles ebtables et iptables, configuration FRR et
+``frr.conf``, fichiers de ``/run/two``, ``dnsmasq.d`` et des volumes, unités ``two-vm-*``,
+processus dnsmasq et QEMU). Aucun test ne dépend d'un autre : n'importe lequel se lance seul.
+
+**Plages.** Le test ``NN`` nomme ses ressources ``vp-tNN*``, ``sn-tNN*`` et ``tNN-*``, et utilise
+``10.NN.0.0/16`` et les VNI ``NN00`` à ``NN99`` : aucune collision entre tests.
+
+**Échecs connus.** Un contrôle dont l'échec est connu et rattaché à un ticket s'écrit ``known
+"#NN" "description" commande…`` au lieu de ``check``. En échec, il sort en ``CONNU`` sans faire
+échouer le test (bilan : ``N connu(s)``). Dès qu'il passe, il sort en ``INATTENDU`` et fait
+échouer le test : le marqueur est à retirer. Pour un échec **intermittent**, ``known_flaky`` sort
+en ``RÉUSSI`` (annoté) quand l'échec ne se reproduit pas, sans rappel automatique : le retrait se
+fait en fermant le ticket. Chaque ticket concerné liste ses marqueurs en commentaire.
+
+Matrice de couverture
+~~~~~~~~~~~~~~~~~~~~~
+
+Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régénérer quand un test change.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Test
+     - Fonctionnalité
+     - Hôtes
+     - Tickets
+   * - ``01-lab``
+     - socle du lab — underlay, passerelle VRRP, sessions EVPN, base BGP posée par l'agent, backend DHCP, watchdog silencieux
+     - hv1 hv2 hv3
+     - #50, #51, #54, #41
+   * - ``02-prerequis``
+     - hypothèses d'environnement de la suite — firmware UEFI, unités modèles de l'agent, journalctl, format de ebtables -L, br-lan, priorités VRRP lues dans FRR
+     - hv1 hv2 hv3
+     - #70
+   * - ``03-image``
+     - hypothèses sur l'image de VM — outils (curl, python3), nom d'interface, effet réel de network-config, forme du compte verrouillé
+     - hv1
+     - #70
+   * - ``11-validation``
+     - validation de l'API — refus synchrones (400, 409, 422) des VPC, subnets et VM, sans trace en base
+     - hv1
+     - #41, #57, #33
+   * - ``12-etats``
+     - machine d'états — 409 pendant creating, suppression depuis error, dépendances VM → subnet → VPC, recréation sous le même nom
+     - hv1
+     - #41
+   * - ``21-dhcp-two``
+     - DHCP par le serveur intégré (backend two) — bail, server-id, renouvellement, option 121, un serveur par subnet, démarrages simultanés
+     - hv1
+     - #46, #57
+   * - ``22-dhcp-dnsmasq``
+     - DHCP par dnsmasq (backend dnsmasq) — bail, server-id, renouvellement, option 121, une instance par subnet écoutant sur la gateway anycast
+     - hv2
+     - #46, #57
+   * - ``23-metadonnees``
+     - serveur de métadonnées et cloud-init — sshkey, password (hash), user_data servi tel quel, documents absents (templates), VM sans compte
+     - hv1
+     - #43, #46
+   * - ``24-uefi``
+     - démarrage UEFI (OVMF) — firmware et variables par VM, VM démarrée en UEFI, témoin BIOS
+     - hv1
+     - UEFI (sans ticket)
+   * - ``25-multi-nic``
+     - VM à plusieurs interfaces — une NIC par subnet, adresses posées, route par défaut sur la primaire seule
+     - hv1
+     - #33, #62
+   * - ``26-multi-disque``
+     - VM à plusieurs disques — virtio (vdX) et SCSI (sdX), tailles et bus vus par la VM, démarrage sur vda
+     - hv1
+     - #32
+   * - ``27-reboot``
+     - redémarrage d'une VM depuis l'invité — même processus QEMU, même adresse, nouveau bail, user_data non rejoué
+     - hv1
+     - #46
+   * - ``31-gateway``
+     - gateway d'un subnet vxlan — gateway anycast et adresse d'émission calculées, default_route et gateway explicite, routes DHCP, macvlan gw-, FDB locale, sysctls ARP, règles de confinement, suppression et recréation
+     - hv1
+     - #57, #43
+   * - ``32-vxlan-local``
+     - routage entre deux subnets vxlan d'une même VPC sur un même hôte, sans et avec l3vni — ICMP, TCP, saut unique par la gateway
+     - hv1
+     - #57, #41
+   * - ``33-bridge``
+     - subnet en mode bridge rattaché au bridge br-lan de l'hôte — un hôte, puis le même subnet sur deux hôtes (une seule réponse ARP pour interface_ip, métadonnées servies par l'hôte de la VM)
+     - hv1 hv2
+     - #70
+   * - ``34-isolation-locale``
+     - isolation entre deux VPC sur un même hôte — ni ICMP ni TCP d'une VPC à l'autre
+     - hv1
+     - #50
+   * - ``35-filtrage-port``
+     - filtrage au port — en sortie vers le fabric (v-<id>-i) : ARP vers la gateway et l'adresse d'émission, DHCP émis depuis ces adresses, MAC anycast confinée dans les deux sens ; entre VM d'un même hôte : faux serveur DHCP et usurpation ARP de la gateway (comportement attendu, non filtré à ce jour)
+     - hv1
+     - #57
+   * - ``41-evpn-l2``
+     - subnet vxlan étendu entre deux hôtes par EVPN — VTEP local, VTEP distant et inondation appris, MAC des VM en type 2, trafic ICMP et TCP, MTU 1500 de bout en bout
+     - hv1 hv2
+     - #50, #51
+   * - ``42-isolation-evpn``
+     - isolation entre VPC à travers EVPN — deux VPC sur la même plage, la VM d'une VPC ne joint pas celle de l'autre sur un hôte distant
+     - hv1 hv2
+     - #50, #51
+   * - ``43-subnets-partages``
+     - subnets vxlan partagés par deux hôtes, deux VM par hôte, dans une VPC avec et une VPC sans l3vni — toutes les paires, gateway anycast vue par chaque VM et absente d'EVPN, aucune MAC en double
+     - hv2 hv3
+     - #57, #41
+   * - ``44-fenetre-arp``
+     - fenêtre ARP de la gateway anycast entre deux hôtes — relais L2 depuis l'adresse d'émission d'un hôte, gateway de la VM inchangée, métadonnées, renouvellement DHCP et TCP local sans perte pendant la fenêtre
+     - hv1 hv2
+     - #57
+   * - ``51-l3vni``
+     - routage inter-subnet entre hôtes par L3VNI (IRB symétrique) — VRF, RMAC, exports /24 et /32, RT-5 réfléchies, TTL, isolation par RT, démontage d'une VPC routée
+     - hv1 hv2
+     - #41
+   * - ``52-migration``
+     - migration d'une adresse de VM entre hôtes d'une VPC routée — /32 retiré en premier, /24 en filet puis en ECMP, séquence orchestrée, 40 sources, suppression du subnet refusée tant qu'une VM l'utilise, MAC anycast hors EVPN
+     - hv1 hv2 hv3
+     - #41, #57
+   * - ``53-watchdog-l3``
+     - watchdog d'une VPC routée — /32 orphelin signalé comme trou noir, /32 manquant signalé, aucune fausse alerte BGP ni L3VNI, trafic intact après les essais
+     - hv1 hv3
+     - #41
+   * - ``61-redemarrage-agent``
+     - redémarrage de l'agent avec des VM en marche — rien ne disparaît ni n'est recréé, trafic routé sans perte, DHCP et métadonnées servis, base BGP réappliquée à l'identique, ressources toujours gérées
+     - hv1 hv2
+     - #41, #46
+   * - ``62-nettoyage-global``
+     - nettoyage global en fin de suite — aucun hôte ne garde de ressource : API vide, ni netns, tap, VRF, unité, instance DHCP ou de métadonnées, processus QEMU, règle de port, volume ; FRR réduit à la base BGP
+     - 
+     - #70
+   * - ``71-perte-rr``
+     - perte d'un route reflector — l'autre garde la session EVPN, le VTEP distant reste connu, le trafic L2 entre hôtes passe sans perte mesurable, retour du RR arrêté
+     - hv1 hv2
+     - #54
+   * - ``72-perte-switch``
+     - perte d'un switch de la passerelle VRRP — bascule vers l'autre en moins de 5 s, sessions EVPN jamais coupées ; au retour, le plus prioritaire redevient maître, seconde bascule mesurée
+     - 
+     - #54, #69
+
+Campagne du 2026-10-17
+~~~~~~~~~~~~~~~~~~~~~~
+
+Première campagne de la suite, ``evpn-3hv.yml``, labctl ``0.2.0``, binaires de l'arbre courant
+(code de l'agent identique à ``main``). ``run.sh --continue all`` en 76 min, dont environ 15 min
+d'arrêts de VM à 300 s et 15 min d'attentes sur des tests en échec. Les hypothèses fausses des
+tests ont été corrigées sur le serveur et les tests concernés rejoués. Il reste :
+
+* tout vert, sauf les échecs réels, marqués ``known`` et rattachés à leur ticket : multi-NIC
+  (#73, #62), noms des disques SCSI (#74), mode ``bridge`` sur plusieurs hôtes (#75), filtrage au
+  port (#76), socket DHCP (#77), fausse alerte du watchdog (#78) ;
+* #69 vérifié : au retour de ``sw1`` (priorité 200), il redevient maître, seconde bascule en
+  1,2 s, sessions EVPN jamais coupées ;
+* une suppression de VM peut durer 300 s quand l'invité ignore l'arrêt ACPI (#79) : ``wait_state``
+  attend jusqu'à 360 s.
+
+Hypothèses vérifiées en lab, à garder en tête en écrivant un test :
+
+* systemd-networkd **ne réécrit pas** un bail renouvelé à l'identique : un renouvellement se
+  vérifie par le DHCPACK dans le journal du serveur (``lease_renewed``), pas par le fichier de bail ;
+* l'agent n'accepte **qu'un seul disque virtio** (le disque système) ; les autres sont des ``sdX`` ;
+* sur Debian 12, ``ebtables -L`` (nft) garde les zéros de tête des MAC ;
+* ``interface_ip`` est posée en ``/32`` sur le bridge du netns en mode ``bridge`` ;
+* depuis le netns d'un hôte, une VM d'un autre hôte ne répond pas : la réponse repart vers la
+  gateway de son propre hôte. Une vérification entre hôtes passe par une VM.
+
+Les VM sont accessibles depuis le netns de leur VPC, sur l'hyperviseur, avec l'utilisateur
+``syonad`` créé par les métadonnées de two :
+
+.. code-block:: text
+
+   test/e2e/labctl.sh ssh "./labctl ssh hv1 'sudo ip netns exec vp-t41 ssh -i /root/.ssh/lab-vm syonad@10.41.1.10'"
+
+Écrire un test
+~~~~~~~~~~~~~~
+
+Un test est un fichier ``test/e2e/suite/NN-nom.sh``, exécuté par ``run.sh`` sur le Mac. Il
+commence par un en-tête, puis envoie des blocs aux nœuds par ``on <nœud> [VAR=valeur…] <<'NODE'``.
+Chaque bloc est précédé des bibliothèques de ``test/e2e/lib/`` :
+
+* ``core.sh`` : ``check``, ``known``, ``info``, appels à l'API, attente des états ;
+* ``vm.sh`` : image Debian compatible two, clé SSH, ``vm_launch`` (plusieurs NIC et disques, UEFI,
+  ``user_data``, mot de passe), SSH, bail, métadonnées ;
+* ``net.sh`` : VPC, subnets, MAC anycast, trames brutes, règles ebtables, VRRP ;
+* ``evpn.sh`` : VRF, BGP, L3VNI, watchdog ;
+* ``fixture.sh`` : nettoyage et ``assert_clean``, appelés par le runner.
+
+.. code-block:: bash
+
+   # fonctionnalité: trafic entre deux VM d'un même subnet sur un hôte
+   # hôtes: hv1
+   # tickets: #NN
+
+   on hv1 <<'NODE'
+   KEY=$(vm_key)
+   check "VPC vp-t99" vpc_create vp-t99 10.99.0.0/16
+   check "subnet sn-t99" subnet_create sn-t99 vp-t99 9901 10.99.1.0/24
+   check "VM t99-a" vm_launch t99-a --nic sn-t99=10.99.1.10 --sshkey "${KEY}"
+   check "VM t99-b" vm_launch t99-b --nic sn-t99=10.99.1.11 --sshkey "${KEY}"
+   check "t99-a joignable" vm_wait vp-t99 10.99.1.10
+   check "t99-a joint t99-b" vm_ssh vp-t99 10.99.1.10 'ping -c 2 -W 2 10.99.1.11'
+   check "t99-a ne joint pas 10.98.1.10" vm_fails vp-t99 10.99.1.10 'ping -c 2 -W 2 10.98.1.10'
+   NODE
+
+Les règles :
+
+* **une vérification par ligne**, avec ``check`` : jamais un ``echo RÉUSSI`` écrit à la main ;
+* **toute vérification négative a son témoin** : avant « ne joint pas », une ligne qui prouve que
+  la cible est vivante et que le chemin du test fonctionne ;
+* **``vm_fails`` pour le négatif**, jamais ``!`` devant un ``vm_ssh`` : un SSH en panne doit
+  échouer, pas passer pour une isolation ;
+* **une donnée qui distingue réellement les cas** : two dérive la MAC du rang de l'IP, donc deux
+  subnets ont les mêmes MAC ; comparer des couples MAC/IP, pas des MAC ;
+* **les mesures en ``INFO``**, les attentes en ``check`` : un temps de reconvergence se mesure,
+  il ne se décrète pas ;
+* **l'en-tête ``# hôtes:`` liste exactement les hôtes où le test crée des ressources** : ce sont
+  ceux que le runner nettoie et compare ;
+* **un échec connu se marque** ``known`` (ou ``known_flaky``) avec son ticket, et le ticket liste
+  le marqueur : jamais un contrôle retiré ou affaibli pour faire passer la suite ;
+* variables vers un nœud : ``on hv1 NOM=valeur <<'NODE'`` (valeurs échappées par ``run.sh``) ;
+* ``bash test/e2e/run_test.sh`` vérifie le runner, les bibliothèques et la syntaxe de chaque bloc
+  réellement envoyé : à lancer avant toute session.
+
+Campagnes précédentes
+~~~~~~~~~~~~~~~~~~~~~
+
+Résultats obtenus avec les anciens scénarios ``s1`` à ``s11``, conservés pour leurs constats.
+Leurs vérifications sont reprises dans la suite.
 
 Résultats du 2026-10-04 sur le serveur de lab, release ``0.2.0rc003``, hv1 sur le DHCP intégré et
 hv2 sur dnsmasq — toute la série en 8 minutes :
@@ -412,54 +584,6 @@ redémarrage de FRR. ``s10`` : ``sw2`` coupé, ``sw1`` maître, 14 requêtes per
 silence 2,8 s, sessions EVPN de hv1 jamais coupées ; ``sw2`` rétabli reste en attente.
 ``s9`` sans ``Broken pipe`` cette fois : #57 n'est pas corrigé pour autant.
 
-Les VM sont accessibles depuis le netns de leur VPC, sur l'hyperviseur, avec l'utilisateur
-``syonad`` créé par les métadonnées de two :
-
-.. code-block:: text
-
-   test/e2e/labctl.sh ssh "./labctl ssh hv1 'sudo ip netns exec vp-s4 ssh -i /root/.ssh/lab-vm syonad@10.240.1.10'"
-
-Écrire un scénario
-~~~~~~~~~~~~~~~~~~
-
-Le lab sert à qualifier des comportements qui ne se voient qu'à plusieurs hyperviseurs — la
-campagne L3VNI de `#41 <https://git.g3e.fr/syonad/two/issues/41>`_ en est le prochain exemple. Un
-scénario est un fichier ``test/e2e/scenarios/<n>-<nom>.sh``, exécuté par ``run.sh`` sur le
-Mac ; il envoie des blocs aux nœuds :
-
-.. code-block:: bash
-
-   on hv1 <<'NODE'
-   two_image || { echo "ÉCHOUÉ: image compatible two"; exit 0; }
-   KEY=$(vm_key)
-   check "VPC vp-x" vpc_create vp-x 10.250.0.0/16
-   check "subnet sn-x" subnet_create sn-x vp-x 2601 10.250.1.1 10.250.1.0/24
-   check "VM x1" vm_create x1 sn-x 10.250.1.10 "${KEY}"
-   check "x1 joignable" vm_wait vp-x 10.250.1.10
-   check "x1 joint sa passerelle" vm_ssh vp-x 10.250.1.10 'ping -c 2 -W 2 10.250.1.1'
-   check "x1 ne joint pas 10.251.1.10" vm_fails vp-x 10.250.1.10 'ping -c 2 -W 2 10.251.1.10'
-   info "mesure : $(vtysh -c 'show evpn vni 2601' | grep -c 'flood')"
-   NODE
-
-Les règles qui ont fait leurs preuves en E5 :
-
-* **une vérification par ligne**, avec ``check`` — jamais un ``echo RÉUSSI`` écrit à la main ;
-* **toute vérification négative a son témoin** : avant « ne joint pas », une ligne qui prouve que
-  la cible est vivante et que le chemin du test fonctionne ;
-* **``vm_fails`` pour le négatif**, jamais ``!`` devant un ``vm_ssh`` : un SSH en panne doit
-  échouer, pas passer pour une isolation ;
-* **une donnée qui distingue réellement les cas** : two dérivant la MAC du rang de l'IP, deux
-  subnets ont les mêmes MAC — comparer des couples MAC/IP, pas des MAC ;
-* **les mesures en ``INFO``**, les attentes en ``check`` : un temps de reconvergence se mesure,
-  il ne se décrète pas ;
-* chaque scénario crée ses propres VPC, plages et VNI, distinctes de celles des autres, pour que
-  ``all`` les enchaîne sur le même lab ; un scénario qui dépend d'un autre le vérifie en tête
-  (``check "prérequis : …"``) ;
-* variables vers un nœud : ``on hv1 NOM=valeur <<'NODE'`` (valeurs échappées par
-  ``run.sh``) ;
-* ``bash test/e2e/run_test.sh`` vérifie la syntaxe de chaque bloc réellement envoyé — à
-  lancer avant toute session.
-
 Sécurité
 --------
 
@@ -481,5 +605,5 @@ Tests
 
    bash test/e2e/run_test.sh
 
-Sans réseau : vérifie la syntaxe de chaque bloc réellement envoyé aux nœuds par les scénarios et
-les fonctions de ``test/e2e/lib/node.sh``. Les tests de l'outil sont dans le dépôt ``labctl``.
+Sans réseau : vérifie le runner, les fonctions de ``test/e2e/lib/`` et la syntaxe de chaque bloc
+réellement envoyé aux nœuds par la suite. Les tests de l'outil sont dans le dépôt ``labctl``.
