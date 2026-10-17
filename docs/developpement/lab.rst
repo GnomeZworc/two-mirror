@@ -113,7 +113,17 @@ télécharge la release sur ``git.g3e.fr`` sans réessayer : le script attend d'
 réponde, à travers le switch. Les deux fichiers ``agent/`` donnent à l'agent la section ``bgp``
 (AS 64600, route reflectors ``10.255.255.1`` et ``10.255.255.2``) et un watchdog toutes les 10 s ;
 ``agent/two.yml`` met en plus hv1 sur le serveur DHCP intégré (``dhcp.backend: two``),
-``agent/bgp.yml`` laisse les autres sur dnsmasq.
+``agent/dnsmasq.yml`` met explicitement les autres sur dnsmasq (``dhcp.backend: dnsmasq``).
+
+**Segment ``lan`` (mode ``bridge``).** hv1 et hv2 sont aussi reliés à un second segment,
+``lan`` (``10.33.0.0/24``, MTU 1500, **sans routeur** : L2 pur, sans passerelle ni NAT),
+déclaré après ``underlay`` pour ne changer ni ses adresses ni ses taps. Avant ``deploy.sh``,
+``hypervisor.sh`` crée le bridge ``br-lan`` (STP coupé, MTU de l'interface), y rattache
+l'interface ``lan`` et y déplace l'adresse que labctl lui a donnée (``10.33.0.11`` sur hv1,
+``10.33.0.12`` sur hv2). Les deux fichiers ``agent/`` déclarent ``interfaces: {lan: br-lan}`` :
+un subnet créé avec ``mode: bridge`` et ``iface_type: lan`` rattache son veth à ``br-lan``. Les
+subnets ``vxlan`` (``iface_type: vms``, clé absente) restent sur ``default_interface`` : le VTEP
+ne change pas. Le bridge n'est créé qu'au premier démarrage, comme le reste du provisionnement.
 
 **Tester l'arbre courant plutôt que la release.** ``test/e2e/build.sh`` compile ``agent``,
 ``dhcp`` et ``metadata`` pour linux/amd64 dans ``test/e2e/topologies/bin/`` (ignoré par git),

@@ -503,10 +503,11 @@ components:
     VMMetadata:
       type: object
       description: >
-        cloud-init inputs for this VM. Every field is optional. Documents not
-        supplied here fall back to the agent's built-in templates; a document
-        supplied as an empty string is served empty, which is not the same
-        thing.
+        cloud-init inputs for this VM. Every field is optional. The served
+        user-data is user_data when given, empty otherwise: an empty
+        user_data is the same as no user_data. meta-data, network-config and
+        vendor-data always come from the agent's built-in templates
+        (vendor-data creates the syonad account from password and sshkey).
       properties:
         password:
           type: string
