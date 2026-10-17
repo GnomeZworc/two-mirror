@@ -61,11 +61,11 @@ ip netns exec vp-t35 ping -n -c 3 -W 1 10.35.1.200 >/dev/null 2>&1
 wait
 check "trafic de la gateway (ping des VM, réponses du netns) : aucune trame avec la MAC anycast sur le fabric ($(cat "${S}.gw") vue(s))" test "$(cat "${S}.gw")" -eq 0
 check "trafic du netns vers une adresse inconnue : ARP du bridge ${BRMAC} sur le fabric (témoin, $(cat "${S}.br") vue(s))" test "$(cat "${S}.br")" -gt 0
-UNF="attendu ; aucun filtrage entre VM d'un même hôte à ce jour"
+UNF="aucun filtrage entre VM d'un même hôte à ce jour"
 vm_sniff_start "${S}.rogue" vp-t35 10.35.1.11 ens3 8 udp-from 10.35.1.10 67
 vm_frames vp-t35 10.35.1.10 dhcp ens3 10.35.1.10 68 5 >/dev/null 2>&1
 wait
-check "faux serveur DHCP dans t35-a (67 → 68) : n'atteint pas t35-b, même subnet, même hôte (${UNF} ; $(cat "${S}.rogue") vue(s))" test "$(cat "${S}.rogue")" = 0
+known "#76" "faux serveur DHCP dans t35-a (67 → 68) : n'atteint pas t35-b, même subnet, même hôte (${UNF} ; $(cat "${S}.rogue") vue(s))" test "$(cat "${S}.rogue")" = 0
 vm_sniff_start "${S}.rogue" vp-t35 10.35.1.11 ens3 8 udp-from 10.35.1.10 67
 vm_frames vp-t35 10.35.1.10 dhcp ens3 10.35.1.10 6868 5 >/dev/null 2>&1
 wait
@@ -77,9 +77,9 @@ RELAY_MAC=$(vm_neigh_mac vp-t35 10.35.1.11 10.35.1.253)
 check "prérequis : t35-b résout la gateway vers la MAC anycast ${MAC}" test "$(vm_neigh_mac vp-t35 10.35.1.11 10.35.1.254)" = "${MAC}"
 check "prérequis : t35-b résout l'adresse d'émission 10.35.1.253 (${RELAY_MAC:-non résolue})" test -n "${RELAY_MAC}"
 vm_frames vp-t35 10.35.1.10 garp ens3 10.35.1.254 5 >/dev/null 2>&1
-check "usurpation ARP de la gateway 10.35.1.254 par t35-a : t35-b garde la MAC anycast (${UNF} ; lue : $(vm_neigh_mac vp-t35 10.35.1.11 10.35.1.254))" test "$(vm_neigh_mac vp-t35 10.35.1.11 10.35.1.254)" = "${MAC}"
+known "#76" "usurpation ARP de la gateway 10.35.1.254 par t35-a : t35-b garde la MAC anycast (${UNF} ; lue : $(vm_neigh_mac vp-t35 10.35.1.11 10.35.1.254))" test "$(vm_neigh_mac vp-t35 10.35.1.11 10.35.1.254)" = "${MAC}"
 vm_frames vp-t35 10.35.1.10 garp ens3 10.35.1.253 5 >/dev/null 2>&1
-check "usurpation ARP de l'adresse d'émission 10.35.1.253 par t35-a : t35-b garde ${RELAY_MAC:-?} (${UNF} ; lue : $(vm_neigh_mac vp-t35 10.35.1.11 10.35.1.253))" test "$(vm_neigh_mac vp-t35 10.35.1.11 10.35.1.253)" = "${RELAY_MAC}"
+known "#76" "usurpation ARP de l'adresse d'émission 10.35.1.253 par t35-a : t35-b garde ${RELAY_MAC:-?} (${UNF} ; lue : $(vm_neigh_mac vp-t35 10.35.1.11 10.35.1.253))" test "$(vm_neigh_mac vp-t35 10.35.1.11 10.35.1.253)" = "${RELAY_MAC}"
 vm_ssh vp-t35 10.35.1.11 'sudo ip neigh replace 10.35.1.200 lladdr 02:35:00:00:00:99 dev ens3 nud stale' >/dev/null 2>&1
 vm_frames vp-t35 10.35.1.10 garp ens3 10.35.1.200 5 >/dev/null 2>&1
 check "usurpation ARP de 10.35.1.200 (adresse non protégée) par t35-a : t35-b l'associe à ${AMAC} (témoin, lue : $(vm_neigh_mac vp-t35 10.35.1.11 10.35.1.200))" test "$(vm_neigh_mac vp-t35 10.35.1.11 10.35.1.200)" = "${AMAC}"

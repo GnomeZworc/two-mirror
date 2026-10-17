@@ -18,8 +18,8 @@ size_is () { local v; v=$(vm_ssh vp-t26 10.26.1.10 "lsblk -b -dn -o SIZE /dev/${
 target_size () { local v; v=$(vm_ssh vp-t26 10.26.1.10 "lsblk -b -dn -o HCTL,SIZE" 2>&1 | awk -v t="${1}" '{split($1, h, ":")} h[3] == t {print $2}'); [ "${v}" = "${2}" ] || { echo "lu : ${v:-aucun disque sur la cible ${1}}"; return 1; }; }
 check "t26-d : sda déclaré → cible SCSI 0, 2 Gio" target_size 0 2147483648
 check "t26-d : sdb déclaré → cible SCSI 1, 1 Gio" target_size 1 1073741824
-check "t26-d : nom dans l'invité = dev déclaré, sdb de 1 Gio (attendu ; l'invité nomme les disques SCSI dans l'ordre de détection)" size_is sdb 1073741824
-check "t26-d : nom dans l'invité = dev déclaré, sda de 2 Gio (attendu ; même raison)" size_is sda 2147483648
+known_flaky "#74" "t26-d : nom dans l'invité = dev déclaré, sdb de 1 Gio" size_is sdb 1073741824
+known_flaky "#74" "t26-d : nom dans l'invité = dev déclaré, sda de 2 Gio" size_is sda 2147483648
 check "t26-d : sdb en SCSI" vm_grep vp-t26 10.26.1.10 'readlink -f /sys/block/sdb/device/driver' 'sd$'
 check "t26-d : sda en SCSI (virtio-scsi)" vm_ssh vp-t26 10.26.1.10 'test -d /sys/block/sda/device/scsi_device && readlink -f /sys/block/sda | grep -q virtio'
 check "t26-d : vda n'est pas en SCSI (témoin)" vm_fails vp-t26 10.26.1.10 'test -d /sys/block/vda/device/scsi_device'

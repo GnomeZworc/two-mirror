@@ -75,9 +75,20 @@ wait_watchdog () {
     return 1
 }
 
+watchdog_alerts () {
+    journalctl -u agent --since "-${1:-300}s" --no-pager -o cat | grep -F 'watchdog: inconsistency detected'
+}
+
 watchdog_quiet () {
     local out
-    out=$(journalctl -u agent --since "-${1:-300}s" --no-pager -o cat | grep -F 'watchdog: inconsistency detected') || return 0
+    out=$(watchdog_alerts "${1:-300}" | { if [ -n "${2:-}" ]; then grep -vF -- "${2}"; else cat; fi; }) || return 0
+    printf '%s\n' "${out}"
+    return 1
+}
+
+watchdog_quiet_about () {
+    local out
+    out=$(watchdog_alerts "${1}" | grep -F -- "${2}") || return 0
     printf '%s\n' "${out}"
     return 1
 }

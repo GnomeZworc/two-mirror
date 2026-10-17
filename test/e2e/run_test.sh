@@ -595,6 +595,32 @@ test_evpn_mac_json_shape_requires_remote_vtep () {
     teardown
 }
 
+test_known_reports_known_failures_and_unexpected_passes () {
+    setup "known : CONNU en échec, INATTENDU s'il passe, avec le ticket"
+    [[ $(node 'known "#76" "a" sh -c "echo raison; exit 1"') == "CONNU: a (#76) — raison" ]] || fail "échec : $(node 'known "#76" "a" sh -c "echo raison; exit 1"')"
+    [[ $(node 'known "#76" "b" true') == "INATTENDU: b (#76) passe, retirer le marqueur known" ]] || fail "réussite : $(node 'known "#76" "b" true')"
+    teardown
+}
+
+test_known_flaky_never_fails_when_it_passes () {
+    setup "known_flaky : CONNU en échec, RÉUSSI annoté s'il passe"
+    [[ $(node 'known_flaky "#74" "a" false') == "CONNU: a (#74, intermittent)" ]] || fail "échec : $(node 'known_flaky "#74" "a" false')"
+    [[ $(node 'known_flaky "#74" "b" true') == "RÉUSSI: b (#74, intermittent : non reproduit cette fois)" ]] || fail "réussite : $(node 'known_flaky "#74" "b" true')"
+    teardown
+}
+
+test_runner_counts_known_apart_unless_connus () {
+    setup "runner : CONNU hors échecs, INATTENDU en échec, --connus compte les CONNU"
+    printf '%s\n' "on hv1 <<'NODE'" 'true' 'NODE' > "${WORK}/scenarios/k.sh"
+    FAKE_OUT='RÉUSSI: a\nCONNU: b (#1)' run k; [[ $? -eq 0 ]] || fail "un CONNU fait échouer le test"
+    grep -q '=== k : 1 réussi(s), 0 échoué(s), 1 connu(s)' "${WORK}/out.log" || fail "bilan : $(tail -n 1 "${WORK}/out.log")"
+    FAKE_OUT='RÉUSSI: a\nCONNU: b (#1)' run --connus k; [[ $? -eq 1 ]] || fail "--connus : CONNU non compté"
+    FAKE_OUT='RÉUSSI: a\nINATTENDU: b (#1) passe' run k; [[ $? -eq 1 ]] || fail "INATTENDU non compté comme un échec"
+    FAKE_OUT='RÉUSSI: a' run k
+    grep -q '=== k : 1 réussi(s), 0 échoué(s)$' "${WORK}/out.log" || fail "bilan sans connu : $(tail -n 1 "${WORK}/out.log")"
+    teardown
+}
+
 for T in $(declare -F | awk '{print $3}' | grep '^test_'); do
     "${T}"
 done

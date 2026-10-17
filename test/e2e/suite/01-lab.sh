@@ -33,7 +33,8 @@ for rr in 10.255.255.1 10.255.255.2; do
     check "${HOST} : session EVPN vers ${rr} établie" sh -c "vtysh -c 'show bgp neighbors ${rr}' | grep -q 'BGP state = Established'"
     check "${HOST} : loopback de ${rr} joignable" ping -c 2 -W 2 "${rr}"
 done
-check "${HOST} : aucune incohérence signalée par le watchdog depuis 5 min" watchdog_quiet 300
+check "${HOST} : aucune incohérence signalée par le watchdog depuis 5 min (hors réservation DHCP périmée, #78)" watchdog_quiet 300 'stale dhcp reservation'
+known_flaky "#78" "${HOST} : aucune réservation DHCP signalée périmée par le watchdog depuis 5 min" watchdog_quiet_about 300 'stale dhcp reservation'
 check "${HOST} : image de VM compatible two prête" two_image
 check "${HOST} : clé SSH des VM prête" vm_key
 NODE

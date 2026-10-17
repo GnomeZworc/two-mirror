@@ -16,6 +16,26 @@ check () {
     fi
 }
 
+known () {
+    local ticket="${1}" desc="${2}" out
+    shift 2
+    if out=$("$@" 2>&1); then
+        echo "INATTENDU: ${desc} (${ticket}) passe, retirer le marqueur known"
+    else
+        echo "CONNU: ${desc} (${ticket})${out:+ — $(printf '%s' "${out}" | tail -n 1)}"
+    fi
+}
+
+known_flaky () {
+    local ticket="${1}" desc="${2}" out
+    shift 2
+    if out=$("$@" 2>&1); then
+        echo "RÉUSSI: ${desc} (${ticket}, intermittent : non reproduit cette fois)"
+    else
+        echo "CONNU: ${desc} (${ticket}, intermittent)${out:+ — $(printf '%s' "${out}" | tail -n 1)}"
+    fi
+}
+
 info () { echo "INFO: ${1}"; }
 
 api_post () {

@@ -5,10 +5,11 @@ LAB_HOST="${LAB_HOST:-${LAB_DIR}/labctl.sh}"
 SUITE_DIR="${SUITE_DIR:-${LAB_DIR}/suite}"
 LIBS=(core vm net evpn fixture)
 SCENARIO_LOG=""
+KNOWN_FAIL=0
 
 usage () {
     cat >&2 <<USAGE
-usage: ${0##*/} [--continue] all | --from <NN> | <couche N0>... | <test>...
+usage: ${0##*/} [--continue] [--connus] all | --from <NN> | <couche N0>... | <test>...
        ${0##*/} --matrice
 
   tests : $(cd "${SUITE_DIR}" && ls -- *.sh 2>/dev/null | sed 's/\.sh$//' | tr '\n' ' ')
@@ -18,6 +19,9 @@ Une couche se désigne par son numéro (00, 10, …, 70), un test par son numér
 Avant un test, ses ressources t<NN> restantes sont supprimées et l'état de chaque hôte de
 l'en-tête « # hôtes: » est relevé ; après, ses ressources sont supprimées et l'hôte doit être
 revenu à cet état. Avec all ou --from, une couche en échec arrête la suite (--continue : non).
+Un contrôle marqué known (échec connu, rattaché à un ticket) donne CONNU sans compter comme
+un échec, ou INATTENDU (compté comme un échec) s'il passe : retirer alors le marqueur. --connus
+compte les CONNU comme des échecs. known_flaky (échec intermittent) donne RÉUSSI, annoté, s'il passe.
 Une ligne RÉUSSI ou ÉCHOUÉ par vérification ; code de sortie 1 si une vérification échoue ou
 si aucune n'a été faite.
 USAGE
@@ -49,7 +53,7 @@ number () {
 }
 
 run_scenario () {
-    local file="${1}" name passed failed host hosts num
+    local file="${1}" name passed failed known host hosts num
     name="$(basename "${file}" .sh)"
     num=$(number "${file}")
     hosts=$(header "${file}" hôtes)
@@ -63,9 +67,11 @@ run_scenario () {
         on "${host}" "T=${num}" "HOST=${host}" <<< 'finish_test'
     done
     passed=$(grep -c '^RÉUSSI: ' "${SCENARIO_LOG}")
-    failed=$(grep -c '^ÉCHOUÉ: ' "${SCENARIO_LOG}")
+    failed=$(grep -cE '^(ÉCHOUÉ|INATTENDU): ' "${SCENARIO_LOG}")
+    known=$(grep -c '^CONNU: ' "${SCENARIO_LOG}")
+    [[ "${KNOWN_FAIL}" -eq 1 ]] && failed=$(( failed + known ))
     rm -f "${SCENARIO_LOG}"
-    echo "=== ${name} : ${passed} réussi(s), ${failed} échoué(s)"
+    echo "=== ${name} : ${passed} réussi(s), ${failed} échoué(s)$([[ "${known}" -gt 0 ]] && echo ", ${known} connu(s)")"
     [[ "${failed}" -eq 0 && "${passed}" -gt 0 ]]
 }
 
@@ -109,6 +115,7 @@ main () {
     for arg in "$@"; do
         case "${arg}" in
             --continue) stop=0 ;;
+            --connus) KNOWN_FAIL=1 ;;
             --matrice) matrix; return 0 ;;
             all|--from) sweep=1; args+=("${arg}") ;;
             *) args+=("${arg}") ;;

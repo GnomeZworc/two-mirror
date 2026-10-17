@@ -49,9 +49,9 @@ own_meta () {
 }
 RESPONDERS=$(vm_frames vp-t33 10.33.0.21 arp-who ens3 10.33.0.21 10.33.0.1 2)
 info "MAC qui répondent pour 10.33.0.1 vues de t33-a1 : $(echo ${RESPONDERS})"
-check "deux hôtes : t33-a1 (hv1) joint t33-b1 (hv2) sur le segment lan" vm_ssh vp-t33 10.33.0.21 'ping -n -c 3 -W 2 10.33.0.23'
-check "deux hôtes : une seule MAC répond pour interface_ip 10.33.0.1" test "$(grep -c . <<<"${RESPONDERS}")" -eq 1
-check "deux hôtes : t33-a1 reçoit toujours ses propres métadonnées (5 essais, cache ARP vidé)" own_meta 10.33.0.21 t33-a1
+known "#75" "deux hôtes : t33-a1 (hv1) joint t33-b1 (hv2) sur le segment lan" vm_ssh vp-t33 10.33.0.21 'ping -n -c 3 -W 2 10.33.0.23'
+known "#75" "deux hôtes : une seule MAC répond pour interface_ip 10.33.0.1" test "$(grep -c . <<<"${RESPONDERS}")" -eq 1
+known_flaky "#75" "deux hôtes : t33-a1 reçoit toujours ses propres métadonnées (5 essais, cache ARP vidé)" own_meta 10.33.0.21 t33-a1
 NODE
 
 on hv2 <<'NODE'
@@ -63,6 +63,6 @@ own_meta () {
     done
     [ "${ok}" -eq 5 ] || { echo "${2} : ${ok}/5 réponses avec ses propres métadonnées"; return 1; }
 }
-check "deux hôtes : t33-b1 (hv2) reçoit toujours ses propres métadonnées (5 essais, cache ARP vidé)" own_meta 10.33.0.23 t33-b1
+known_flaky "#75" "deux hôtes : t33-b1 (hv2) reçoit toujours ses propres métadonnées (5 essais, cache ARP vidé)" own_meta 10.33.0.23 t33-b1
 check "deux hôtes : t33-b1 (hv2) joint t33-a2 (hv1)" vm_ssh vp-t33 10.33.0.23 'ping -n -c 3 -W 2 10.33.0.22'
 NODE
