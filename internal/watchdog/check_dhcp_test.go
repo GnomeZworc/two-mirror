@@ -83,7 +83,7 @@ func TestExpectedHosts_ReadsRunningVMsOnThatSubnet(t *testing.T) {
 	db := newTestDB(t)
 	seedSubnetWithVM(t, db, "vm-web", "10.0.5.10", "00:22:33:00:00:0A", true)
 
-	hosts, err := expectedHosts(db, testSubnetName)
+	hosts, _, err := expectedHosts(db, testSubnetName)
 	if err != nil {
 		t.Fatalf("expectedHosts: %v", err)
 	}
@@ -105,12 +105,15 @@ func TestExpectedHosts_IgnoresVMsThatAreNotRunning(t *testing.T) {
 		t.Fatalf("state.Set: %v", err)
 	}
 
-	hosts, err := expectedHosts(db, testSubnetName)
+	hosts, transient, err := expectedHosts(db, testSubnetName)
 	if err != nil {
 		t.Fatalf("expectedHosts: %v", err)
 	}
 	if len(hosts) != 0 {
 		t.Errorf("hosts = %+v, want none: a vm being deleted is not expected to be served", hosts)
+	}
+	if !transient["vm-web"] {
+		t.Errorf("transient = %v, want vm-web: a vm being deleted may still be served", transient)
 	}
 }
 
@@ -121,7 +124,7 @@ func TestExpectedHosts_IgnoresInterfacesOnOtherSubnets(t *testing.T) {
 	seedKV(t, db, "vm/vm-web/nic/1/ip", "10.0.6.10")
 	seedKV(t, db, "vm/vm-web/nic/1/primary", "false")
 
-	hosts, err := expectedHosts(db, testSubnetName)
+	hosts, _, err := expectedHosts(db, testSubnetName)
 	if err != nil {
 		t.Fatalf("expectedHosts: %v", err)
 	}
@@ -135,7 +138,7 @@ func TestExpectedHosts_SortsByMAC(t *testing.T) {
 	seedSubnetWithVM(t, db, "vm-b", "10.0.5.11", "00:22:33:00:00:0B", true)
 	seedSubnetWithVM(t, db, "vm-a", "10.0.5.10", "00:22:33:00:00:0A", true)
 
-	hosts, err := expectedHosts(db, testSubnetName)
+	hosts, _, err := expectedHosts(db, testSubnetName)
 	if err != nil {
 		t.Fatalf("expectedHosts: %v", err)
 	}
@@ -149,7 +152,7 @@ func TestExpectedHosts_ReportsAnIPWithoutAMAC(t *testing.T) {
 	seedSubnetWithVM(t, db, "vm-web", "10.0.5.10", "00:22:33:00:00:0A", true)
 	seedKV(t, db, "vm/vm-web/nic/0/ip", "10.0.5.99")
 
-	if _, err := expectedHosts(db, testSubnetName); err == nil {
+	if _, _, err := expectedHosts(db, testSubnetName); err == nil {
 		t.Fatal("an ip absent from the address plan must be reported, not skipped")
 	}
 }
@@ -247,6 +250,83 @@ func TestCheckDHCPState_ReportsAStaleReservation(t *testing.T) {
 
 	if !r.hasProblemContaining("stale dhcp reservation on the server") {
 		t.Errorf("a lost del-host order must be reported, got %+v", r.calls)
+	}
+}
+
+func TestCheckDHCPState_ToleratesAVMInATransientState(t *testing.T) {
+	for _, st := range []state.State{state.Creating, state.Deleting, state.Error} {
+		t.Run(string(st), func(t *testing.T) {
+			for _, served := range []bool{true, false} {
+				db := newTestDB(t)
+				seedSubnetWithVM(t, db, "vm-web", "10.0.5.10", "00:22:33:00:00:0A", true)
+				if err := state.Set(db, "vm/vm-web", st); err != nil {
+					t.Fatalf("state.Set: %v", err)
+				}
+
+				b, _ := servedBy(t)
+				if served {
+					if err := b.SetVM(twoSubnet(), "vm-web", []dhcpbackend.Reservation{
+						{Index: 0, MAC: "00:22:33:00:00:0A", IP: "10.0.5.10", DefaultRoute: true},
+					}); err != nil {
+						t.Fatalf("SetVM: %v", err)
+					}
+				}
+
+				r := &recorder{}
+				checkDHCPState(db, testSubnetName, twoSubnet(), b, r)
+
+				if len(r.calls) != 0 {
+					t.Errorf("served=%t: notifications = %+v, want none while the vm is %s", served, r.calls, st)
+				}
+			}
+		})
+	}
+}
+
+func TestCheckDHCPState_ToleranceIsLimitedToTheTransientVM(t *testing.T) {
+	db := newTestDB(t)
+	seedSubnetWithVM(t, db, "vm-web", "10.0.5.10", "00:22:33:00:00:0A", true)
+	if err := state.Set(db, "vm/vm-web", state.Deleting); err != nil {
+		t.Fatalf("state.Set: %v", err)
+	}
+
+	b, _ := servedBy(t)
+	if err := b.SetVM(twoSubnet(), "vm-web", []dhcpbackend.Reservation{
+		{Index: 0, MAC: "00:22:33:00:00:0A", IP: "10.0.5.10", DefaultRoute: true},
+	}); err != nil {
+		t.Fatalf("SetVM: %v", err)
+	}
+	if err := b.SetVM(twoSubnet(), "vm-gone", []dhcpbackend.Reservation{
+		{Index: 0, MAC: "00:22:33:00:00:0B", IP: "10.0.5.11", DefaultRoute: true},
+	}); err != nil {
+		t.Fatalf("SetVM: %v", err)
+	}
+
+	r := &recorder{}
+	checkDHCPState(db, testSubnetName, twoSubnet(), b, r)
+
+	if len(r.calls) != 1 || !r.hasProblemContaining("stale dhcp reservation on the server: 00:22:33:00:00:0b") {
+		t.Errorf("notifications = %+v, want only the reservation of the vm that no longer exists", r.calls)
+	}
+}
+
+func TestCheckDHCPState_AReservationOfATransientVMOnAnExpectedMACIsStillCompared(t *testing.T) {
+	db := newTestDB(t)
+	seedSubnetWithVM(t, db, "vm-new", "10.0.5.10", "00:22:33:00:00:0A", true)
+	seedResource(t, db, "vm/", "vm-old", state.Deleting)
+
+	b, _ := servedBy(t)
+	if err := b.SetVM(twoSubnet(), "vm-old", []dhcpbackend.Reservation{
+		{Index: 0, MAC: "00:22:33:00:00:0A", IP: "10.0.5.99", DefaultRoute: true},
+	}); err != nil {
+		t.Fatalf("SetVM: %v", err)
+	}
+
+	r := &recorder{}
+	checkDHCPState(db, testSubnetName, twoSubnet(), b, r)
+
+	if len(r.calls) != 1 || !r.hasProblemContaining("dhcp reservation diverges") {
+		t.Errorf("notifications = %+v, want the divergence on the mac a running vm expects", r.calls)
 	}
 }
 
