@@ -25,28 +25,58 @@ type stateReporter interface {
 	State(s dhcpbackend.Subnet) (dhcpapi.State, string, error)
 }
 
-func expectedHosts(db *badger.DB, subnetName string) ([]dhcpapi.Host, error) {
+func expectedHosts(db *badger.DB, subnetName string) (hosts []dhcpapi.Host, transient map[string]bool, err error) {
 	pairs, err := kv.ListByPrefix(db, prefixVM)
 	if err != nil {
-		return nil, fmt.Errorf("listing vms: %w", err)
+		return nil, nil, fmt.Errorf("listing vms: %w", err)
 	}
 
-	hosts := make([]dhcpapi.Host, 0)
+	hosts, transient = make([]dhcpapi.Host, 0), map[string]bool{}
 	for _, vmName := range resourceNames(pairs, prefixVM) {
 		st, err := state.Get(db, prefixVM+vmName)
-		if err != nil || st != state.Running {
+		if err != nil {
+			continue
+		}
+		if st == state.Creating || st == state.Deleting || st == state.Error {
+			transient[vmName] = true
+			continue
+		}
+		if st != state.Running {
 			continue
 		}
 
 		vmHosts, err := expectedVMHosts(db, vmName, subnetName)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		hosts = append(hosts, vmHosts...)
 	}
 
 	dhcpapi.SortHosts(hosts)
-	return hosts, nil
+	return hosts, transient, nil
+}
+
+func withoutTransient(served, expected []dhcpapi.Host, transient map[string]bool) []dhcpapi.Host {
+	wanted := make(map[string]bool, len(expected))
+	for _, h := range expected {
+		wanted[canonicalMAC(h)] = true
+	}
+
+	kept := make([]dhcpapi.Host, 0, len(served))
+	for _, h := range served {
+		if transient[h.VM] && !wanted[canonicalMAC(h)] {
+			continue
+		}
+		kept = append(kept, h)
+	}
+	return kept
+}
+
+func canonicalMAC(h dhcpapi.Host) string {
+	if c, err := dhcpapi.CanonicalHost(h); err == nil {
+		return c.MAC
+	}
+	return h.MAC
 }
 
 func expectedVMHosts(db *badger.DB, vmName, subnetName string) ([]dhcpapi.Host, error) {
@@ -125,18 +155,19 @@ func checkDHCPState(db *badger.DB, name string, s dhcpbackend.Subnet, r stateRep
 		n.Notify(kindSubnet, name, "dhcp server has no subnet configuration: it serves nothing")
 	}
 
-	expected, err := expectedHosts(db, name)
+	expected, transient, err := expectedHosts(db, name)
 	if err != nil {
 		n.Notify(kindSubnet, name, fmt.Sprintf("expected dhcp reservations unreadable in database: %v", err))
 		return
 	}
+	hosts := withoutTransient(served.Hosts, expected, transient)
 
 	expectedDigest, err := dhcpapi.Digest(dhcpapi.State{Hosts: expected})
 	if err != nil {
 		n.Notify(kindSubnet, name, fmt.Sprintf("expected dhcp reservations inconsistent in database: %v", err))
 		return
 	}
-	servedDigest, err := dhcpapi.Digest(dhcpapi.State{Hosts: served.Hosts})
+	servedDigest, err := dhcpapi.Digest(dhcpapi.State{Hosts: hosts})
 	if err != nil {
 		n.Notify(kindSubnet, name, fmt.Sprintf("dhcp reservations reported by the server are inconsistent: %v", err))
 		return
@@ -145,7 +176,7 @@ func checkDHCPState(db *badger.DB, name string, s dhcpbackend.Subnet, r stateRep
 		return
 	}
 
-	for _, gap := range reservationGaps(expected, served.Hosts) {
+	for _, gap := range reservationGaps(expected, hosts) {
 		n.Notify(kindSubnet, name, gap)
 	}
 }
