@@ -57,7 +57,7 @@ curl -X POST http://127.0.0.1:8080/vms \
   -d '{"name": "i-web", "memory": 2048, "cpus": 2,
        "metadata": {"sshkey": "ssh-ed25519 AAAA…",
                     "user_data": "'"$(base64 -w0 < user-data.yml)"'"},
-       "interfaces": [{"subnet": "sn-000001", "ip": "10.1.1.2", "primary": true}],
+       "interfaces": [{"subnet": "sn-000001", "ip": "10.1.1.2", "mac": "52:54:00:01:01:02", "primary": true}],
        "storage": [{"path": "/data/disks/vms/i-web.qcow2", "dev": "vda"}]}'
 ```
 

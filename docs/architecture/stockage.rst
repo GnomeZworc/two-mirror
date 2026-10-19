@@ -20,11 +20,11 @@ de sérialisation structurée.
    subnet/<name>/local_iface    → <bridge-name>
    subnet/<name>/default_route  → "true" | "false"
    subnet/<name>/gateway        → <ip>            (optionnel)
-   subnet/<name>/dhcp/<ip>      → <mac>
 
    vm/<name>/state              → creating | running | error | deleting | deleted
    vm/<name>/nic/<i>/subnet     → <subnet-name>   (une interface par index, ordre du tableau interfaces)
    vm/<name>/nic/<i>/ip         → <ip>
+   vm/<name>/nic/<i>/mac        → <mac>           (fournie par l'appelant, conservée telle quelle)
    vm/<name>/nic/<i>/primary    → "true"          (exactement une interface ; absent sur les autres)
    vm/<name>/nic/<i>/tap_id     → <int>           (alloué au premier démarrage, puis conservé)
    vm/<name>/metadata_port      → <port>
@@ -47,6 +47,13 @@ lus depuis le subnet, leur source canonique. De même, la L3VNI d'un VPC n'est s
 **Ancien schéma des VM.** Avant le multi-interfaces, une VM portait directement ``subnet``, ``ip``
 et ``tap_id``. L'agent les migre au démarrage vers ``nic/0/…``, marquée ``primary``, avant
 d'ouvrir son API ; une VM qui a déjà des clés ``nic/`` est laissée telle quelle.
+
+**Ancienne table des MAC.** Jusqu'en 0.1.0, la MAC d'une interface était dérivée du rang de son IP
+et préchargée pour tout le ``cidr`` sous ``subnet/<name>/dhcp/<ip>``. Au démarrage, l'agent
+recopie la MAC de chaque interface existante dans ``vm/<name>/nic/<i>/mac``, puis supprime ces
+clés. Les VM ``deleted`` sont ignorées. Une interface dont la MAC est introuvable fait échouer le
+démarrage en la nommant, et la table reste en place tant que toutes les interfaces ne sont pas
+migrées.
 
 **Les états passent par ``state``.** Toujours ``state.Set`` / ``state.Get`` : ``Set`` refuse une
 valeur hors énumération, ``Get`` refuse de retourner une valeur non reconnue. ``error`` n'est

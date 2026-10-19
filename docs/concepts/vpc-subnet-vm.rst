@@ -84,6 +84,10 @@ le nom de l'interface dans le guest. Exactement une interface doit être ``prima
 la route par défaut et le serveur de metadata. Tous les subnets d'une VM doivent appartenir au
 **même VPC**.
 
+**MAC.** Chaque interface porte la MAC choisie par l'appelant, comme son IP. L'agent la donne
+telle quelle à QEMU et à la réservation DHCP, sans en vérifier le format ni l'unicité : c'est à
+l'appelant de garantir qu'elle est unique sur le segment L2.
+
 **Routes.** Dans un VPC routé par ``l3vni``, chaque interface sur un subnet ``vxlan`` est annoncée
 en ``/32`` dans la VRF du VPC une fois QEMU démarré, juste avant le passage en ``running``. À la
 suppression, ces ``/32`` sont retirés **avant** l'arrêt de QEMU. Comme un subnet ne peut être
@@ -98,7 +102,7 @@ Ce qui est stocké, et où
 ------------------------
 
 Une ressource ne porte en base que ce qui lui est propre. Une VM stocke le **lien** vers son
-subnet (``vm/<name>/subnet``), pas le VPC ni le bridge ni la gateway : ces valeurs sont lues
+subnet (``vm/<name>/nic/<i>/subnet``), pas le VPC ni le bridge ni la gateway : ces valeurs sont lues
 depuis le subnet, leur source canonique. Le schéma complet des clés est dans
 :doc:`/architecture/stockage`.
 
