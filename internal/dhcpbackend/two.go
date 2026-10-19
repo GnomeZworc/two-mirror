@@ -107,7 +107,14 @@ func (b Two) TeardownSubnet(s Subnet) error {
 		}
 	}
 
-	return statefile.Remove(b.statePath(s))
+	return b.removeFiles(s)
+}
+
+func (b Two) removeFiles(s Subnet) error {
+	if err := statefile.Remove(b.statePath(s)); err != nil {
+		return err
+	}
+	return statefile.Remove(dhcpapi.SocketPath(b.runDir(), s.Instance()))
 }
 
 func (b Two) SetVM(s Subnet, vmName string, res []Reservation) error {
