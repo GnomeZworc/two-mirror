@@ -104,7 +104,7 @@ func TestStartVM_MultiDisk(t *testing.T) {
 	body, _ := json.Marshal(VMCreateRequest{
 		Name: "vm-10",
 		Interfaces: []VMInterface{
-			{Subnet: "sn-1", IP: "10.0.0.10", Primary: true},
+			{Subnet: "sn-1", IP: "10.0.0.10", MAC: "52:54:00:00:00:05", Primary: true},
 		},
 		Storage: []VMStorage{
 			{Path: "/data/root.qcow2", Dev: "sda"},
@@ -139,7 +139,7 @@ func TestStartVM_StorageReturnedInResponse(t *testing.T) {
 	body, _ := json.Marshal(VMCreateRequest{
 		Name: "vm-11",
 		Interfaces: []VMInterface{
-			{Subnet: "sn-1", IP: "10.0.0.11", Primary: true},
+			{Subnet: "sn-1", IP: "10.0.0.11", MAC: "52:54:00:00:00:05", Primary: true},
 		},
 		Storage: []VMStorage{
 			{Path: "/data/root.qcow2", Dev: "sda"},
@@ -173,7 +173,7 @@ func postVM(t *testing.T, name string, meta VMMetadata) (*httptest.ResponseRecor
 
 	body, _ := json.Marshal(VMCreateRequest{
 		Name:       name,
-		Interfaces: []VMInterface{{Subnet: "sn-1", IP: "10.0.0.20", Primary: true}},
+		Interfaces: []VMInterface{{Subnet: "sn-1", IP: "10.0.0.20", MAC: "52:54:00:00:00:05", Primary: true}},
 		Storage:    []VMStorage{{Path: "/data/root.qcow2", Dev: "vda"}},
 		Memory:     1024,
 		CPUs:       2,
@@ -273,6 +273,7 @@ func TestVmFromDB_MultipleInterfacesSortedByIndex(t *testing.T) {
 		"vm/vm-multi/state":         "running",
 		"vm/vm-multi/nic/1/subnet":  "sn-2",
 		"vm/vm-multi/nic/1/ip":      "10.2.0.5",
+		"vm/vm-multi/nic/1/mac":     "52:54:00:aa:bb:cc",
 		"vm/vm-multi/nic/0/subnet":  "sn-1",
 		"vm/vm-multi/nic/0/ip":      "10.1.0.5",
 		"vm/vm-multi/nic/0/primary": "true",
@@ -290,6 +291,9 @@ func TestVmFromDB_MultipleInterfacesSortedByIndex(t *testing.T) {
 	if vm.Interfaces[1].Subnet != "sn-2" || vm.Interfaces[1].Primary {
 		t.Errorf("la seconde doit être l'index 1, non primaire : %+v", vm.Interfaces[1])
 	}
+	if vm.Interfaces[1].MAC != "52:54:00:aa:bb:cc" {
+		t.Errorf("la mac de la seconde doit être rendue : %+v", vm.Interfaces[1])
+	}
 }
 
 func TestStartVM_StoresAllInterfaces(t *testing.T) {
@@ -303,8 +307,8 @@ func TestStartVM_StoresAllInterfaces(t *testing.T) {
 	body, _ := json.Marshal(VMCreateRequest{
 		Name: "vm-multi",
 		Interfaces: []VMInterface{
-			{Subnet: "sn-1", IP: "10.1.0.5", Primary: true},
-			{Subnet: "sn-2", IP: "10.2.0.5"},
+			{Subnet: "sn-1", IP: "10.1.0.5", MAC: "52:54:00:00:00:05", Primary: true},
+			{Subnet: "sn-2", IP: "10.2.0.5", MAC: "52:54:00:aa:bb:cc"},
 		},
 		Storage: []VMStorage{{Path: "/data/root.qcow2", Dev: "vda"}},
 	})
@@ -318,6 +322,9 @@ func TestStartVM_StoresAllInterfaces(t *testing.T) {
 	if got, _ := kv.GetFromDB(db, "vm/vm-multi/nic/1/subnet"); got != "sn-2" {
 		t.Errorf("seconde interface non stockée : %q", got)
 	}
+	if got, _ := kv.GetFromDB(db, "vm/vm-multi/nic/1/mac"); got != "52:54:00:aa:bb:cc" {
+		t.Errorf("mac de la seconde interface non stockée telle quelle : %q", got)
+	}
 	if got, _ := kv.GetFromDB(db, "vm/vm-multi/nic/0/primary"); got != "true" {
 		t.Errorf("primaire non marquée : %q", got)
 	}
@@ -328,10 +335,10 @@ func TestStartVM_StoresAllInterfaces(t *testing.T) {
 
 func TestStartVM_RejectsZeroOrTwoPrimaries(t *testing.T) {
 	cases := map[string][]VMInterface{
-		"aucune primaire": {{Subnet: "sn-1", IP: "10.1.0.5"}},
+		"aucune primaire": {{Subnet: "sn-1", IP: "10.1.0.5", MAC: "52:54:00:00:00:05"}},
 		"deux primaires": {
-			{Subnet: "sn-1", IP: "10.1.0.5", Primary: true},
-			{Subnet: "sn-2", IP: "10.2.0.5", Primary: true},
+			{Subnet: "sn-1", IP: "10.1.0.5", MAC: "52:54:00:00:00:05", Primary: true},
+			{Subnet: "sn-2", IP: "10.2.0.5", MAC: "52:54:00:00:00:05", Primary: true},
 		},
 	}
 	for label, ifaces := range cases {
@@ -354,6 +361,31 @@ func TestStartVM_RejectsZeroOrTwoPrimaries(t *testing.T) {
 	}
 }
 
+func TestStartVM_RejectsAnInterfaceWithoutMAC(t *testing.T) {
+	s, db := newTestServer(t)
+	for sn, cidr := range map[string]string{"sn-1": "10.1.0.0/24", "sn-2": "10.2.0.0/24"} {
+		kv.AddInDB(db, "subnet/"+sn+"/state", "running")
+		kv.AddInDB(db, "subnet/"+sn+"/vpc", "vpc-1")
+		kv.AddInDB(db, "subnet/"+sn+"/cidr", cidr)
+	}
+	body, _ := json.Marshal(VMCreateRequest{
+		Name: "vm-nomac",
+		Interfaces: []VMInterface{
+			{Subnet: "sn-1", IP: "10.1.0.5", MAC: "52:54:00:00:00:05", Primary: true},
+			{Subnet: "sn-2", IP: "10.2.0.5"},
+		},
+		Storage: []VMStorage{{Path: "/data/root.qcow2", Dev: "vda"}},
+	})
+	w := httptest.NewRecorder()
+	s.VmsHandler(w, httptest.NewRequest(http.MethodPost, "/vms", bytes.NewReader(body)))
+	if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "interface 1: mac is required") {
+		t.Errorf("attendu 400 nommant l'interface 1, obtenu %d — %s", w.Code, w.Body.String())
+	}
+	if _, err := kv.GetFromDB(db, "vm/vm-nomac/state"); err == nil {
+		t.Error("une VM refusée ne doit laisser aucune trace en base")
+	}
+}
+
 func TestStartVM_RejectsReservedOrForeignAddresses(t *testing.T) {
 	cases := map[string]string{
 		"passerelle anycast": "10.0.0.254",
@@ -373,7 +405,7 @@ func TestStartVM_RejectsReservedOrForeignAddresses(t *testing.T) {
 		kv.AddInDB(db, "subnet/sn-1/gateway", "10.0.0.1")
 		body, _ := json.Marshal(VMCreateRequest{
 			Name:       "vm-ip",
-			Interfaces: []VMInterface{{Subnet: "sn-1", IP: ip, Primary: true}},
+			Interfaces: []VMInterface{{Subnet: "sn-1", IP: ip, MAC: "52:54:00:00:00:05", Primary: true}},
 			Storage:    []VMStorage{{Path: "/data/root.qcow2", Dev: "vda"}},
 		})
 		w := httptest.NewRecorder()
@@ -396,7 +428,7 @@ func TestStartVM_AcceptsHostAddressBesideReservedOnes(t *testing.T) {
 	kv.AddInDB(db, "subnet/sn-1/relay_ip", "10.0.0.253")
 	body, _ := json.Marshal(VMCreateRequest{
 		Name:       "vm-ip",
-		Interfaces: []VMInterface{{Subnet: "sn-1", IP: "10.0.0.252", Primary: true}},
+		Interfaces: []VMInterface{{Subnet: "sn-1", IP: "10.0.0.252", MAC: "52:54:00:00:00:05", Primary: true}},
 		Storage:    []VMStorage{{Path: "/data/root.qcow2", Dev: "vda"}},
 	})
 	w := httptest.NewRecorder()
@@ -412,7 +444,7 @@ func TestStartVM_RejectsSubnetWithoutCIDR(t *testing.T) {
 	kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-1")
 	body, _ := json.Marshal(VMCreateRequest{
 		Name:       "vm-ip",
-		Interfaces: []VMInterface{{Subnet: "sn-1", IP: "10.0.0.5", Primary: true}},
+		Interfaces: []VMInterface{{Subnet: "sn-1", IP: "10.0.0.5", MAC: "52:54:00:00:00:05", Primary: true}},
 		Storage:    []VMStorage{{Path: "/data/root.qcow2", Dev: "vda"}},
 	})
 	w := httptest.NewRecorder()

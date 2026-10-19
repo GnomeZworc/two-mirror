@@ -63,6 +63,11 @@ func run(confFile string) int {
 		return 1
 	}
 
+	if err := migration.MigrateVMMACs(db, log.With(slog.String("component", "migration"))); err != nil {
+		log.Error("vm mac migration failed", "error", err)
+		return 1
+	}
+
 	if cfg.BGP.Enabled() {
 		if err := applyBGPBase(cfg, frr.NewClient()); err != nil {
 			log.Error("failed to apply the bgp base configuration", "error", err)

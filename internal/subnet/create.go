@@ -5,7 +5,6 @@ import (
 	"net"
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
-	"git.g3e.fr/syonad/two/internal/dhcp"
 	"git.g3e.fr/syonad/two/internal/dhcpbackend"
 	"git.g3e.fr/syonad/two/internal/ebtables"
 	"git.g3e.fr/syonad/two/internal/l3vni"
@@ -139,7 +138,7 @@ func createSubnet(db *badger.DB, subnetName string, d subnetData, backend dhcpba
 		}
 	}
 
-	return startDHCP(db, subnetName, d, backend)
+	return startDHCP(subnetName, d, backend)
 }
 
 func setupVxlanHost(d subnetData, vethE string) error {
@@ -165,14 +164,10 @@ func setupVxlanHost(d subnetData, vethE string) error {
 	return nil
 }
 
-func startDHCP(db *badger.DB, subnetName string, d subnetData, backend dhcpbackend.Backend) error {
+func startDHCP(subnetName string, d subnetData, backend dhcpbackend.Backend) error {
 	defaultGateway, vpcRoute, err := dhcpRouting(d, netif.GetDefaultGateway)
 	if err != nil {
 		return err
-	}
-
-	if err := dhcp.StoreDHCPEntries(db, subnetName, dhcp.Entries(d.cidr)); err != nil {
-		return fmt.Errorf("store dhcp entries: %w", err)
 	}
 
 	listen := ""

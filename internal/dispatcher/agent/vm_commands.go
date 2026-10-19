@@ -23,6 +23,7 @@ type VMDisk struct {
 type VMNIC struct {
 	Subnet  string
 	IP      string
+	MAC     string
 	Primary bool
 }
 
@@ -59,6 +60,9 @@ func (c StartVMCommand) Prepare(db *badger.DB, _ *configuration.Config) error {
 		}
 		if err := kv.AddInDB(db, prefix+"ip", n.IP); err != nil {
 			return fmt.Errorf("store nic %d ip: %w", i, err)
+		}
+		if err := kv.AddInDB(db, prefix+"mac", n.MAC); err != nil {
+			return fmt.Errorf("store nic %d mac: %w", i, err)
 		}
 		if n.Primary {
 			if err := kv.AddInDB(db, prefix+"primary", "true"); err != nil {

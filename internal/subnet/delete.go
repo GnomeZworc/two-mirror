@@ -10,7 +10,6 @@ import (
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
 	"git.g3e.fr/syonad/two/internal/state"
-	"git.g3e.fr/syonad/two/pkg/db/kv"
 
 	"github.com/dgraph-io/badger/v4"
 )
@@ -40,7 +39,7 @@ func DeleteSubnet(db *badger.DB, subnetName string, cfg *configuration.Config) e
 		}
 	}
 
-	if err := stopDHCP(db, subnetName, d, backend); err != nil {
+	if err := stopDHCP(subnetName, d, backend); err != nil {
 		return err
 	}
 
@@ -60,19 +59,12 @@ func DeleteSubnet(db *badger.DB, subnetName string, cfg *configuration.Config) e
 	return state.Set(db, "subnet/"+subnetName, state.Deleted)
 }
 
-func stopDHCP(db *badger.DB, subnetName string, d subnetData, backend dhcpbackend.Backend) error {
-	if err := backend.TeardownSubnet(dhcpbackend.Subnet{
+func stopDHCP(subnetName string, d subnetData, backend dhcpbackend.Backend) error {
+	return backend.TeardownSubnet(dhcpbackend.Subnet{
 		Name:   subnetName,
 		VPC:    d.vpc,
 		Bridge: d.bridge,
-	}); err != nil {
-		return err
-	}
-
-	if err := kv.DeleteInDB(db, "subnet/"+subnetName+"/dhcp"); err != nil {
-		return fmt.Errorf("delete dhcp entries: %w", err)
-	}
-	return nil
+	})
 }
 
 func deleteSubnetVxlan(d subnetData) error {

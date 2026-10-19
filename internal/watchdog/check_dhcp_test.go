@@ -69,13 +69,13 @@ func seedSubnetWithVM(t *testing.T, db *badger.DB, vmName, ip, mac string, prima
 	t.Helper()
 
 	seedKV(t, db, "subnet/"+testSubnetName+"/vpc", testVPC)
-	seedKV(t, db, "subnet/"+testSubnetName+"/dhcp/"+ip, mac)
 
 	if err := state.Set(db, "vm/"+vmName, state.Running); err != nil {
 		t.Fatalf("state.Set: %v", err)
 	}
 	seedKV(t, db, "vm/"+vmName+"/nic/0/subnet", testSubnetName)
 	seedKV(t, db, "vm/"+vmName+"/nic/0/ip", ip)
+	seedKV(t, db, "vm/"+vmName+"/nic/0/mac", mac)
 	seedKV(t, db, "vm/"+vmName+"/nic/0/primary", fmt.Sprintf("%t", primary))
 }
 
@@ -147,13 +147,14 @@ func TestExpectedHosts_SortsByMAC(t *testing.T) {
 	}
 }
 
-func TestExpectedHosts_ReportsAnIPWithoutAMAC(t *testing.T) {
+func TestExpectedHosts_ReportsAnInterfaceWithoutAMAC(t *testing.T) {
 	db := newTestDB(t)
-	seedSubnetWithVM(t, db, "vm-web", "10.0.5.10", "00:22:33:00:00:0A", true)
-	seedKV(t, db, "vm/vm-web/nic/0/ip", "10.0.5.99")
+	seedResource(t, db, "vm/", "vm-web", state.Running)
+	seedKV(t, db, "vm/vm-web/nic/0/subnet", testSubnetName)
+	seedKV(t, db, "vm/vm-web/nic/0/ip", "10.0.5.10")
 
 	if _, _, err := expectedHosts(db, testSubnetName); err == nil {
-		t.Fatal("an ip absent from the address plan must be reported, not skipped")
+		t.Fatal("an interface without a mac must be reported, not skipped")
 	}
 }
 

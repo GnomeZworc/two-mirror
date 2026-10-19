@@ -100,6 +100,8 @@ func interfacesFromDB(prefix string, entries map[string]string) []VMInterface {
 			byIndex[idx].Subnet = value
 		case "ip":
 			byIndex[idx].IP = value
+		case "mac":
+			byIndex[idx].MAC = value
 		case "primary":
 			byIndex[idx].Primary = value == "true"
 		}

@@ -17,7 +17,7 @@ func TestStartVMCommand_Prepare_SingleDisk(t *testing.T) {
 
 	cmd := StartVMCommand{
 		Name:  "vm-1",
-		NICs:  []VMNIC{{Subnet: "sn-1", IP: "10.0.0.5", Primary: true}},
+		NICs:  []VMNIC{{Subnet: "sn-1", IP: "10.0.0.5", MAC: "52:54:00:00:00:05", Primary: true}},
 		Disks: []VMDisk{{Path: "/data/root.qcow2", Dev: "sda"}},
 	}
 	if err := cmd.Prepare(db, nil); err != nil {
@@ -41,7 +41,7 @@ func TestStartVMCommand_Prepare_MultiDisk(t *testing.T) {
 
 	cmd := StartVMCommand{
 		Name: "vm-2",
-		NICs: []VMNIC{{Subnet: "sn-1", IP: "10.0.0.6", Primary: true}},
+		NICs: []VMNIC{{Subnet: "sn-1", IP: "10.0.0.6", MAC: "52:54:00:00:00:05", Primary: true}},
 		Disks: []VMDisk{
 			{Path: "/data/root.qcow2", Dev: "sda"},
 			{Path: "/data/data.qcow2", Dev: "sdb"},
@@ -74,7 +74,7 @@ func TestStartVMCommand_Prepare_SlotGap(t *testing.T) {
 	// sdb absent au boot — slot réservé pour hotplug
 	cmd := StartVMCommand{
 		Name: "vm-3",
-		NICs: []VMNIC{{Subnet: "sn-1", IP: "10.0.0.7", Primary: true}},
+		NICs: []VMNIC{{Subnet: "sn-1", IP: "10.0.0.7", MAC: "52:54:00:00:00:05", Primary: true}},
 		Disks: []VMDisk{
 			{Path: "/data/root.qcow2", Dev: "sda"},
 			{Path: "/data/extra.qcow2", Dev: "sdc"},
@@ -103,7 +103,7 @@ func TestStartVMCommand_Prepare_NoVolumePath(t *testing.T) {
 
 	cmd := StartVMCommand{
 		Name:  "vm-4",
-		NICs:  []VMNIC{{Subnet: "sn-1", IP: "10.0.0.8", Primary: true}},
+		NICs:  []VMNIC{{Subnet: "sn-1", IP: "10.0.0.8", MAC: "52:54:00:00:00:05", Primary: true}},
 		Disks: []VMDisk{{Path: "/data/root.qcow2", Dev: "sda"}},
 	}
 	if err := cmd.Prepare(db, nil); err != nil {
@@ -166,7 +166,7 @@ func TestStartVMCommand_Prepare_Duplicate(t *testing.T) {
 
 	cmd := StartVMCommand{
 		Name:  "vm-exist",
-		NICs:  []VMNIC{{Subnet: "sn-1", IP: "10.0.0.9", Primary: true}},
+		NICs:  []VMNIC{{Subnet: "sn-1", IP: "10.0.0.9", MAC: "52:54:00:00:00:05", Primary: true}},
 		Disks: []VMDisk{{Path: "/data/root.qcow2", Dev: "sda"}},
 	}
 	if err := cmd.Prepare(db, nil); err == nil {
@@ -185,7 +185,7 @@ func prepareWithDocuments(t *testing.T, docs map[string]string) *badger.DB {
 
 	cmd := StartVMCommand{
 		Name:      "vm-doc",
-		NICs:      []VMNIC{{Subnet: "sn-1", IP: "10.0.0.5", Primary: true}},
+		NICs:      []VMNIC{{Subnet: "sn-1", IP: "10.0.0.5", MAC: "52:54:00:00:00:05", Primary: true}},
 		Disks:     []VMDisk{{Path: "/data/root.qcow2", Dev: "vda"}},
 		Documents: docs,
 	}

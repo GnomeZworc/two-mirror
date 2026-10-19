@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	dhcpapi "git.g3e.fr/syonad/two/internal/api/dhcp"
-	"git.g3e.fr/syonad/two/internal/dhcp"
 	"git.g3e.fr/syonad/two/internal/dhcpbackend"
 	"git.g3e.fr/syonad/two/internal/state"
 	"git.g3e.fr/syonad/two/internal/watchdog/notify"
@@ -111,9 +110,9 @@ func expectedVMHosts(db *badger.DB, vmName, subnetName string) ([]dhcpapi.Host, 
 		if ip == "" {
 			return nil, fmt.Errorf("nic %d of vm %s has no ip", idx, vmName)
 		}
-		mac, err := dhcp.GetMACForIP(db, subnetName, ip)
-		if err != nil {
-			return nil, fmt.Errorf("get mac for ip %s: %w", ip, err)
+		mac := entries[nic+"mac"]
+		if mac == "" {
+			return nil, fmt.Errorf("nic %d of vm %s has no mac", idx, vmName)
 		}
 
 		hosts = append(hosts, dhcpapi.Host{
