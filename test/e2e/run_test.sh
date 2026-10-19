@@ -232,6 +232,16 @@ test_api_code_returns_the_http_status () {
     teardown
 }
 
+test_watchdog_quiet_passes_without_alert_and_fails_on_one () {
+    setup "watchdog_quiet : réussit sans alerte, avec ou sans exclusion ; échoue sur une alerte non exclue"
+    local alert='{"level":"ERROR","msg":"watchdog: inconsistency detected","problem":"stale dhcp reservation on the server"}'
+    [[ $(node "journalctl () { :; }; watchdog_quiet 300 && echo OUI") == OUI ]] || fail "journal vide, sans exclusion : échec"
+    [[ $(node "journalctl () { :; }; watchdog_quiet 300 'stale dhcp' && echo OUI") == OUI ]] || fail "journal vide, avec exclusion : échec"
+    [[ $(node "journalctl () { echo '${alert}'; }; watchdog_quiet 300 >/dev/null || echo NON") == NON ]] || fail "alerte acceptée sans exclusion"
+    [[ $(node "journalctl () { echo '${alert}'; }; watchdog_quiet 300 'stale dhcp' && echo OUI") == OUI ]] || fail "alerte exclue refusée"
+    teardown
+}
+
 test_watchdog_reported_matches_only_watchdog_alerts () {
     setup "watchdog_reported : alerte du watchdog contenant le texte, rien d'autre"
     local alert='{"level":"ERROR","msg":"watchdog: inconsistency detected","kind":"vpc","name":"vp-s8","problem":"route 10.242.1.99/32 exported in vrf-s8 without a running owner: its traffic is black-holed"}'

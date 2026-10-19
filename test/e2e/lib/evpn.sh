@@ -81,7 +81,8 @@ watchdog_alerts () {
 
 watchdog_quiet () {
     local out
-    out=$(watchdog_alerts "${1:-300}" | { if [ -n "${2:-}" ]; then grep -vF -- "${2}"; else cat; fi; }) || return 0
+    out=$(watchdog_alerts "${1:-300}" | { if [ -n "${2:-}" ]; then grep -vF -- "${2}"; else cat; fi; })
+    [ -z "${out}" ] && return 0
     printf '%s\n' "${out}"
     return 1
 }
