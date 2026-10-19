@@ -24,13 +24,19 @@ vm_key () {
     cat "${VM_KEY}.pub"
 }
 
+mac_for_ip () {
+    local IFS=.
+    set -- ${1}
+    printf '52:54:00:%02x:%02x:%02x' "${2}" "${3}" "${4}"
+}
+
 vm_create () {
     local name="${1}" subnet="${2}" ip="${3}" key="${4:-}" meta="{}"
     api_state "vms/${name}" | grep -qx running && return 0
     [ -n "${key}" ] && meta="{\"sshkey\":\"${key}\"}"
     mkdir -p "${VOLUMES}"
     cp "${TWO_IMAGE}" "${VOLUMES}/${name}.qcow2" || return 1
-    api_post vms "{\"name\":\"${name}\",\"memory\":1024,\"cpus\":1,\"metadata\":${meta},\"interfaces\":[{\"subnet\":\"${subnet}\",\"ip\":\"${ip}\",\"primary\":true}],\"storage\":[{\"path\":\"${VOLUMES}/${name}.qcow2\",\"dev\":\"vda\"}]}" \
+    api_post vms "{\"name\":\"${name}\",\"memory\":1024,\"cpus\":1,\"metadata\":${meta},\"interfaces\":[{\"subnet\":\"${subnet}\",\"ip\":\"${ip}\",\"mac\":\"$(mac_for_ip "${ip}")\",\"primary\":true}],\"storage\":[{\"path\":\"${VOLUMES}/${name}.qcow2\",\"dev\":\"vda\"}]}" \
         && wait_state "vms/${name}" running
 }
 
@@ -83,16 +89,19 @@ ping_rate () {
 
 vm_body () {
     local name="${1}" subnet="${2}" ip="${3}" disk="${4:-${VOLUMES}/${1}.qcow2}" meta="${5:-{\}}" dev="${6:-vda}"
-    printf '{"name":"%s","memory":1024,"cpus":1,"metadata":%s,"interfaces":[{"subnet":"%s","ip":"%s","primary":true}],"storage":[{"path":"%s","dev":"%s"}]}' \
-        "${name}" "${meta}" "${subnet}" "${ip}" "${disk}" "${dev}"
+    printf '{"name":"%s","memory":1024,"cpus":1,"metadata":%s,"interfaces":[{"subnet":"%s","ip":"%s","mac":"%s","primary":true}],"storage":[{"path":"%s","dev":"%s"}]}' \
+        "${name}" "${meta}" "${subnet}" "${ip}" "$(mac_for_ip "${ip}")" "${disk}" "${dev}"
 }
 
 vm_json () {
-    local name="${1}" nics='[]' disks='[]' meta='{}' uefi=false primary=true
+    local name="${1}" nics='[]' disks='[]' meta='{}' uefi=false primary=true sn rest ip mac
     shift
     while [ $# -gt 0 ]; do
         case "${1}" in
-            --nic) nics=$(jq -c --arg s "${2%%=*}" --arg ip "${2#*=}" --argjson p "${primary}" '. + [{subnet: $s, ip: $ip, primary: $p}]' <<<"${nics}"); primary=false; shift 2 ;;
+            --nic)
+                sn=${2%%=*}; rest=${2#*=}; ip=${rest%%=*}; mac=$(mac_for_ip "${ip}")
+                [ "${rest}" != "${ip}" ] && mac=${rest#*=}
+                nics=$(jq -c --arg s "${sn}" --arg ip "${ip}" --arg m "${mac}" --argjson p "${primary}" '. + [{subnet: $s, ip: $ip, mac: $m, primary: $p}]' <<<"${nics}"); primary=false; shift 2 ;;
             --disk) disks=$(jq -c --arg d "${2%%=*}" --arg p "${2#*=}" '. + [{path: $p, dev: $d}]' <<<"${disks}"); shift 2 ;;
             --sshkey) meta=$(jq -c --arg v "${2}" '. + {sshkey: $v}' <<<"${meta}"); shift 2 ;;
             --password) meta=$(jq -c --arg v "${2}" '. + {password: $v}' <<<"${meta}"); shift 2 ;;
