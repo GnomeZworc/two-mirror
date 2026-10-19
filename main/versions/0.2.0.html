@@ -462,6 +462,10 @@ Jusqu’en 0.1.0 l’erreur de lecture était ignorée : l’agent tournait alor
 valeurs par défaut sans le dire, ce qui rendait indétectable une simple tabulation d’indentation</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">probe</span></code> annonce explicitement <code class="docutils literal notranslate"><span class="pre">&quot;served&quot;:</span> <span class="pre">false</span></code> pour une MAC non réservée, au lieu d’omettre le
 champ et de le rendre indistinguable d’une réponse tronquée</p></li>
+<li><p><strong>Le serveur DHCP intégré s’arrête proprement</strong> sur <code class="docutils literal notranslate"><span class="pre">SIGTERM</span></code> et <code class="docutils literal notranslate"><span class="pre">SIGINT</span></code> : il ferme sa socket de
+contrôle et sa socket UDP avant de sortir. Il mourait jusque-là sans nettoyer, et laissait
+<code class="docutils literal notranslate"><span class="pre">/run/two/dhcp/&lt;netns&gt;_&lt;bridge&gt;.sock</span></code> après la suppression du subnet. L’agent supprime aussi
+cette socket avec le fichier d’état, ce qui couvre une mort brutale du processus (#77)</p></li>
 </ul>
 </section>
 <section id="changements-internes">
