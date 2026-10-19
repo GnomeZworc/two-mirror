@@ -27,5 +27,6 @@ type NoCloudConfig struct {
 	Name      string
 	Password  string
 	SSHKEY    string
+	MACs      []string
 	Documents map[string]string
 }

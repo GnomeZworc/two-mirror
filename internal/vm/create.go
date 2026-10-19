@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/dhcpbackend"
@@ -71,6 +72,7 @@ func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 		BindPort:  d.metadataPort,
 		Password:  d.password,
 		SSHKEY:    d.sshkey,
+		MACs:      nicMACs(d.nics),
 		Documents: d.documents,
 	}, cfg, false); err != nil {
 		return fmt.Errorf("start metadata: %w", err)
@@ -170,4 +172,12 @@ func copyFile(src, dst string) error {
 		return err
 	}
 	return out.Sync()
+}
+
+func nicMACs(nics []nicData) []string {
+	macs := make([]string, len(nics))
+	for i, n := range nics {
+		macs[i] = strings.ToLower(n.mac)
+	}
+	return macs
 }

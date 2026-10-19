@@ -78,14 +78,26 @@ func TestRenderConfig_VendorData_ContainsSSHKey(t *testing.T) {
 	}
 }
 
-func TestRenderConfig_NetworkConfig(t *testing.T) {
+func TestRenderConfig_NetworkConfigMatchesEveryInterfaceByMAC(t *testing.T) {
 	cfg := newCfg()
-	out, err := RenderConfig("templates/network-config.tmpl", cfg)
+	cfg.MACs = []string{"52:54:00:49:01:0c", "52:54:00:49:02:16"}
+	out, err := renderDocument(DocNetworkConfig, cfg)
 	if err != nil {
-		t.Fatalf("RenderConfig network-config : %v", err)
+		t.Fatalf("renderDocument network-config : %v", err)
 	}
-	if !strings.Contains(out, "dhcp4: true") {
-		t.Errorf("dhcp4 absent du network-config :\n%s", out)
+	want := `version: 2
+ethernets:
+  eth0:
+    match:
+      macaddress: "52:54:00:49:01:0c"
+    dhcp4: true
+  eth1:
+    match:
+      macaddress: "52:54:00:49:02:16"
+    dhcp4: true
+`
+	if out != want {
+		t.Errorf("network-config :\n%s\nattendu :\n%s", out, want)
 	}
 }
 
