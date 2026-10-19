@@ -754,7 +754,7 @@ fait en fermant le ticket. Chaque ticket concerné liste ses marqueurs en commen
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">11-validation</span></code></p></td>
 <td><p>validation de l’API — refus synchrones (400, 409, 422) des VPC, subnets et VM, sans trace en base</p></td>
 <td><p>hv1</p></td>
-<td><p>#41, #57, #33</p></td>
+<td><p>#41, #57, #33, #62</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">12-etats</span></code></p></td>
 <td><p>machine d’états — 409 pendant creating, suppression depuis error, dépendances VM → subnet → VPC, recréation sous le même nom</p></td>
@@ -764,7 +764,7 @@ fait en fermant le ticket. Chaque ticket concerné liste ses marqueurs en commen
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">21-dhcp-two</span></code></p></td>
 <td><p>DHCP par le serveur intégré (backend two) — bail, server-id, renouvellement, option 121, un serveur par subnet, démarrages simultanés</p></td>
 <td><p>hv1</p></td>
-<td><p>#46, #57</p></td>
+<td><p>#46, #57, #62</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">22-dhcp-dnsmasq</span></code></p></td>
 <td><p>DHCP par dnsmasq (backend dnsmasq) — bail, server-id, renouvellement, option 121, une instance par subnet écoutant sur la gateway anycast</p></td>
@@ -919,7 +919,9 @@ Chaque bloc est précédé des bibliothèques de <code class="docutils literal n
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">core.sh</span></code> : <code class="docutils literal notranslate"><span class="pre">check</span></code>, <code class="docutils literal notranslate"><span class="pre">known</span></code>, <code class="docutils literal notranslate"><span class="pre">info</span></code>, appels à l’API, attente des états ;</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">vm.sh</span></code> : image Debian compatible two, clé SSH, <code class="docutils literal notranslate"><span class="pre">vm_launch</span></code> (plusieurs NIC et disques, UEFI,
-<code class="docutils literal notranslate"><span class="pre">user_data</span></code>, mot de passe), SSH, bail, métadonnées ;</p></li>
+<code class="docutils literal notranslate"><span class="pre">user_data</span></code>, mot de passe), SSH, bail, métadonnées. La MAC de chaque NIC est fournie à l’API :
+<code class="docutils literal notranslate"><span class="pre">52:54:00</span></code> suivi des trois derniers octets de l’IP (<code class="docutils literal notranslate"><span class="pre">mac_for_ip</span></code>), unique dans la suite
+puisque chaque test a sa plage ; <code class="docutils literal notranslate"><span class="pre">--nic</span> <span class="pre">sn=ip=mac</span></code> en impose une autre ;</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">net.sh</span></code> : VPC, subnets, MAC anycast, trames brutes, règles ebtables, VRRP ;</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">evpn.sh</span></code> : VRF, BGP, L3VNI, watchdog ;</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">fixture.sh</span></code> : nettoyage et <code class="docutils literal notranslate"><span class="pre">assert_clean</span></code>, appelés par le runner.</p></li>
@@ -947,8 +949,9 @@ on<span class="w"> </span>hv1<span class="w"> </span><span class="s">&lt;&lt;'NO
 la cible est vivante et que le chemin du test fonctionne ;</p></li>
 <li><p><strong>``vm_fails`` pour le négatif</strong>, jamais <code class="docutils literal notranslate"><span class="pre">!</span></code> devant un <code class="docutils literal notranslate"><span class="pre">vm_ssh</span></code> : un SSH en panne doit
 échouer, pas passer pour une isolation ;</p></li>
-<li><p><strong>une donnée qui distingue réellement les cas</strong> : two dérive la MAC du rang de l’IP, donc deux
-subnets ont les mêmes MAC ; comparer des couples MAC/IP, pas des MAC ;</p></li>
+<li><p><strong>une donnée qui distingue réellement les cas</strong> : rien n’empêche deux subnets de porter les
+mêmes MAC (c’était le cas quand two les dérivait du rang de l’IP) ; comparer des couples MAC/IP,
+pas des MAC ;</p></li>
 <li><p><strong>les mesures en ``INFO``</strong>, les attentes en <code class="docutils literal notranslate"><span class="pre">check</span></code> : un temps de reconvergence se mesure,
 il ne se décrète pas ;</p></li>
 <li><p><strong>l’en-tête ``# hôtes:`` liste exactement les hôtes où le test crée des ressources</strong> : ce sont
@@ -981,7 +984,7 @@ INFO: retour du VTEP distant et du trafic 31 s après le redémarrage de FRR
 </pre></div>
 </div>
 <p>Dans ce run, le contrôle « uniquement les MAC de son subnet » de <code class="docutils literal notranslate"><span class="pre">s1</span></code> ne prouvait rien : two
-dérive la MAC du rang de l’IP, et les VM <code class="docutils literal notranslate"><span class="pre">.10</span></code>/<code class="docutils literal notranslate"><span class="pre">.11</span></code> des deux subnets avaient les mêmes MAC.
+dérivait alors la MAC du rang de l’IP, et les VM <code class="docutils literal notranslate"><span class="pre">.10</span></code>/<code class="docutils literal notranslate"><span class="pre">.11</span></code> des deux subnets avaient les mêmes MAC.
 Vérifié à la main sur le lab, chaque serveur DHCP ne connaissait que les couples MAC/IP de son
 subnet ; le scénario compare désormais ces couples.</p>
 <p><code class="docutils literal notranslate"><span class="pre">s7-l3vni</span></code> le 2026-10-05, même lab, FRR 10.7.1 : <strong>46 réussi(s), 0 échoué(s)</strong> au dernier run.

@@ -864,6 +864,9 @@ filet qui couvre une VM tant que son <code class="docutils literal notranslate">
 le nom de l’interface dans le guest. Exactement une interface doit être <code class="docutils literal notranslate"><span class="pre">primary</span></code> : elle porte
 la route par défaut et le serveur de metadata. Tous les subnets d’une VM doivent appartenir au
 <strong>même VPC</strong>.</p>
+<p><strong>MAC.</strong> Chaque interface porte la MAC choisie par l’appelant, comme son IP. L’agent la donne
+telle quelle à QEMU et à la réservation DHCP, sans en vérifier le format ni l’unicité : c’est à
+l’appelant de garantir qu’elle est unique sur le segment L2.</p>
 <p><strong>Routes.</strong> Dans un VPC routé par <code class="docutils literal notranslate"><span class="pre">l3vni</span></code>, chaque interface sur un subnet <code class="docutils literal notranslate"><span class="pre">vxlan</span></code> est annoncée
 en <code class="docutils literal notranslate"><span class="pre">/32</span></code> dans la VRF du VPC une fois QEMU démarré, juste avant le passage en <code class="docutils literal notranslate"><span class="pre">running</span></code>. À la
 suppression, ces <code class="docutils literal notranslate"><span class="pre">/32</span></code> sont retirés <strong>avant</strong> l’arrêt de QEMU. Comme un subnet ne peut être
@@ -876,7 +879,7 @@ par le contrôleur SCSI (<code class="docutils literal notranslate"><span class=
 <section id="ce-qui-est-stocke-et-ou">
 <h2>Ce qui est stocké, et où<a class="headerlink" href="#ce-qui-est-stocke-et-ou" title="Lien vers cette rubrique">#</a></h2>
 <p>Une ressource ne porte en base que ce qui lui est propre. Une VM stocke le <strong>lien</strong> vers son
-subnet (<code class="docutils literal notranslate"><span class="pre">vm/&lt;name&gt;/subnet</span></code>), pas le VPC ni le bridge ni la gateway : ces valeurs sont lues
+subnet (<code class="docutils literal notranslate"><span class="pre">vm/&lt;name&gt;/nic/&lt;i&gt;/subnet</span></code>), pas le VPC ni le bridge ni la gateway : ces valeurs sont lues
 depuis le subnet, leur source canonique. Le schéma complet des clés est dans
 <a class="reference internal" href="../architecture/stockage.html"><span class="doc">Schéma des clés</span></a>.</p>
 </section>

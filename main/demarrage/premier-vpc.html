@@ -870,7 +870,7 @@ obligatoire.</p>
 <span class="s1">       "uefi": true,</span>
 <span class="s1">       "metadata": {"sshkey": "ssh-ed25519 AAAA…",</span>
 <span class="s1">                    "user_data": "'</span><span class="s2">"</span><span class="k">$(</span>base64<span class="w"> </span>&lt;<span class="w"> </span>user-data.yml<span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span>-d<span class="w"> </span><span class="s1">'\n'</span><span class="k">)</span><span class="s2">"</span><span class="s1">'"},</span>
-<span class="s1">       "interfaces": [{"subnet": "sn-000001", "ip": "10.1.1.2", "primary": true}],</span>
+<span class="s1">       "interfaces": [{"subnet": "sn-000001", "ip": "10.1.1.2", "mac": "52:54:00:01:01:02", "primary": true}],</span>
 <span class="s1">       "storage": [{"path": "/var/lib/two/volumes/i-web.qcow2", "dev": "vda"}]}'</span>
 </pre></div>
 </div>
@@ -881,6 +881,9 @@ contenu.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">password</span></code> est un <strong>hash</strong>, pas un mot de passe</dt><dd><p>Le champ attend la valeur de la clé <code class="docutils literal notranslate"><span class="pre">passwd</span></code> de cloud-config (<code class="docutils literal notranslate"><span class="pre">$6$…</span></code>). Sans <code class="docutils literal notranslate"><span class="pre">password</span></code>
 ni <code class="docutils literal notranslate"><span class="pre">sshkey</span></code>, aucun compte n’est créé.</p>
+</dd>
+<dt>Chaque interface a sa <code class="docutils literal notranslate"><span class="pre">mac</span></code></dt><dd><p>Choisie par l’appelant, obligatoire (400 sinon) et jamais vérifiée : deux interfaces sur le
+même segment L2 doivent avoir des MAC distinctes.</p>
 </dd>
 <dt>Exactement une interface est <code class="docutils literal notranslate"><span class="pre">primary</span></code></dt><dd><p>Elle porte la route par défaut et le serveur de metadata. L’ordre du tableau détermine le
 slot PCI (<code class="docutils literal notranslate"><span class="pre">0x03</span> <span class="pre">+</span> <span class="pre">index</span></code>), donc le nom de l’interface dans le guest. Tous les subnets d’une

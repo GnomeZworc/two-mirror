@@ -437,6 +437,15 @@ route du subnet a la gateway pour source</p></li>
 l’adresse de réseau ou de broadcast du subnet, ni une adresse hors de son <code class="docutils literal notranslate"><span class="pre">cidr</span></code> (422)</p></li>
 <li><p>Le watchdog contrôle le macvlan, sa MAC, les deux adresses et l’entrée FDB</p></li>
 </ul>
+<p><strong>MAC des VM fournie à la création (#62)</strong></p>
+<ul class="simple">
+<li><p>Champ <code class="docutils literal notranslate"><span class="pre">mac</span></code> obligatoire par interface dans <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/vms</span></code>, rendu par <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/vms/{name}</span></code>. Il est
+passé tel quel à QEMU et à la réservation DHCP ; son format et son unicité relèvent de l’appelant</p></li>
+<li><p>Fin de la table <code class="docutils literal notranslate"><span class="pre">subnet/&lt;name&gt;/dhcp/&lt;ip&gt;</span></code>, qui préchargeait une MAC par adresse du <code class="docutils literal notranslate"><span class="pre">cidr</span></code> : la
+MAC dérivée du rang de l’IP donnait la même MAC à deux interfaces d’une VM de même rang dans
+leurs subnets (VM injoignable), et n’était pas tenable en IPv6</p></li>
+<li><p>Migration au démarrage : les VM existantes gardent leur MAC, recopiée sur chaque interface</p></li>
+</ul>
 <p><strong>Exploitation</strong></p>
 <ul class="simple">
 <li><p>Le watchdog contrôle aussi, avec une section <code class="docutils literal notranslate"><span class="pre">bgp</span></code> : les sessions vers les route reflectors ;
@@ -445,7 +454,9 @@ de routeur) ; la cohérence entre routes exportées et ressources <code class="d
 sans propriétaire est signalée comme <strong>trou noir</strong>, une route attendue absente comme manquante</p></li>
 <li><p>Le watchdog interroge le serveur DHCP intégré et compare les réservations servies à celles que
 la base implique. Il nomme ce qui diverge — ordre perdu à la création, ordre perdu à la
-suppression, adresse ou route par défaut divergente — et reste en lecture seule</p></li>
+suppression, adresse ou route par défaut divergente — et reste en lecture seule. Une VM en
+<code class="docutils literal notranslate"><span class="pre">creating</span></code>, <code class="docutils literal notranslate"><span class="pre">deleting</span></code> ou <code class="docutils literal notranslate"><span class="pre">error</span></code> n’est pas comparée : sa réservation peut être présente ou
+absente sans alerte, le temps que la création ou la suppression aboutisse (#78)</p></li>
 <li><p>La socket de contrôle répond à <code class="docutils literal notranslate"><span class="pre">get-state</span></code> et à <code class="docutils literal notranslate"><span class="pre">probe</span></code>, ce dernier montrant sans effet de bord
 ce qui serait envoyé à une MAC donnée : adresse, masque, routeur, DNS et routes</p></li>
 <li><p>Documentation Sphinx du projet : concepts, architecture, déploiement et exploitation</p></li>
@@ -517,12 +528,14 @@ bash<span class="w"> </span>./deploy.sh<span class="w"> </span>-t<span class="w"
 </pre></div>
 </div>
 <p>Sans <code class="docutils literal notranslate"><span class="pre">dhcp.backend</span></code> ni <code class="docutils literal notranslate"><span class="pre">bgp</span></code> dans <code class="docutils literal notranslate"><span class="pre">/etc/two/agent.yml</span></code>, le comportement est celui de la 0.1.0, à
-deux exceptions près, qui touchent les appelants de l’API :</p>
+trois exceptions près, qui touchent les appelants de l’API :</p>
 <ul class="simple">
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> ne se fournit plus pour un subnet <code class="docutils literal notranslate"><span class="pre">vxlan</span></code></strong> : il est refusé (400), l’agent le
 calcule. Le retirer des appels de création, et ne plus placer de VM sur les deux dernières
 adresses utilisables du subnet. Il reste obligatoire en <code class="docutils literal notranslate"><span class="pre">bridge</span></code> et <code class="docutils literal notranslate"><span class="pre">public_ip</span></code></p></li>
 <li><p><strong>un subnet encore utilisé par une VM ne se supprime plus</strong> : supprimer les VM d’abord</p></li>
+<li><p><strong>chaque interface d’une VM doit porter sa <code class="docutils literal notranslate"><span class="pre">mac</span></code></strong> (400 sinon) : l’appelant la choisit et en
+garantit l’unicité. Les VM existantes gardent la leur, recopiée au premier démarrage de l’agent</p></li>
 </ul>
 <p>Les subnets <code class="docutils literal notranslate"><span class="pre">vxlan</span></code> existants gardent leur adressage et le modèle précédent (gateway sur le
 bridge) jusqu’à leur recréation.</p>

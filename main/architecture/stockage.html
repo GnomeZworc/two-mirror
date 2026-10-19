@@ -372,11 +372,11 @@ subnet/&lt;name&gt;/relay_ip       → &lt;ip&gt;            (mode vxlan, calcul
 subnet/&lt;name&gt;/local_iface    → &lt;bridge-name&gt;
 subnet/&lt;name&gt;/default_route  → "true" | "false"
 subnet/&lt;name&gt;/gateway        → &lt;ip&gt;            (optionnel)
-subnet/&lt;name&gt;/dhcp/&lt;ip&gt;      → &lt;mac&gt;
 
 vm/&lt;name&gt;/state              → creating | running | error | deleting | deleted
 vm/&lt;name&gt;/nic/&lt;i&gt;/subnet     → &lt;subnet-name&gt;   (une interface par index, ordre du tableau interfaces)
 vm/&lt;name&gt;/nic/&lt;i&gt;/ip         → &lt;ip&gt;
+vm/&lt;name&gt;/nic/&lt;i&gt;/mac        → &lt;mac&gt;           (fournie par l'appelant, conservée telle quelle)
 vm/&lt;name&gt;/nic/&lt;i&gt;/primary    → "true"          (exactement une interface ; absent sur les autres)
 vm/&lt;name&gt;/nic/&lt;i&gt;/tap_id     → &lt;int&gt;           (alloué au premier démarrage, puis conservé)
 vm/&lt;name&gt;/metadata_port      → &lt;port&gt;
@@ -398,6 +398,12 @@ lus depuis le subnet, leur source canonique. De même, la L3VNI d’un VPC n’e
 <p><strong>Ancien schéma des VM.</strong> Avant le multi-interfaces, une VM portait directement <code class="docutils literal notranslate"><span class="pre">subnet</span></code>, <code class="docutils literal notranslate"><span class="pre">ip</span></code>
 et <code class="docutils literal notranslate"><span class="pre">tap_id</span></code>. L’agent les migre au démarrage vers <code class="docutils literal notranslate"><span class="pre">nic/0/…</span></code>, marquée <code class="docutils literal notranslate"><span class="pre">primary</span></code>, avant
 d’ouvrir son API ; une VM qui a déjà des clés <code class="docutils literal notranslate"><span class="pre">nic/</span></code> est laissée telle quelle.</p>
+<p><strong>Ancienne table des MAC.</strong> Jusqu’en 0.1.0, la MAC d’une interface était dérivée du rang de son IP
+et préchargée pour tout le <code class="docutils literal notranslate"><span class="pre">cidr</span></code> sous <code class="docutils literal notranslate"><span class="pre">subnet/&lt;name&gt;/dhcp/&lt;ip&gt;</span></code>. Au démarrage, l’agent
+recopie la MAC de chaque interface existante dans <code class="docutils literal notranslate"><span class="pre">vm/&lt;name&gt;/nic/&lt;i&gt;/mac</span></code>, puis supprime ces
+clés. Les VM <code class="docutils literal notranslate"><span class="pre">deleted</span></code> sont ignorées. Une interface dont la MAC est introuvable fait échouer le
+démarrage en la nommant, et la table reste en place tant que toutes les interfaces ne sont pas
+migrées.</p>
 <p><strong>Les états passent par ``state``.</strong> Toujours <code class="docutils literal notranslate"><span class="pre">state.Set</span></code> / <code class="docutils literal notranslate"><span class="pre">state.Get</span></code> : <code class="docutils literal notranslate"><span class="pre">Set</span></code> refuse une
 valeur hors énumération, <code class="docutils literal notranslate"><span class="pre">Get</span></code> refuse de retourner une valeur non reconnue. <code class="docutils literal notranslate"><span class="pre">error</span></code> n’est
 écrit que par <code class="docutils literal notranslate"><span class="pre">Dispatcher.Dispatch</span></code>, via <code class="docutils literal notranslate"><span class="pre">cmd.Key()</span></code>.</p>
