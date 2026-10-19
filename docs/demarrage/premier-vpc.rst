@@ -93,7 +93,7 @@ Là encore, attendez ``running`` :
           "uefi": true,
           "metadata": {"sshkey": "ssh-ed25519 AAAA…",
                        "user_data": "'"$(base64 < user-data.yml | tr -d '\n')"'"},
-          "interfaces": [{"subnet": "sn-000001", "ip": "10.1.1.2", "primary": true}],
+          "interfaces": [{"subnet": "sn-000001", "ip": "10.1.1.2", "mac": "52:54:00:01:01:02", "primary": true}],
           "storage": [{"path": "/var/lib/two/volumes/i-web.qcow2", "dev": "vda"}]}'
 
 Quatre points qui coûtent du temps quand on les découvre en production :
@@ -105,6 +105,10 @@ Quatre points qui coûtent du temps quand on les découvre en production :
 ``password`` est un **hash**, pas un mot de passe
    Le champ attend la valeur de la clé ``passwd`` de cloud-config (``$6$…``). Sans ``password``
    ni ``sshkey``, aucun compte n'est créé.
+
+Chaque interface a sa ``mac``
+   Choisie par l'appelant, obligatoire (400 sinon) et jamais vérifiée : deux interfaces sur le
+   même segment L2 doivent avoir des MAC distinctes.
 
 Exactement une interface est ``primary``
    Elle porte la route par défaut et le serveur de metadata. L'ordre du tableau détermine le

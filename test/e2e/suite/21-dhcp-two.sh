@@ -1,6 +1,6 @@
 # fonctionnalité: DHCP par le serveur intégré (backend two) — bail, server-id, renouvellement, option 121, un serveur par subnet, démarrages simultanés
 # hôtes: hv1
-# tickets: #46, #57
+# tickets: #46, #57, #62
 
 on hv1 <<'NODE'
 KEY=$(vm_key)
@@ -33,8 +33,13 @@ done
 check "10.21.1.10 : bail renouvelé (networkctl renew)" lease_renewed vp-t21 10.21.1.10
 check "10.21.1.10 : même adresse après le renouvellement" has_addr vp-t21 10.21.1.10
 check "10.21.1.10 : renouvellement servi par la gateway" test "$(vm_lease vp-t21 10.21.1.10 SERVER_ADDRESS)" = 10.21.1.254
+check "VM t21-m : MAC 02:de:ad:be:ef:01 fournie, sans lien avec son adresse 10.21.1.12" vm_launch t21-m --nic sn-t21a=10.21.1.12=02:de:ad:be:ef:01 --sshkey "${KEY}"
+check "t21-m joignable" vm_wait vp-t21 10.21.1.12
+check "t21-m : l'invité voit la MAC fournie sur ens3" test "$(vm_ssh vp-t21 10.21.1.12 'cat /sys/class/net/ens3/address')" = 02:de:ad:be:ef:01
+check "t21-m : bail de 10.21.1.12 servi par la gateway" test "$(vm_lease vp-t21 10.21.1.12 SERVER_ADDRESS)" = 10.21.1.254
+check "t21-m : l'API rend la MAC fournie" test "$(curl -fsS "${API}/vms/t21-m" | jq -r '.interfaces[0].mac')" = 02:de:ad:be:ef:01
 vm_host () { echo "$(vm_ssh vp-t21 "${1}" 'cat /sys/class/net/ens3/address')=${1}"; }
-A_HOSTS=$(printf '%s\n' "$(vm_host 10.21.1.10)" "$(vm_host 10.21.1.11)" | sort | tr '\n' ' ' | sed 's/ $//')
+A_HOSTS=$(printf '%s\n' "$(vm_host 10.21.1.10)" "$(vm_host 10.21.1.11)" "$(vm_host 10.21.1.12)" | sort | tr '\n' ' ' | sed 's/ $//')
 B_HOSTS=$(printf '%s\n' "$(vm_host 10.21.2.10)" "$(vm_host 10.21.2.11)" | sort | tr '\n' ' ' | sed 's/ $//')
 info "sn-t21a : ${A_HOSTS} ; sn-t21b : ${B_HOSTS}"
 check "probe sn-t21a : uniquement les couples MAC/IP de sn-t21a" test "$(dhcp_hosts vp-t21_br-t21a)" = "${A_HOSTS}"

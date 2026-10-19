@@ -44,7 +44,7 @@ func (b Dnsmasq) config(s Subnet) dhcp.Config {
 }
 
 func (b Dnsmasq) ConfigureSubnet(s Subnet) error {
-	if _, _, err := dhcp.GenerateConfig(b.config(s)); err != nil {
+	if _, err := dhcp.GenerateConfig(b.config(s)); err != nil {
 		return fmt.Errorf("generate dhcp config: %w", err)
 	}
 

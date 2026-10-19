@@ -294,7 +294,7 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
    * - ``11-validation``
      - validation de l'API — refus synchrones (400, 409, 422) des VPC, subnets et VM, sans trace en base
      - hv1
-     - #41, #57, #33
+     - #41, #57, #33, #62
    * - ``12-etats``
      - machine d'états — 409 pendant creating, suppression depuis error, dépendances VM → subnet → VPC, recréation sous le même nom
      - hv1
@@ -302,7 +302,7 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
    * - ``21-dhcp-two``
      - DHCP par le serveur intégré (backend two) — bail, server-id, renouvellement, option 121, un serveur par subnet, démarrages simultanés
      - hv1
-     - #46, #57
+     - #46, #57, #62
    * - ``22-dhcp-dnsmasq``
      - DHCP par dnsmasq (backend dnsmasq) — bail, server-id, renouvellement, option 121, une instance par subnet écoutant sur la gateway anycast
      - hv2
@@ -434,7 +434,9 @@ Chaque bloc est précédé des bibliothèques de ``test/e2e/lib/`` :
 
 * ``core.sh`` : ``check``, ``known``, ``info``, appels à l'API, attente des états ;
 * ``vm.sh`` : image Debian compatible two, clé SSH, ``vm_launch`` (plusieurs NIC et disques, UEFI,
-  ``user_data``, mot de passe), SSH, bail, métadonnées ;
+  ``user_data``, mot de passe), SSH, bail, métadonnées. La MAC de chaque NIC est fournie à l'API :
+  ``52:54:00`` suivi des trois derniers octets de l'IP (``mac_for_ip``), unique dans la suite
+  puisque chaque test a sa plage ; ``--nic sn=ip=mac`` en impose une autre ;
 * ``net.sh`` : VPC, subnets, MAC anycast, trames brutes, règles ebtables, VRRP ;
 * ``evpn.sh`` : VRF, BGP, L3VNI, watchdog ;
 * ``fixture.sh`` : nettoyage et ``assert_clean``, appelés par le runner.
@@ -463,8 +465,9 @@ Les règles :
   la cible est vivante et que le chemin du test fonctionne ;
 * **``vm_fails`` pour le négatif**, jamais ``!`` devant un ``vm_ssh`` : un SSH en panne doit
   échouer, pas passer pour une isolation ;
-* **une donnée qui distingue réellement les cas** : two dérive la MAC du rang de l'IP, donc deux
-  subnets ont les mêmes MAC ; comparer des couples MAC/IP, pas des MAC ;
+* **une donnée qui distingue réellement les cas** : rien n'empêche deux subnets de porter les
+  mêmes MAC (c'était le cas quand two les dérivait du rang de l'IP) ; comparer des couples MAC/IP,
+  pas des MAC ;
 * **les mesures en ``INFO``**, les attentes en ``check`` : un temps de reconvergence se mesure,
   il ne se décrète pas ;
 * **l'en-tête ``# hôtes:`` liste exactement les hôtes où le test crée des ressources** : ce sont
@@ -500,7 +503,7 @@ hv2 sur dnsmasq — toute la série en 8 minutes :
    === s6-rr-loss : 8 réussi(s), 0 échoué(s)
 
 Dans ce run, le contrôle « uniquement les MAC de son subnet » de ``s1`` ne prouvait rien : two
-dérive la MAC du rang de l'IP, et les VM ``.10``/``.11`` des deux subnets avaient les mêmes MAC.
+dérivait alors la MAC du rang de l'IP, et les VM ``.10``/``.11`` des deux subnets avaient les mêmes MAC.
 Vérifié à la main sur le lab, chaque serveur DHCP ne connaissait que les couples MAC/IP de son
 subnet ; le scénario compare désormais ces couples.
 

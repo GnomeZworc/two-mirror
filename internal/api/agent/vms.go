@@ -70,7 +70,12 @@ func (s *Server) startVM(w http.ResponseWriter, r *http.Request) {
 	nics := make([]dispatcher.VMNIC, len(req.Interfaces))
 	primaries := 0
 	for i, iface := range req.Interfaces {
-		nics[i] = dispatcher.VMNIC{Subnet: iface.Subnet, IP: iface.IP, Primary: iface.Primary}
+		if iface.MAC == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: fmt.Sprintf("interface %d: mac is required", i)})
+			return
+		}
+		nics[i] = dispatcher.VMNIC{Subnet: iface.Subnet, IP: iface.IP, MAC: iface.MAC, Primary: iface.Primary}
 		if iface.Primary {
 			primaries++
 		}

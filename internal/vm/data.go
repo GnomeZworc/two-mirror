@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"git.g3e.fr/syonad/two/internal/dhcp"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 	"github.com/dgraph-io/badger/v4"
 )
@@ -215,11 +214,10 @@ func loadNIC(db *badger.DB, name string, idx int, entries map[string]string) (ni
 		return n, fmt.Errorf("nic %d of vm %s has no ip", idx, name)
 	}
 
-	mac, err := dhcp.GetMACForIP(db, n.subnetName, n.ip)
-	if err != nil {
-		return n, fmt.Errorf("get mac for ip %s: %w", n.ip, err)
+	n.mac = entries[prefix+"mac"]
+	if n.mac == "" {
+		return n, fmt.Errorf("nic %d of vm %s has no mac", idx, name)
 	}
-	n.mac = mac
 
 	if tapIDStr, ok := entries[prefix+"tap_id"]; ok {
 		tapID, err := strconv.Atoi(tapIDStr)

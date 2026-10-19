@@ -63,6 +63,11 @@ func run(confFile string) int {
 		return 1
 	}
 
+	if err := migration.MigrateVMMACs(db, log.With(slog.String("component", "migration"))); err != nil {
+		log.Error("vm mac migration failed", "error", err)
+		return 1
+	}
+
 	if cfg.BGP.Enabled() {
 		if err := applyBGPBase(cfg, frr.NewClient()); err != nil {
 			log.Error("failed to apply the bgp base configuration", "error", err)
@@ -106,11 +111,18 @@ func run(confFile string) int {
 		go adminSrv.Start()
 	}
 
+	watchdogStopped := make(chan struct{})
 	if cfg.Watchdog.Enabled {
 		wlog := log.With(slog.String("component", "watchdog"))
-		go watchdog.New(db, cfg, notify.NewStderr(wlog), wlog,
+		w := watchdog.New(db, cfg, notify.NewStderr(wlog), wlog,
 			time.Duration(cfg.Watchdog.IntervalSeconds)*time.Second,
-		).Run(ctx)
+		)
+		go func() {
+			defer close(watchdogStopped)
+			w.Run(ctx)
+		}()
+	} else {
+		close(watchdogStopped)
 	}
 
 	<-ctx.Done()
@@ -120,7 +132,7 @@ func run(confFile string) int {
 	if adminSrv != nil {
 		servers["admin"] = adminSrv
 	}
-	closeDB = shutdown(log, q, servers, shutdownTimeout)
+	closeDB = shutdown(log, q, servers, watchdogStopped, shutdownTimeout)
 	return 0
 }
 
@@ -144,7 +156,7 @@ type httpShutdowner interface {
 	Shutdown(context.Context) error
 }
 
-func shutdown(log *slog.Logger, q *worker.Queue, servers map[string]httpShutdowner, timeout time.Duration) bool {
+func shutdown(log *slog.Logger, q *worker.Queue, servers map[string]httpShutdowner, watchdogStopped <-chan struct{}, timeout time.Duration) bool {
 	log.Info("shutting down", "timeout", timeout)
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -165,9 +177,16 @@ func shutdown(log *slog.Logger, q *worker.Queue, servers map[string]httpShutdown
 	select {
 	case <-drained:
 		log.Info("workers drained")
-		return true
 	case <-ctx.Done():
 		log.Error("workers still running after timeout, leaving database untouched")
+		return false
+	}
+
+	select {
+	case <-watchdogStopped:
+		return true
+	case <-ctx.Done():
+		log.Error("watchdog still running after timeout, leaving database untouched")
 		return false
 	}
 }

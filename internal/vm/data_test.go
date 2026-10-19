@@ -3,6 +3,7 @@ package vm
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"testing"
 
 	"git.g3e.fr/syonad/two/pkg/db/kv"
@@ -20,8 +21,8 @@ func newVMInDB(t *testing.T) *badger.DB {
 	kv.AddInDB(db, "subnet/sn-000001/interface_ip", "10.1.1.1")
 	kv.AddInDB(db, "subnet/sn-000001/mode", "vxlan")
 	kv.AddInDB(db, "vpc/vp-admin/cidr", "192.168.0.0/16")
-	kv.AddInDB(db, "subnet/sn-000001/dhcp/10.1.1.2", "00:22:33:00:01:02")
 	kv.AddInDB(db, "vm/vm-1/nic/0/ip", "10.1.1.2")
+	kv.AddInDB(db, "vm/vm-1/nic/0/mac", "00:22:33:00:01:02")
 	kv.AddInDB(db, "vm/vm-1/metadata_port", "8081")
 	kv.AddInDB(db, "vm/vm-1/disk/vda", "/data/root.qcow2")
 	kv.AddInDB(db, "vm/vm-1/memory", "2048")
@@ -101,6 +102,7 @@ func addNIC(t *testing.T, db *badger.DB, idx int, subnet, ip, mac string, primar
 	prefix := fmt.Sprintf("vm/vm-1/nic/%d/", idx)
 	kv.AddInDB(db, prefix+"subnet", subnet)
 	kv.AddInDB(db, prefix+"ip", ip)
+	kv.AddInDB(db, prefix+"mac", mac)
 	if primary {
 		kv.AddInDB(db, prefix+"primary", "true")
 	}
@@ -108,7 +110,6 @@ func addNIC(t *testing.T, db *badger.DB, idx int, subnet, ip, mac string, primar
 	kv.AddInDB(db, "subnet/"+subnet+"/interface_ip", "10.1.1.1")
 	kv.AddInDB(db, "subnet/"+subnet+"/mode", "vxlan")
 	kv.AddInDB(db, "vpc/vp-admin/cidr", "192.168.0.0/16")
-	kv.AddInDB(db, "subnet/"+subnet+"/dhcp/"+ip, mac)
 }
 
 func TestLoadVM_SingleNIC(t *testing.T) {
@@ -140,6 +141,29 @@ func TestLoadVM_MultipleNICsSortedByIndex(t *testing.T) {
 		if n.index != i {
 			t.Errorf("interface en position %d porte l'index %d — l'ordre détermine le slot PCI", i, n.index)
 		}
+	}
+}
+
+func TestLoadVM_MACComesFromTheInterface(t *testing.T) {
+	db := newVMInDB(t)
+	addNIC(t, db, 1, "sn-000002", "10.2.0.5", "52:54:00:ab:cd:ef", false)
+
+	d, err := loadVM(db, "vm-1")
+	if err != nil {
+		t.Fatalf("loadVM : %v", err)
+	}
+	if d.nics[1].mac != "52:54:00:ab:cd:ef" {
+		t.Errorf("mac = %q, attendu celle fournie à la création, sans lien avec l'IP", d.nics[1].mac)
+	}
+}
+
+func TestLoadVM_InterfaceWithoutMACIsAnError(t *testing.T) {
+	db := newVMInDB(t)
+	kv.AddInDB(db, "vm/vm-1/nic/1/subnet", "sn-000001")
+	kv.AddInDB(db, "vm/vm-1/nic/1/ip", "10.1.1.3")
+
+	if _, err := loadVM(db, "vm-1"); err == nil || !strings.Contains(err.Error(), "has no mac") {
+		t.Errorf("loadVM = %v, attendu une erreur sur la mac absente", err)
 	}
 }
 
