@@ -252,3 +252,37 @@ func mustMAC(t *testing.T, s string) net.HardwareAddr {
 	}
 	return m
 }
+
+func TestTwoRemoveFiles_RemovesTheStateAndASocketLeftByADeadServer(t *testing.T) {
+	b := Two{RunDir: shortTempDir(t)}
+	s := testSubnet(t)
+
+	state := dhcpapi.StatePath(b.RunDir, s.Instance())
+	if err := os.WriteFile(state, []byte("{}"), 0o600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	socket := dhcpapi.SocketPath(b.RunDir, s.Instance())
+	listener, err := net.Listen("unix", socket)
+	if err != nil {
+		t.Fatalf("Listen: %v", err)
+	}
+	listener.(*net.UnixListener).SetUnlinkOnClose(false)
+	listener.Close()
+
+	if err := b.removeFiles(s); err != nil {
+		t.Fatalf("removeFiles: %v", err)
+	}
+	for _, path := range []string{state, socket} {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Errorf("%s still present (%v)", path, err)
+		}
+	}
+}
+
+func TestTwoRemoveFiles_OnAbsentFilesIsNotAnError(t *testing.T) {
+	b := Two{RunDir: shortTempDir(t)}
+
+	if err := b.removeFiles(testSubnet(t)); err != nil {
+		t.Errorf("removing absent files must be idempotent, got %v", err)
+	}
+}

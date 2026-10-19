@@ -15,7 +15,7 @@ check "${HOST} : aucune interface de subnet (v-*, vxlan-*)" none sh -c "ip -o li
 check "${HOST} : aucune VRF de VPC (vrf-*)" none sh -c "ip -o link show type vrf | awk -F': ' '{print \$2}' | grep '^vrf-'"
 check "${HOST} : aucune unité two-vm-*" none systemctl list-units --all --plain --no-legend 'two-vm-*'
 check "${HOST} : aucune instance DHCP (dhcp@, dnsmasq@) ni de métadonnées (metadata@) active" none sh -c "systemctl list-units --plain --no-legend 'dhcp@*' 'dnsmasq@*' 'metadata@*' | grep -w active"
-known "#77" "${HOST} : aucun socket de contrôle DHCP" none sh -c "ls /run/two/dhcp/*.sock 2>/dev/null"
+check "${HOST} : aucun socket de contrôle DHCP" none sh -c "ls /run/two/dhcp/*.sock 2>/dev/null"
 check "${HOST} : aucun processus QEMU" none pgrep -a qemu-system
 check "${HOST} : aucune règle ebtables qui vise une interface de subnet" none sh -c "{ ebtables -t filter -L; ebtables -t nat -L; } | grep -E -- '-(i|o) v-'"
 check "${HOST} : aucune règle iptables qui vise une interface de subnet ou de VPC" none sh -c "iptables-save | grep -E -- '(v-|vp-|tap)[a-z0-9]'"

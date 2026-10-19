@@ -1,11 +1,16 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"flag"
 	"fmt"
+	"log/slog"
 	"net"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	dhcpapi "git.g3e.fr/syonad/two/internal/api/dhcp"
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
@@ -61,12 +66,6 @@ func run() error {
 	}
 	defer control.Close()
 
-	go func() {
-		if err := control.Serve(); err != nil {
-			log.Error("control socket stopped", "error", err)
-		}
-	}()
-
 	listen := listenInterface(*iface, interfaceExists)
 	conn, err := server4.NewIPv4UDPConn(listen, &net.UDPAddr{Port: dhcpv4.ServerPort})
 	if err != nil {
@@ -76,7 +75,37 @@ func run() error {
 
 	log.Info("dhcp server started", "listen", listen, "state", store.Path(), "socket", control.Addr())
 
-	return store.Serve(conn, log)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	return serve(ctx, control, conn, store, log)
+}
+
+func serve(ctx context.Context, control *dhcpapi.Server, conn net.PacketConn, store *dhcpd.Store, log *slog.Logger) error {
+	go func() {
+		if err := control.Serve(); err != nil && !errors.Is(err, net.ErrClosed) {
+			log.Error("control socket stopped", "error", err)
+		}
+	}()
+
+	served := make(chan error, 1)
+	go func() { served <- store.Serve(conn, log) }()
+
+	select {
+	case err := <-served:
+		return err
+	case <-ctx.Done():
+	}
+
+	log.Info("dhcp server stopping")
+	if err := control.Close(); err != nil {
+		log.Error("close the control socket", "error", err)
+	}
+	if err := conn.Close(); err != nil {
+		log.Error("close the dhcp socket", "error", err)
+	}
+	<-served
+	return nil
 }
 
 func interfaceExists(name string) bool {

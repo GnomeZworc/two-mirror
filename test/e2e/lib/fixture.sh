@@ -33,7 +33,7 @@ host_state () {
     echo "## iptables"; iptables-save | grep -v '^#' | sed 's/ \[[0-9]*:[0-9]*\]$//'
     echo "## frr"; vtysh -c 'show running-config' | grep -v '^Building\|^Current configuration\|^!'
     echo "## frr.conf"; sha256sum /etc/frr/frr.conf | cut -d' ' -f1
-    echo "## fichiers"; find /run/two /etc/dnsmasq.d "${VOLUMES}" -mindepth 1 ! -type d ! -path '/run/two/dhcp/*.sock' 2>/dev/null | sort
+    echo "## fichiers"; find /run/two /etc/dnsmasq.d "${VOLUMES}" -mindepth 1 ! -type d 2>/dev/null | sort
     echo "## unités"; systemctl list-units --all --plain --no-legend 'two-vm-*' | awk '{print $1}'
     echo "## processus"; pgrep -a dnsmasq | cut -d' ' -f2- | sort; echo "qemu: $(pgrep -c qemu-system)"
 }
