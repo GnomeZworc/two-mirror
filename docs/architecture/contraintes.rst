@@ -39,7 +39,8 @@ Réseau
 QEMU et VM
 ----------
 
-* **Un seul disque ``vdX`` par VM** ; les disques additionnels passent par le SCSI (``sdX``). La
+* **Un seul disque virtio, ``vda``, le disque racine** ; les disques additionnels passent par le SCSI
+  (``xvdX``, cible X). La
   carte PCI en dépend : NIC en ``0x03``, contrôleur SCSI en ``0x1e``, virtio-blk en ``0x1f``.
 * ``bus=pci.0`` est explicite sur les trois ``-device`` : un passage de la machine en **q35**
   casserait le démarrage (``Bus 'pci.0' not found``).

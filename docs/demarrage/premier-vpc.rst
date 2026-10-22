@@ -115,15 +115,16 @@ Exactement une interface est ``primary``
    slot PCI (``0x03 + index``), donc le nom de l'interface dans le guest. Tous les subnets d'une
    VM doivent appartenir au même VPC.
 
-Un seul disque ``vdX``
-   Les disques supplémentaires passent par ``sdX``. La carte PCI en dépend — voir
+``vda`` pour la racine, ``xvdX`` pour les autres disques
+   ``vda`` est le disque racine, virtio, démarré en premier. Les disques supplémentaires sont des
+   ``xvdX`` (``xvda`` = cible SCSI 0) ; ``sdX`` est refusé (400). La carte PCI en dépend — voir
    :doc:`/architecture/contraintes`.
 
-``dev`` désigne un emplacement, pas un nom dans le guest
-   ``sdb`` est la cible SCSI 1, mais le noyau du guest nomme les disques SCSI dans l'ordre de
-   détection : ``/dev/sdb`` peut être un autre disque. L'agent donne à chaque disque le numéro
-   de série ``<dev>`` ; le nom stable est sous ``/dev/disk/by-id/`` :
-   ``scsi-0QEMU_QEMU_HARDDISK_sdb``, ``virtio-vda``.
+``/dev/xvdX`` dans le guest, jamais ``/dev/sdX``
+   Le noyau du guest nomme les disques SCSI ``sdX`` dans l'ordre de détection, qui change d'un
+   démarrage à l'autre. L'agent donne à chaque disque le numéro de série ``<dev>`` ; une image
+   conforme (:doc:`/deploiement/image-qcow2`) en fait le lien ``/dev/xvdX``. Sans cette règle,
+   le nom stable reste ``/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_xvdX``.
 
 4. Vérifier
 -----------

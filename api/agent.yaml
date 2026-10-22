@@ -567,12 +567,14 @@ components:
         dev:
           type: string
           description: >-
-            Disk slot: vda is the virtio-blk system disk (one at most), sdX
-            is SCSI target X (a → 0). Not a guaranteed name inside the VM:
-            the guest kernel names SCSI disks in detection order. The disk
-            serial is set to dev, so the guest finds it under
-            /dev/disk/by-id/ (virtio-<dev>, scsi-0QEMU_QEMU_HARDDISK_<dev>).
-          pattern: '^[sv]d[a-z]$'
+            vda is the virtio-blk root disk, seen as /dev/vda and booted
+            first. xvdX is an additional disk on SCSI target X (xvda → 0),
+            seen by the guest kernel as some /dev/sdY in detection order. The
+            disk serial is set to dev: an image that follows the two image
+            requirements links it to /dev/xvdX, and udev always exposes it as
+            /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_xvdX (virtio-vda for the
+            root disk). Anything else → 400; sdX is no longer accepted.
+          pattern: '^(vda|xvd[a-z])$'
           example: vda
 
     VM:
