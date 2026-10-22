@@ -49,14 +49,14 @@ func buildArgs(cfg Config) ([]string, error) {
 	hasScsi := false
 	virtioBlk := 0
 	for _, d := range cfg.Disks {
-		if strings.HasPrefix(d.Dev, "sd") {
+		if strings.HasPrefix(d.Dev, "xvd") {
 			hasScsi = true
 		} else {
 			virtioBlk++
 		}
 	}
 	if virtioBlk > 1 {
-		return nil, fmt.Errorf("qemu: %d disques virtio-blk (vd*) déclarés, un seul est supporté — utiliser des disques sd* pour les disques additionnels", virtioBlk)
+		return nil, fmt.Errorf("qemu: %d disques virtio-blk (vd*) déclarés, un seul est supporté — utiliser des disques xvd* pour les disques additionnels", virtioBlk)
 	}
 	if hasScsi {
 		args = append(args, "-device", "virtio-scsi-pci,id=scsi0,bus=pci.0,addr=0x1e")
@@ -64,7 +64,7 @@ func buildArgs(cfg Config) ([]string, error) {
 
 	sorted := make([]DiskConfig, len(cfg.Disks))
 	copy(sorted, cfg.Disks)
-	// vd* avant sd* : les disques virtio-blk bootent en premier.
+	// vd* avant xvd* : les disques virtio-blk bootent en premier.
 	// À lettre égale de type, ordre alphabétique.
 	sort.Slice(sorted, func(i, j int) bool {
 		iVirtio := strings.HasPrefix(sorted[i].Dev, "vd")
@@ -77,8 +77,8 @@ func buildArgs(cfg Config) ([]string, error) {
 
 	for idx, d := range sorted {
 		bootindex := idx + 1
-		if strings.HasPrefix(d.Dev, "sd") {
-			scsiID := int(d.Dev[2] - 'a')
+		if strings.HasPrefix(d.Dev, "xvd") {
+			scsiID := int(d.Dev[3] - 'a')
 			args = append(args,
 				"-drive", fmt.Sprintf("file=%s,if=none,id=%s", d.Path, d.Dev),
 				"-device", fmt.Sprintf("scsi-hd,drive=%s,bus=scsi0.0,scsi-id=%d,bootindex=%d,serial=%s", d.Dev, scsiID, bootindex, d.Dev),

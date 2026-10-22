@@ -24,7 +24,7 @@ func TestVmFromDB_SingleDisk(t *testing.T) {
 		"vm/vm-1/metadata_port": "1234",
 		"vm/vm-1/memory":        "512",
 		"vm/vm-1/cpus":          "1",
-		"vm/vm-1/disk/sda":      "/data/root.qcow2",
+		"vm/vm-1/disk/xvda":     "/data/root.qcow2",
 	}
 	vm, err := vmFromDB("vm-1", entries)
 	if err != nil {
@@ -33,7 +33,7 @@ func TestVmFromDB_SingleDisk(t *testing.T) {
 	if len(vm.Storage) != 1 {
 		t.Fatalf("attendu 1 disque, obtenu %d", len(vm.Storage))
 	}
-	if vm.Storage[0].Dev != "sda" || vm.Storage[0].Path != "/data/root.qcow2" {
+	if vm.Storage[0].Dev != "xvda" || vm.Storage[0].Path != "/data/root.qcow2" {
 		t.Errorf("disque inattendu : %+v", vm.Storage[0])
 	}
 }
@@ -46,8 +46,8 @@ func TestVmFromDB_MultiDisk(t *testing.T) {
 		"vm/vm-2/metadata_port": "1235",
 		"vm/vm-2/memory":        "1024",
 		"vm/vm-2/cpus":          "2",
-		"vm/vm-2/disk/sda":      "/data/root.qcow2",
-		"vm/vm-2/disk/sdb":      "/data/data.qcow2",
+		"vm/vm-2/disk/xvda":     "/data/root.qcow2",
+		"vm/vm-2/disk/xvdb":     "/data/data.qcow2",
 	}
 	vm, err := vmFromDB("vm-2", entries)
 	if err != nil {
@@ -57,13 +57,13 @@ func TestVmFromDB_MultiDisk(t *testing.T) {
 		t.Fatalf("attendu 2 disques, obtenu %d", len(vm.Storage))
 	}
 	sort.Slice(vm.Storage, func(i, j int) bool { return vm.Storage[i].Dev < vm.Storage[j].Dev })
-	if vm.Storage[0].Dev != "sda" || vm.Storage[1].Dev != "sdb" {
-		t.Errorf("devs attendus [sda sdb], obtenus [%s %s]", vm.Storage[0].Dev, vm.Storage[1].Dev)
+	if vm.Storage[0].Dev != "xvda" || vm.Storage[1].Dev != "xvdb" {
+		t.Errorf("devs attendus [xvda xvdb], obtenus [%s %s]", vm.Storage[0].Dev, vm.Storage[1].Dev)
 	}
 }
 
 func TestVmFromDB_SlotGap(t *testing.T) {
-	// sdb absent — sda et sdc seulement
+	// xvdb absent — xvda et xvdc seulement
 	entries := map[string]string{
 		"vm/vm-3/state":         "running",
 		"vm/vm-3/subnet":        "sn-1",
@@ -71,8 +71,8 @@ func TestVmFromDB_SlotGap(t *testing.T) {
 		"vm/vm-3/metadata_port": "1236",
 		"vm/vm-3/memory":        "512",
 		"vm/vm-3/cpus":          "1",
-		"vm/vm-3/disk/sda":      "/data/root.qcow2",
-		"vm/vm-3/disk/sdc":      "/data/extra.qcow2",
+		"vm/vm-3/disk/xvda":     "/data/root.qcow2",
+		"vm/vm-3/disk/xvdc":     "/data/extra.qcow2",
 	}
 	vm, err := vmFromDB("vm-3", entries)
 	if err != nil {
@@ -85,11 +85,11 @@ func TestVmFromDB_SlotGap(t *testing.T) {
 	for _, s := range vm.Storage {
 		devs[s.Dev] = true
 	}
-	if !devs["sda"] || !devs["sdc"] {
-		t.Errorf("attendu sda et sdc, obtenus %v", devs)
+	if !devs["xvda"] || !devs["xvdc"] {
+		t.Errorf("attendu xvda et xvdc, obtenus %v", devs)
 	}
-	if devs["sdb"] {
-		t.Error("sdb ne devrait pas apparaître")
+	if devs["xvdb"] {
+		t.Error("xvdb ne devrait pas apparaître")
 	}
 }
 
@@ -107,8 +107,8 @@ func TestStartVM_MultiDisk(t *testing.T) {
 			{Subnet: "sn-1", IP: "10.0.0.10", MAC: "52:54:00:00:00:05", Primary: true},
 		},
 		Storage: []VMStorage{
-			{Path: "/data/root.qcow2", Dev: "sda"},
-			{Path: "/data/data.qcow2", Dev: "sdb"},
+			{Path: "/data/root.qcow2", Dev: "vda"},
+			{Path: "/data/data.qcow2", Dev: "xvda"},
 		},
 		Memory: 1024,
 		CPUs:   2,
@@ -120,7 +120,7 @@ func TestStartVM_MultiDisk(t *testing.T) {
 		t.Fatalf("attendu 202, obtenu %d : %s", w.Code, w.Body.String())
 	}
 
-	for _, dev := range []string{"sda", "sdb"} {
+	for _, dev := range []string{"vda", "xvda"} {
 		if _, err := kv.GetFromDB(db, "vm/vm-10/disk/"+dev); err != nil {
 			t.Errorf("disk/%s absent en DB après création", dev)
 		}
@@ -142,7 +142,7 @@ func TestStartVM_StorageReturnedInResponse(t *testing.T) {
 			{Subnet: "sn-1", IP: "10.0.0.11", MAC: "52:54:00:00:00:05", Primary: true},
 		},
 		Storage: []VMStorage{
-			{Path: "/data/root.qcow2", Dev: "sda"},
+			{Path: "/data/root.qcow2", Dev: "xvda"},
 		},
 	})
 
@@ -157,8 +157,35 @@ func TestStartVM_StorageReturnedInResponse(t *testing.T) {
 	if len(vm.Storage) != 1 {
 		t.Fatalf("attendu 1 disque dans la réponse, obtenu %d", len(vm.Storage))
 	}
-	if vm.Storage[0].Dev != "sda" || vm.Storage[0].Path != "/data/root.qcow2" {
+	if vm.Storage[0].Dev != "xvda" || vm.Storage[0].Path != "/data/root.qcow2" {
 		t.Errorf("disque inattendu dans la réponse : %+v", vm.Storage[0])
+	}
+}
+
+func TestStartVM_RejectsInvalidDiskDev(t *testing.T) {
+	for _, dev := range []string{"sda", "sdb", "vdb", "xvd", "xvdA", "xvdaa", ""} {
+		s, db := newTestServer(t)
+		kv.AddInDB(db, "subnet/sn-1/state", "running")
+		kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-1")
+		kv.AddInDB(db, "subnet/sn-1/cidr", "10.0.0.0/24")
+
+		body, _ := json.Marshal(VMCreateRequest{
+			Name:       "vm-12",
+			Interfaces: []VMInterface{{Subnet: "sn-1", IP: "10.0.0.12", MAC: "52:54:00:00:00:05", Primary: true}},
+			Storage:    []VMStorage{{Path: "/data/root.qcow2", Dev: "vda"}, {Path: "/data/data.qcow2", Dev: dev}},
+		})
+
+		w := httptest.NewRecorder()
+		s.VmsHandler(w, httptest.NewRequest(http.MethodPost, "/vms", bytes.NewReader(body)))
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("dev %q : attendu 400, obtenu %d", dev, w.Code)
+		}
+		if !strings.Contains(w.Body.String(), "storage 1: dev") {
+			t.Errorf("dev %q : message inattendu %s", dev, w.Body.String())
+		}
+		if _, err := kv.GetFromDB(db, "vm/vm-12/state"); err == nil {
+			t.Errorf("dev %q : la VM ne doit pas être enregistrée", dev)
+		}
 	}
 }
 
