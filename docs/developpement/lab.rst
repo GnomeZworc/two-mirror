@@ -318,7 +318,7 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
    * - ``25-multi-nic``
      - VM à plusieurs interfaces — une NIC par subnet, adresses posées, route par défaut sur la primaire seule
      - hv1
-     - #33, #62
+     - #33, #62, #73
    * - ``26-multi-disque``
      - VM à plusieurs disques — virtio (vdX) et SCSI (sdX), tailles et bus vus par la VM, démarrage sur vda
      - hv1
