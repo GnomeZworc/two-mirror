@@ -259,6 +259,31 @@ C'est ce second fichier qui raccorde l'image au serveur de metadata de l'agent :
 la seule source retenue, et elle pointe sur ``169.254.169.254``. La route ``/32`` vers cette
 adresse est indispensable côté agent — voir :doc:`/concepts/modes-reseau`.
 
+**DHCP sur toutes les interfaces**
+
+L'image doit demander un bail DHCP IPv4 sur chaque interface Ethernet, et pas seulement sur la
+première : cloud-init ne configure les interfaces secondaires qu'au premier démarrage, au mieux
+(cf. :doc:`/concepts/metadata-cloud-init`). Pour une image sous systemd-networkd :
+
+.. code-block:: bash
+
+   cat << 'ENDFILE' > /mnt/etc/systemd/network/90-all-en.network
+   [Match]
+   Name=en*
+
+   [Network]
+   DHCP=ipv4
+   ENDFILE
+
+Le préfixe ``90`` laisse la priorité aux fichiers écrits par cloud-init pour la première
+interface (``10-netplan-*``). Sur une image démarrée avec ``net.ifnames=0``, viser ``eth*``.
+
+.. note::
+
+   **À établir pour NetworkManager** — l'équivalent pour une image sous NetworkManager, dont
+   l'image Rocky de cette page, n'est pas encore vérifié. Sans lui, une VM à plusieurs
+   interfaces n'a de bail que sur la première.
+
 **Services et durcissement**
 
 .. code-block:: bash

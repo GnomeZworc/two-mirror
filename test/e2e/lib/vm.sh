@@ -13,6 +13,8 @@ two_image () {
     mount /dev/nbd0p1 /mnt/two-image || { qemu-nbd -d /dev/nbd0 >/dev/null; return 1; }
     printf '%s\n' 'datasource_list: [ NoCloud ]' 'datasource:' '  NoCloud:' "    seedfrom: 'http://169.254.169.254:80/'" '    timeout: 5' '    max_wait: 10' \
         > /mnt/two-image/etc/cloud/cloud.cfg.d/99_metadata.cfg
+    printf '%s\n' '[Match]' 'Name=en*' '' '[Network]' 'DHCP=ipv4' \
+        > /mnt/two-image/etc/systemd/network/90-all-en.network
     umount /mnt/two-image
     qemu-nbd -d /dev/nbd0 >/dev/null
     mv "${work}/${IMAGE_FILE}" "${TWO_IMAGE}"
