@@ -96,7 +96,9 @@ subnet — l'ordre qui évite le trou noir de `#41 <https://git.g3e.fr/syonad/tw
 
 **Stockage.** Un seul disque ``vdX`` (virtio-blk) par VM ; les disques supplémentaires passent
 par le contrôleur SCSI (``sdX``). Cette contrainte vient de la carte PCI figée — voir
-:doc:`/architecture/contraintes`.
+:doc:`/architecture/contraintes`. ``dev`` fixe l'emplacement du disque (cible SCSI, slot PCI)
+et son numéro de série, pas son nom dans le guest : le disque se retrouve par
+``/dev/disk/by-id/…<dev>``.
 
 Ce qui est stocké, et où
 ------------------------

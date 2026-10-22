@@ -566,7 +566,12 @@ components:
           example: /var/lib/two/volumes/abc.qcow2
         dev:
           type: string
-          description: Device name inside the VM
+          description: >-
+            Disk slot: vda is the virtio-blk system disk (one at most), sdX
+            is SCSI target X (a → 0). Not a guaranteed name inside the VM:
+            the guest kernel names SCSI disks in detection order. The disk
+            serial is set to dev, so the guest finds it under
+            /dev/disk/by-id/ (virtio-<dev>, scsi-0QEMU_QEMU_HARDDISK_<dev>).
           pattern: '^[sv]d[a-z]$'
           example: vda
 

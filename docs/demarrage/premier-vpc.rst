@@ -96,7 +96,7 @@ Là encore, attendez ``running`` :
           "interfaces": [{"subnet": "sn-000001", "ip": "10.1.1.2", "mac": "52:54:00:01:01:02", "primary": true}],
           "storage": [{"path": "/var/lib/two/volumes/i-web.qcow2", "dev": "vda"}]}'
 
-Quatre points qui coûtent du temps quand on les découvre en production :
+Six points qui coûtent du temps quand on les découvre en production :
 
 ``user_data`` est **encodé en base64**
    Un base64 invalide est rejeté en 400 plutôt que servi vide. L'agent n'interprète jamais ce
@@ -118,6 +118,12 @@ Exactement une interface est ``primary``
 Un seul disque ``vdX``
    Les disques supplémentaires passent par ``sdX``. La carte PCI en dépend — voir
    :doc:`/architecture/contraintes`.
+
+``dev`` désigne un emplacement, pas un nom dans le guest
+   ``sdb`` est la cible SCSI 1, mais le noyau du guest nomme les disques SCSI dans l'ordre de
+   détection : ``/dev/sdb`` peut être un autre disque. L'agent donne à chaque disque le numéro
+   de série ``<dev>`` ; le nom stable est sous ``/dev/disk/by-id/`` :
+   ``scsi-0QEMU_QEMU_HARDDISK_sdb``, ``virtio-vda``.
 
 4. Vérifier
 -----------

@@ -320,9 +320,9 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - hv1
      - #33, #62, #73
    * - ``26-multi-disque``
-     - VM à plusieurs disques — virtio (vdX) et SCSI (sdX), tailles et bus vus par la VM, démarrage sur vda
+     - VM à plusieurs disques — virtio (vdX) et SCSI (sdX), tailles et bus vus par la VM, liens ``by-id`` par numéro de série, démarrage sur vda
      - hv1
-     - #32
+     - #32, #74
    * - ``27-reboot``
      - redémarrage d'une VM depuis l'invité — même processus QEMU, même adresse, nouveau bail, user_data non rejoué
      - hv1
