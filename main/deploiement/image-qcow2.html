@@ -1043,6 +1043,27 @@ cat<span class="w"> </span><span class="s">&lt;&lt; 'ENDFILE' &gt; /mnt/etc/clou
 <p>C’est ce second fichier qui raccorde l’image au serveur de metadata de l’agent : <code class="docutils literal notranslate"><span class="pre">NoCloud</span></code> est
 la seule source retenue, et elle pointe sur <code class="docutils literal notranslate"><span class="pre">169.254.169.254</span></code>. La route <code class="docutils literal notranslate"><span class="pre">/32</span></code> vers cette
 adresse est indispensable côté agent — voir <a class="reference internal" href="../concepts/modes-reseau.html"><span class="doc">Modes réseau</span></a>.</p>
+<p><strong>DHCP sur toutes les interfaces</strong></p>
+<p>L’image doit demander un bail DHCP IPv4 sur chaque interface Ethernet, et pas seulement sur la
+première : cloud-init ne configure les interfaces secondaires qu’au premier démarrage, au mieux
+(cf. <a class="reference internal" href="../concepts/metadata-cloud-init.html"><span class="doc">Metadata et cloud-init</span></a>). Pour une image sous systemd-networkd :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cat<span class="w"> </span><span class="s">&lt;&lt; 'ENDFILE' &gt; /mnt/etc/systemd/network/90-all-en.network</span>
+<span class="s">[Match]</span>
+<span class="s">Name=en*</span>
+
+<span class="s">[Network]</span>
+<span class="s">DHCP=ipv4</span>
+<span class="s">ENDFILE</span>
+</pre></div>
+</div>
+<p>Le préfixe <code class="docutils literal notranslate"><span class="pre">90</span></code> laisse la priorité aux fichiers écrits par cloud-init pour la première
+interface (<code class="docutils literal notranslate"><span class="pre">10-netplan-*</span></code>). Sur une image démarrée avec <code class="docutils literal notranslate"><span class="pre">net.ifnames=0</span></code>, viser <code class="docutils literal notranslate"><span class="pre">eth*</span></code>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>À établir pour NetworkManager</strong> — l’équivalent pour une image sous NetworkManager, dont
+l’image Rocky de cette page, n’est pas encore vérifié. Sans lui, une VM à plusieurs
+interfaces n’a de bail que sur la première.</p>
+</div>
 <p><strong>Services et durcissement</strong></p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>chroot<span class="w"> </span>/mnt/<span class="w"> </span>systemctl<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>fstrim.timer
 

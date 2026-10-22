@@ -844,12 +844,41 @@ un provisionnement : changer de nom, repartir d’un disque neuf, ou exécuter
 </section>
 <section id="configuration-reseau">
 <h2>Configuration réseau<a class="headerlink" href="#configuration-reseau" title="Lien vers cette rubrique">#</a></h2>
+<p>Le <code class="docutils literal notranslate"><span class="pre">network-config</span></code> servi à une VM contient une entrée par interface, dans l’ordre de l’API,
+visée par sa MAC et configurée en DHCP IPv4 :</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="nt">ethernets</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">eth0</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">match</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">macaddress</span><span class="p">:</span><span class="w"> </span><span class="s">"52:54:00:19:01:0a"</span>
+<span class="w">    </span><span class="nt">dhcp4</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">eth1</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">match</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">macaddress</span><span class="p">:</span><span class="w"> </span><span class="s">"52:54:00:19:02:14"</span>
+<span class="w">    </span><span class="nt">dhcp4</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</pre></div>
+</div>
+<p>La correspondance se fait par la MAC, pas par le nom : l’entrée <code class="docutils literal notranslate"><span class="pre">eth&lt;index&gt;</span></code> s’applique à
+<code class="docutils literal notranslate"><span class="pre">ens3</span></code> comme à <code class="docutils literal notranslate"><span class="pre">eth0</span></code>. La clé n’est qu’un identifiant pour netplan et NetworkManager ;
+deux renderers de cloud-init s’en servent pourtant comme nom : <code class="docutils literal notranslate"><span class="pre">sysconfig</span></code> renomme
+l’interface vers la clé, et <code class="docutils literal notranslate"><span class="pre">networkd</span></code> l’ajoute au <code class="docutils literal notranslate"><span class="pre">[Match]</span></code>, qui ne correspond alors
+qu’aux images démarrées avec <code class="docutils literal notranslate"><span class="pre">net.ifnames=0</span></code>.</p>
+<p>Le <code class="docutils literal notranslate"><span class="pre">network-config</span></code> ne pose <strong>aucune métrique</strong>. Toutes les interfaces reçoivent du serveur
+DHCP les routes du VPC et des métadonnées (option 121) ; seule la primaire reçoit la route par
+défaut. Départager les routes en double relève de l’utilisateur de la VM, par son <code class="docutils literal notranslate"><span class="pre">user_data</span></code>.</p>
 <div class="admonition warning">
 <p class="admonition-title">Avertissement</p>
-<p><code class="docutils literal notranslate"><span class="pre">network-config.tmpl</span></code> cible <code class="docutils literal notranslate"><span class="pre">eth0</span></code> alors que les guests utilisent <code class="docutils literal notranslate"><span class="pre">ens3</span></code> : il ne
-s’applique donc à rien, et le réseau des VM vient du DHCP. <strong>Ne pas le « corriger » ni le
-supprimer.</strong> Le rendre opérant ferait remplacer par cloud-init la configuration réseau de
-l’image, sur toutes les VM.</p>
+<p>Le <code class="docutils literal notranslate"><span class="pre">network-config</span></code> ne suffit pas à configurer les interfaces secondaires. La source
+NoCloud en <code class="docutils literal notranslate"><span class="pre">seedfrom</span></code> HTTP n’est trouvée qu’à l’étape réseau de cloud-init :</p>
+<ul class="simple">
+<li><p>cloud-init 22.4 (Debian 12) ne demande jamais <code class="docutils literal notranslate"><span class="pre">network-config</span></code> par <code class="docutils literal notranslate"><span class="pre">seedfrom</span></code> et
+applique sa configuration de repli, limitée à la première interface ;</p></li>
+<li><p>cloud-init 25.1 (Debian 13) le lit et l’applique au premier démarrage, mais à chaque
+démarrage suivant l’étape locale réapplique le repli, et <code class="docutils literal notranslate"><span class="pre">network-config</span></code> n’est pas
+relu : les interfaces secondaires perdent leur configuration.</p></li>
+</ul>
+<p>L’image doit donc faire du DHCP IPv4 sur <strong>toutes</strong> ses interfaces Ethernet, sans compter
+sur cloud-init. Voir <a class="reference internal" href="../deploiement/image-qcow2.html"><span class="doc">Construction de l’image qcow2</span></a>.</p>
 </div>
 </section>
 <section id="securite">
