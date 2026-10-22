@@ -1,6 +1,6 @@
 # fonctionnalité: validation de l'API — refus synchrones (400, 409, 422) des VPC, subnets et VM, sans trace en base
 # hôtes: hv1
-# tickets: #41, #57, #33, #62
+# tickets: #41, #57, #33, #62, #74
 
 on hv1 <<'NODE'
 check "VPC vp-t11a, l3vni 1100 (témoin)" vpc_create vp-t11a 10.11.0.0/16 1100
@@ -40,6 +40,9 @@ done
 check "VM : subnet inconnu, 422" expect_code 422 api_post_code vms "$(vm_body t11-x sn-t11z 10.11.1.12 "${NONE}")"
 check "VM : aucune interface primaire, 400" expect_code 400 api_post_code vms "$(vm_body t11-x sn-t11a 10.11.1.12 "${NONE}" | sed 's/"primary":true/"primary":false/')"
 check "VM : interface sans mac, 400" expect_code 400 api_post_code vms "$(vm_body t11-x sn-t11a 10.11.1.12 "${NONE}" | jq -c 'del(.interfaces[0].mac)')"
+for dev in sdb vdb xvdaa; do
+    check "VM : disque additionnel ${dev}, 400" expect_code 400 api_post_code vms "$(vm_body t11-x sn-t11a 10.11.1.12 "${NONE}" | jq -c --arg d "${dev}" '.storage += [{"path":"/x.qcow2","dev":$d}]')"
+done
 check "VM : user_data en base64 invalide, 400" expect_code 400 api_post_code vms "$(vm_body t11-x sn-t11a 10.11.1.12 "${NONE}" '{"user_data":"pas du base64 !"}')"
 check "VMs refusées : aucune trace de t11-x" expect_code 404 api_code GET vms/t11-x
 cp "${TWO_IMAGE}" "${VOLUMES}/t11-ud.qcow2"

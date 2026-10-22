@@ -15,6 +15,10 @@ two_image () {
         > /mnt/two-image/etc/cloud/cloud.cfg.d/99_metadata.cfg
     printf '%s\n' '[Match]' 'Name=en*' '' '[Network]' 'DHCP=ipv4' \
         > /mnt/two-image/etc/systemd/network/90-all-en.network
+    printf '%s\n' \
+        'SUBSYSTEM=="block", ENV{DEVTYPE}=="disk", ENV{ID_SERIAL_SHORT}=="xvd[a-z]", SYMLINK+="$env{ID_SERIAL_SHORT}"' \
+        'SUBSYSTEM=="block", ENV{DEVTYPE}=="partition", ENV{ID_SERIAL_SHORT}=="xvd[a-z]", SYMLINK+="$env{ID_SERIAL_SHORT}%n"' \
+        > /mnt/two-image/etc/udev/rules.d/90-two-xvd.rules
     umount /mnt/two-image
     qemu-nbd -d /dev/nbd0 >/dev/null
     mv "${work}/${IMAGE_FILE}" "${TWO_IMAGE}"
