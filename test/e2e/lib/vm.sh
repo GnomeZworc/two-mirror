@@ -142,6 +142,10 @@ vm_meta () {
     vm_ssh "${1}" "${2}" "curl -fsS http://169.254.169.254/${3}"
 }
 
+vm_cloud_init_done () {
+    vm_ssh "${1}" "${2}" "timeout ${3:-300} cloud-init status --wait"
+}
+
 vm_boot_id () {
     vm_ssh "${1}" "${2}" 'cat /proc/sys/kernel/random/boot_id'
 }

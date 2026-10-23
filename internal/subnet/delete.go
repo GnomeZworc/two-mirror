@@ -105,8 +105,8 @@ func deleteSubnetBridge(d subnetData) error {
 	vethI := "v-" + d.subnetID + "-i"
 
 	if err := netns.Call(d.vpc, func() error {
-		if err := ebtables.DeleteDHCP(vethI, d.interfaceIP.String()); err != nil {
-			return fmt.Errorf("delete ebtables dhcp rule: %w", err)
+		if err := ebtables.DeleteConfineGateway(vethI, d.interfaceIP.String()); err != nil {
+			return fmt.Errorf("delete ebtables gateway rules: %w", err)
 		}
 		return netif.DeleteLink(d.bridge)
 	}); err != nil {

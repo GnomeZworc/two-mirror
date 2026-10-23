@@ -89,8 +89,11 @@ func checkSubnet(db *badger.DB, name string, backend dhcpbackend.Backend, u unit
 	}
 
 	checkSubnetNetns(name, vpc, nsVeth, bridge, n)
-	if mode == modeVxlan {
+	switch mode {
+	case modeVxlan:
 		checkAnycastGateway(db, name, vpc, bridge, n)
+	case modeBridge:
+		checkBridgeGateway(db, name, vpc, nsVeth, n)
 	}
 
 	checkDHCP(db, name, dhcpbackend.Subnet{Name: name, VPC: vpc, Bridge: bridge}, backend, u, n)

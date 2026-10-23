@@ -15,6 +15,7 @@ check "VM t23-s : sshkey seule (témoin)" vm_launch t23-s --nic sn-t23=10.23.1.1
 check "VM t23-n : ni sshkey ni password" vm_launch t23-n --nic sn-t23=10.23.1.12
 
 check "t23-k joignable en SSH (sshkey servie)" vm_wait vp-t23 10.23.1.10
+check "t23-k : cloud-init terminé" vm_cloud_init_done vp-t23 10.23.1.10
 check "t23-k : meta-data, instance-id = nom de la VM" vm_grep vp-t23 10.23.1.10 'curl -fsS http://169.254.169.254/meta-data' '^instance-id: t23-k$'
 check "t23-k : user-data servi tel quel" test "$(vm_meta vp-t23 10.23.1.10 user-data)" = "$(printf '%s' "${UD}")"
 check "t23-k : runcmd du user_data exécuté" vm_grep vp-t23 10.23.1.10 'cat /var/tmp/t23-runcmd' '^t23$'
@@ -22,6 +23,7 @@ check "t23-k : vendor-data porte la clé SSH" vm_grep vp-t23 10.23.1.10 'curl -f
 check "t23-k : hash du password posé sur le compte syonad" vm_ssh vp-t23 10.23.1.10 "sudo grep -qF 'syonad:${HASH}:' /etc/shadow"
 
 check "t23-s joignable en SSH" vm_wait vp-t23 10.23.1.11
+check "t23-s : cloud-init terminé" vm_cloud_init_done vp-t23 10.23.1.11
 check "t23-s : user_data absent, user-data servi vide (template)" test -z "$(vm_meta vp-t23 10.23.1.11 user-data)"
 check "t23-s : aucun runcmd exécuté" vm_fails vp-t23 10.23.1.11 'test -e /var/tmp/t23-runcmd'
 check "t23-s : password absent, compte syonad verrouillé" vm_ssh vp-t23 10.23.1.11 "sudo grep -q '^syonad:!' /etc/shadow"

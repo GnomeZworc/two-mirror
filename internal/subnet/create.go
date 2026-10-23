@@ -132,7 +132,7 @@ func createSubnet(db *badger.DB, subnetName string, d subnetData, backend dhcpba
 			if err := netif.RouteAdd(d.bridge, d.cidr); err != nil {
 				return fmt.Errorf("add route: %w", err)
 			}
-			return ebtables.DropDHCP(vethI, d.interfaceIP.String())
+			return ebtables.ConfineGateway(vethI, d.interfaceIP.String())
 		}); err != nil {
 			return fmt.Errorf("configure netns: %w", err)
 		}

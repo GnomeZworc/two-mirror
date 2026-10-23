@@ -280,3 +280,32 @@ func problems(ns []notification) []string {
 	}
 	return out
 }
+
+func TestCheckSubnets_BridgeSansInterfaceIP(t *testing.T) {
+	db := newTestDB(t)
+	seedSubnet(t, db, "br-000042", "vp-admin", modeBridge)
+	r := &recorder{}
+
+	if err := CheckSubnets(db, dnsmasqConfig(), newFakeUnits(), r); err != nil {
+		t.Fatalf("erreur inattendue: %v", err)
+	}
+
+	if !r.hasProblemContaining("interface_ip unreadable") {
+		t.Errorf("un subnet bridge sans interface_ip devrait être signalé, obtenu %v", r.calls)
+	}
+}
+
+func TestCheckSubnets_VxlanSansInterfaceIPNeVerifiePasLesReglesBridge(t *testing.T) {
+	db := newTestDB(t)
+	seedSubnet(t, db, "br-000042", "vp-admin", modeVxlan)
+	seedKV(t, db, prefixSubnet+"br-000042/vxlan_id", "42")
+	r := &recorder{}
+
+	if err := CheckSubnets(db, dnsmasqConfig(), newFakeUnits(), r); err != nil {
+		t.Fatalf("erreur inattendue: %v", err)
+	}
+
+	if r.hasProblemContaining("interface_ip unreadable") {
+		t.Errorf("un subnet vxlan ne passe pas par la vérification bridge, obtenu %v", r.calls)
+	}
+}
