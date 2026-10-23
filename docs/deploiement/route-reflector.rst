@@ -3,9 +3,11 @@ VM route reflector
 
 Le route reflector est le point de rendez-vous du plan de contrôle : plutôt que de maintenir une
 session entre chaque paire d'hyperviseurs, chaque hyperviseur ouvre une session vers le route
-reflector, qui redistribue. Le cluster en compte **deux**, configurés à l'identique hormis leurs
-adresses : chaque hyperviseur ouvre une session vers chacun, et la perte de l'un ne doit pas
-interrompre le plan de contrôle (`#54 <https://git.g3e.fr/syonad/two/issues/54>`_).
+reflector, qui redistribue. Un cluster en compte **au moins un** ; l'architecture et les exemples
+de cette page en prévoient **deux** (rr1 et rr2, d'où les plages d'adresses ci-dessous),
+configurés à l'identique hormis leurs adresses : chaque hyperviseur ouvre une session vers chacun,
+et la perte de l'un n'interrompt pas le plan de contrôle
+(`#54 <https://git.g3e.fr/syonad/two/issues/54>`_, fermé).
 
 Il tourne lui-même en machine virtuelle, ce qui crée une dépendance circulaire à traiter
 explicitement : la VM qui porte le plan de contrôle du cluster est hébergée par le cluster.
@@ -84,13 +86,14 @@ Ce qu'elle établit :
 
 .. warning::
 
-   **Les tunnels ne survivent pas à la perte du route reflector.** Avec un seul route reflector
-   et sans ``graceful-restart``, à l'arrêt de FRR sur le route reflector, la session EVPN des
-   hyperviseurs tombe aussitôt, FRR retire les routes apprises et, avec elles, le VTEP distant et l'entrée d'inondation du VXLAN — **plus
-   aucun paquet ne passe** entre hyperviseurs, à 30 s comme à 90 s. Au redémarrage de FRR sur le
-   route reflector, VTEP distant et trafic reviennent **31 s** plus tard. Le trafic entre VM d'un
-   même hyperviseur n'est pas concerné. La redondance (deux route reflectors) ou
-   ``graceful-restart`` sont les deux leviers ; ni l'un ni l'autre n'est encore qualifié.
+   **Les tunnels ne survivent pas à la perte de tous les route reflectors.** Sans
+   ``graceful-restart``, quand plus aucun route reflector ne répond, les sessions EVPN des
+   hyperviseurs tombent, FRR retire les routes apprises et, avec elles, le VTEP distant et
+   l'entrée d'inondation du VXLAN : **plus aucun paquet ne passe** entre hyperviseurs, jusqu'au
+   retour d'un route reflector et à la reconvergence des sessions. Le trafic entre VM d'un même
+   hyperviseur n'est pas concerné. Avec deux route reflectors, la perte de l'un est sans effet sur
+   le trafic, à condition qu'ils ne tombent jamais ensemble : **jamais deux route reflectors sur le
+   même hyperviseur**. Les mesures du lab sont dans :doc:`/developpement/lab`.
 
 .. note::
 
@@ -101,8 +104,8 @@ Ce qu'elle établit :
      autres ou d'un cas particulier — l'image, elle, est l'image golden de :doc:`image-qcow2` ;
    * le placement des deux VM : jamais sur le même hyperviseur, et de préférence pas sur un
      hyperviseur dont la perte isolerait l'autre ;
-   * la procédure de reconstruction — l'état du cluster pendant l'absence du route reflector est
-     décrit ci-dessus : plus de trafic entre hyperviseurs ;
+   * la procédure de reconstruction — l'état du cluster pendant l'absence de tous les route
+     reflectors est décrit ci-dessus : plus de trafic entre hyperviseurs ;
    * la procédure d'amorçage : ce qui fonctionne, et dans quel ordre, quand on démarre un cluster
      entier depuis zéro — le premier hyperviseur n'a pas de session FRR établie tant que cette VM
      n'existe pas, cf. :doc:`premier-hyperviseur`.

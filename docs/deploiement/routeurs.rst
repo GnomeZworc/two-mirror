@@ -18,9 +18,10 @@ Routeurs de bordure
 Routeur de cluster
 ------------------
 
-Le routeur de cluster est la passerelle des hyperviseurs et le voisin eBGP des deux route
-reflectors, dont il apprend les loopbacks : c'est par lui que chaque hyperviseur joint
-``10.255.255.1`` et ``10.255.255.2`` pour ouvrir ses sessions EVPN (:doc:`route-reflector`).
+Le routeur de cluster est la passerelle des hyperviseurs et le voisin eBGP des route reflectors
+— au moins un ; deux sont prévus dans l'architecture et dans les exemples —, dont il apprend les
+loopbacks : c'est par lui que chaque hyperviseur joint ``10.255.255.1`` et ``10.255.255.2`` pour
+ouvrir ses sessions EVPN (:doc:`route-reflector`).
 
 Adressage
 ~~~~~~~~~
@@ -33,8 +34,9 @@ Adressage
      - Interface
      - Rôle
    * - ``192.168.14.1/24``
-     - interface du segment des hyperviseurs
-     - passerelle par défaut des hyperviseurs et du route reflector
+     - interface du segment des hyperviseurs, **adresse virtuelle VRRP**
+     - passerelle par défaut des hyperviseurs et des route reflectors, portée par le routeur
+       maître ; chaque routeur a en plus sa propre adresse sur le segment
    * - ``169.254.0.1/28``
      - même interface, **adresse secondaire**
      - lien avec les route reflectors (``169.254.0.3`` et ``.4``) ; ``router-id`` ; le second
@@ -60,9 +62,9 @@ Ce qu'elle établit :
 * **Aucune session avec les hyperviseurs** : le routeur leur sert de passerelle, pas de voisin BGP.
 
 Celle du second routeur (``test/e2e/topologies/frr/sw2.conf``) ne diffère que par ``hostname`` et
-``router-id`` (``169.254.0.2``), que les route reflectors déclarent aussi. La redondance des
-routeurs — et le mécanisme qui fait basculer la passerelle ``192.168.14.1`` — est l'objet de
-`#54 <https://git.g3e.fr/syonad/two/issues/54>`_.
+``router-id`` (``169.254.0.2``), que les route reflectors déclarent aussi. Les deux routeurs se
+partagent la passerelle ``192.168.14.1`` en **VRRP v3** : le maître la porte, l'autre attend, sans
+préemption (`#54 <https://git.g3e.fr/syonad/two/issues/54>`_, fermé).
 
 .. note::
 
@@ -73,9 +75,8 @@ routeurs — et le mécanisme qui fait basculer la passerelle ``192.168.14.1`` �
 
    **À rédiger.** Reste à documenter, faute d'éléments de terrain :
 
-   * pour le routeur de cluster : le matériel employé et sa version de référence ; la redondance
-     — deux routeurs, mécanisme de bascule, comportement attendu pendant une bascule
-     (`#54 <https://git.g3e.fr/syonad/two/issues/54>`_) ;
+   * pour le routeur de cluster : le matériel employé et sa version de référence ; la traduction
+     de la redondance VRRP v3 dans sa configuration ;
    * pour les routeurs de datacentre et de bordure : tout — équipement, configuration de
      référence, ce qui est annoncé et filtré à chaque niveau, redondance ;
    * l'ordre de mise en service, et ce qui doit être opérationnel avant de préparer le premier

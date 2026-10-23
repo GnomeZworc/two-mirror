@@ -24,9 +24,9 @@ Vue d'ensemble
    (BGP). Tirets verts : orchestration. Trait orange : trafic Internet. Cadre en pointillés :
    élément à venir, avec son ticket.
 
-Plusieurs clusters, chacun avec son underlay, ses deux routeurs et un route reflector, sont reliés
-en eBGP entre eux et aux **routeurs de bordure**. Ce qui n'existe pas encore est décrit sur son
-ticket :
+Plusieurs clusters, chacun avec son underlay et ses deux routeurs, sont reliés en eBGP entre eux
+et aux **routeurs de bordure** ; les route reflectors sont décrits plus bas. Ce qui n'existe pas
+encore est décrit sur son ticket :
 
 * **Internet** (`#31 <https://git.g3e.fr/syonad/two/issues/31>`_,
   `#42 <https://git.g3e.fr/syonad/two/issues/42>`_). Les bordures partagent avec les hyperviseurs
@@ -41,12 +41,19 @@ ticket :
 
 * **Orchestration** (`#72 <https://git.g3e.fr/syonad/two/issues/72>`_). Le broker et
   l'orchestrateur sont des VM du VNI 66000, partagé entre clusters. Les agents s'y connectent
-  **en sortie**, par leur passerelle ; les routeurs de chaque cluster les NAT vers le VNI 66000.
+  **en sortie**, par leur passerelle ; les routeurs de chaque cluster les traduisent (NAT) vers le
+  VNI 66000.
   L'orchestrateur a aussi une patte dans le VNI 66001 : son API est joignable depuis Internet.
 
-* **Route reflectors.** Un par cluster, pour qu'un incident sur un cluster ne coupe pas les deux
-  sessions EVPN. Chaque lien entre routeurs et route reflector est en ``169.254.0.0/28``, propre
-  à son cluster.
+* **Route reflectors.** Au moins un ; deux sont prévus dans l'architecture et dans les exemples
+  (plages d'adresses de :doc:`route-reflector`), placés ici dans deux clusters différents pour
+  qu'un incident sur un cluster ne coupe pas les deux sessions EVPN. Chaque lien entre routeurs
+  et route reflector est en ``169.254.0.0/28``, propre à son cluster. Le ``bgp listen range`` de
+  chaque route reflector doit alors couvrir l'underlay de **tous** les clusters qu'il sert —
+  l'exemple ``rr1.conf`` n'accepte que ``192.168.14.0/24``.
+
+* **ASN.** Les routeurs de deux clusters étant voisins eBGP, chaque cluster a son propre ASN de
+  routeurs : l'AS 65100 des exemples est la valeur d'**un** cluster.
 
 Le lab (:doc:`/developpement/lab`) simplifie : un seul cluster, qui porte les deux route
 reflectors.
@@ -79,7 +86,7 @@ Plan de données
 
 Plan de contrôle
    ce qui dit à chaque hyperviseur où se trouvent les adresses MAC des autres. C'est le rôle de
-   FRR et du route reflector.
+   FRR et des route reflectors.
 
 Ce que l'agent suppose déjà en place
 ------------------------------------
@@ -111,8 +118,8 @@ apprentissage des adresses MAC depuis le trafic, ni voisin statique configuré.
    isolé le trafic reste sur le bridge local et cette absence ne se voit pas ; elle apparaît dès
    le deuxième nœud.
 
-C'est exactement le rôle que remplissent FRR sur chaque hyperviseur et le route reflector qui
-les fait converger.
+C'est exactement le rôle que remplissent FRR sur chaque hyperviseur et les route reflectors qui
+les font converger.
 
 MTU
 ---

@@ -20,14 +20,14 @@ deux processus ne doivent pas partager une même instance.
 Documents servis
 ----------------
 
-Chaque document suit la même règle :
+Quatre documents sont servis : ``meta-data``, ``user-data``, ``network-config`` et
+``vendor-data``. Seul ``user-data`` vient de l'appelant :
 
-* fourni par l'appelant → servi **verbatim**, l'agent n'interprète rien ;
-* absent → le template par défaut est rendu ;
-* fourni **vide** → servi vide.
+* ``user_data`` fourni → servi **verbatim**, après décodage base64 ; l'agent n'interprète rien ;
+* ``user_data`` absent ou **vide** → ``user-data`` servi vide : les deux cas sont équivalents.
 
-Les deux derniers cas sont distincts, et c'est délibéré : fournir une chaîne vide est une façon
-explicite de neutraliser un document.
+``meta-data``, ``network-config`` et ``vendor-data`` sont **toujours** rendus depuis les templates
+de l'agent ; ``vendor-data`` crée le compte ``syonad`` à partir de ``password`` et ``sshkey``.
 
 Champs de ``metadata``
 ----------------------

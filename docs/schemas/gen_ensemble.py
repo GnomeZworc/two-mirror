@@ -78,7 +78,6 @@ def path(d, cls, start=False, end=False):
 def draw():
     dy = 205
 
-    # Internet et bordures
     out.append('  <rect class="pill" x="600" y="20" width="300" height="56" rx="28"/>')
     text(750, 54, "Internet", "lbl", "middle")
     path("M750 76 V110", "net", start=True, end=True)
@@ -89,19 +88,16 @@ def draw():
     text(750, 214, "même IP et même MAC de gateway · sans état", "sub", "middle")
     text(750, 230, "VTEP · VNI 66001 (public)", "sub", "middle")
 
-    # Poste de l'opérateur
     group(1180, 20, 280, 100, "POSTE DE L'OPÉRATEUR")
     box(1200, 50, 240, 52, "Terraform / OpenTofu", ["provider two · #72"], "future")
-    text(1164, 150, "API publique de l'orchestrateur", "nett", "end")
-    text(1164, 166, "par Internet et les bordures (VNI 66001)", "nett", "end")
+    path("M1180 64 H900", "net", end=True)
+    text(1040, 56, "API publique de l'orchestrateur", "nett", "middle")
 
-    # Underlay A : routeurs
     group(40, 280, 480, 130, "CLUSTER A")
     box(60, 312, 210, 56, "routeur 1", ["169.254.0.1/28"])
     box(290, 312, 210, 56, "routeur 2", ["169.254.0.2/28"])
     text(280, 392, "VRRP · VTEP · VNI 66000 · NAT vers le VNI 66000 · #72", "sub", "middle")
 
-    # Underlay B
     group(1200, 280, 260, 130, "CLUSTER B")
     box(1215, 312, 110, 56, "routeur 1", ["169.254.0.1/28"])
     box(1335, 312, 110, 56, "routeur 2", ["169.254.0.2/28"])
@@ -122,7 +118,6 @@ def draw():
     text(1330, 765 + dy, "l'hyperviseur détaillé", "sub", "middle")
     path(f"M1452 460 V{395 + dy}", "link")
 
-    # eBGP
     path("M500 340 H1215", "link")
     text(860, 332, "eBGP · routeur 2 de A → routeur 1 de B", "sub", "middle")
     path("M660 240 V258 H210 V312", "link")
@@ -130,7 +125,6 @@ def draw():
     text(420, 252, "eBGP", "sub", "middle")
     text(1060, 252, "eBGP", "sub", "middle")
 
-    # Underlay A : bus, route reflector, services
     out.append('  <line class="bus" x1="40" y1="460" x2="680" y2="460"/>')
     text(690, 465, "underlay A · VXLAN UDP 4789 · BGP", "sub")
     path("M75 368 V460", "link")
@@ -145,7 +139,6 @@ def draw():
     path("M510 410 V546 H760", "orch", end=True)
     path("M1200 400 H1192 V560 H1180", "orch", end=True)
 
-    # Hyperviseur
     group(40, 395 + dy, 1120, 410, "HYPERVISEUR A (détaillé)")
     box(60, 430 + dy, 260, 52, "br-000000", ["IP de l'hyperviseur = VTEP"])
     box(60, 496 + dy, 260, 52, "FRR · bgpd", ["sessions EVPN vers les RR"])
@@ -174,13 +167,13 @@ def draw():
     out.append(f'  <text class="datat" x="30" y="{600 + dy}" text-anchor="middle" transform="rotate(-90 30 {600 + dy})">VNI 66001</text>')
     path(f"M300 {430 + dy} V460", "link")
 
-    # Orchestration : agent → routeurs de l'underlay A
     path(f"M320 {580 + dy} H332 V410", "orch", end=True)
     text(340, 596, "register · ordres · événements (mTLS, sortant)", "orcht")
 
-    path("M1180 76 H1172 V546 H1160", "net", end=True)
+    path("M750 240 V300 H1140 V520", "net", end=True)
+    text(1132, 430, "API publique", "nett", "end")
+    text(1132, 446, "VNI 66001", "nett", "end")
 
-    # Légende
     ly = 840 + dy
     path(f"M60 {ly} H110", "data")
     text(118, ly + 4, "plan de données : VXLAN")
@@ -194,12 +187,12 @@ def draw():
     text(922, ly + 4, "à venir (ticket indiqué)")
 
     notes = [
-        "Les agents ne sont jamais joints par l'orchestrateur : ils se connectent au broker en sortie, via leur passerelle ; les routeurs de leur cluster les NAT vers le VNI 66000.",
+        "Les agents ne sont jamais joints par l'orchestrateur : ils se connectent au broker en sortie, via leur passerelle ; les routeurs de leur cluster les traduisent (NAT) vers le VNI 66000.",
         "L'orchestrateur a une patte dans le VNI 66001 : son API est joignable depuis Internet, par les bordures.",
         "VM publique : un subnet public dans son VPC, relié au subnet public de l'hôte (VNI 66001), dont la gateway anycast est portée par toutes les bordures.",
         "VM privée : route par défaut de type 5 vers la passerelle NAT de son VPC (IP de sortie du VPC) si le VPC autorise Internet, ou IP flottante 1:1 sur son hôte.",
         "Les bordures restent sans état : tout NAT vit sur un hyperviseur. Broker et orchestrateur sont des VM du VNI 66000, partagé : elles tournent sur les hyperviseurs de n'importe quel cluster.",
-        "Un route reflector par cluster : un événement d'un cluster ne coupe pas les deux sessions. Chaque lien routeurs ↔ RR est en 169.254.0.0/28, propre à son cluster.",
+        "Au moins un route reflector ; deux prévus, ici un par cluster : un événement d'un cluster ne coupe pas les deux sessions. Chaque lien routeurs ↔ RR est en 169.254.0.0/28, propre à son cluster.",
     ]
     for k, n in enumerate(notes):
         text(60, 884 + dy + k * 18, n)
@@ -208,7 +201,7 @@ def draw():
 def render(p):
     out.clear()
     draw()
-    head = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" role="img" aria-label="Vue d\'ensemble : Internet, bordures, routeurs du cluster, services, orchestration et hyperviseurs">'
+    head = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" role="img" aria-label="Vue d\'ensemble : Internet, bordures, deux clusters, route reflectors, services partagés et hyperviseurs">'
     return "\n".join([head, style(p)] + out + ["</svg>", ""])
 
 

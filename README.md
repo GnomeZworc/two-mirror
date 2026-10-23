@@ -22,20 +22,20 @@ Options utiles :
 
 | Option | Effet |
 |---|---|
-| `-t <tag>` | déployer une release donnée |
-| `-b <branche>` | déployer depuis une branche au lieu d'une release |
+| `-t <tag>` | déployer une release donnée ; sans `-t`, la dernière publiée, préversions comprises |
+| `-b <branche>/` | branche d'où viennent l'auto-mise à jour du script et le bootstrap (`main/` par défaut, `/` final obligatoire) ; les binaires viennent toujours d'une release |
 | `-i` | préparer l'host (paquets, noyau, réseau) |
 | `-u <iface>` | interface physique d'uplink, `eno1` par défaut |
 | `-B <bridge>` | bridge principal auquel l'uplink est rattaché |
 | `-d` | dry-run : affiche les commandes sans les exécuter |
-| `-V` | désactiver la vérification des sommes de contrôle |
+| `--noverify` | désactiver la vérification des sommes de contrôle |
 
 Un déploiement relève les instances `dnsmasq@`, `dhcp@` et `metadata@` actives **avant** l'arrêt des
 services, et les redémarre ensuite — c'est la seule façon de savoir lesquelles relancer.
 
 ## Configuration
 
-Un seul fichier, `/etc/two/agent.yml`, partagé par les trois binaires. Voir
+Un seul fichier, `/etc/two/agent.yml`, partagé par les quatre binaires. Voir
 [`conf/agent/config.exemple.yml`](conf/agent/config.exemple.yml) pour l'ensemble des options :
 chemins de la base et des sockets QEMU, pool de workers, correspondance des types d'interface vers
 les bridges physiques, watchdog, API d'administration, journalisation.
@@ -49,7 +49,7 @@ curl -X POST http://127.0.0.1:8080/vpcs \
 
 # Un subnet en VXLAN dans ce VPC
 curl -X POST http://127.0.0.1:8080/subnets \
-  -d '{"name": "sn-000001", "vpc": "vp-admin", "mode": "vxlan", "vxlan_id": 1,
+  -d '{"name": "sn-000001", "vpc": "vp-admin", "mode": "vxlan", "vxlan_id": 65537,
        "iface_type": "vms", "cidr": "10.1.0.0/23"}'
 
 # Une VM, avec une clé SSH et un user-data cloud-init en base64
@@ -58,7 +58,7 @@ curl -X POST http://127.0.0.1:8080/vms \
        "metadata": {"sshkey": "ssh-ed25519 AAAA…",
                     "user_data": "'"$(base64 -w0 < user-data.yml)"'"},
        "interfaces": [{"subnet": "sn-000001", "ip": "10.1.1.2", "mac": "52:54:00:01:01:02", "primary": true}],
-       "storage": [{"path": "/data/disks/vms/i-web.qcow2", "dev": "vda"}]}'
+       "storage": [{"path": "/var/lib/two/volumes/i-web.qcow2", "dev": "vda"}]}'
 ```
 
 Les créations sont **asynchrones** : l'API répond `202` et l'état de la ressource passe de
@@ -75,9 +75,10 @@ La spécification complète est dans [`api/agent.yaml`](api/agent.yaml).
 |---|---|
 | `agent` | processus principal : API, dispatcher, exécution, watchdog |
 | `metadata` | serveur de metadata cloud-init, une instance par VM dans le netns du VPC |
-| `db` | inspection de la base clé-valeur en ligne de commande |
+| `dhcp` | serveur DHCP intégré, une instance par subnet dans le netns du VPC, avec `dhcp.backend: two` |
+| `db` | inspection de la base clé-valeur en ligne de commande ; ni publié ni déployé, à compiler (`go build ./cmd/db`) |
 
-L'agent prend `-config`, les deux autres `-conf`.
+L'agent prend `-config`, les trois autres `-conf`.
 
 ## Versions
 

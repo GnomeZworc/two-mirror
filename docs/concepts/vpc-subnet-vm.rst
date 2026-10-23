@@ -18,6 +18,12 @@ VPC
 Un VPC est un **network namespace** portant un espace d'adressage (``cidr``). C'est l'unité
 d'isolation : deux VPC ne se voient pas, et peuvent réutiliser les mêmes plages d'adresses.
 
+À la création, l'agent relie le netns au bridge ``br-public`` de l'host par un veth
+``vp-<id>-e`` (côté host) ↔ ``vp-<id>-i`` (côté netns, rattaché à un ``br-public`` propre au
+netns). Ce nom de bridge est **en dur** : l'host doit porter un bridge ``br-public``, celui que
+crée ``deploy.sh -i`` avec la valeur par défaut de ``-P`` (:doc:`/demarrage/installation`) ;
+sans lui, toute création de VPC échoue.
+
 Un VPC ne peut être supprimé que si tous ses subnets le sont déjà — sinon 409.
 
 Routage entre hyperviseurs : ``l3vni``
@@ -112,6 +118,9 @@ depuis le subnet, leur source canonique. Le schéma complet des clés est dans
 Nommage
 -------
 
-L'API est machine-to-machine : elle **ne valide pas** les conventions de nommage, à l'exception
-du motif documenté pour les VPC (``vp-…``). Les exemples de cette documentation suivent la
-convention ``vp-`` / ``sn-`` / ``i-``, mais c'est à l'appelant de la faire respecter.
+L'API est machine-to-machine : elle **ne valide aucun nommage**, pas même le motif ``vp-…``
+indiqué par la spécification pour les VPC. Une contrainte est pourtant réelle : le nom d'un VPC
+ou d'un subnet doit **contenir un « - »**, car l'identifiant système (``vp-<id>-e``, ``br-<id>``,
+``gw-<id>``…) est ce qui suit le premier tiret. Un nom sans tiret fait paniquer l'agent. Les
+exemples de cette documentation suivent la convention ``vp-`` / ``sn-`` / ``i-``, mais c'est à
+l'appelant de la faire respecter.
