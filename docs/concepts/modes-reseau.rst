@@ -122,6 +122,29 @@ bridge
 Le subnet est rattaché directement à un bridge existant de l'host. Pas de tunnel, pas de route
 VPC : le trafic sort par le bridge, et la VM est joignable depuis l'host.
 
+Le même subnet peut être posé sur plusieurs hôtes raccordés au même segment. Chaque hôte porte
+alors la **même** ``interface_ip`` dans son netns, avec sa propre MAC. Pour qu'une VM ne voie que
+l'``interface_ip`` de son hôte (gateway, metadata, DHCP), l'agent pose quatre règles ebtables sur
+le veth du subnet dans le netns (``v-<subnet>-i``), en sortie vers le bridge de l'host :
+
+* les requêtes ARP des VM **vers** ``interface_ip`` ne quittent pas l'hôte (``FORWARD``) ;
+* l'ARP émis **depuis** ``interface_ip`` par le netns, requêtes et réponses, ne sort pas
+  (``OUTPUT``) : une VM d'un autre hôte n'associe jamais ``interface_ip`` à cet hôte ;
+* le DHCP émis depuis ``interface_ip`` ne sort ni en transit (``FORWARD``) ni depuis le serveur
+  local lui-même (``OUTPUT``).
+
+Le trafic entre VM du subnet, sur un même hôte ou sur des hôtes différents, n'est pas concerné.
+Par conception, une VM ne joint pas le netns d'un autre hôte. Les règles sont retirées à la
+suppression du subnet ; une règle déjà absente ne fait pas échouer la suppression. Le watchdog
+signale les règles manquantes.
+
+.. note::
+
+   Un subnet ``bridge`` créé par une version antérieure de l'agent n'a que la règle DHCP
+   ``FORWARD`` : il reste exposé jusqu'à sa recréation, et le watchdog le signale. L'agent ne
+   répare pas les règles au démarrage. Les règles ne couvrent que IPv4 : le voisinage IPv6 du
+   netns relève de #61.
+
 Routes annoncées aux VM
 -----------------------
 

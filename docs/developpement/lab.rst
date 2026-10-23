@@ -336,9 +336,9 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - hv1
      - #57, #41
    * - ``33-bridge``
-     - subnet en mode bridge rattaché au bridge br-lan de l'hôte — un hôte, puis le même subnet sur deux hôtes (une seule réponse ARP pour interface_ip, métadonnées servies par l'hôte de la VM)
+     - subnet en mode bridge rattaché au bridge br-lan de l'hôte — un hôte, puis le même subnet sur deux hôtes (interface_ip confinée à son hôte : une seule réponse ARP, métadonnées servies par l'hôte de la VM, ni ARP ni DHCP de la gateway sur le segment, règles surveillées par le watchdog)
      - hv1 hv2
-     - #70
+     - #70, #75
    * - ``34-isolation-locale``
      - isolation entre deux VPC sur un même hôte — ni ICMP ni TCP d'un VPC à l'autre
      - hv1
