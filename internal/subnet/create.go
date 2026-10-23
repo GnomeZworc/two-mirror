@@ -28,6 +28,7 @@ func CreateSubnet(db *badger.DB, subnetName string, cfg *configuration.Config) e
 	if err != nil {
 		return err
 	}
+	d.mtu = cfg.Network.VM()
 
 	backend, err := dhcpbackend.New(cfg)
 	if err != nil {
@@ -51,7 +52,7 @@ func createSubnet(db *badger.DB, subnetName string, d subnetData, backend dhcpba
 	vethE := "v-" + d.subnetID + "-e"
 	vethI := "v-" + d.subnetID + "-i"
 
-	if err := netif.CreateVethToNetns(vethE, vethI, "/var/run/netns/"+d.vpc, 1500); err != nil {
+	if err := netif.CreateVethToNetns(vethE, vethI, "/var/run/netns/"+d.vpc, d.mtu); err != nil {
 		return fmt.Errorf("create veth: %w", err)
 	}
 
@@ -85,7 +86,7 @@ func createSubnet(db *badger.DB, subnetName string, d subnetData, backend dhcpba
 	}
 
 	if err := netns.Call(d.vpc, func() error {
-		if err := netif.CreateBridge(d.bridge, 1500, gatewayMAC); err != nil {
+		if err := netif.CreateBridge(d.bridge, d.mtu, gatewayMAC); err != nil {
 			return fmt.Errorf("create bridge: %w", err)
 		}
 		return netif.BridgeSetMaster(vethI, d.bridge)
@@ -144,10 +145,10 @@ func createSubnet(db *badger.DB, subnetName string, d subnetData, backend dhcpba
 func setupVxlanHost(d subnetData, vethE string) error {
 	vxlanIface := fmt.Sprintf("vxlan-%d", d.vxlanID)
 
-	if err := netif.CreateBridge(d.bridge, 1500, nil); err != nil {
+	if err := netif.CreateBridge(d.bridge, d.mtu, nil); err != nil {
 		return fmt.Errorf("create bridge: %w", err)
 	}
-	if err := netif.CreateVxlan(vxlanIface, d.vxlanID, d.localIface, 1500); err != nil {
+	if err := netif.CreateVxlan(vxlanIface, d.vxlanID, d.localIface, d.mtu); err != nil {
 		return fmt.Errorf("create vxlan: %w", err)
 	}
 	if err := netif.BridgeSetMaster(vethE, d.bridge); err != nil {
@@ -183,5 +184,6 @@ func startDHCP(subnetName string, d subnetData, backend dhcpbackend.Backend) err
 		InterfaceIP:    d.interfaceIP,
 		VPCRoute:       vpcRoute,
 		DefaultGateway: defaultGateway,
+		MTU:            d.mtu,
 	})
 }

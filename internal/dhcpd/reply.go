@@ -88,6 +88,7 @@ func BuildReply(c SubnetConfig, h Host, req *dhcpv4.DHCPv4) (*dhcpv4.DHCPv4, err
 		dhcpv4.WithOption(dhcpv4.OptServerIdentifier(c.InterfaceIP)),
 		dhcpv4.WithOption(dhcpv4.OptDNS(DNSServers()...)),
 		dhcpv4.WithOption(dhcpv4.OptClasslessStaticRoute(routes...)),
+		dhcpv4.WithOption(dhcpv4.OptGeneric(dhcpv4.OptionInterfaceMTU, dhcpv4.Uint16(c.InterfaceMTU()).ToBytes())),
 	}
 	if h.DefaultRoute && c.DefaultGateway != nil {
 		mods = append(mods, dhcpv4.WithOption(dhcpv4.OptRouter(c.DefaultGateway)))

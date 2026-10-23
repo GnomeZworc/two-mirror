@@ -20,6 +20,7 @@ type diskSubnet struct {
 	InterfaceIP    string `json:"interface_ip"`
 	VPCRoute       string `json:"vpc_route,omitempty"`
 	DefaultGateway string `json:"default_gateway,omitempty"`
+	MTU            int    `json:"mtu,omitempty"`
 }
 
 type diskHost struct {
@@ -98,7 +99,7 @@ func subnetFromDisk(d diskSubnet) (SubnetConfig, error) {
 		return SubnetConfig{}, ErrNoInterfaceIP
 	}
 
-	c := SubnetConfig{Network: network, InterfaceIP: interfaceIP}
+	c := SubnetConfig{Network: network, InterfaceIP: interfaceIP, MTU: d.MTU}
 
 	if d.VPCRoute != "" {
 		if _, c.VPCRoute, err = net.ParseCIDR(d.VPCRoute); err != nil {
@@ -232,6 +233,7 @@ func (s *Store) persist() error {
 		sub := diskSubnet{
 			Network:     s.subnet.Network.String(),
 			InterfaceIP: s.subnet.InterfaceIP.String(),
+			MTU:         s.subnet.MTU,
 		}
 		if s.subnet.VPCRoute != nil {
 			sub.VPCRoute = s.subnet.VPCRoute.String()

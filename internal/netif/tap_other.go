@@ -4,7 +4,7 @@ package netif
 
 import "errors"
 
-func CreateTap(_ int, _, _ string) error {
+func CreateTap(_ int, _, _ string, _ int) error {
 	return errors.New("netif: tap not supported on this platform")
 }
 

@@ -63,6 +63,16 @@ func (c CreateSubnetCommand) Prepare(db *badger.DB, cfg *configuration.Config) e
 	if !ok {
 		localIface = cfg.DefaultInterface
 	}
+	switch c.Mode {
+	case subnet.ModeVxlan:
+		if err := checkUnderlay(cfg, localIface); err != nil {
+			return err
+		}
+	case subnet.ModeBridge:
+		if err := checkBridge(cfg, localIface); err != nil {
+			return err
+		}
+	}
 	state.Set(db, c.Key(), state.Creating)
 	kv.AddInDB(db, "subnet/"+c.Name+"/vpc", c.VPC)
 	kv.AddInDB(db, "subnet/"+c.Name+"/mode", c.Mode)

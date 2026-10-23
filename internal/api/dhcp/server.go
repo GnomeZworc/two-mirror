@@ -186,5 +186,8 @@ func leaseFromReply(mac net.HardwareAddr, reply *dhcpv4.DHCPv4) *Lease {
 	for _, route := range reply.ClasslessStaticRoute() {
 		lease.Routes = append(lease.Routes, route.Dest.String()+" via "+route.Router.String())
 	}
+	if mtu, err := dhcpv4.GetUint16(dhcpv4.OptionInterfaceMTU, reply.Options); err == nil {
+		lease.MTU = mtu
+	}
 	return lease
 }

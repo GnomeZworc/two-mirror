@@ -29,3 +29,7 @@ func newTestServerWith(t *testing.T, cfg *configuration.Config) (*Server, *badge
 	d := dispatcher.New(q, db, cfg, logger)
 	return New(d, db, logger, "127.0.0.1:0"), db
 }
+
+func init() {
+	dispatcher.LinkMTU = func(string) (int, error) { return 9000, nil }
+}

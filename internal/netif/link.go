@@ -38,3 +38,11 @@ func LinkIPv4(name string) ([]net.IP, error) {
 	}
 	return ips, nil
 }
+
+func LinkMTU(name string) (int, error) {
+	link, err := netlink.LinkByName(name)
+	if err != nil {
+		return 0, err
+	}
+	return link.Attrs().MTU, nil
+}

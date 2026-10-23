@@ -9,12 +9,12 @@ import (
 	"github.com/vishvananda/netlink"
 )
 
-func CreateTap(tapID int, bridgeName, vpcName string) error {
+func CreateTap(tapID int, bridgeName, vpcName string, mtu int) error {
 	name := fmt.Sprintf("tap%d", tapID)
 
 	return netns.Call(vpcName, func() error {
 		tap := &netlink.Tuntap{
-			LinkAttrs: netlink.LinkAttrs{Name: name},
+			LinkAttrs: netlink.LinkAttrs{Name: name, MTU: mtu},
 			Mode:      netlink.TUNTAP_MODE_TAP,
 		}
 		if err := netlink.LinkAdd(tap); err != nil {

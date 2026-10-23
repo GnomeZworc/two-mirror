@@ -79,6 +79,7 @@ func (b Two) pushSubnet(s Subnet) error {
 	subnet := dhcpapi.Subnet{
 		Network:     s.Network.String(),
 		InterfaceIP: s.InterfaceIP.String(),
+		MTU:         s.MTU,
 	}
 	if s.VPCRoute != nil {
 		subnet.VPCRoute = s.VPCRoute.String()

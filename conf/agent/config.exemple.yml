@@ -35,6 +35,18 @@ interfaces:
   internet: br-000000
   admin: br-000000
 
+# MTU, identical on every hypervisor.
+# mtu_vm: MTU of the VMs and of every bridge, veth, tap and VXLAN the agent creates,
+#   announced by DHCP option 26 and QEMU host_mtu. 1500 at most; below 1500 only with
+#   allow_mtu_vm_below_1500, never below 1280.
+# allow_mtu_underlay_below_9000: a vxlan subnet (or a VPC with l3vni) is refused when
+#   its underlay is not at exactly 9000, unless this is true. The underlay must always
+#   carry mtu_vm plus 50 bytes of VXLAN header.
+network:
+  mtu_vm: 1500
+  allow_mtu_vm_below_1500: false
+  allow_mtu_underlay_below_9000: false
+
 # BGP control plane of the hypervisor (optional).
 # Absent: the agent leaves FRR alone. Present: at every start, before serving its
 # API, the agent applies the base BGP configuration through vtysh (router-id = the

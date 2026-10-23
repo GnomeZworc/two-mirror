@@ -9,6 +9,7 @@ import (
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/l3vni"
+	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/state"
 	"git.g3e.fr/syonad/two/internal/vpc"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
@@ -34,6 +35,9 @@ func (c CreateVPCCommand) Prepare(db *badger.DB, cfg *configuration.Config) erro
 		if err := c.checkL3VNI(db, cfg); err != nil {
 			return err
 		}
+		if err := checkUnderlay(cfg, cfg.DefaultInterface); err != nil {
+			return err
+		}
 	}
 	if err := kv.AddInDB(db, "vpc/"+c.Name+"/cidr", c.CIDR); err != nil {
 		return err
@@ -44,6 +48,24 @@ func (c CreateVPCCommand) Prepare(db *badger.DB, cfg *configuration.Config) erro
 		}
 	}
 	return state.Set(db, c.Key(), state.Creating)
+}
+
+var LinkMTU = netif.LinkMTU
+
+func checkUnderlay(cfg *configuration.Config, iface string) error {
+	m, err := LinkMTU(iface)
+	if err != nil {
+		return fmt.Errorf("read mtu of underlay %s: %w", iface, err)
+	}
+	return cfg.Network.CheckUnderlay(iface, m)
+}
+
+func checkBridge(cfg *configuration.Config, iface string) error {
+	m, err := LinkMTU(iface)
+	if err != nil {
+		return fmt.Errorf("read mtu of bridge %s: %w", iface, err)
+	}
+	return cfg.Network.CheckBridge(iface, m)
 }
 
 func (c CreateVPCCommand) checkL3VNI(db *badger.DB, cfg *configuration.Config) error {

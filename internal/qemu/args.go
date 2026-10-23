@@ -102,9 +102,13 @@ func buildArgs(cfg Config) ([]string, error) {
 		return nil, fmt.Errorf("vm %s has %d interfaces, the pci map holds %d", cfg.Name, len(cfg.NICs), maxNICs)
 	}
 	for i, n := range cfg.NICs {
+		device := fmt.Sprintf("virtio-net-pci,netdev=net%d,mac=%s,bus=pci.0,addr=0x%02x", i, n.Mac, firstNICSlot+i)
+		if n.MTU > 0 {
+			device += fmt.Sprintf(",host_mtu=%d", n.MTU)
+		}
 		args = append(args,
 			"-netdev", fmt.Sprintf("tap,id=net%d,ifname=tap%d,script=no,downscript=no", i, n.TapID),
-			"-device", fmt.Sprintf("virtio-net-pci,netdev=net%d,mac=%s,bus=pci.0,addr=0x%02x", i, n.Mac, firstNICSlot+i),
+			"-device", device,
 		)
 	}
 

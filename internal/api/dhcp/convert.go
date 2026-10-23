@@ -17,7 +17,7 @@ func (s Subnet) toConfig() (dhcpd.SubnetConfig, error) {
 		return dhcpd.SubnetConfig{}, fmt.Errorf("invalid interface ip %q", s.InterfaceIP)
 	}
 
-	c := dhcpd.SubnetConfig{Network: network, InterfaceIP: interfaceIP}
+	c := dhcpd.SubnetConfig{Network: network, InterfaceIP: interfaceIP, MTU: s.MTU}
 
 	if s.VPCRoute != "" {
 		if _, c.VPCRoute, err = net.ParseCIDR(s.VPCRoute); err != nil {
@@ -48,6 +48,7 @@ func subnetFromConfig(c dhcpd.SubnetConfig) Subnet {
 	s := Subnet{
 		Network:     c.Network.String(),
 		InterfaceIP: c.InterfaceIP.String(),
+		MTU:         c.MTU,
 	}
 	if c.VPCRoute != nil {
 		s.VPCRoute = c.VPCRoute.String()

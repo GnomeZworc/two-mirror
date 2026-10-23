@@ -31,6 +31,7 @@ func GenerateConfig(c Config) (string, error) {
 		fmt.Fprintf(&sb, "dhcp-option=3\n")
 	}
 	fmt.Fprintf(&sb, "dhcp-option=6,1.1.1.1,8.8.8.8\n")
+	fmt.Fprintf(&sb, "dhcp-option=26,%d\n", c.interfaceMTU())
 	fmt.Fprintf(&sb, "dhcp-hostsdir=%s\n", HostsDir(c.ConfDir, c.Name))
 	fmt.Fprintf(&sb, "dhcp-optsdir=%s\n", OptsDir(c.ConfDir, c.Name))
 
@@ -42,6 +43,13 @@ func GenerateConfig(c Config) (string, error) {
 
 	outPath := filepath.Join(c.ConfDir, c.Name+".conf")
 	return outPath, os.WriteFile(outPath, []byte(sb.String()), 0644)
+}
+
+func (c Config) interfaceMTU() int {
+	if c.MTU == 0 {
+		return 1500
+	}
+	return c.MTU
 }
 
 func classlessRoutes(c Config) []string {

@@ -23,6 +23,7 @@ type subnetData struct {
 	vpcCIDR      *net.IPNet
 	defaultRoute bool
 	gateway      net.IP
+	mtu          int
 }
 
 func loadSubnet(db *badger.DB, name string) (subnetData, error) {
