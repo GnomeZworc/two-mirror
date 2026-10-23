@@ -489,6 +489,13 @@ champ et de le rendre indistinguable d’une réponse tronquée</p></li>
 contrôle et sa socket UDP avant de sortir. Il mourait jusque-là sans nettoyer, et laissait
 <code class="docutils literal notranslate"><span class="pre">/run/two/dhcp/&lt;netns&gt;_&lt;bridge&gt;.sock</span></code> après la suppression du subnet. L’agent supprime aussi
 cette socket avec le fichier d’état, ce qui couvre une mort brutale du processus (#77)</p></li>
+<li><p><strong>Mode <code class="docutils literal notranslate"><span class="pre">bridge</span></code> sur plusieurs hôtes : <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> confinée à son hôte (#75).</strong> Chaque hôte
+portant la même <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code>, une VM obtenait parfois l’ARP, les métadonnées ou le DHCP d’un
+autre hôte : en lab, une VM ne recevait ses propres métadonnées que 3 à 4 fois sur 5. L’agent
+bloque désormais vers le segment les requêtes ARP vers <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code>, l’ARP émis depuis elle
+et le DHCP émis depuis elle, y compris par le serveur local (chaîne <code class="docutils literal notranslate"><span class="pre">OUTPUT</span></code>, que la règle
+précédente ne couvrait pas). Le watchdog signale une règle manquante ; la suppression d’un
+subnet ne retire que les règles présentes</p></li>
 </ul>
 </section>
 <section id="changements-internes">
@@ -553,7 +560,8 @@ migrées ; leurs disques prennent le numéro de série <code class="docutils lit
 qui les montait par <code class="docutils literal notranslate"><span class="pre">/dev/sdY</span></code> doit passer à <code class="docutils literal notranslate"><span class="pre">/dev/xvdX</span></code></p></li>
 </ul>
 <p>Les subnets <code class="docutils literal notranslate"><span class="pre">vxlan</span></code> existants gardent leur adressage et le modèle précédent (gateway sur le
-bridge) jusqu’à leur recréation.</p>
+bridge) jusqu’à leur recréation. Les subnets <code class="docutils literal notranslate"><span class="pre">bridge</span></code> existants restent sans le confinement de
+<code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> (#75) jusqu’à leur recréation ; le watchdog les signale.</p>
 <p>Pour router entre hyperviseurs : ajouter la section <code class="docutils literal notranslate"><span class="pre">bgp</span></code>, réduire <code class="docutils literal notranslate"><span class="pre">frr.conf</span></code> à <code class="docutils literal notranslate"><span class="pre">hostname</span></code> et
 <code class="docutils literal notranslate"><span class="pre">log</span></code> (l’agent pose le reste), puis créer les VPC avec <code class="docutils literal notranslate"><span class="pre">l3vni</span></code>. Pour passer au serveur intégré, suivre la procédure de bascule dans la
 documentation d’exploitation — elle suppose un hyperviseur vidé.</p>

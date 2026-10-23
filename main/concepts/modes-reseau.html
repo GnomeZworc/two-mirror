@@ -924,6 +924,28 @@ quelques secondes (#57).</p>
 <h2>bridge<a class="headerlink" href="#bridge" title="Lien vers cette rubrique">#</a></h2>
 <p>Le subnet est rattaché directement à un bridge existant de l’host. Pas de tunnel, pas de route
 VPC : le trafic sort par le bridge, et la VM est joignable depuis l’host.</p>
+<p>Le même subnet peut être posé sur plusieurs hôtes raccordés au même segment. Chaque hôte porte
+alors la <strong>même</strong> <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> dans son netns, avec sa propre MAC. Pour qu’une VM ne voie que
+l”<code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> de son hôte (gateway, metadata, DHCP), l’agent pose quatre règles ebtables sur
+le veth du subnet dans le netns (<code class="docutils literal notranslate"><span class="pre">v-&lt;subnet&gt;-i</span></code>), en sortie vers le bridge de l’host :</p>
+<ul class="simple">
+<li><p>les requêtes ARP des VM <strong>vers</strong> <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> ne quittent pas l’hôte (<code class="docutils literal notranslate"><span class="pre">FORWARD</span></code>) ;</p></li>
+<li><p>l’ARP émis <strong>depuis</strong> <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> par le netns, requêtes et réponses, ne sort pas
+(<code class="docutils literal notranslate"><span class="pre">OUTPUT</span></code>) : une VM d’un autre hôte n’associe jamais <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> à cet hôte ;</p></li>
+<li><p>le DHCP émis depuis <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> ne sort ni en transit (<code class="docutils literal notranslate"><span class="pre">FORWARD</span></code>) ni depuis le serveur
+local lui-même (<code class="docutils literal notranslate"><span class="pre">OUTPUT</span></code>).</p></li>
+</ul>
+<p>Le trafic entre VM du subnet, sur un même hôte ou sur des hôtes différents, n’est pas concerné.
+Par conception, une VM ne joint pas le netns d’un autre hôte. Les règles sont retirées à la
+suppression du subnet ; une règle déjà absente ne fait pas échouer la suppression. Le watchdog
+signale les règles manquantes.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Un subnet <code class="docutils literal notranslate"><span class="pre">bridge</span></code> créé par une version antérieure de l’agent n’a que la règle DHCP
+<code class="docutils literal notranslate"><span class="pre">FORWARD</span></code> : il reste exposé jusqu’à sa recréation, et le watchdog le signale. L’agent ne
+répare pas les règles au démarrage. Les règles ne couvrent que IPv4 : le voisinage IPv6 du
+netns relève de #61.</p>
+</div>
 </section>
 <section id="routes-annoncees-aux-vm">
 <h2>Routes annoncées aux VM<a class="headerlink" href="#routes-annoncees-aux-vm" title="Lien vers cette rubrique">#</a></h2>

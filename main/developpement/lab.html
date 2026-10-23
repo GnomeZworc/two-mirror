@@ -807,9 +807,9 @@ fait en fermant le ticket. Chaque ticket concerné liste ses marqueurs en commen
 <td><p>#57, #41</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">33-bridge</span></code></p></td>
-<td><p>subnet en mode bridge rattaché au bridge br-lan de l’hôte — un hôte, puis le même subnet sur deux hôtes (une seule réponse ARP pour interface_ip, métadonnées servies par l’hôte de la VM)</p></td>
+<td><p>subnet en mode bridge rattaché au bridge br-lan de l’hôte — un hôte, puis le même subnet sur deux hôtes (interface_ip confinée à son hôte : une seule réponse ARP, métadonnées servies par l’hôte de la VM, ni ARP ni DHCP de la gateway sur le segment, règles surveillées par le watchdog)</p></td>
 <td><p>hv1 hv2</p></td>
-<td><p>#70</p></td>
+<td><p>#70, #75</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">34-isolation-locale</span></code></p></td>
 <td><p>isolation entre deux VPC sur un même hôte — ni ICMP ni TCP d’un VPC à l’autre</p></td>
