@@ -874,7 +874,7 @@ obligatoire.</p>
 <span class="s1">       "storage": [{"path": "/var/lib/two/volumes/i-web.qcow2", "dev": "vda"}]}'</span>
 </pre></div>
 </div>
-<p>Quatre points qui coûtent du temps quand on les découvre en production :</p>
+<p>Six points qui coûtent du temps quand on les découvre en production :</p>
 <dl class="simple">
 <dt><code class="docutils literal notranslate"><span class="pre">user_data</span></code> est <strong>encodé en base64</strong></dt><dd><p>Un base64 invalide est rejeté en 400 plutôt que servi vide. L’agent n’interprète jamais ce
 contenu.</p>
@@ -889,8 +889,14 @@ même segment L2 doivent avoir des MAC distinctes.</p>
 slot PCI (<code class="docutils literal notranslate"><span class="pre">0x03</span> <span class="pre">+</span> <span class="pre">index</span></code>), donc le nom de l’interface dans le guest. Tous les subnets d’une
 VM doivent appartenir au même VPC.</p>
 </dd>
-<dt>Un seul disque <code class="docutils literal notranslate"><span class="pre">vdX</span></code></dt><dd><p>Les disques supplémentaires passent par <code class="docutils literal notranslate"><span class="pre">sdX</span></code>. La carte PCI en dépend — voir
+<dt><code class="docutils literal notranslate"><span class="pre">vda</span></code> pour la racine, <code class="docutils literal notranslate"><span class="pre">xvdX</span></code> pour les autres disques</dt><dd><p><code class="docutils literal notranslate"><span class="pre">vda</span></code> est le disque racine, virtio, démarré en premier. Les disques supplémentaires sont des
+<code class="docutils literal notranslate"><span class="pre">xvdX</span></code> (<code class="docutils literal notranslate"><span class="pre">xvda</span></code> = cible SCSI 0) ; <code class="docutils literal notranslate"><span class="pre">sdX</span></code> est refusé (400). La carte PCI en dépend — voir
 <a class="reference internal" href="../architecture/contraintes.html"><span class="doc">Invariants et pièges</span></a>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">/dev/xvdX</span></code> dans le guest, jamais <code class="docutils literal notranslate"><span class="pre">/dev/sdX</span></code></dt><dd><p>Le noyau du guest nomme les disques SCSI <code class="docutils literal notranslate"><span class="pre">sdX</span></code> dans l’ordre de détection, qui change d’un
+démarrage à l’autre. L’agent donne à chaque disque le numéro de série <code class="docutils literal notranslate"><span class="pre">&lt;dev&gt;</span></code> ; une image
+conforme (<a class="reference internal" href="../deploiement/image-qcow2.html"><span class="doc">Construction de l’image qcow2</span></a>) en fait le lien <code class="docutils literal notranslate"><span class="pre">/dev/xvdX</span></code>. Sans cette règle,
+le nom stable reste <code class="docutils literal notranslate"><span class="pre">/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_xvdX</span></code>.</p>
 </dd>
 </dl>
 </section>

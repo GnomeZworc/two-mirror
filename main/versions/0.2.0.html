@@ -446,6 +446,18 @@ MAC dérivée du rang de l’IP donnait la même MAC à deux interfaces d’une 
 leurs subnets (VM injoignable), et n’était pas tenable en IPv6</p></li>
 <li><p>Migration au démarrage : les VM existantes gardent leur MAC, recopiée sur chaque interface</p></li>
 </ul>
+<p><strong>Disques : <code class="docutils literal notranslate"><span class="pre">vda</span></code> pour la racine, <code class="docutils literal notranslate"><span class="pre">xvdX</span></code> pour les autres (#74)</strong></p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">dev</span></code> accepte désormais <code class="docutils literal notranslate"><span class="pre">vda</span></code>, le disque racine virtio, et <code class="docutils literal notranslate"><span class="pre">xvda</span></code> à <code class="docutils literal notranslate"><span class="pre">xvdz</span></code> pour les disques
+additionnels, sur la cible SCSI de même rang (<code class="docutils literal notranslate"><span class="pre">xvda</span></code> → 0). Toute autre valeur est refusée (400),
+<code class="docutils literal notranslate"><span class="pre">sdX</span></code> compris</p></li>
+<li><p>Chaque disque reçoit le numéro de série <code class="docutils literal notranslate"><span class="pre">&lt;dev&gt;</span></code>. Le noyau de l’invité nomme les disques SCSI
+<code class="docutils literal notranslate"><span class="pre">/dev/sdY</span></code> dans l’ordre de détection, qui change d’un démarrage à l’autre (mesuré en lab : <code class="docutils literal notranslate"><span class="pre">sda</span></code>
+et <code class="docutils literal notranslate"><span class="pre">sdb</span></code> inversés 4 démarrages sur 6). Le nom stable est <code class="docutils literal notranslate"><span class="pre">/dev/xvdX</span></code>, créé par une règle udev
+de l’image (exigence décrite dans la documentation de construction d’image), et toujours
+<code class="docutils literal notranslate"><span class="pre">/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_xvdX</span></code></p></li>
+<li><p>Migration au démarrage : les clés <code class="docutils literal notranslate"><span class="pre">vm/&lt;name&gt;/disk/sdX</span></code> deviennent <code class="docutils literal notranslate"><span class="pre">vm/&lt;name&gt;/disk/xvdX</span></code></p></li>
+</ul>
 <p><strong>Exploitation</strong></p>
 <ul class="simple">
 <li><p>Le watchdog contrôle aussi, avec une section <code class="docutils literal notranslate"><span class="pre">bgp</span></code> : les sessions vers les route reflectors ;
@@ -528,7 +540,7 @@ bash<span class="w"> </span>./deploy.sh<span class="w"> </span>-t<span class="w"
 </pre></div>
 </div>
 <p>Sans <code class="docutils literal notranslate"><span class="pre">dhcp.backend</span></code> ni <code class="docutils literal notranslate"><span class="pre">bgp</span></code> dans <code class="docutils literal notranslate"><span class="pre">/etc/two/agent.yml</span></code>, le comportement est celui de la 0.1.0, à
-trois exceptions près, qui touchent les appelants de l’API :</p>
+quatre exceptions près, qui touchent les appelants de l’API :</p>
 <ul class="simple">
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> ne se fournit plus pour un subnet <code class="docutils literal notranslate"><span class="pre">vxlan</span></code></strong> : il est refusé (400), l’agent le
 calcule. Le retirer des appels de création, et ne plus placer de VM sur les deux dernières
@@ -536,6 +548,9 @@ adresses utilisables du subnet. Il reste obligatoire en <code class="docutils li
 <li><p><strong>un subnet encore utilisé par une VM ne se supprime plus</strong> : supprimer les VM d’abord</p></li>
 <li><p><strong>chaque interface d’une VM doit porter sa <code class="docutils literal notranslate"><span class="pre">mac</span></code></strong> (400 sinon) : l’appelant la choisit et en
 garantit l’unicité. Les VM existantes gardent la leur, recopiée au premier démarrage de l’agent</p></li>
+<li><p><strong>les disques additionnels s’appellent <code class="docutils literal notranslate"><span class="pre">xvdX</span></code></strong> : <code class="docutils literal notranslate"><span class="pre">sdX</span></code> est refusé (400). Les VM existantes sont
+migrées ; leurs disques prennent le numéro de série <code class="docutils literal notranslate"><span class="pre">xvdX</span></code> au prochain lancement, et une image
+qui les montait par <code class="docutils literal notranslate"><span class="pre">/dev/sdY</span></code> doit passer à <code class="docutils literal notranslate"><span class="pre">/dev/xvdX</span></code></p></li>
 </ul>
 <p>Les subnets <code class="docutils literal notranslate"><span class="pre">vxlan</span></code> existants gardent leur adressage et le modèle précédent (gateway sur le
 bridge) jusqu’à leur recréation.</p>

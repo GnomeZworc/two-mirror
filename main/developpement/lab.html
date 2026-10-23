@@ -787,9 +787,9 @@ fait en fermant le ticket. Chaque ticket concerné liste ses marqueurs en commen
 <td><p>#33, #62, #73</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">26-multi-disque</span></code></p></td>
-<td><p>VM à plusieurs disques — virtio (vdX) et SCSI (sdX), tailles et bus vus par la VM, démarrage sur vda</p></td>
+<td><p>VM à plusieurs disques — racine virtio (vda) et SCSI (xvdX), tailles et bus vus par la VM, liens <code class="docutils literal notranslate"><span class="pre">/dev/xvdX</span></code> et <code class="docutils literal notranslate"><span class="pre">by-id</span></code> par numéro de série, démarrage sur vda</p></td>
 <td><p>hv1</p></td>
-<td><p>#32</p></td>
+<td><p>#32, #74</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">27-reboot</span></code></p></td>
 <td><p>redémarrage d’une VM depuis l’invité — même processus QEMU, même adresse, nouveau bail, user_data non rejoué</p></td>
@@ -899,7 +899,7 @@ attend jusqu’à 360 s.</p></li>
 <ul class="simple">
 <li><p>systemd-networkd <strong>ne réécrit pas</strong> un bail renouvelé à l’identique : un renouvellement se
 vérifie par le DHCPACK dans le journal du serveur (<code class="docutils literal notranslate"><span class="pre">lease_renewed</span></code>), pas par le fichier de bail ;</p></li>
-<li><p>l’agent n’accepte <strong>qu’un seul disque virtio</strong> (le disque système) ; les autres sont des <code class="docutils literal notranslate"><span class="pre">sdX</span></code> ;</p></li>
+<li><p>l’agent n’accepte <strong>qu’un seul disque virtio</strong> (le disque racine, <code class="docutils literal notranslate"><span class="pre">vda</span></code>) ; les autres sont des <code class="docutils literal notranslate"><span class="pre">xvdX</span></code> ;</p></li>
 <li><p>sur Debian 12, <code class="docutils literal notranslate"><span class="pre">ebtables</span> <span class="pre">-L</span></code> (nft) garde les zéros de tête des MAC ;</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> est posée en <code class="docutils literal notranslate"><span class="pre">/32</span></code> sur le bridge du netns en mode <code class="docutils literal notranslate"><span class="pre">bridge</span></code> ;</p></li>
 <li><p>depuis le netns d’un hôte, une VM d’un autre hôte ne répond pas : la réponse repart vers la

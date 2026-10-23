@@ -399,7 +399,8 @@ tous les hôtes, une réponse peut partir vers un autre hôte.</p></li>
 <section id="qemu-et-vm">
 <h2>QEMU et VM<a class="headerlink" href="#qemu-et-vm" title="Lien vers cette rubrique">#</a></h2>
 <ul class="simple">
-<li><p><strong>Un seul disque ``vdX`` par VM</strong> ; les disques additionnels passent par le SCSI (<code class="docutils literal notranslate"><span class="pre">sdX</span></code>). La
+<li><p><strong>Un seul disque virtio, ``vda``, le disque racine</strong> ; les disques additionnels passent par le SCSI
+(<code class="docutils literal notranslate"><span class="pre">xvdX</span></code>, cible X). La
 carte PCI en dépend : NIC en <code class="docutils literal notranslate"><span class="pre">0x03</span></code>, contrôleur SCSI en <code class="docutils literal notranslate"><span class="pre">0x1e</span></code>, virtio-blk en <code class="docutils literal notranslate"><span class="pre">0x1f</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">bus=pci.0</span></code> est explicite sur les trois <code class="docutils literal notranslate"><span class="pre">-device</span></code> : un passage de la machine en <strong>q35</strong>
 casserait le démarrage (<code class="docutils literal notranslate"><span class="pre">Bus</span> <span class="pre">'pci.0'</span> <span class="pre">not</span> <span class="pre">found</span></code>).</p></li>

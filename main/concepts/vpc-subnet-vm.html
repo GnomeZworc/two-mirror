@@ -872,9 +872,12 @@ en <code class="docutils literal notranslate"><span class="pre">/32</span></code
 suppression, ces <code class="docutils literal notranslate"><span class="pre">/32</span></code> sont retirés <strong>avant</strong> l’arrêt de QEMU. Comme un subnet ne peut être
 supprimé tant qu’une VM l’utilise, le <code class="docutils literal notranslate"><span class="pre">/32</span></code> d’une VM est toujours retiré avant le <code class="docutils literal notranslate"><span class="pre">/24</span></code> de son
 subnet — l’ordre qui évite le trou noir de <a class="reference external" href="https://git.g3e.fr/syonad/two/issues/41">#41</a>.</p>
-<p><strong>Stockage.</strong> Un seul disque <code class="docutils literal notranslate"><span class="pre">vdX</span></code> (virtio-blk) par VM ; les disques supplémentaires passent
-par le contrôleur SCSI (<code class="docutils literal notranslate"><span class="pre">sdX</span></code>). Cette contrainte vient de la carte PCI figée — voir
-<a class="reference internal" href="../architecture/contraintes.html"><span class="doc">Invariants et pièges</span></a>.</p>
+<p><strong>Stockage.</strong> Un seul disque virtio par VM, <code class="docutils literal notranslate"><span class="pre">vda</span></code>, le disque racine ; les disques
+supplémentaires passent par le contrôleur SCSI (<code class="docutils literal notranslate"><span class="pre">xvdX</span></code>, cible X). Cette contrainte vient de la
+carte PCI figée — voir <a class="reference internal" href="../architecture/contraintes.html"><span class="doc">Invariants et pièges</span></a>. <code class="docutils literal notranslate"><span class="pre">dev</span></code> fixe l’emplacement du disque
+(cible SCSI, slot PCI) et son numéro de série, pas le nom que lui donne le noyau du guest
+(<code class="docutils literal notranslate"><span class="pre">/dev/sdY</span></code>, dans l’ordre de détection) : le disque se retrouve par <code class="docutils literal notranslate"><span class="pre">/dev/xvdX</span></code> dans une
+image conforme, et toujours par <code class="docutils literal notranslate"><span class="pre">/dev/disk/by-id/…&lt;dev&gt;</span></code>.</p>
 </section>
 <section id="ce-qui-est-stocke-et-ou">
 <h2>Ce qui est stocké, et où<a class="headerlink" href="#ce-qui-est-stocke-et-ou" title="Lien vers cette rubrique">#</a></h2>

@@ -1064,6 +1064,18 @@ interface (<code class="docutils literal notranslate"><span class="pre">10-netpl
 l’image Rocky de cette page, n’est pas encore vérifié. Sans lui, une VM à plusieurs
 interfaces n’a de bail que sur la première.</p>
 </div>
+<p><strong>Noms stables des disques additionnels</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cat<span class="w"> </span><span class="s">&lt;&lt; 'ENDFILE' &gt; /mnt/etc/udev/rules.d/90-two-xvd.rules</span>
+<span class="s">SUBSYSTEM=="block", ENV{DEVTYPE}=="disk", ENV{ID_SERIAL_SHORT}=="xvd[a-z]", SYMLINK+="$env{ID_SERIAL_SHORT}"</span>
+<span class="s">SUBSYSTEM=="block", ENV{DEVTYPE}=="partition", ENV{ID_SERIAL_SHORT}=="xvd[a-z]", SYMLINK+="$env{ID_SERIAL_SHORT}%n"</span>
+<span class="s">ENDFILE</span>
+</pre></div>
+</div>
+<p>L’agent donne à chaque disque additionnel le numéro de série <code class="docutils literal notranslate"><span class="pre">xvdX</span></code> déclaré dans l’API ; ces
+règles en font <code class="docutils literal notranslate"><span class="pre">/dev/xvdX</span></code> (et <code class="docutils literal notranslate"><span class="pre">/dev/xvdXN</span></code> pour ses partitions). Le noyau, lui, nomme les
+disques SCSI <code class="docutils literal notranslate"><span class="pre">/dev/sdY</span></code> dans l’ordre de détection, qui change d’un démarrage à l’autre : une
+<code class="docutils literal notranslate"><span class="pre">fstab</span></code> ou un script de la VM doit viser <code class="docutils literal notranslate"><span class="pre">/dev/xvdX</span></code>, jamais <code class="docutils literal notranslate"><span class="pre">/dev/sdY</span></code>. Le disque racine
+reste <code class="docutils literal notranslate"><span class="pre">/dev/vda</span></code>.</p>
 <p><strong>Services et durcissement</strong></p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>chroot<span class="w"> </span>/mnt/<span class="w"> </span>systemctl<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>fstrim.timer
 

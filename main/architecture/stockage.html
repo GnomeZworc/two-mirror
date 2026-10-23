@@ -380,7 +380,7 @@ vm/&lt;name&gt;/nic/&lt;i&gt;/mac        → &lt;mac&gt;           (fournie par 
 vm/&lt;name&gt;/nic/&lt;i&gt;/primary    → "true"          (exactement une interface ; absent sur les autres)
 vm/&lt;name&gt;/nic/&lt;i&gt;/tap_id     → &lt;int&gt;           (alloué au premier démarrage, puis conservé)
 vm/&lt;name&gt;/metadata_port      → &lt;port&gt;
-vm/&lt;name&gt;/disk/&lt;dev&gt;         → &lt;path&gt;          (une clé par disque : sda, vda, …)
+vm/&lt;name&gt;/disk/&lt;dev&gt;         → &lt;path&gt;          (une clé par disque : vda, xvda, xvdb, …)
 vm/&lt;name&gt;/memory             → &lt;int&gt;           (Mo)
 vm/&lt;name&gt;/cpus               → &lt;int&gt;
 vm/&lt;name&gt;/uefi               → "true"          (absent si SeaBIOS)
@@ -404,6 +404,11 @@ recopie la MAC de chaque interface existante dans <code class="docutils literal 
 clés. Les VM <code class="docutils literal notranslate"><span class="pre">deleted</span></code> sont ignorées. Une interface dont la MAC est introuvable fait échouer le
 démarrage en la nommant, et la table reste en place tant que toutes les interfaces ne sont pas
 migrées.</p>
+<p><strong>Anciens noms de disques.</strong> Jusqu’en 0.1.0, les disques additionnels s’appelaient <code class="docutils literal notranslate"><span class="pre">sdX</span></code>. Au
+démarrage, l’agent renomme chaque clé <code class="docutils literal notranslate"><span class="pre">vm/&lt;name&gt;/disk/sdX</span></code> en <code class="docutils literal notranslate"><span class="pre">vm/&lt;name&gt;/disk/xvdX</span></code> (même
+lettre, même cible SCSI). Si <code class="docutils literal notranslate"><span class="pre">xvdX</span></code> existe déjà avec un autre chemin, le démarrage échoue en
+nommant la clé. Le numéro de série du disque, et donc son lien <code class="docutils literal notranslate"><span class="pre">by-id</span></code>, prend le nouveau nom au
+prochain lancement de la VM.</p>
 <p><strong>Les états passent par ``state``.</strong> Toujours <code class="docutils literal notranslate"><span class="pre">state.Set</span></code> / <code class="docutils literal notranslate"><span class="pre">state.Get</span></code> : <code class="docutils literal notranslate"><span class="pre">Set</span></code> refuse une
 valeur hors énumération, <code class="docutils literal notranslate"><span class="pre">Get</span></code> refuse de retourner une valeur non reconnue. <code class="docutils literal notranslate"><span class="pre">error</span></code> n’est
 écrit que par <code class="docutils literal notranslate"><span class="pre">Dispatcher.Dispatch</span></code>, via <code class="docutils literal notranslate"><span class="pre">cmd.Key()</span></code>.</p>
