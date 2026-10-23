@@ -305,6 +305,24 @@ négative sert à laisser la première interface au profil écrit par cloud-init
 comme les profils de NetworkManager. Vérifié sous Rocky 10.2 : la seconde interface obtient
 son bail au premier démarrage et après redémarrage (``nmcli`` : connexion ``two-all-en``).
 
+**Réappliquer le network-config à chaque démarrage**
+
+.. code-block:: bash
+
+   cat << 'ENDFILE' > /mnt/etc/cloud/cloud.cfg.d/98_network_updates.cfg
+   updates:
+     network:
+       when: [boot-new-instance, boot, boot-legacy]
+   ENDFILE
+
+La source de metadata n'étant trouvée qu'à l'étape réseau de cloud-init, l'étape locale
+applique à chaque démarrage une configuration de repli limitée à la première interface. Au
+redémarrage, l'étape réseau émet l'événement ``boot-legacy``, refusé par défaut : ce réglage
+l'autorise, et cloud-init réapplique alors le ``network-config`` servi par l'agent, qui vise
+chaque interface par sa MAC. Le ``user_data`` n'est pas rejoué. Sans effet sur un cloud-init
+qui ne lit pas le ``network-config`` (22.4, Debian 12) : la règle de DHCP ci-dessus reste
+nécessaire.
+
 **Noms stables des disques additionnels**
 
 .. code-block:: bash

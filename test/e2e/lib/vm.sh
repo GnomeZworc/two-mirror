@@ -19,6 +19,8 @@ two_image () {
         'SUBSYSTEM=="block", ENV{DEVTYPE}=="disk", ENV{ID_SERIAL_SHORT}=="xvd[a-z]", SYMLINK+="$env{ID_SERIAL_SHORT}"' \
         'SUBSYSTEM=="block", ENV{DEVTYPE}=="partition", ENV{ID_SERIAL_SHORT}=="xvd[a-z]", SYMLINK+="$env{ID_SERIAL_SHORT}%n"' \
         > /mnt/two-image/etc/udev/rules.d/90-two-xvd.rules
+    printf '%s\n' 'updates:' '  network:' '    when: [boot-new-instance, boot, boot-legacy]' \
+        > /mnt/two-image/etc/cloud/cloud.cfg.d/98_network_updates.cfg
     umount /mnt/two-image
     qemu-nbd -d /dev/nbd0 >/dev/null
     mv "${work}/${IMAGE_FILE}" "${TWO_IMAGE}"
