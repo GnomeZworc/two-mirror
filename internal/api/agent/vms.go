@@ -5,12 +5,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 
 	dispatcher "git.g3e.fr/syonad/two/internal/dispatcher/agent"
 	"git.g3e.fr/syonad/two/internal/metadata"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 )
+
+var diskDev = regexp.MustCompile(`^(vda|xvd[a-z])$`)
 
 func (s *Server) VmsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -88,6 +91,11 @@ func (s *Server) startVM(w http.ResponseWriter, r *http.Request) {
 
 	disks := make([]dispatcher.VMDisk, len(req.Storage))
 	for i, s := range req.Storage {
+		if !diskDev.MatchString(s.Dev) {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: fmt.Sprintf("storage %d: dev %q must be vda (root disk) or xvd[a-z]", i, s.Dev)})
+			return
+		}
 		disks[i] = dispatcher.VMDisk{Path: s.Path, Dev: s.Dev}
 	}
 

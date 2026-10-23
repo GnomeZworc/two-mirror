@@ -94,9 +94,12 @@ suppression, ces ``/32`` sont retirés **avant** l'arrêt de QEMU. Comme un subn
 supprimé tant qu'une VM l'utilise, le ``/32`` d'une VM est toujours retiré avant le ``/24`` de son
 subnet — l'ordre qui évite le trou noir de `#41 <https://git.g3e.fr/syonad/two/issues/41>`_.
 
-**Stockage.** Un seul disque ``vdX`` (virtio-blk) par VM ; les disques supplémentaires passent
-par le contrôleur SCSI (``sdX``). Cette contrainte vient de la carte PCI figée — voir
-:doc:`/architecture/contraintes`.
+**Stockage.** Un seul disque virtio par VM, ``vda``, le disque racine ; les disques
+supplémentaires passent par le contrôleur SCSI (``xvdX``, cible X). Cette contrainte vient de la
+carte PCI figée — voir :doc:`/architecture/contraintes`. ``dev`` fixe l'emplacement du disque
+(cible SCSI, slot PCI) et son numéro de série, pas le nom que lui donne le noyau du guest
+(``/dev/sdY``, dans l'ordre de détection) : le disque se retrouve par ``/dev/xvdX`` dans une
+image conforme, et toujours par ``/dev/disk/by-id/…<dev>``.
 
 Ce qui est stocké, et où
 ------------------------

@@ -284,6 +284,21 @@ interface (``10-netplan-*``). Sur une image démarrée avec ``net.ifnames=0``, v
    l'image Rocky de cette page, n'est pas encore vérifié. Sans lui, une VM à plusieurs
    interfaces n'a de bail que sur la première.
 
+**Noms stables des disques additionnels**
+
+.. code-block:: bash
+
+   cat << 'ENDFILE' > /mnt/etc/udev/rules.d/90-two-xvd.rules
+   SUBSYSTEM=="block", ENV{DEVTYPE}=="disk", ENV{ID_SERIAL_SHORT}=="xvd[a-z]", SYMLINK+="$env{ID_SERIAL_SHORT}"
+   SUBSYSTEM=="block", ENV{DEVTYPE}=="partition", ENV{ID_SERIAL_SHORT}=="xvd[a-z]", SYMLINK+="$env{ID_SERIAL_SHORT}%n"
+   ENDFILE
+
+L'agent donne à chaque disque additionnel le numéro de série ``xvdX`` déclaré dans l'API ; ces
+règles en font ``/dev/xvdX`` (et ``/dev/xvdXN`` pour ses partitions). Le noyau, lui, nomme les
+disques SCSI ``/dev/sdY`` dans l'ordre de détection, qui change d'un démarrage à l'autre : une
+``fstab`` ou un script de la VM doit viser ``/dev/xvdX``, jamais ``/dev/sdY``. Le disque racine
+reste ``/dev/vda``.
+
 **Services et durcissement**
 
 .. code-block:: bash

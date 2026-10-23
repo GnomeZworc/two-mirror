@@ -28,7 +28,7 @@ de sérialisation structurée.
    vm/<name>/nic/<i>/primary    → "true"          (exactement une interface ; absent sur les autres)
    vm/<name>/nic/<i>/tap_id     → <int>           (alloué au premier démarrage, puis conservé)
    vm/<name>/metadata_port      → <port>
-   vm/<name>/disk/<dev>         → <path>          (une clé par disque : sda, vda, …)
+   vm/<name>/disk/<dev>         → <path>          (une clé par disque : vda, xvda, xvdb, …)
    vm/<name>/memory             → <int>           (Mo)
    vm/<name>/cpus               → <int>
    vm/<name>/uefi               → "true"          (absent si SeaBIOS)
@@ -54,6 +54,12 @@ recopie la MAC de chaque interface existante dans ``vm/<name>/nic/<i>/mac``, pui
 clés. Les VM ``deleted`` sont ignorées. Une interface dont la MAC est introuvable fait échouer le
 démarrage en la nommant, et la table reste en place tant que toutes les interfaces ne sont pas
 migrées.
+
+**Anciens noms de disques.** Jusqu'en 0.1.0, les disques additionnels s'appelaient ``sdX``. Au
+démarrage, l'agent renomme chaque clé ``vm/<name>/disk/sdX`` en ``vm/<name>/disk/xvdX`` (même
+lettre, même cible SCSI). Si ``xvdX`` existe déjà avec un autre chemin, le démarrage échoue en
+nommant la clé. Le numéro de série du disque, et donc son lien ``by-id``, prend le nouveau nom au
+prochain lancement de la VM.
 
 **Les états passent par ``state``.** Toujours ``state.Set`` / ``state.Get`` : ``Set`` refuse une
 valeur hors énumération, ``Get`` refuse de retourner une valeur non reconnue. ``error`` n'est

@@ -320,9 +320,9 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - hv1
      - #33, #62, #73
    * - ``26-multi-disque``
-     - VM à plusieurs disques — virtio (vdX) et SCSI (sdX), tailles et bus vus par la VM, démarrage sur vda
+     - VM à plusieurs disques — racine virtio (vda) et SCSI (xvdX), tailles et bus vus par la VM, liens ``/dev/xvdX`` et ``by-id`` par numéro de série, démarrage sur vda
      - hv1
-     - #32
+     - #32, #74
    * - ``27-reboot``
      - redémarrage d'une VM depuis l'invité — même processus QEMU, même adresse, nouveau bail, user_data non rejoué
      - hv1
@@ -412,7 +412,7 @@ Hypothèses vérifiées en lab, à garder en tête en écrivant un test :
 
 * systemd-networkd **ne réécrit pas** un bail renouvelé à l'identique : un renouvellement se
   vérifie par le DHCPACK dans le journal du serveur (``lease_renewed``), pas par le fichier de bail ;
-* l'agent n'accepte **qu'un seul disque virtio** (le disque système) ; les autres sont des ``sdX`` ;
+* l'agent n'accepte **qu'un seul disque virtio** (le disque racine, ``vda``) ; les autres sont des ``xvdX`` ;
 * sur Debian 12, ``ebtables -L`` (nft) garde les zéros de tête des MAC ;
 * ``interface_ip`` est posée en ``/32`` sur le bridge du netns en mode ``bridge`` ;
 * depuis le netns d'un hôte, une VM d'un autre hôte ne répond pas : la réponse repart vers la
