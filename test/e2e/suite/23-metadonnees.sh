@@ -8,6 +8,12 @@ HASH=$(openssl passwd -6 -salt t23lab two-lab)
 UD=$(printf '%s\n' '#cloud-config' 'runcmd:' "  - [sh, -c, 'echo t23 > /var/tmp/t23-runcmd']")
 UD64=$(printf '%s\n' "${UD}" | base64 -w0)
 served () { cat "/run/two/metadata/${1}/${2}"; }
+served_empty () {
+    local f="/run/two/metadata/${1}/${2}"
+    [ -f "${f}" ] || { echo "${f} absent"; return 1; }
+    [ -s "${f}" ] && { echo "${f} non vide"; return 1; }
+    return 0
+}
 check "VPC vp-t23" vpc_create vp-t23 10.23.0.0/16
 check "subnet sn-t23" subnet_create sn-t23 vp-t23 2301 10.23.1.0/24
 check "VM t23-k : sshkey, password et user_data" vm_launch t23-k --nic sn-t23=10.23.1.10 --sshkey "${KEY}" --password "${HASH}" --user-data "${UD64}"
@@ -24,15 +30,16 @@ check "t23-k : hash du password posé sur le compte syonad" vm_ssh vp-t23 10.23.
 
 check "t23-s joignable en SSH" vm_wait vp-t23 10.23.1.11
 check "t23-s : cloud-init terminé" vm_cloud_init_done vp-t23 10.23.1.11
-check "t23-s : user_data absent, user-data servi vide (template)" test -z "$(vm_meta vp-t23 10.23.1.11 user-data)"
+check "t23-s : user_data absent, user-data servi vide (template)" vm_output_empty vp-t23 10.23.1.11 'curl -fsS http://169.254.169.254/user-data'
 check "t23-s : aucun runcmd exécuté" vm_fails vp-t23 10.23.1.11 'test -e /var/tmp/t23-runcmd'
 check "t23-s : password absent, compte syonad verrouillé" vm_ssh vp-t23 10.23.1.11 "sudo grep -q '^syonad:!' /etc/shadow"
-check "t23-s : vendor-data sans passwd" vm_fails vp-t23 10.23.1.11 'curl -fsS http://169.254.169.254/vendor-data | grep -qE "^ *passwd:"'
+check "t23-s : vendor-data servi, avec la clé SSH (témoin)" vm_grep vp-t23 10.23.1.11 'curl -fsS http://169.254.169.254/vendor-data' "$(cut -d" " -f2 <<< "${KEY}")"
+check "t23-s : vendor-data sans passwd" vm_output_empty vp-t23 10.23.1.11 'v=$(curl -fsS http://169.254.169.254/vendor-data) || exit 1; printf "%s\n" "${v}" | grep -E "^ *passwd:" || true'
 
 served_line () { served "${1}" "${2}" | grep -qx -- "${3}"; }
 check "t23-n : serveur de métadonnées actif (metadata@t23-n)" systemctl is-active --quiet metadata@t23-n.service
 check "t23-n : meta-data préparé (témoin)" served_line t23-n meta-data 'instance-id: t23-n'
-check "t23-n : vendor-data vide, aucun compte à créer" test -z "$(served t23-n vendor-data)"
-check "t23-n : user-data vide" test -z "$(served t23-n user-data)"
+check "t23-n : vendor-data vide, aucun compte à créer" served_empty t23-n vendor-data
+check "t23-n : user-data vide" served_empty t23-n user-data
 check "t23-n : démarrée, SSH refusé faute de compte (Permission denied)" ssh_denied vp-t23 10.23.1.12
 NODE

@@ -1,26 +1,52 @@
 STATE_DIR=/var/tmp/e2e
+SCRATCH_DIR=/tmp
 
 owned () {
     grep -E "^(vp-|sn-)?t${T}"
 }
 
 api_names () {
-    curl -fsS "${API}/${1}" | jq -r '.[] | select(.state != "deleted") | .name'
+    local out
+    out=$(curl -fsS "${API}/${1}") || { echo "API injoignable (${1})" >&2; return 1; }
+    jq -r '.[] | select(.state != "deleted") | .name' <<<"${out}"
 }
 
 delete_owned () {
-    local kind="${1}" name rc=0
-    for name in $(api_names "${kind}" | owned); do
+    local kind="${1}" names name rc=0
+    names=$(api_names "${kind}") || return 1
+    for name in $(owned <<<"${names}"); do
         api_delete "${kind}/${name}" && wait_state "${kind}/${name}" deleted || { echo "${kind}/${name} : suppression en échec" >&2; rc=1; }
     done
     return "${rc}"
 }
 
+scratch_netns () {
+    ip netns list | awk '{print $1}' | grep -E "^t${T}-"
+}
+
+scratch_files () {
+    find "${SCRATCH_DIR}" "${STATE_DIR}" -maxdepth 1 -type f \( -name "t${T}-*" -o -name "t${T}.*" \) ! -name "t${T}.avant"
+}
+
+clean_scratch () {
+    local ns f
+    for ns in $(scratch_netns); do
+        ip netns del "${ns}" || return 1
+    done
+    for f in $(scratch_files); do
+        rm -f "${f}" || return 1
+    done
+}
+
 teardown_owned () {
     delete_owned vms && delete_owned subnets && delete_owned vpcs || return 1
     rm -f "${VOLUMES}/t${T}"-*
-    local left
-    left=$(for kind in vms subnets vpcs; do api_names "${kind}" | owned | sed "s|^|${kind}/|"; done | tr '\n' ' ')
+    clean_scratch || return 1
+    local left="" kind names
+    for kind in vms subnets vpcs; do
+        names=$(api_names "${kind}") || return 1
+        left="${left}$(owned <<<"${names}" | sed "s|^|${kind}/|" | tr '\n' ' ')"
+    done
     [ -z "${left}" ] || { echo "encore présents : ${left}"; return 1; }
 }
 
@@ -40,8 +66,9 @@ host_state () {
 
 prepare_test () {
     mkdir -p "${STATE_DIR}"
-    if [ -n "$(for kind in vms subnets vpcs; do api_names "${kind}" | owned; done)" ]; then
-        info "${HOST} : ressources t${T} d'un passage précédent, suppression"
+    curl -fsS -o /dev/null "${API}/vpcs" || echo "ÉCHOUÉ: ${HOST} : API de l'agent injoignable avant le test"
+    if [ -n "$(for kind in vms subnets vpcs; do api_names "${kind}" | owned; done)$(scratch_netns)$(scratch_files)" ]; then
+        info "${HOST} : ressources, netns ou fichiers t${T} d'un passage précédent, suppression"
         check "${HOST} : nettoyage des ressources t${T} restantes" teardown_owned
     fi
     host_state > "${STATE_DIR}/t${T}.avant"

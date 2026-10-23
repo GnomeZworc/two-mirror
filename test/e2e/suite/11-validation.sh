@@ -45,7 +45,7 @@ for dev in sdb vdb xvdaa; do
 done
 check "VM : user_data en base64 invalide, 400" expect_code 400 api_post_code vms "$(vm_body t11-x sn-t11a 10.11.1.12 "${NONE}" '{"user_data":"pas du base64 !"}')"
 check "VMs refusées : aucune trace de t11-x" expect_code 404 api_code GET vms/t11-x
-cp "${TWO_IMAGE}" "${VOLUMES}/t11-ud.qcow2"
+check "volume de t11-ud" vm_volume t11-ud
 check "VM t11-ud avec user_data en base64 valide, 202 (témoin)" expect_code 202 api_post_code vms "$(vm_body t11-ud sn-t11a 10.11.1.12 "" "{\"user_data\":\"$(printf '#cloud-config\n' | base64 | tr -d '\n')\"}")"
 check "t11-ud running" wait_state vms/t11-ud running
 NODE

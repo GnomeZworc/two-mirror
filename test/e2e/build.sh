@@ -10,7 +10,8 @@ usage () {
 usage: ${0##*/} [--clean]
 
   sans option : compile ${BINARIES} pour linux/amd64 depuis l'arbre courant dans ${BIN_DIR} ;
-                le prochain lab les installe par-dessus la release de la topologie
+                le prochain lab les installe par-dessus la release épinglée dans
+                topologies/provision/hypervisor.sh
   --clean     : vide ${BIN_DIR} ; le prochain lab teste la release seule
 USAGE
     exit 2

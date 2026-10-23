@@ -58,9 +58,10 @@ done
 on hv1 <<'NODE'
 vm_ssh vp-t71 10.71.1.10 'pkill -x ping' || true
 sleep 1
-stats=$(vm_ssh vp-t71 10.71.1.10 "awk -F'icmp_seq=' '/bytes from/ {split(\$2, a, \" \"); n++; if (a[1] > max) max = a[1]} END {print n, max}' /tmp/t71.log")
+stats=$(vm_ssh vp-t71 10.71.1.10 "awk -F'icmp_seq=' '/bytes from/ {split(\$2, a, \" \"); n++; if (a[1] > max) max = a[1]} END {print n+0, max+0}' /tmp/t71.log")
 received=${stats% *}
 sent=${stats#* }
-info "pendant tout le scénario : ${received} réponses pour ${sent} requêtes, $(( sent - received )) perdues"
-check "aucune perte mesurable sur l'ensemble du scénario (au plus 1 %)" test $(( (sent - received) * 100 )) -le "${sent}"
+info "pendant tout le scénario : ${received:-0} réponses pour ${sent:-0} requêtes, $(( ${sent:-0} - ${received:-0} )) perdues"
+check "trafic pendant tout le scénario : au moins 300 requêtes émises (témoin)" test "${sent:-0}" -ge 300
+check "aucune perte mesurable sur l'ensemble du scénario (au plus 1 %)" test $(( (${sent:-0} - ${received:-0}) * 100 )) -le "${sent:-0}"
 NODE

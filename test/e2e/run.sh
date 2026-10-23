@@ -15,10 +15,12 @@ usage: ${0##*/} [--continue] [--connus] all | --from <NN> | <couche N0>... | <te
   tests : $(cd "${SUITE_DIR}" && ls -- *.sh 2>/dev/null | sed 's/\.sh$//' | tr '\n' ' ')
 
 Chaque test s'exécute depuis le Mac sur le lab en cours (labctl.sh up, push, ./labctl up).
-Une couche se désigne par son numéro (00, 10, …, 70), un test par son numéro ou son nom.
-Avant un test, ses ressources t<NN> restantes sont supprimées et l'état de chaque hôte de
-l'en-tête « # hôtes: » est relevé ; après, ses ressources sont supprimées et l'hôte doit être
-revenu à cet état. Avec all ou --from, une couche en échec arrête la suite (--continue : non).
+Une couche se désigne par son numéro (00, 10, …, 70), un test par son numéro à deux chiffres
+ou son nom exact, avec ou sans numéro (21, 21-dhcp-two ou dhcp-two).
+Avant un test, ses ressources t<NN> restantes (API, netns t<NN>-*, fichiers t<NN>-* et t<NN>.*
+de /tmp et /var/tmp/e2e) sont supprimées et l'état de chaque hôte de l'en-tête « # hôtes: »
+est relevé ; après, ses ressources sont supprimées et l'hôte doit être revenu à cet état.
+Un test réussit s'il n'a aucun échec et au moins une vérification propre, hors fixtures. Avec all ou --from, une couche en échec arrête la suite (--continue : non).
 Un contrôle marqué known (échec connu, rattaché à un ticket) donne CONNU sans compter comme
 un échec, ou INATTENDU (compté comme un échec) s'il passe : retirer alors le marqueur. --connus
 compte les CONNU comme des échecs. known_flaky (échec intermittent) donne RÉUSSI, annoté, s'il passe.
@@ -53,7 +55,7 @@ number () {
 }
 
 run_scenario () {
-    local file="${1}" name passed failed known host hosts num
+    local file="${1}" name passed failed known host hosts num start own
     name="$(basename "${file}" .sh)"
     num=$(number "${file}")
     hosts=$(header "${file}" hôtes)
@@ -62,7 +64,9 @@ run_scenario () {
     for host in ${hosts}; do
         on "${host}" "T=${num}" "HOST=${host}" <<< 'prepare_test'
     done
+    start=$(wc -l < "${SCENARIO_LOG}")
     ( . "${file}" )
+    own=$(tail -n "+$(( start + 1 ))" "${SCENARIO_LOG}" | grep -cE '^(RÉUSSI|ÉCHOUÉ|CONNU|INATTENDU): ')
     for host in ${hosts}; do
         on "${host}" "T=${num}" "HOST=${host}" <<< 'finish_test'
     done
@@ -72,7 +76,8 @@ run_scenario () {
     [[ "${KNOWN_FAIL}" -eq 1 ]] && failed=$(( failed + known ))
     rm -f "${SCENARIO_LOG}"
     echo "=== ${name} : ${passed} réussi(s), ${failed} échoué(s)$([[ "${known}" -gt 0 ]] && echo ", ${known} connu(s)")"
-    [[ "${failed}" -eq 0 && "${passed}" -gt 0 ]]
+    [[ "${own}" -gt 0 ]] || echo "=== ${name} : aucune vérification propre au scénario n'a tourné"
+    [[ "${failed}" -eq 0 && "${own}" -gt 0 ]]
 }
 
 matrix () {
@@ -100,9 +105,15 @@ select_files () {
             ls "${SUITE_DIR}"/*.sh
         elif [[ "${arg}" =~ ^[0-9]0$ ]]; then
             ls "${SUITE_DIR}/${arg:0:1}"[0-9]-*.sh 2>/dev/null || { echo "couche vide : ${arg}" >&2; return 1; }
-        else
-            file=$(ls "${SUITE_DIR}/${arg}"*.sh 2>/dev/null | head -n 1)
+        elif [[ "${arg}" =~ ^[0-9]{2}$ ]]; then
+            file=$(ls "${SUITE_DIR}/${arg}"-*.sh 2>/dev/null | head -n 1)
             [[ -n "${file}" ]] || { echo "test inconnu : ${arg}" >&2; return 1; }
+            echo "${file}"
+        elif [[ -f "${SUITE_DIR}/${arg}.sh" ]]; then
+            echo "${SUITE_DIR}/${arg}.sh"
+        else
+            file=$(ls "${SUITE_DIR}"/[0-9][0-9]-"${arg}".sh 2>/dev/null | head -n 1)
+            [[ -n "${file}" ]] || { echo "test inconnu : ${arg} (numéro à deux chiffres ou nom exact)" >&2; return 1; }
             echo "${file}"
         fi
     done

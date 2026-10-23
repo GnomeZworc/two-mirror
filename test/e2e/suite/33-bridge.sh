@@ -21,7 +21,7 @@ for ip in 10.33.0.21 10.33.0.22; do
     check "${ip} : bail servi par interface_ip 10.33.0.1 (server-id)" test "$(vm_lease vp-t33 "${ip}" SERVER_ADDRESS)" = 10.33.0.1
     check "${ip} : route par défaut via 10.33.0.1" route_via vp-t33 "${ip}" default 10.33.0.1
     check "${ip} : route /32 vers les métadonnées via 10.33.0.1" route_via vp-t33 "${ip}" 169.254.169.254 10.33.0.1
-    check "${ip} : pas de route vers le VPC 10.33.0.0/16 (option 121 sans route du VPC en bridge)" sh -c "[ -z \"\$1\" ]" _ "$(vm_ssh vp-t33 "${ip}" 'ip -4 route show 10.33.0.0/16')"
+    check "${ip} : pas de route vers le VPC 10.33.0.0/16 (option 121 sans route du VPC en bridge)" vm_output_empty vp-t33 "${ip}" 'ip -4 route show 10.33.0.0/16'
 done
 check "t33-a1 : métadonnées de t33-a1 (instance-id)" vm_grep vp-t33 10.33.0.21 'curl -fsS http://169.254.169.254/meta-data' '^instance-id: t33-a1$'
 check "t33-a1 joint t33-a2, même hôte" vm_ssh vp-t33 10.33.0.21 'ping -n -c 3 -W 2 10.33.0.22'

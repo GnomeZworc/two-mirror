@@ -20,7 +20,7 @@ esac
 on "${host}" "HOST=${host}" "ADDR=${addr}" "BACKEND=${backend}" "SW1=${SW1}" "SW2=${SW2}" <<'NODE'
 check "${HOST} : agent actif" systemctl is-active --quiet agent
 check "${HOST} : API de l'agent joignable" curl -fsS -o /dev/null "${API}/vpcs"
-check "${HOST} : backend DHCP ${BACKEND} configuré" grep -A1 -x 'dhcp:' /etc/two/agent.yml | grep -qx "  backend: ${BACKEND}"
+check "${HOST} : backend DHCP ${BACKEND} configuré" sh -c "grep -A1 -x 'dhcp:' /etc/two/agent.yml | grep -qx '  backend: ${BACKEND}'"
 check "${HOST} : VTEP = adresse underlay ${ADDR}" test "$(vtep_host)" = "${ADDR}"
 for peer in 192.168.14.11 192.168.14.12 192.168.14.13; do
     [ "${peer}" = "${ADDR}" ] && continue

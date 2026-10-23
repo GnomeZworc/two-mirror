@@ -4,8 +4,7 @@
 
 on hv1 <<'NODE'
 check "VPC vp-t12a" vpc_create vp-t12a 10.12.0.0/16
-mkdir -p "${VOLUMES}"
-cp "${TWO_IMAGE}" "${VOLUMES}/t12-a.qcow2"
+check "volume de t12-a" vm_volume t12-a
 post_both () { api_post subnets "${1}" && api_post vms "${2}"; }
 check "subnet sn-t12a et VM t12-a envoyés sans attendre" post_both \
     '{"name":"sn-t12a","vpc":"vp-t12a","mode":"vxlan","vxlan_id":1201,"iface_type":"vms","cidr":"10.12.1.0/24"}' \
@@ -37,6 +36,6 @@ check "sn-t12a recréé sous le même nom" subnet_create sn-t12a vp-t12a 1201 10
 check "suppression de sn-t12a recréé" expect_code 202 api_code DELETE subnets/sn-t12a
 check "sn-t12a recréé puis supprimé" wait_state subnets/sn-t12a deleted
 check "suppression de vp-t12a, sans subnet, 202 (témoin)" expect_code 202 api_code DELETE vpcs/vp-t12a
-check "vp-t12a supprimée" wait_state vpcs/vp-t12a deleted
-check "vp-t12a recréée sous le même nom" vpc_create vp-t12a 10.12.0.0/16
+check "vp-t12a supprimé" wait_state vpcs/vp-t12a deleted
+check "vp-t12a recréé sous le même nom" vpc_create vp-t12a 10.12.0.0/16
 NODE

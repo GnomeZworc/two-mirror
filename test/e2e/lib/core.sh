@@ -55,15 +55,18 @@ api_state () {
 }
 
 wait_state () {
-    local path="${1}" want="${2}" i s
+    local path="${1}" want="${2}" i s code=""
     for i in $(seq 1 180); do
         s=$(api_state "${path}")
         [ "${s}" = "${want}" ] && return 0
-        [ "${want}" = deleted ] && [ -z "${s}" ] && return 0
+        if [ "${want}" = deleted ] && [ -z "${s}" ]; then
+            code=$(api_code GET "${path}")
+            [ "${code}" = 404 ] && return 0
+        fi
         [ "${s}" = error ] && { echo "${path}: error" >&2; return 1; }
         sleep 2
     done
-    echo "${path}: ${s:-absent}, ${want} attendu" >&2
+    echo "${path}: ${s:-absent}${code:+ (HTTP ${code})}, ${want} attendu" >&2
     return 1
 }
 

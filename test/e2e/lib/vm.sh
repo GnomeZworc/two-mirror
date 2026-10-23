@@ -25,6 +25,11 @@ two_image () {
     rm -rf "${work}"
 }
 
+vm_volume () {
+    two_image || { echo "image ${TWO_IMAGE} indisponible" >&2; return 1; }
+    mkdir -p "${VOLUMES}" && cp "${TWO_IMAGE}" "${VOLUMES}/${1}.qcow2"
+}
+
 vm_key () {
     [ -f "${VM_KEY}" ] || ssh-keygen -q -t ed25519 -N '' -C lab-vm -f "${VM_KEY}"
     cat "${VM_KEY}.pub"
@@ -40,8 +45,7 @@ vm_create () {
     local name="${1}" subnet="${2}" ip="${3}" key="${4:-}" meta="{}"
     api_state "vms/${name}" | grep -qx running && return 0
     [ -n "${key}" ] && meta="{\"sshkey\":\"${key}\"}"
-    mkdir -p "${VOLUMES}"
-    cp "${TWO_IMAGE}" "${VOLUMES}/${name}.qcow2" || return 1
+    vm_volume "${name}" || return 1
     api_post vms "{\"name\":\"${name}\",\"memory\":1024,\"cpus\":1,\"metadata\":${meta},\"interfaces\":[{\"subnet\":\"${subnet}\",\"ip\":\"${ip}\",\"mac\":\"$(mac_for_ip "${ip}")\",\"primary\":true}],\"storage\":[{\"path\":\"${VOLUMES}/${name}.qcow2\",\"dev\":\"vda\"}]}" \
         && wait_state "vms/${name}" running
 }
@@ -75,6 +79,14 @@ vm_fails () {
         rc=*) return 0 ;;
         *) echo "sortie inattendue : ${out}"; return 1 ;;
     esac
+}
+
+vm_output_empty () {
+    local out
+    out=$(vm_ssh "${1}" "${2}" "${3}") || { echo "commande en échec dans ${2} (ou SSH en panne)"; return 1; }
+    [ -z "${out}" ] && return 0
+    echo "sortie non vide dans ${2} : $(printf '%s' "${out}" | head -n 1)"
+    return 1
 }
 
 vm_grep () {
@@ -125,8 +137,7 @@ vm_launch () {
     shift
     api_state "vms/${name}" | grep -qx running && return 0
     body=$(vm_json "${name}" --disk "vda=${VOLUMES}/${name}.qcow2" "$@") || return 1
-    mkdir -p "${VOLUMES}"
-    cp "${TWO_IMAGE}" "${VOLUMES}/${name}.qcow2" || return 1
+    vm_volume "${name}" || return 1
     api_post vms "${body}" && wait_state "vms/${name}" running
 }
 
