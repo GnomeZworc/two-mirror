@@ -400,6 +400,14 @@ test_vm_lease_reads_one_field_of_the_interface_lease () {
     teardown
 }
 
+test_vm_cloud_init_done_waits_with_a_bound () {
+    setup "vm_cloud_init_done : attend la fin de cloud-init, avec un délai borné, et en rend le code"
+    [[ $(node 'vm_ssh () { echo "$1 $2 $3"; }; vm_cloud_init_done vp 1.2.3.4') == "vp 1.2.3.4 timeout 300 cloud-init status --wait" ]] || fail "commande par défaut"
+    [[ $(node 'vm_ssh () { echo "$3"; }; vm_cloud_init_done vp 1.2.3.4 60') == "timeout 60 cloud-init status --wait" ]] || fail "délai fourni"
+    [[ $(node 'vm_ssh () { return 2; }; vm_cloud_init_done vp 1.2.3.4 || echo NON') == NON ]] || fail "cloud-init en erreur accepté"
+    teardown
+}
+
 test_vm_has_ip_matches_the_exact_address () {
     setup "vm_has_ip : adresse exacte, sur n'importe quelle interface"
     local stub='vm_ssh () { echo "3: ens4    inet 10.25.2.10/24 brd 10.25.2.255 scope global ens4"; }; '
@@ -638,6 +646,26 @@ test_runner_counts_known_apart_unless_connus () {
     FAKE_OUT='RÉUSSI: a\nINATTENDU: b (#1) passe' run k; [[ $? -eq 1 ]] || fail "INATTENDU non compté comme un échec"
     FAKE_OUT='RÉUSSI: a' run k
     grep -q '=== k : 1 réussi(s), 0 échoué(s)$' "${WORK}/out.log" || fail "bilan sans connu : $(tail -n 1 "${WORK}/out.log")"
+    teardown
+}
+
+test_frames_match_selects_arp_by_sender () {
+    setup "frames : arp-from retient l'ARP émis depuis une adresse, requête ou réponse, et rien d'autre"
+    local src arp garp dhcp
+    src=$(node 'frames_py')
+    arp=$(node 'FRAMES_DRY=1 FRAMES_MAC=02:00:00:00:00:0a frames arp ens3 10.33.0.1 10.33.0.21 1')
+    garp=$(node 'FRAMES_DRY=1 FRAMES_MAC=02:00:00:00:00:0a frames garp ens3 10.33.0.1 1')
+    dhcp=$(node 'FRAMES_DRY=1 FRAMES_MAC=02:00:00:00:00:0a frames dhcp ens3 10.33.0.1 68 1')
+    python3 - "${src}" "${arp}" "${garp}" "${dhcp}" <<'PY' || fail "arp-from : ${arp} / ${garp} / ${dhcp}"
+import sys
+exec(sys.argv[1].split('cmd, a = ')[0])
+arp, garp, dhcp = (bytes.fromhex(x) for x in sys.argv[2:])
+assert match('arp-from', ['10.33.0.1'], arp), 'requête depuis 10.33.0.1'
+assert match('arp-from', ['10.33.0.1'], garp), 'réponse depuis 10.33.0.1'
+assert not match('arp-from', ['10.33.0.21'], arp), 'la cible n\'est pas l\'émetteur'
+assert not match('arp-from', ['10.33.0.1'], dhcp), 'DHCP depuis 10.33.0.1'
+assert match('udp-from', ['10.33.0.1', '67'], dhcp), 'udp-from témoin'
+PY
     teardown
 }
 

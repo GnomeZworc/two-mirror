@@ -1,6 +1,6 @@
-# fonctionnalité: subnet en mode bridge rattaché au bridge br-lan de l'hôte — un hôte, puis le même subnet sur deux hôtes (une seule réponse ARP pour interface_ip, métadonnées servies par l'hôte de la VM)
+# fonctionnalité: subnet en mode bridge rattaché au bridge br-lan de l'hôte — un hôte, puis le même subnet sur deux hôtes (interface_ip confinée à son hôte : une seule réponse ARP, métadonnées servies par l'hôte de la VM, ni ARP ni DHCP de la gateway sur le segment, règles surveillées par le watchdog)
 # hôtes: hv1 hv2
-# tickets: #70
+# tickets: #70, #75
 
 on hv1 <<'NODE'
 KEY=$(vm_key)
@@ -47,11 +47,37 @@ own_meta () {
     done
     [ "${ok}" -eq 5 ] || { echo "${2} : ${ok}/5 réponses avec ses propres métadonnées"; return 1; }
 }
+check "hv1 : quatre règles de confinement de 10.33.0.1 sur v-t33a-i" test "$(ebt_rules vp-t33 v-t33a-i | grep -c '10.33.0.1 ')" -eq 4
 RESPONDERS=$(vm_frames vp-t33 10.33.0.21 arp-who ens3 10.33.0.21 10.33.0.1 2)
 info "MAC qui répondent pour 10.33.0.1 vues de t33-a1 : $(echo ${RESPONDERS})"
-known "#75" "deux hôtes : t33-a1 (hv1) joint t33-b1 (hv2) sur le segment lan" vm_ssh vp-t33 10.33.0.21 'ping -n -c 3 -W 2 10.33.0.23'
-known "#75" "deux hôtes : une seule MAC répond pour interface_ip 10.33.0.1" test "$(grep -c . <<<"${RESPONDERS}")" -eq 1
-known_flaky "#75" "deux hôtes : t33-a1 reçoit toujours ses propres métadonnées (5 essais, cache ARP vidé)" own_meta 10.33.0.21 t33-a1
+check "deux hôtes : t33-a1 (hv1) joint t33-b1 (hv2) sur le segment lan" vm_ssh vp-t33 10.33.0.21 'ping -n -c 3 -W 2 10.33.0.23'
+check "deux hôtes : une seule MAC répond pour interface_ip 10.33.0.1, celle de br-t33a de hv1" test "${RESPONDERS}" = "$(ip -n vp-t33 link show br-t33a | awk '/ether/ {print $2}')"
+check "deux hôtes : t33-a1 reçoit toujours ses propres métadonnées (5 essais, cache ARP vidé)" own_meta 10.33.0.21 t33-a1
+S=$(mktemp -d)
+AGEING=$(ip netns exec vp-t33 cat /sys/class/net/br-t33a/bridge/ageing_time)
+check "br-t33a sans apprentissage le temps de la capture (toute trame du netns inonde v-t33a-i)" ip netns exec vp-t33 ip link set br-t33a type bridge ageing_time 0
+sniff_start "${S}/arp" v-t33a-e 20 arp-from 10.33.0.1
+sniff_start "${S}/dhcp" v-t33a-e 20 udp-from 10.33.0.1 67
+sniff_start "${S}/vm-arp" v-t33a-e 20 arp-from 10.33.0.21
+vm_sniff_start "${S}/arp.temoin" vp-t33 10.33.0.21 ens3 16 arp-from 10.33.0.1
+vm_sniff_start "${S}/dhcp.temoin" vp-t33 10.33.0.21 ens3 16 udp-from 10.33.0.1 67
+ip -n vp-t33 neigh flush dev br-t33a
+ip netns exec vp-t33 ping -c 2 -W 1 10.33.0.21 >/dev/null 2>&1
+vm_ssh vp-t33 10.33.0.21 'sudo networkctl renew ens3' >/dev/null 2>&1
+vm_frames vp-t33 10.33.0.21 arp ens3 10.33.0.21 10.33.0.99 3 >/dev/null 2>&1
+wait
+check "br-t33a : apprentissage rétabli (ageing_time ${AGEING})" ip netns exec vp-t33 ip link set br-t33a type bridge ageing_time "${AGEING}"
+info "trames capturées : ARP depuis 10.33.0.1 vers le segment $(cat "${S}/arp"), DHCP $(cat "${S}/dhcp"), ARP de t33-a1 $(cat "${S}/vm-arp") ; reçues par t33-a1 : ARP $(cat "${S}/arp.temoin"), DHCP $(cat "${S}/dhcp.temoin")"
+check "témoin : t33-a1 reçoit l'ARP émis depuis 10.33.0.1" test "$(cat "${S}/arp.temoin")" -gt 0
+check "témoin : t33-a1 reçoit le DHCP émis depuis 10.33.0.1" test "$(cat "${S}/dhcp.temoin")" -gt 0
+check "témoin : l'ARP émis par t33-a1 atteint le segment par v-t33a-e (capture opérante)" test "$(cat "${S}/vm-arp")" -gt 0
+check "aucune trame ARP depuis 10.33.0.1 vers le segment (v-t33a-e)" test "$(cat "${S}/arp")" -eq 0
+check "aucune trame DHCP depuis 10.33.0.1 vers le segment (v-t33a-e)" test "$(cat "${S}/dhcp")" -eq 0
+rm -r "${S}"
+RULE='OUTPUT --out-interface v-t33a-i -p arp --arp-ip-src 10.33.0.1 -j DROP'
+check "règle ARP OUTPUT retirée à la main" ip netns exec vp-t33 ebtables -D ${RULE}
+check "watchdog : règle manquante signalée pour sn-t33a" wait_watchdog "ebtables rule missing in netns vp-t33"
+check "règle ARP OUTPUT reposée" ip netns exec vp-t33 ebtables -A ${RULE}
 NODE
 
 on hv2 <<'NODE'
@@ -63,6 +89,6 @@ own_meta () {
     done
     [ "${ok}" -eq 5 ] || { echo "${2} : ${ok}/5 réponses avec ses propres métadonnées"; return 1; }
 }
-known_flaky "#75" "deux hôtes : t33-b1 (hv2) reçoit toujours ses propres métadonnées (5 essais, cache ARP vidé)" own_meta 10.33.0.23 t33-b1
+check "deux hôtes : t33-b1 (hv2) reçoit toujours ses propres métadonnées (5 essais, cache ARP vidé)" own_meta 10.33.0.23 t33-b1
 check "deux hôtes : t33-b1 (hv2) joint t33-a2 (hv1)" vm_ssh vp-t33 10.33.0.23 'ping -n -c 3 -W 2 10.33.0.22'
 NODE
