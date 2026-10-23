@@ -458,6 +458,20 @@ de l’image (exigence décrite dans la documentation de construction d’image)
 <code class="docutils literal notranslate"><span class="pre">/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_xvdX</span></code></p></li>
 <li><p>Migration au démarrage : les clés <code class="docutils literal notranslate"><span class="pre">vm/&lt;name&gt;/disk/sdX</span></code> deviennent <code class="docutils literal notranslate"><span class="pre">vm/&lt;name&gt;/disk/xvdX</span></code></p></li>
 </ul>
+<p><strong>MTU unique du cluster (#56)</strong></p>
+<ul class="simple">
+<li><p>Nouvelle section <code class="docutils literal notranslate"><span class="pre">network</span></code> de la configuration de l’agent. <code class="docutils literal notranslate"><span class="pre">mtu_vm</span></code> (1500 par défaut, 1500 au
+plus) fixe le MTU de toutes les VM et de tous les bridges, veth, taps et interfaces VXLAN que
+l’agent crée, jusque-là figé à 1500. Il doit être identique sur tous les hyperviseurs. Sous
+1500, il faut <code class="docutils literal notranslate"><span class="pre">allow_mtu_vm_below_1500</span></code>, et jamais sous 1280 ; une valeur hors bornes fait
+échouer le démarrage</p></li>
+<li><p>Le MTU est annoncé aux VM par l’option DHCP 26 (serveur intégré et dnsmasq) et par <code class="docutils literal notranslate"><span class="pre">host_mtu</span></code>
+sur leur interface virtio. <code class="docutils literal notranslate"><span class="pre">probe</span></code> l’affiche</p></li>
+<li><p>L’underlay est attendu à exactement 9000 : un subnet <code class="docutils literal notranslate"><span class="pre">vxlan</span></code> dont l’interface n’y est pas est
+refusé (422), comme un VPC avec <code class="docutils literal notranslate"><span class="pre">l3vni</span></code> si <code class="docutils literal notranslate"><span class="pre">default_interface</span></code> n’y est pas (409), sauf avec
+<code class="docutils literal notranslate"><span class="pre">allow_mtu_underlay_below_9000</span></code>. Dans tous les cas l’underlay doit porter <code class="docutils literal notranslate"><span class="pre">mtu_vm</span></code> + 50 octets
+d’en-tête VXLAN. Un subnet <code class="docutils literal notranslate"><span class="pre">bridge</span></code> est refusé si son bridge est sous <code class="docutils literal notranslate"><span class="pre">mtu_vm</span></code></p></li>
+</ul>
 <p><strong>Exploitation</strong></p>
 <ul class="simple">
 <li><p>Le watchdog contrôle aussi, avec une section <code class="docutils literal notranslate"><span class="pre">bgp</span></code> : les sessions vers les route reflectors ;
@@ -520,8 +534,7 @@ d’état, dans un <code class="docutils literal notranslate"><span class="pre">
 <h2>Périmètre et limites connues<a class="headerlink" href="#perimetre-et-limites-connues" title="Lien vers cette rubrique">#</a></h2>
 <p>Celles de la 0.1.0 restent valables, sauf mention contraire ci-dessus. S’y ajoutent :</p>
 <ul class="simple">
-<li><p><strong>L3VNI</strong> : pas de migration à chaud ; la gateway anycast (#57) la prépare côté réseau. MTU
-1500 de bout en bout (#56). Le transit <code class="docutils literal notranslate"><span class="pre">169.254.0.0/30</span></code> étant identique sur tous les hôtes, les ICMP des sauts distants sont
+<li><p><strong>L3VNI</strong> : pas de migration à chaud ; la gateway anycast (#57) la prépare côté réseau. Le transit <code class="docutils literal notranslate"><span class="pre">169.254.0.0/30</span></code> étant identique sur tous les hôtes, les ICMP des sauts distants sont
 rejetés comme « martiens » (traceroute partiel)</p></li>
 <li><p>Avec une section <code class="docutils literal notranslate"><span class="pre">bgp</span></code>, l’agent ne démarre pas sans FRR et <code class="docutils literal notranslate"><span class="pre">agent.service</span></code> ne le relance pas :
 au démarrage, l’ordre est migration réseau, puis FRR, puis l’agent (#52)</p></li>
@@ -547,7 +560,7 @@ bash<span class="w"> </span>./deploy.sh<span class="w"> </span>-t<span class="w"
 </pre></div>
 </div>
 <p>Sans <code class="docutils literal notranslate"><span class="pre">dhcp.backend</span></code> ni <code class="docutils literal notranslate"><span class="pre">bgp</span></code> dans <code class="docutils literal notranslate"><span class="pre">/etc/two/agent.yml</span></code>, le comportement est celui de la 0.1.0, à
-quatre exceptions près, qui touchent les appelants de l’API :</p>
+cinq exceptions près ; les quatre premières touchent les appelants de l’API :</p>
 <ul class="simple">
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> ne se fournit plus pour un subnet <code class="docutils literal notranslate"><span class="pre">vxlan</span></code></strong> : il est refusé (400), l’agent le
 calcule. Le retirer des appels de création, et ne plus placer de VM sur les deux dernières
@@ -558,6 +571,11 @@ garantit l’unicité. Les VM existantes gardent la leur, recopiée au premier d
 <li><p><strong>les disques additionnels s’appellent <code class="docutils literal notranslate"><span class="pre">xvdX</span></code></strong> : <code class="docutils literal notranslate"><span class="pre">sdX</span></code> est refusé (400). Les VM existantes sont
 migrées ; leurs disques prennent le numéro de série <code class="docutils literal notranslate"><span class="pre">xvdX</span></code> au prochain lancement, et une image
 qui les montait par <code class="docutils literal notranslate"><span class="pre">/dev/sdY</span></code> doit passer à <code class="docutils literal notranslate"><span class="pre">/dev/xvdX</span></code></p></li>
+<li><p><strong>l’underlay doit être à 9000</strong> : sur un hyperviseur dont <code class="docutils literal notranslate"><span class="pre">default_interface</span></code> (ou l’interface
+d’un <code class="docutils literal notranslate"><span class="pre">iface_type</span></code>) est à un autre MTU, la création d’un subnet <code class="docutils literal notranslate"><span class="pre">vxlan</span></code> est refusée. Passer
+l’underlay à 9000, ou poser <code class="docutils literal notranslate"><span class="pre">network.allow_mtu_underlay_below_9000:</span> <span class="pre">true</span></code> — sous 1550, il faut
+aussi abaisser <code class="docutils literal notranslate"><span class="pre">network.mtu_vm</span></code> avec <code class="docutils literal notranslate"><span class="pre">allow_mtu_vm_below_1500</span></code>. Les subnets existants gardent
+leurs interfaces à 1500 jusqu’à leur recréation</p></li>
 </ul>
 <p>Les subnets <code class="docutils literal notranslate"><span class="pre">vxlan</span></code> existants gardent leur adressage et le modèle précédent (gateway sur le
 bridge) jusqu’à leur recréation. Les subnets <code class="docutils literal notranslate"><span class="pre">bridge</span></code> existants restent sans le confinement de

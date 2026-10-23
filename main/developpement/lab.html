@@ -796,82 +796,87 @@ fait en fermant le ticket. Chaque ticket concerné liste ses marqueurs en commen
 <td><p>hv1</p></td>
 <td><p>#46</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">31-gateway</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">28-mtu</span></code></p></td>
+<td><p>MTU des VM (<code class="docutils literal notranslate"><span class="pre">network.mtu_vm</span></code>, 1500) — option DHCP 26 (serveur intégré et dnsmasq), <code class="docutils literal notranslate"><span class="pre">host_mtu</span></code> de QEMU, tap, bridge, veth et VXLAN du subnet ; subnet vxlan refusé sur un underlay qui n’est pas à 9000</p></td>
+<td><p>hv1 hv2</p></td>
+<td><p>#56</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">31-gateway</span></code></p></td>
 <td><p>gateway d’un subnet vxlan — gateway anycast et adresse d’émission calculées, default_route et gateway explicite, routes DHCP, macvlan gw-, FDB locale, sysctls ARP, règles de confinement, suppression et recréation</p></td>
 <td><p>hv1</p></td>
 <td><p>#57, #43</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">32-vxlan-local</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">32-vxlan-local</span></code></p></td>
 <td><p>routage entre deux subnets vxlan d’un même VPC sur un même hôte, sans et avec l3vni — ICMP, TCP, saut unique par la gateway</p></td>
 <td><p>hv1</p></td>
 <td><p>#57, #41</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">33-bridge</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">33-bridge</span></code></p></td>
 <td><p>subnet en mode bridge rattaché au bridge br-lan de l’hôte — un hôte, puis le même subnet sur deux hôtes (interface_ip confinée à son hôte : une seule réponse ARP, métadonnées servies par l’hôte de la VM, ni ARP ni DHCP de la gateway sur le segment, règles surveillées par le watchdog)</p></td>
 <td><p>hv1 hv2</p></td>
 <td><p>#70, #75</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">34-isolation-locale</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">34-isolation-locale</span></code></p></td>
 <td><p>isolation entre deux VPC sur un même hôte — ni ICMP ni TCP d’un VPC à l’autre</p></td>
 <td><p>hv1</p></td>
 <td><p>#50</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">35-filtrage-port</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">35-filtrage-port</span></code></p></td>
 <td><p>filtrage au port — en sortie vers le fabric (v-&lt;id&gt;-i) : ARP vers la gateway et l’adresse d’émission, DHCP émis depuis ces adresses, MAC anycast confinée dans les deux sens ; entre VM d’un même hôte : faux serveur DHCP et usurpation ARP de la gateway (comportement attendu, non filtré à ce jour)</p></td>
 <td><p>hv1</p></td>
 <td><p>#57</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">41-evpn-l2</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">41-evpn-l2</span></code></p></td>
 <td><p>subnet vxlan étendu entre deux hôtes par EVPN — VTEP local, VTEP distant et inondation appris, MAC des VM en type 2, trafic ICMP et TCP, MTU 1500 de bout en bout</p></td>
 <td><p>hv1 hv2</p></td>
 <td><p>#50, #51</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">42-isolation-evpn</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">42-isolation-evpn</span></code></p></td>
 <td><p>isolation entre VPC à travers EVPN — deux VPC sur la même plage, la VM d’un VPC ne joint pas celle de l’autre sur un hôte distant</p></td>
 <td><p>hv1 hv2</p></td>
 <td><p>#50, #51</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">43-subnets-partages</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">43-subnets-partages</span></code></p></td>
 <td><p>subnets vxlan partagés par deux hôtes, deux VM par hôte, dans un VPC avec et un VPC sans l3vni — toutes les paires, gateway anycast vue par chaque VM et absente d’EVPN, aucune MAC en double</p></td>
 <td><p>hv2 hv3</p></td>
 <td><p>#57, #41</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">44-fenetre-arp</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">44-fenetre-arp</span></code></p></td>
 <td><p>fenêtre ARP de la gateway anycast entre deux hôtes — relais L2 depuis l’adresse d’émission d’un hôte, gateway de la VM inchangée, métadonnées, renouvellement DHCP et TCP local sans perte pendant la fenêtre</p></td>
 <td><p>hv1 hv2</p></td>
 <td><p>#57</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">51-l3vni</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">51-l3vni</span></code></p></td>
 <td><p>routage inter-subnet entre hôtes par L3VNI (IRB symétrique) — VRF, RMAC, exports /24 et /32, RT-5 réfléchies, TTL, isolation par RT, démontage d’un VPC routé</p></td>
 <td><p>hv1 hv2</p></td>
 <td><p>#41</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">52-migration</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">52-migration</span></code></p></td>
 <td><p>migration d’une adresse de VM entre hôtes d’un VPC routé — /32 retiré en premier, /24 en filet puis en ECMP, séquence orchestrée, 40 sources, suppression du subnet refusée tant qu’une VM l’utilise, MAC anycast hors EVPN</p></td>
 <td><p>hv1 hv2 hv3</p></td>
 <td><p>#41, #57</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">53-watchdog-l3</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">53-watchdog-l3</span></code></p></td>
 <td><p>watchdog d’un VPC routé — /32 orphelin signalé comme trou noir, /32 manquant signalé, aucune fausse alerte BGP ni L3VNI, trafic intact après les essais</p></td>
 <td><p>hv1 hv3</p></td>
 <td><p>#41</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">61-redemarrage-agent</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">61-redemarrage-agent</span></code></p></td>
 <td><p>redémarrage de l’agent avec des VM en marche — rien ne disparaît ni n’est recréé, trafic routé sans perte, DHCP et métadonnées servis, base BGP réappliquée à l’identique, ressources toujours gérées</p></td>
 <td><p>hv1 hv2</p></td>
 <td><p>#41, #46</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">62-nettoyage-global</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">62-nettoyage-global</span></code></p></td>
 <td><p>nettoyage global en fin de suite — aucun hôte ne garde de ressource : API vide, ni netns, tap, VRF, unité, instance DHCP ou de métadonnées, processus QEMU, règle de port, volume ; FRR réduit à la base BGP</p></td>
 <td></td>
 <td><p>#70</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">71-perte-rr</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">71-perte-rr</span></code></p></td>
 <td><p>perte d’un route reflector — l’autre garde la session EVPN, le VTEP distant reste connu, le trafic L2 entre hôtes passe sans perte mesurable, retour du RR arrêté</p></td>
 <td><p>hv1 hv2</p></td>
 <td><p>#54</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">72-perte-switch</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">72-perte-switch</span></code></p></td>
 <td><p>perte d’un switch de la passerelle VRRP — bascule vers l’autre en moins de 5 s, sessions EVPN jamais coupées ; au retour, le plus prioritaire redevient maître, seconde bascule mesurée</p></td>
 <td></td>
 <td><p>#54, #69</p></td>

@@ -468,13 +468,30 @@ les fait converger.</p>
 </section>
 <section id="mtu">
 <h2>MTU<a class="headerlink" href="#mtu" title="Lien vers cette rubrique">#</a></h2>
-<div class="admonition warning">
-<p class="admonition-title">Avertissement</p>
-<p>L’agent crée bridges, veth et interfaces VXLAN avec un <strong>MTU figé à 1500</strong>. VXLAN ajoute 50
-octets d’encapsulation : le réseau qui relie les hyperviseurs doit donc accepter au moins
-<strong>1550 octets</strong> de MTU, sinon les paquets pleine taille des VM sont perdus.</p>
-<p>Le symptôme est trompeur : le ping passe, les petites requêtes passent, les transferts
-volumineux et les poignées de main TLS échouent.</p>
+<p>Le MTU est une valeur <strong>unique pour tout le cluster</strong> : toutes les VM, et tous les bridges, veth,
+taps et interfaces VXLAN que l’agent crée, sont au MTU des VM, <code class="docutils literal notranslate"><span class="pre">network.mtu_vm</span></code> (1500 par
+défaut, cf. <a class="reference internal" href="../exploitation/configuration.html"><span class="doc">Configuration</span></a>). Il doit être identique sur tous les
+hyperviseurs : un subnet est un seul domaine L2 qui s’étend sur plusieurs hôtes, et un élément à
+un MTU plus petit que les autres jette les trames en silence — un bridge ne fragmente pas et
+n’émet aucun ICMP. Le symptôme est trompeur : le ping passe, les petites requêtes passent, les
+transferts volumineux et les poignées de main TLS échouent.</p>
+<p>L’underlay, le réseau qui relie les hyperviseurs et porte le VXLAN, est attendu à <strong>exactement
+9000</strong>. VXLAN ajoute 50 octets d’encapsulation ; 9000 laisse donc toute la marge à des VM à 1500.
+L’agent refuse de créer un subnet <code class="docutils literal notranslate"><span class="pre">vxlan</span></code> (ou un VPC avec <code class="docutils literal notranslate"><span class="pre">l3vni</span></code>) dont l’interface n’est
+pas à 9000, sauf si <code class="docutils literal notranslate"><span class="pre">network.allow_mtu_underlay_below_9000</span></code> l’y autorise ; même alors,
+l’underlay doit faire au moins <code class="docutils literal notranslate"><span class="pre">network.mtu_vm</span></code> + 50. Un underlay à 1500 impose donc des VM à
+1450 au plus, et l’option <code class="docutils literal notranslate"><span class="pre">network.allow_mtu_vm_below_1500</span></code>.</p>
+<p>Le MTU est annoncé aux VM par deux voies : l’option DHCP 26 et <code class="docutils literal notranslate"><span class="pre">host_mtu</span></code> sur leur interface
+virtio. Une image dont le client DHCP ignore l’option 26 s’aligne quand même.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>VM en mode bridge sur un bridge à 9000.</strong> Un subnet <code class="docutils literal notranslate"><span class="pre">bridge</span></code> rattaché à <code class="docutils literal notranslate"><span class="pre">br-000000</span></code>
+met ses VM, à 1500, sur un segment L2 à 9000 avec l’hôte et tout ce qui s’y trouve. Le
+routage vers les autres subnets reste correct — un routeur renvoie un « fragmentation
+needed » plutôt que de perdre en silence —, mais l’interface du routeur qui sert de gateway
+à ce segment doit être à 1500 : sinon elle peut envoyer à la VM des trames plus grandes
+qu’elle n’accepte. En TCP, le MSS annoncé par la VM protège l’échange ; en UDP ou en ICMP,
+les gros paquets venant d’un équipement à 9000 du même segment sont perdus.</p>
 </div>
 </section>
 <section id="hyperviseurs-sans-etat">
