@@ -35,6 +35,7 @@ func (b Dnsmasq) config(s Subnet) dhcp.Config {
 		InterfaceIP:    s.InterfaceIP,
 		VPCRoute:       s.VPCRoute,
 		DefaultGateway: s.DefaultGateway,
+		MTU:            s.MTU,
 	}
 	if s.Listen != "" && s.Listen != s.Bridge {
 		c.Listen = s.Listen

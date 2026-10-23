@@ -17,6 +17,7 @@ type Subnet struct {
 	InterfaceIP    string `json:"interface_ip"`
 	VPCRoute       string `json:"vpc_route,omitempty"`
 	DefaultGateway string `json:"default_gateway,omitempty"`
+	MTU            int    `json:"mtu,omitempty"`
 }
 
 type Host struct {
@@ -38,6 +39,7 @@ type Lease struct {
 	Router       string   `json:"router,omitempty"`
 	DNS          []string `json:"dns"`
 	Routes       []string `json:"routes"`
+	MTU          uint16   `json:"mtu,omitempty"`
 	LeaseSeconds uint32   `json:"lease_seconds"`
 }
 

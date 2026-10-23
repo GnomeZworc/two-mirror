@@ -93,6 +93,18 @@ func TestTwoPushSubnet_ReachesTheStore(t *testing.T) {
 	}
 }
 
+func TestTwoPushSubnet_CarriesTheMTU(t *testing.T) {
+	b, s, store := twoBackend(t)
+	s.MTU = 1450
+
+	if err := b.pushSubnet(s); err != nil {
+		t.Fatalf("pushSubnet: %v", err)
+	}
+	if got, _ := store.Subnet(); got.MTU != 1450 {
+		t.Errorf("mtu = %d, want 1450", got.MTU)
+	}
+}
+
 func TestTwoPushSubnet_OmitsAnAbsentVPCRouteAndGateway(t *testing.T) {
 	b, s, store := twoBackend(t)
 	s.VPCRoute = nil

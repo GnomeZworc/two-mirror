@@ -14,6 +14,7 @@ type DiskConfig struct {
 type NICConfig struct {
 	TapID int
 	Mac   string
+	MTU   int
 }
 
 type Config struct {

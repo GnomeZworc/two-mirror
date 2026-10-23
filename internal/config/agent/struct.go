@@ -55,6 +55,7 @@ type Config struct {
 		Enabled         bool `mapstructure:"enabled"`
 		IntervalSeconds int  `mapstructure:"interval_seconds"`
 	} `mapstructure:"watchdog"`
+	Network          Network           `mapstructure:"network"`
 	BGP              BGP               `mapstructure:"bgp"`
 	DefaultInterface string            `mapstructure:"default_interface"`
 	Interfaces       map[string]string `mapstructure:"interfaces"`
@@ -90,6 +91,9 @@ func LoadConfig(path string) (*Config, error) {
 	v.SetDefault("default_interface", "br-000000")
 	v.SetDefault("logger.level", "info")
 	v.SetDefault("logger.debug", false)
+	v.SetDefault("network.mtu_vm", MTUVM)
+	v.SetDefault("network.allow_mtu_vm_below_1500", false)
+	v.SetDefault("network.allow_mtu_underlay_below_9000", false)
 
 	if err := v.ReadInConfig(); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return nil, fmt.Errorf("read %s: %w", path, err)
@@ -98,6 +102,9 @@ func LoadConfig(path string) (*Config, error) {
 	var cfg Config
 	if err := v.Unmarshal(&cfg); err != nil {
 		return nil, err
+	}
+	if err := cfg.Network.Validate(); err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 
 	return &cfg, nil

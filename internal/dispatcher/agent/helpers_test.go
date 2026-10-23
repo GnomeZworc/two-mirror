@@ -45,3 +45,7 @@ func (m mockCmd) Prepare(db *badger.DB, cfg *configuration.Config) error {
 func (m mockCmd) Execute(db *badger.DB, cfg *configuration.Config) error {
 	return m.executeFn(db, cfg)
 }
+
+func init() {
+	LinkMTU = func(string) (int, error) { return 9000, nil }
+}

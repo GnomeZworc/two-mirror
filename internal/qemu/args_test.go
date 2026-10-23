@@ -17,7 +17,7 @@ func devicesOf(args []string) []string {
 func TestBuildArgs_DiskSerialIsDeclaredDev(t *testing.T) {
 	args, err := buildArgs(Config{
 		Name: "vm1",
-		NICs: []NICConfig{{TapID: 1, Mac: "52:54:00:00:00:01"}},
+		NICs: []NICConfig{{TapID: 1, Mac: "52:54:00:00:00:01", MTU: 1450}, {TapID: 2, Mac: "52:54:00:00:00:02"}},
 		Disks: []DiskConfig{
 			{Path: "/v/b.qcow2", Dev: "xvdb"},
 			{Path: "/v/root.qcow2", Dev: "vda"},
@@ -33,7 +33,8 @@ func TestBuildArgs_DiskSerialIsDeclaredDev(t *testing.T) {
 		"virtio-blk-pci,drive=vda,bus=pci.0,addr=0x1f,bootindex=1,serial=vda",
 		"scsi-hd,drive=xvda,bus=scsi0.0,scsi-id=0,bootindex=2,serial=xvda",
 		"scsi-hd,drive=xvdb,bus=scsi0.0,scsi-id=1,bootindex=3,serial=xvdb",
-		"virtio-net-pci,netdev=net0,mac=52:54:00:00:00:01,bus=pci.0,addr=0x03",
+		"virtio-net-pci,netdev=net0,mac=52:54:00:00:00:01,bus=pci.0,addr=0x03,host_mtu=1450",
+		"virtio-net-pci,netdev=net1,mac=52:54:00:00:00:02,bus=pci.0,addr=0x04",
 	}
 	got := devicesOf(args)
 	if len(got) != len(want) {

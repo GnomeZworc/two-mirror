@@ -14,8 +14,6 @@ import (
 	"github.com/dgraph-io/badger/v4"
 )
 
-const l3MTU = 1500
-
 var (
 	transitHost  = &net.IPNet{IP: net.IPv4(169, 254, 0, 1).To4(), Mask: net.CIDRMask(30, 32)}
 	transitNetns = &net.IPNet{IP: net.IPv4(169, 254, 0, 2).To4(), Mask: net.CIDRMask(30, 32)}
@@ -76,6 +74,7 @@ func createL3(h host, cfg *configuration.Config, v l3VPC) error {
 	if err != nil {
 		return fmt.Errorf("vtep: %w", err)
 	}
+	mtu := cfg.Network.VM()
 	rmac, err := RouterMAC(vtep)
 	if err != nil {
 		return err
@@ -85,12 +84,12 @@ func createL3(h host, cfg *configuration.Config, v l3VPC) error {
 		run  func() error
 	}{
 		{"create " + v.vrf(), func() error { return h.CreateVRF(v.vrf(), v.vni) }},
-		{"create " + v.bridge(), func() error { return h.CreateBridge(v.bridge(), l3MTU, rmac) }},
+		{"create " + v.bridge(), func() error { return h.CreateBridge(v.bridge(), mtu, rmac) }},
 		{"attach " + v.bridge(), func() error { return h.SetMaster(v.bridge(), v.vrf()) }},
-		{"create " + v.vxlan(), func() error { return h.CreateVxlan(v.vxlan(), int(v.vni), cfg.DefaultInterface, l3MTU) }},
+		{"create " + v.vxlan(), func() error { return h.CreateVxlan(v.vxlan(), int(v.vni), cfg.DefaultInterface, mtu) }},
 		{"attach " + v.vxlan(), func() error { return h.SetMaster(v.vxlan(), v.bridge()) }},
 		{"set up " + v.vxlan(), func() error { return h.LinkUp("", v.vxlan()) }},
-		{"create " + v.vethHost(), func() error { return h.CreateVeth(v.vethHost(), v.vethNetns(), v.netns, l3MTU) }},
+		{"create " + v.vethHost(), func() error { return h.CreateVeth(v.vethHost(), v.vethNetns(), v.netns, mtu) }},
 		{"attach " + v.vethHost(), func() error { return h.SetMaster(v.vethHost(), v.vrf()) }},
 		{"address " + v.vethHost(), func() error { return h.AddrAdd("", v.vethHost(), transitHost) }},
 		{"set up " + v.vethHost(), func() error { return h.LinkUp("", v.vethHost()) }},

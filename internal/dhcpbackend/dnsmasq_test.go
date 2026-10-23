@@ -112,6 +112,12 @@ func TestDnsmasqSetVM_RejectsAVMWithoutReservation(t *testing.T) {
 	}
 }
 
+func TestDnsmasqConfig_CarriesTheMTU(t *testing.T) {
+	if c := (Dnsmasq{}).config(Subnet{VPC: "vp-s9", Bridge: "br-s9r1", MTU: 1450}); c.MTU != 1450 {
+		t.Errorf("mtu = %d, want 1450", c.MTU)
+	}
+}
+
 func TestDnsmasqConfig_ListenOnGatewayExcludesTheBridge(t *testing.T) {
 	c := Dnsmasq{}.config(Subnet{VPC: "vp-s9", Bridge: "br-s9r1", Listen: "gw-s9r1"})
 	if c.Listen != "gw-s9r1" || c.Except != "br-s9r1" {

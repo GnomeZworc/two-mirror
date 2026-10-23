@@ -15,4 +15,5 @@ type Config struct {
 	ConfDir        string
 	Listen         string
 	Except         string
+	MTU            int
 }

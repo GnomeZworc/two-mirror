@@ -42,7 +42,7 @@ func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	}
 
 	for _, n := range d.nics {
-		if err := netif.CreateTap(n.tapID, n.bridge, n.vpcName); err != nil {
+		if err := netif.CreateTap(n.tapID, n.bridge, n.vpcName, cfg.Network.VM()); err != nil {
 			return fmt.Errorf("create tap of interface %d: %w", n.index, err)
 		}
 	}
@@ -85,7 +85,7 @@ func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 
 	qNICs := make([]qemu.NICConfig, len(d.nics))
 	for i, n := range d.nics {
-		qNICs[i] = qemu.NICConfig{TapID: n.tapID, Mac: n.mac}
+		qNICs[i] = qemu.NICConfig{TapID: n.tapID, Mac: n.mac, MTU: cfg.Network.VM()}
 	}
 
 	qcfg := qemu.Config{

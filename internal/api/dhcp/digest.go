@@ -47,7 +47,7 @@ func CanonicalSubnet(s Subnet) (Subnet, error) {
 		return Subnet{}, err
 	}
 
-	out := Subnet{Network: network, InterfaceIP: interfaceIP}
+	out := Subnet{Network: network, InterfaceIP: interfaceIP, MTU: s.MTU}
 
 	if s.VPCRoute != "" {
 		if out.VPCRoute, err = canonicalCIDR(s.VPCRoute); err != nil {

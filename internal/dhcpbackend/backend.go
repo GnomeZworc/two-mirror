@@ -16,6 +16,7 @@ type Subnet struct {
 	InterfaceIP    net.IP
 	VPCRoute       *net.IPNet
 	DefaultGateway net.IP
+	MTU            int
 }
 
 func (s Subnet) Instance() string {

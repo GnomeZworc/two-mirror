@@ -113,18 +113,20 @@ func labL3(t *testing.T) l3VPC {
 
 func TestCreateL3FollowsTheLabRecipe(t *testing.T) {
 	f := &fakeHost{}
-	if err := createL3(f, bgpConfig(), labL3(t)); err != nil {
+	cfg := bgpConfig()
+	cfg.Network.MTUVM = 1450
+	if err := createL3(f, cfg, labL3(t)); err != nil {
 		t.Fatal(err)
 	}
 	want := []string{
 		"vtep br-000000",
 		"vrf vrf-s7 table 2700",
-		"bridge brl3-s7 mtu 1500 mac 02:02:c0:a8:0e:0b",
+		"bridge brl3-s7 mtu 1450 mac 02:02:c0:a8:0e:0b",
 		"master brl3-s7 vrf-s7",
-		"vxlan vxl3-s7 id 2700 dev br-000000 mtu 1500",
+		"vxlan vxl3-s7 id 2700 dev br-000000 mtu 1450",
 		"master vxl3-s7 brl3-s7",
 		"up [] vxl3-s7",
-		"veth l3-s7-o peer l3-s7-i netns vp-s7 mtu 1500",
+		"veth l3-s7-o peer l3-s7-i netns vp-s7 mtu 1450",
 		"master l3-s7-o vrf-s7",
 		"addr [] l3-s7-o 169.254.0.1/30",
 		"up [] l3-s7-o",
