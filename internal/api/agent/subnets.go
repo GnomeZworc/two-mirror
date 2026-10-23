@@ -40,26 +40,7 @@ func (s *Server) listSubnets(w http.ResponseWriter, _ *http.Request) {
 		if _, ok := subnets[name]; !ok {
 			subnets[name] = &Subnet{Name: name}
 		}
-		switch parts[2] {
-		case "state":
-			subnets[name].State = value
-		case "vpc":
-			subnets[name].VPC = value
-		case "mode":
-			subnets[name].Mode = value
-		case "vxlan_id":
-			subnets[name].VxlanID, _ = strconv.Atoi(value)
-		case "local_iface":
-			subnets[name].LocalIface = value
-		case "interface_ip":
-			subnets[name].InterfaceIP = value
-		case "relay_ip":
-			subnets[name].RelayIP = value
-		case "cidr":
-			subnets[name].CIDR = value
-		case "default_route":
-			subnets[name].DefaultRoute = value == "true"
-		}
+		setSubnetField(subnets[name], parts[2], value)
 	}
 	result := make([]Subnet, 0, len(subnets))
 	for _, sub := range subnets {
@@ -124,33 +105,7 @@ func (s *Server) postSubnet(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(ErrorResponse{Error: "failed to read subnet state"})
 		return
 	}
-	sub := Subnet{Name: req.Name}
-	for key, value := range entries {
-		parts := strings.Split(key, "/")
-		if len(parts) != 3 {
-			continue
-		}
-		switch parts[2] {
-		case "state":
-			sub.State = value
-		case "vpc":
-			sub.VPC = value
-		case "mode":
-			sub.Mode = value
-		case "vxlan_id":
-			sub.VxlanID, _ = strconv.Atoi(value)
-		case "local_iface":
-			sub.LocalIface = value
-		case "interface_ip":
-			sub.InterfaceIP = value
-		case "relay_ip":
-			sub.RelayIP = value
-		case "cidr":
-			sub.CIDR = value
-		case "default_route":
-			sub.DefaultRoute = value == "true"
-		}
-	}
+	sub := subnetFromEntries(req.Name, entries)
 	w.WriteHeader(http.StatusAccepted)
 	json.NewEncoder(w).Encode(sub)
 }

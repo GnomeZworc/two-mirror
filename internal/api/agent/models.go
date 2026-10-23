@@ -30,7 +30,7 @@ type Subnet struct {
 	State        string `json:"state"`
 	VPC          string `json:"vpc"`
 	Mode         string `json:"mode"`
-	VxlanID      int    `json:"vxlan_id"`
+	VxlanID      int    `json:"vxlan_id,omitempty"`
 	LocalIface   string `json:"local_iface"`
 	InterfaceIP  string `json:"interface_ip"`
 	RelayIP      string `json:"relay_ip,omitempty"`

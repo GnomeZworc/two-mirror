@@ -36,35 +36,7 @@ func (s *Server) getSubnet(w http.ResponseWriter, _ *http.Request, name string) 
 		json.NewEncoder(w).Encode(ErrorResponse{Error: "subnet not found"})
 		return
 	}
-	sub := Subnet{Name: name}
-	for key, value := range entries {
-		parts := strings.Split(key, "/")
-		if len(parts) != 3 {
-			continue
-		}
-		switch parts[2] {
-		case "state":
-			sub.State = value
-		case "vpc":
-			sub.VPC = value
-		case "mode":
-			sub.Mode = value
-		case "vxlan_id":
-			sub.VxlanID, _ = strconv.Atoi(value)
-		case "local_iface":
-			sub.LocalIface = value
-		case "interface_ip":
-			sub.InterfaceIP = value
-		case "relay_ip":
-			sub.RelayIP = value
-		case "cidr":
-			sub.CIDR = value
-		case "default_route":
-			sub.DefaultRoute = value == "true"
-		case "gateway":
-			sub.Gateway = value
-		}
-	}
+	sub := subnetFromEntries(name, entries)
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(sub)
 }
@@ -91,4 +63,41 @@ func (s *Server) deleteSubnet(w http.ResponseWriter, _ *http.Request, name strin
 	}
 	w.WriteHeader(http.StatusAccepted)
 	json.NewEncoder(w).Encode(Subnet{Name: name, State: state})
+}
+
+func subnetFromEntries(name string, entries map[string]string) Subnet {
+	sub := Subnet{Name: name}
+	for key, value := range entries {
+		parts := strings.Split(key, "/")
+		if len(parts) != 3 {
+			continue
+		}
+		setSubnetField(&sub, parts[2], value)
+	}
+	return sub
+}
+
+func setSubnetField(sub *Subnet, field, value string) {
+	switch field {
+	case "state":
+		sub.State = value
+	case "vpc":
+		sub.VPC = value
+	case "mode":
+		sub.Mode = value
+	case "vxlan_id":
+		sub.VxlanID, _ = strconv.Atoi(value)
+	case "local_iface":
+		sub.LocalIface = value
+	case "interface_ip":
+		sub.InterfaceIP = value
+	case "relay_ip":
+		sub.RelayIP = value
+	case "cidr":
+		sub.CIDR = value
+	case "default_route":
+		sub.DefaultRoute = value == "true"
+	case "gateway":
+		sub.Gateway = value
+	}
 }
