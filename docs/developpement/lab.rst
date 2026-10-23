@@ -327,6 +327,10 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - redémarrage d'une VM depuis l'invité — même processus QEMU, même adresse, nouveau bail, user_data non rejoué
      - hv1
      - #46
+   * - ``28-mtu``
+     - MTU des VM (``network.mtu_vm``, 1500) — option DHCP 26 (serveur intégré et dnsmasq), ``host_mtu`` de QEMU, tap, bridge, veth et VXLAN du subnet ; subnet vxlan refusé sur un underlay qui n'est pas à 9000
+     - hv1 hv2
+     - #56
    * - ``31-gateway``
      - gateway d'un subnet vxlan — gateway anycast et adresse d'émission calculées, default_route et gateway explicite, routes DHCP, macvlan gw-, FDB locale, sysctls ARP, règles de confinement, suppression et recréation
      - hv1

@@ -88,9 +88,10 @@ Indépendamment des choix d'équipement, deux contraintes viennent de ce que fai
 
 .. warning::
 
-   **MTU** — l'agent crée bridges, veth et interfaces VXLAN avec un MTU figé à 1500, et VXLAN
-   ajoute 50 octets d'encapsulation. Les liens entre hyperviseurs doivent donc accepter au moins
-   **1550 octets**. Cf. :doc:`architecture-cluster`.
+   **MTU** — l'underlay est attendu à **9000** : l'agent refuse un subnet ``vxlan`` sur une
+   interface à un autre MTU, sauf option, et les VM sont à 1500 plus 50 octets d'encapsulation.
+   L'interface d'un routeur qui sert de gateway à un segment de VM doit être au MTU des VM
+   (1500). Cf. :doc:`architecture-cluster`.
 
 .. warning::
 

@@ -117,14 +117,33 @@ les fait converger.
 MTU
 ---
 
-.. warning::
+Le MTU est une valeur **unique pour tout le cluster** : toutes les VM, et tous les bridges, veth,
+taps et interfaces VXLAN que l'agent crée, sont au MTU des VM, ``network.mtu_vm`` (1500 par
+défaut, cf. :doc:`/exploitation/configuration`). Il doit être identique sur tous les
+hyperviseurs : un subnet est un seul domaine L2 qui s'étend sur plusieurs hôtes, et un élément à
+un MTU plus petit que les autres jette les trames en silence — un bridge ne fragmente pas et
+n'émet aucun ICMP. Le symptôme est trompeur : le ping passe, les petites requêtes passent, les
+transferts volumineux et les poignées de main TLS échouent.
 
-   L'agent crée bridges, veth et interfaces VXLAN avec un **MTU figé à 1500**. VXLAN ajoute 50
-   octets d'encapsulation : le réseau qui relie les hyperviseurs doit donc accepter au moins
-   **1550 octets** de MTU, sinon les paquets pleine taille des VM sont perdus.
+L'underlay, le réseau qui relie les hyperviseurs et porte le VXLAN, est attendu à **exactement
+9000**. VXLAN ajoute 50 octets d'encapsulation ; 9000 laisse donc toute la marge à des VM à 1500.
+L'agent refuse de créer un subnet ``vxlan`` (ou un VPC avec ``l3vni``) dont l'interface n'est
+pas à 9000, sauf si ``network.allow_mtu_underlay_below_9000`` l'y autorise ; même alors,
+l'underlay doit faire au moins ``network.mtu_vm`` + 50. Un underlay à 1500 impose donc des VM à
+1450 au plus, et l'option ``network.allow_mtu_vm_below_1500``.
 
-   Le symptôme est trompeur : le ping passe, les petites requêtes passent, les transferts
-   volumineux et les poignées de main TLS échouent.
+Le MTU est annoncé aux VM par deux voies : l'option DHCP 26 et ``host_mtu`` sur leur interface
+virtio. Une image dont le client DHCP ignore l'option 26 s'aligne quand même.
+
+.. note::
+
+   **VM en mode bridge sur un bridge à 9000.** Un subnet ``bridge`` rattaché à ``br-000000``
+   met ses VM, à 1500, sur un segment L2 à 9000 avec l'hôte et tout ce qui s'y trouve. Le
+   routage vers les autres subnets reste correct — un routeur renvoie un « fragmentation
+   needed » plutôt que de perdre en silence —, mais l'interface du routeur qui sert de gateway
+   à ce segment doit être à 1500 : sinon elle peut envoyer à la VM des trames plus grandes
+   qu'elle n'accepte. En TCP, le MSS annoncé par la VM protège l'échange ; en UDP ou en ICMP,
+   les gros paquets venant d'un équipement à 9000 du même segment sont perdus.
 
 Hyperviseurs sans état
 ----------------------
