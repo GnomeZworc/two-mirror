@@ -17,7 +17,7 @@ Il se compose de plusieurs éléments, déployés et versionnés séparément.
      - un par hyperviseur : expose une API HTTP qui crée des VPC — isolés par network
        namespace —, des subnets — VXLAN ou bridge — et des VM QEMU/KVM raccordées à ces
        subnets, avec DHCP, routage et metadata cloud-init
-     - livré (0.1.0)
+     - livré (0.2.0)
    * - *à venir*
      - les composants de niveau supérieur — ordonnancement sur le parc, API d'orchestration,
        interface d'administration — sont à documenter au fur et à mesure de leur livraison
