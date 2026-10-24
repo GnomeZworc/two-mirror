@@ -76,7 +76,7 @@ func LoadConfig(path string) (*Config, error) {
 	v.SetDefault("dispatcher.timeout_seconds", 300)
 	v.SetDefault("dispatcher.poll_seconds", 2)
 	v.SetDefault("metadata.run_dir", "/run/two/metadata")
-	v.SetDefault("dhcp.backend", BackendDnsmasq)
+	v.SetDefault("dhcp.backend", BackendTwo)
 	v.SetDefault("qemu.ovmf_code_path", "/usr/share/OVMF/OVMF_CODE.fd")
 	v.SetDefault("qemu.ovmf_vars_template", "/usr/share/OVMF/OVMF_VARS.fd")
 	v.SetDefault("qemu.uefi_vars_dir", "/run/two/vms/uefi")

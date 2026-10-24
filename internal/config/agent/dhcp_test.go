@@ -31,27 +31,27 @@ func TestValidBackend_RejectsAnythingElse(t *testing.T) {
 	}
 }
 
-func TestLoadConfig_DefaultsToDnsmasq(t *testing.T) {
+func TestLoadConfig_DefaultsToTwo(t *testing.T) {
 	path := writeConfig(t, "database:\n  path: /tmp/two\n")
 
 	cfg, err := LoadConfig(path)
 	if err != nil {
 		t.Fatalf("LoadConfig: %v", err)
 	}
-	if cfg.DHCP.Backend != BackendDnsmasq {
-		t.Errorf("backend = %q, want %q: a 0.1.0 config must keep behaving as before", cfg.DHCP.Backend, BackendDnsmasq)
+	if cfg.DHCP.Backend != "two" {
+		t.Errorf("backend = %q, want two: the built-in server is the default since 0.2.0", cfg.DHCP.Backend)
 	}
 }
 
-func TestLoadConfig_ReadsTheTwoBackend(t *testing.T) {
-	path := writeConfig(t, "dhcp:\n  backend: two\n")
+func TestLoadConfig_ReadsTheDnsmasqBackend(t *testing.T) {
+	path := writeConfig(t, "dhcp:\n  backend: dnsmasq\n")
 
 	cfg, err := LoadConfig(path)
 	if err != nil {
 		t.Fatalf("LoadConfig: %v", err)
 	}
-	if cfg.DHCP.Backend != BackendTwo {
-		t.Errorf("backend = %q, want two", cfg.DHCP.Backend)
+	if cfg.DHCP.Backend != "dnsmasq" {
+		t.Errorf("backend = %q, want dnsmasq: an explicit dnsmasq must survive the new default", cfg.DHCP.Backend)
 	}
 }
 
@@ -76,7 +76,7 @@ func TestLoadConfig_MissingFileStillFallsBackToDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("an absent file remains valid, only an unreadable one is an error: %v", err)
 	}
-	if cfg.DHCP.Backend != BackendDnsmasq {
-		t.Errorf("backend = %q, want %q", cfg.DHCP.Backend, BackendDnsmasq)
+	if cfg.DHCP.Backend != "two" {
+		t.Errorf("backend = %q, want two", cfg.DHCP.Backend)
 	}
 }

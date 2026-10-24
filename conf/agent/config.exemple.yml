@@ -68,7 +68,7 @@ metadata:
 # The per-subnet control socket and state file live in /run/two/dhcp, which is
 # not configurable: the wrapper script hardcodes it too.
 dhcp:
-  backend: dnsmasq
+  backend: two
 
 # QEMU runtime paths
 qemu:
