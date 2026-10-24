@@ -1058,12 +1058,30 @@ première : cloud-init ne configure les interfaces secondaires qu’au premier d
 </div>
 <p>Le préfixe <code class="docutils literal notranslate"><span class="pre">90</span></code> laisse la priorité aux fichiers écrits par cloud-init pour la première
 interface (<code class="docutils literal notranslate"><span class="pre">10-netplan-*</span></code>). Sur une image démarrée avec <code class="docutils literal notranslate"><span class="pre">net.ifnames=0</span></code>, viser <code class="docutils literal notranslate"><span class="pre">eth*</span></code>.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p><strong>À établir pour NetworkManager</strong> — l’équivalent pour une image sous NetworkManager, dont
-l’image Rocky de cette page, n’est pas encore vérifié. Sans lui, une VM à plusieurs
-interfaces n’a de bail que sur la première.</p>
+<p>Pour une image sous NetworkManager, comme l’image Rocky de cette page, un profil qui s’applique à
+toutes les interfaces <code class="docutils literal notranslate"><span class="pre">en*</span></code> à la fois :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>install<span class="w"> </span>-m<span class="w"> </span><span class="m">0600</span><span class="w"> </span>/dev/stdin<span class="w"> </span>/mnt/etc/NetworkManager/system-connections/90-all-en.nmconnection<span class="w"> </span><span class="s">&lt;&lt; 'ENDFILE'</span>
+<span class="s">[connection]</span>
+<span class="s">id=two-all-en</span>
+<span class="s">type=ethernet</span>
+<span class="s">autoconnect-priority=-100</span>
+<span class="s">multi-connect=3</span>
+
+<span class="s">[match]</span>
+<span class="s">interface-name=en*</span>
+
+<span class="s">[ipv4]</span>
+<span class="s">method=auto</span>
+
+<span class="s">[ipv6]</span>
+<span class="s">method=ignore</span>
+<span class="s">ENDFILE</span>
+</pre></div>
 </div>
+<p><code class="docutils literal notranslate"><span class="pre">multi-connect=3</span></code> permet au même profil d’être actif sur plusieurs interfaces ; la priorité
+négative sert à laisser la première interface au profil écrit par cloud-init. Le fichier est en <code class="docutils literal notranslate"><span class="pre">0600</span></code>,
+comme les profils de NetworkManager. Vérifié sous Rocky 10.2 : la seconde interface obtient
+son bail au premier démarrage et après redémarrage (<code class="docutils literal notranslate"><span class="pre">nmcli</span></code> : connexion <code class="docutils literal notranslate"><span class="pre">two-all-en</span></code>).</p>
 <p><strong>Noms stables des disques additionnels</strong></p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cat<span class="w"> </span><span class="s">&lt;&lt; 'ENDFILE' &gt; /mnt/etc/udev/rules.d/90-two-xvd.rules</span>
 <span class="s">SUBSYSTEM=="block", ENV{DEVTYPE}=="disk", ENV{ID_SERIAL_SHORT}=="xvd[a-z]", SYMLINK+="$env{ID_SERIAL_SHORT}"</span>
@@ -1137,6 +1155,16 @@ source échoue, la VM démarre en <code class="docutils literal notranslate"><sp
 23.1, un drapeau actif par défaut (<code class="docutils literal notranslate"><span class="pre">NOCLOUD_SEED_URL_APPEND_FORWARD_SLASH</span></code>) ajoute la barre
 oblique manquante, ce qui explique qu’une image récente fonctionne sans elle. Avec la barre
 oblique, la configuration fonctionne quelle que soit la version de cloud-init.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Avertissement</p>
+<p><strong>Sans serveur de metadata, la VM reste bloquée au démarrage.</strong> Quand <code class="docutils literal notranslate"><span class="pre">seedfrom</span></code> figure dans
+la configuration de la source, cloud-init lit les documents par
+<code class="docutils literal notranslate"><span class="pre">util.read_seeded(seedfrom,</span> <span class="pre">timeout=None)</span></code> (<code class="docutils literal notranslate"><span class="pre">DataSourceNoCloud.py</span></code>, vérifié en 25.1.4) :
+<code class="docutils literal notranslate"><span class="pre">timeout</span></code> et <code class="docutils literal notranslate"><span class="pre">max_wait</span></code> ne s’appliquent pas à cette lecture. Si <code class="docutils literal notranslate"><span class="pre">169.254.169.254</span></code> ne
+répond pas, l’étape réseau de cloud-init ne se termine pas et la VM n’a pas de SSH (constaté
+hors agent, sur une image Debian 13 démarrée sans serveur de metadata). <code class="docutils literal notranslate"><span class="pre">seedfrom</span></code> a aussi
+priorité sur une ISO <code class="docutils literal notranslate"><span class="pre">cidata</span></code> : une telle image ne se teste pas avec un simple seed local.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
