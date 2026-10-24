@@ -801,7 +801,6 @@ window.runMermaid = runMermaid;</script>
   creating --&gt; running
   creating --&gt; error
   running --&gt; deleting
-  running --&gt; error
   deleting --&gt; deleted
   deleting --&gt; error
   error --&gt; deleting
@@ -824,7 +823,9 @@ window.runMermaid = runMermaid;</script>
 <td><p>la ressource existe sur le système</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">error</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Execute</span></code> a échoué ; état <strong>terminal</strong>, il n’y a pas de reprise automatique</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Execute</span></code> a échoué, ou la migration du démarrage a trouvé la ressource en <code class="docutils literal notranslate"><span class="pre">creating</span></code> ou
+<code class="docutils literal notranslate"><span class="pre">deleting</span></code> ; état <strong>terminal</strong>, il n’y a pas de reprise automatique. Une ressource
+<code class="docutils literal notranslate"><span class="pre">running</span></code> ne passe jamais en <code class="docutils literal notranslate"><span class="pre">error</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">deleting</span></code></p></td>
 <td><p>suppression en cours</p></td>

@@ -382,9 +382,9 @@
 élément à venir, avec son ticket.</span><a class="headerlink" href="#id5" title="Lien vers cette image">#</a></p>
 </figcaption>
 </figure>
-<p>Plusieurs clusters, chacun avec son underlay, ses deux routeurs et un route reflector, sont reliés
-en eBGP entre eux et aux <strong>routeurs de bordure</strong>. Ce qui n’existe pas encore est décrit sur son
-ticket :</p>
+<p>Plusieurs clusters, chacun avec son underlay et ses deux routeurs, sont reliés en eBGP entre eux
+et aux <strong>routeurs de bordure</strong> ; les route reflectors sont décrits plus bas. Ce qui n’existe pas
+encore est décrit sur son ticket :</p>
 <ul class="simple">
 <li><p><strong>Internet</strong> (<a class="reference external" href="https://git.g3e.fr/syonad/two/issues/31">#31</a>,
 <a class="reference external" href="https://git.g3e.fr/syonad/two/issues/42">#42</a>). Les bordures partagent avec les hyperviseurs
@@ -400,11 +400,17 @@ par défaut de type 5, si le VPC autorise Internet.</p></li>
 </li>
 <li><p><strong>Orchestration</strong> (<a class="reference external" href="https://git.g3e.fr/syonad/two/issues/72">#72</a>). Le broker et
 l’orchestrateur sont des VM du VNI 66000, partagé entre clusters. Les agents s’y connectent
-<strong>en sortie</strong>, par leur passerelle ; les routeurs de chaque cluster les NAT vers le VNI 66000.
+<strong>en sortie</strong>, par leur passerelle ; les routeurs de chaque cluster les traduisent (NAT) vers le
+VNI 66000.
 L’orchestrateur a aussi une patte dans le VNI 66001 : son API est joignable depuis Internet.</p></li>
-<li><p><strong>Route reflectors.</strong> Un par cluster, pour qu’un incident sur un cluster ne coupe pas les deux
-sessions EVPN. Chaque lien entre routeurs et route reflector est en <code class="docutils literal notranslate"><span class="pre">169.254.0.0/28</span></code>, propre
-à son cluster.</p></li>
+<li><p><strong>Route reflectors.</strong> Au moins un ; deux sont prévus dans l’architecture et dans les exemples
+(plages d’adresses de <a class="reference internal" href="route-reflector.html"><span class="doc">VM route reflector</span></a>), placés ici dans deux clusters différents pour
+qu’un incident sur un cluster ne coupe pas les deux sessions EVPN. Chaque lien entre routeurs
+et route reflector est en <code class="docutils literal notranslate"><span class="pre">169.254.0.0/28</span></code>, propre à son cluster. Le <code class="docutils literal notranslate"><span class="pre">bgp</span> <span class="pre">listen</span> <span class="pre">range</span></code> de
+chaque route reflector doit alors couvrir l’underlay de <strong>tous</strong> les clusters qu’il sert —
+l’exemple <code class="docutils literal notranslate"><span class="pre">rr1.conf</span></code> n’accepte que <code class="docutils literal notranslate"><span class="pre">192.168.14.0/24</span></code>.</p></li>
+<li><p><strong>ASN.</strong> Les routeurs de deux clusters étant voisins eBGP, chaque cluster a son propre ASN de
+routeurs : l’AS 65100 des exemples est la valeur d”<strong>un</strong> cluster.</p></li>
 </ul>
 <p>Le lab (<a class="reference internal" href="../developpement/lab.html"><span class="doc">Lab de test multi-nœud</span></a>) simplifie : un seul cluster, qui porte les deux route
 reflectors.</p>
@@ -432,7 +438,7 @@ violets : plan de contrôle (sessions BGP). Pointillé gris : créé par l’age
 <dt>Plan de données</dt><dd><p>les tunnels VXLAN entre hyperviseurs, encapsulés sur le réseau qui les relie.</p>
 </dd>
 <dt>Plan de contrôle</dt><dd><p>ce qui dit à chaque hyperviseur où se trouvent les adresses MAC des autres. C’est le rôle de
-FRR et du route reflector.</p>
+FRR et des route reflectors.</p>
 </dd>
 </dl>
 </section>
@@ -463,8 +469,8 @@ qu’un composant externe n’a pas peuplé la table de transfert (FDB) du VXLAN
 isolé le trafic reste sur le bridge local et cette absence ne se voit pas ; elle apparaît dès
 le deuxième nœud.</p>
 </div>
-<p>C’est exactement le rôle que remplissent FRR sur chaque hyperviseur et le route reflector qui
-les fait converger.</p>
+<p>C’est exactement le rôle que remplissent FRR sur chaque hyperviseur et les route reflectors qui
+les font converger.</p>
 </section>
 <section id="mtu">
 <h2>MTU<a class="headerlink" href="#mtu" title="Lien vers cette rubrique">#</a></h2>

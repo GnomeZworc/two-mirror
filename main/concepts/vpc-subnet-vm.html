@@ -811,6 +811,11 @@ window.runMermaid = runMermaid;</script>
 <h2>VPC<a class="headerlink" href="#vpc" title="Lien vers cette rubrique">#</a></h2>
 <p>Un VPC est un <strong>network namespace</strong> portant un espace d’adressage (<code class="docutils literal notranslate"><span class="pre">cidr</span></code>). C’est l’unité
 d’isolation : deux VPC ne se voient pas, et peuvent réutiliser les mêmes plages d’adresses.</p>
+<p>À la création, l’agent relie le netns au bridge <code class="docutils literal notranslate"><span class="pre">br-public</span></code> de l’host par un veth
+<code class="docutils literal notranslate"><span class="pre">vp-&lt;id&gt;-e</span></code> (côté host) ↔ <code class="docutils literal notranslate"><span class="pre">vp-&lt;id&gt;-i</span></code> (côté netns, rattaché à un <code class="docutils literal notranslate"><span class="pre">br-public</span></code> propre au
+netns). Ce nom de bridge est <strong>en dur</strong> : l’host doit porter un bridge <code class="docutils literal notranslate"><span class="pre">br-public</span></code>, celui que
+crée <code class="docutils literal notranslate"><span class="pre">deploy.sh</span> <span class="pre">-i</span></code> avec la valeur par défaut de <code class="docutils literal notranslate"><span class="pre">-P</span></code> (<a class="reference internal" href="../demarrage/installation.html"><span class="doc">Installation d’un hyperviseur</span></a>) ;
+sans lui, toute création de VPC échoue.</p>
 <p>Un VPC ne peut être supprimé que si tous ses subnets le sont déjà — sinon 409.</p>
 <section id="routage-entre-hyperviseurs-l3vni">
 <h3>Routage entre hyperviseurs : <code class="docutils literal notranslate"><span class="pre">l3vni</span></code><a class="headerlink" href="#routage-entre-hyperviseurs-l3vni" title="Lien vers cette rubrique">#</a></h3>
@@ -888,9 +893,12 @@ depuis le subnet, leur source canonique. Le schéma complet des clés est dans
 </section>
 <section id="nommage">
 <h2>Nommage<a class="headerlink" href="#nommage" title="Lien vers cette rubrique">#</a></h2>
-<p>L’API est machine-to-machine : elle <strong>ne valide pas</strong> les conventions de nommage, à l’exception
-du motif documenté pour les VPC (<code class="docutils literal notranslate"><span class="pre">vp-…</span></code>). Les exemples de cette documentation suivent la
-convention <code class="docutils literal notranslate"><span class="pre">vp-</span></code> / <code class="docutils literal notranslate"><span class="pre">sn-</span></code> / <code class="docutils literal notranslate"><span class="pre">i-</span></code>, mais c’est à l’appelant de la faire respecter.</p>
+<p>L’API est machine-to-machine : elle <strong>ne valide aucun nommage</strong>, pas même le motif <code class="docutils literal notranslate"><span class="pre">vp-…</span></code>
+indiqué par la spécification pour les VPC. Une contrainte est pourtant réelle : le nom d’un VPC
+ou d’un subnet doit <strong>contenir un « - »</strong>, car l’identifiant système (<code class="docutils literal notranslate"><span class="pre">vp-&lt;id&gt;-e</span></code>, <code class="docutils literal notranslate"><span class="pre">br-&lt;id&gt;</span></code>,
+<code class="docutils literal notranslate"><span class="pre">gw-&lt;id&gt;</span></code>…) est ce qui suit le premier tiret. Un nom sans tiret fait paniquer l’agent. Les
+exemples de cette documentation suivent la convention <code class="docutils literal notranslate"><span class="pre">vp-</span></code> / <code class="docutils literal notranslate"><span class="pre">sn-</span></code> / <code class="docutils literal notranslate"><span class="pre">i-</span></code>, mais c’est à
+l’appelant de la faire respecter.</p>
 </section>
 </section>
 

@@ -360,9 +360,11 @@
 <h1>VM route reflector<a class="headerlink" href="#vm-route-reflector" title="Lien vers cette rubrique">#</a></h1>
 <p>Le route reflector est le point de rendez-vous du plan de contrôle : plutôt que de maintenir une
 session entre chaque paire d’hyperviseurs, chaque hyperviseur ouvre une session vers le route
-reflector, qui redistribue. Le cluster en compte <strong>deux</strong>, configurés à l’identique hormis leurs
-adresses : chaque hyperviseur ouvre une session vers chacun, et la perte de l’un ne doit pas
-interrompre le plan de contrôle (<a class="reference external" href="https://git.g3e.fr/syonad/two/issues/54">#54</a>).</p>
+reflector, qui redistribue. Un cluster en compte <strong>au moins un</strong> ; l’architecture et les exemples
+de cette page en prévoient <strong>deux</strong> (rr1 et rr2, d’où les plages d’adresses ci-dessous),
+configurés à l’identique hormis leurs adresses : chaque hyperviseur ouvre une session vers chacun,
+et la perte de l’un n’interrompt pas le plan de contrôle
+(<a class="reference external" href="https://git.g3e.fr/syonad/two/issues/54">#54</a>, fermé).</p>
 <p>Il tourne lui-même en machine virtuelle, ce qui crée une dépendance circulaire à traiter
 explicitement : la VM qui porte le plan de contrôle du cluster est hébergée par le cluster.</p>
 <section id="adressage">
@@ -484,13 +486,14 @@ fois par route reflector ; si l’un tombe, les routes reçues de l’autre rest
 </ul>
 <div class="admonition warning">
 <p class="admonition-title">Avertissement</p>
-<p><strong>Les tunnels ne survivent pas à la perte du route reflector.</strong> Avec un seul route reflector
-et sans <code class="docutils literal notranslate"><span class="pre">graceful-restart</span></code>, à l’arrêt de FRR sur le route reflector, la session EVPN des
-hyperviseurs tombe aussitôt, FRR retire les routes apprises et, avec elles, le VTEP distant et l’entrée d’inondation du VXLAN — <strong>plus
-aucun paquet ne passe</strong> entre hyperviseurs, à 30 s comme à 90 s. Au redémarrage de FRR sur le
-route reflector, VTEP distant et trafic reviennent <strong>31 s</strong> plus tard. Le trafic entre VM d’un
-même hyperviseur n’est pas concerné. La redondance (deux route reflectors) ou
-<code class="docutils literal notranslate"><span class="pre">graceful-restart</span></code> sont les deux leviers ; ni l’un ni l’autre n’est encore qualifié.</p>
+<p><strong>Les tunnels ne survivent pas à la perte de tous les route reflectors.</strong> Sans
+<code class="docutils literal notranslate"><span class="pre">graceful-restart</span></code>, quand plus aucun route reflector ne répond, les sessions EVPN des
+hyperviseurs tombent, FRR retire les routes apprises et, avec elles, le VTEP distant et
+l’entrée d’inondation du VXLAN : <strong>plus aucun paquet ne passe</strong> entre hyperviseurs, jusqu’au
+retour d’un route reflector et à la reconvergence des sessions. Le trafic entre VM d’un même
+hyperviseur n’est pas concerné. Avec deux route reflectors, la perte de l’un est sans effet sur
+le trafic, à condition qu’ils ne tombent jamais ensemble : <strong>jamais deux route reflectors sur le
+même hyperviseur</strong>. Les mesures du lab sont dans <a class="reference internal" href="../developpement/lab.html"><span class="doc">Lab de test multi-nœud</span></a>.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -501,8 +504,8 @@ lancer sur n’importe quel hyperviseur), et s’il s’agit d’une VM créée 
 autres ou d’un cas particulier — l’image, elle, est l’image golden de <a class="reference internal" href="image-qcow2.html"><span class="doc">Construction de l’image qcow2</span></a> ;</p></li>
 <li><p>le placement des deux VM : jamais sur le même hyperviseur, et de préférence pas sur un
 hyperviseur dont la perte isolerait l’autre ;</p></li>
-<li><p>la procédure de reconstruction — l’état du cluster pendant l’absence du route reflector est
-décrit ci-dessus : plus de trafic entre hyperviseurs ;</p></li>
+<li><p>la procédure de reconstruction — l’état du cluster pendant l’absence de tous les route
+reflectors est décrit ci-dessus : plus de trafic entre hyperviseurs ;</p></li>
 <li><p>la procédure d’amorçage : ce qui fonctionne, et dans quel ordre, quand on démarre un cluster
 entier depuis zéro — le premier hyperviseur n’a pas de session FRR établie tant que cette VM
 n’existe pas, cf. <a class="reference internal" href="premier-hyperviseur.html"><span class="doc">Premier hyperviseur</span></a>.</p></li>

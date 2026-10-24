@@ -1082,6 +1082,21 @@ toutes les interfaces <code class="docutils literal notranslate"><span class="pr
 négative sert à laisser la première interface au profil écrit par cloud-init. Le fichier est en <code class="docutils literal notranslate"><span class="pre">0600</span></code>,
 comme les profils de NetworkManager. Vérifié sous Rocky 10.2 : la seconde interface obtient
 son bail au premier démarrage et après redémarrage (<code class="docutils literal notranslate"><span class="pre">nmcli</span></code> : connexion <code class="docutils literal notranslate"><span class="pre">two-all-en</span></code>).</p>
+<p><strong>Réappliquer le network-config à chaque démarrage</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cat<span class="w"> </span><span class="s">&lt;&lt; 'ENDFILE' &gt; /mnt/etc/cloud/cloud.cfg.d/98_network_updates.cfg</span>
+<span class="s">updates:</span>
+<span class="s">  network:</span>
+<span class="s">    when: [boot-new-instance, boot, boot-legacy]</span>
+<span class="s">ENDFILE</span>
+</pre></div>
+</div>
+<p>La source de metadata n’étant trouvée qu’à l’étape réseau de cloud-init, l’étape locale
+applique à chaque démarrage une configuration de repli limitée à la première interface. Au
+redémarrage, l’étape réseau émet l’événement <code class="docutils literal notranslate"><span class="pre">boot-legacy</span></code>, refusé par défaut : ce réglage
+l’autorise, et cloud-init réapplique alors le <code class="docutils literal notranslate"><span class="pre">network-config</span></code> servi par l’agent, qui vise
+chaque interface par sa MAC. Le <code class="docutils literal notranslate"><span class="pre">user_data</span></code> n’est pas rejoué. Sans effet sur un cloud-init
+qui ne lit pas le <code class="docutils literal notranslate"><span class="pre">network-config</span></code> (22.4, Debian 12) : la règle de DHCP ci-dessus reste
+nécessaire.</p>
 <p><strong>Noms stables des disques additionnels</strong></p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cat<span class="w"> </span><span class="s">&lt;&lt; 'ENDFILE' &gt; /mnt/etc/udev/rules.d/90-two-xvd.rules</span>
 <span class="s">SUBSYSTEM=="block", ENV{DEVTYPE}=="disk", ENV{ID_SERIAL_SHORT}=="xvd[a-z]", SYMLINK+="$env{ID_SERIAL_SHORT}"</span>

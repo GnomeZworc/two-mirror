@@ -414,13 +414,13 @@ exit
 <p>Avec une section <code class="docutils literal notranslate"><span class="pre">bgp</span></code>, l’agent <strong>refuse de démarrer</strong> si <code class="docutils literal notranslate"><span class="pre">vtysh</span></code> ne répond pas, et
 <code class="docutils literal notranslate"><span class="pre">agent.service</span></code> ne le relance pas. L’ordre au démarrage est donc : migration réseau vers
 <code class="docutils literal notranslate"><span class="pre">br-000000</span></code>, <strong>puis</strong> FRR, <strong>puis</strong> l’agent. FRR démarré avant la migration peut perdre la
-route par défaut quand elle change d’interface, et ne plus joindre le route reflector.</p>
+route par défaut quand elle change d’interface, et ne plus joindre les route reflectors.</p>
 </div>
 <p>Ce qu’elle établit :</p>
 <ul class="simple">
 <li><p><strong>Une session par route reflector</strong>, en iBGP dans l’AS 64600, vers sa loopback
 (<code class="docutils literal notranslate"><span class="pre">10.255.255.1</span></code>, <code class="docutils literal notranslate"><span class="pre">10.255.255.2</span></code>), jointe par la passerelle par défaut — le routeur de
-cluster l’a apprise du route reflector (<a class="reference internal" href="routeurs.html"><span class="doc">Routeurs</span></a>). Aucune adresse d’un autre hyperviseur n’est écrite : ajouter
+cluster l’a apprise de ce route reflector (<a class="reference internal" href="routeurs.html"><span class="doc">Routeurs</span></a>). Aucune adresse d’un autre hyperviseur n’est écrite : ajouter
 un nœud ne touche pas la configuration des autres.</p></li>
 <li><p><strong>EVPN seulement</strong> : l’IPv4 unicast n’est pas activé (<code class="docutils literal notranslate"><span class="pre">no</span> <span class="pre">bgp</span> <span class="pre">default</span> <span class="pre">ipv4-unicast</span></code>).
 <code class="docutils literal notranslate"><span class="pre">advertise-all-vni</span></code> annonce les VNI de toutes les interfaces VXLAN que FRR voit, et donc
@@ -433,9 +433,9 @@ celles que l’agent crée.</p></li>
 <p>Rien à configurer à la création d’un subnet : la VXLAN apparaît, FRR la voit et l’annonce, sans
 action ni redémarrage. Il faut en revanche que la VXLAN porte une <strong>adresse VTEP locale</strong> : sans
 elle, FRR voit la VNI mais n’annonce rien, et deux hyperviseurs gérés par two ne se joignent pas.
-L’agent la pose à partir de la release <code class="docutils literal notranslate"><span class="pre">0.2.0rc003</span></code>
-(<a class="reference external" href="https://git.g3e.fr/syonad/two/issues/51">#51</a>) : l’adresse IPv4 primaire du <code class="docutils literal notranslate"><span class="pre">local_iface</span></code>
-du subnet.</p>
+L’agent la pose depuis la version 0.2.0 (préversions comprises à partir de <code class="docutils literal notranslate"><span class="pre">0.2.0rc003</span></code>,
+<a class="reference external" href="https://git.g3e.fr/syonad/two/issues/51">#51</a>, fermé) : l’adresse IPv4 primaire du
+<code class="docutils literal notranslate"><span class="pre">local_iface</span></code> du subnet.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p><strong>À rédiger.</strong> Reste à documenter :</p>
@@ -444,11 +444,10 @@ du subnet.</p>
 et configuration doivent être posés à chaque démarrage, par le bootstrap ou un mécanisme
 équivalent (<a class="reference external" href="https://git.g3e.fr/syonad/two/issues/52">#52</a>) ;</p></li>
 <li><p>le démarrage à froid, selon que FRR démarre avant ou après l’agent ;</p></li>
-<li><p>les subnets <code class="docutils literal notranslate"><span class="pre">vxlan</span></code> créés avant <code class="docutils literal notranslate"><span class="pre">0.2.0rc003</span></code>, dont la VXLAN n’a pas d’adresse VTEP
-locale : les recréer ou poser l’adresse à chaud, à trancher dans
-<a class="reference external" href="https://git.g3e.fr/syonad/two/issues/51">#51</a> ;</p></li>
+<li><p>les subnets <code class="docutils literal notranslate"><span class="pre">vxlan</span></code> créés par une version antérieure, dont la VXLAN n’a pas d’adresse VTEP
+locale : aucune migration ne la pose, il faut les recréer ;</p></li>
 <li><p>le cas particulier du <strong>premier</strong> hyperviseur, dont la session ne peut pas s’établir tant
-que le route reflector n’existe pas.</p></li>
+qu’aucun route reflector n’existe.</p></li>
 </ul>
 </div>
 </section>

@@ -806,15 +806,18 @@ plan de contrôle du cluster en place, cf. <a class="reference internal" href=".
 <pre  class="mermaid">
         graph LR
   subgraph netns vp-admin
-    BR[&quot;br-sn000001&lt;br/&gt;10.1.1.254&quot;]
+    BR[&quot;br-000001&lt;br/&gt;10.1.1.253&quot;]
+    GW[&quot;gw-000001&lt;br/&gt;gateway 10.1.1.254&quot;]
     MD[&quot;metadata&#64;i-web&lt;br/&gt;169.254.169.254&quot;]
   end
   VM[&quot;VM i-web&lt;br/&gt;10.1.1.2&quot;] --- BR
-  BR --- MD
-  BR --- VXLAN[&quot;VXLAN vni 1&lt;br/&gt;br-000000&quot;]
-    </pre><p>Le VPC est un network namespace ; le subnet y pose un bridge porteur de la gateway ; la VM s’y
-raccroche par un tap, reçoit son adresse en DHCP et son cloud-init depuis le serveur de metadata
-du netns.</p>
+  BR --- GW
+  GW --- MD
+  BR --- VXLAN[&quot;VXLAN vni 65537&lt;br/&gt;br-000000&quot;]
+    </pre><p>Le VPC est un network namespace ; le subnet y pose un bridge <code class="docutils literal notranslate"><span class="pre">br-000001</span></code> — <code class="docutils literal notranslate"><span class="pre">br-</span></code> suivi de ce
+qui suit le premier tiret du nom du subnet — porteur de l’adresse d’émission, et un macvlan
+<code class="docutils literal notranslate"><span class="pre">gw-000001</span></code> porteur de la gateway ; la VM se raccroche au bridge par un tap, reçoit son
+adresse en DHCP et son cloud-init depuis le serveur de metadata du netns.</p>
 </section>
 <section id="le-vpc">
 <h2>1. Le VPC<a class="headerlink" href="#le-vpc" title="Lien vers cette rubrique">#</a></h2>
@@ -829,8 +832,10 @@ route interne, quel que soit le mode du subnet.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>curl<span class="w"> </span>-s<span class="w"> </span>http://127.0.0.1:8080/vpcs/vp-admin
 </pre></div>
 </div>
-<p>Attendez <code class="docutils literal notranslate"><span class="pre">&quot;state&quot;:</span> <span class="pre">&quot;running&quot;</span></code> avant l’étape suivante — un subnet dont le VPC parent n’est pas
-prêt est refusé en <strong>422</strong>. Le modèle d’attente est décrit dans <a class="reference internal" href="../exploitation/api-agent/asynchronisme.html"><span class="doc">Modèle asynchrone et codes de retour</span></a>.</p>
+<p>Un subnet peut être demandé dès maintenant : il est accepté tant que le VPC est en <code class="docutils literal notranslate"><span class="pre">creating</span></code>
+ou <code class="docutils literal notranslate"><span class="pre">running</span></code>, et sa création attend que le VPC soit <code class="docutils literal notranslate"><span class="pre">running</span></code>, dans la limite de
+<code class="docutils literal notranslate"><span class="pre">dispatcher.timeout_seconds</span></code>. Il n’est refusé en <strong>422</strong> que si le VPC est absent, en <code class="docutils literal notranslate"><span class="pre">error</span></code>
+ou en <code class="docutils literal notranslate"><span class="pre">deleting</span></code>. Le modèle d’attente est décrit dans <a class="reference internal" href="../exploitation/api-agent/asynchronisme.html"><span class="doc">Modèle asynchrone et codes de retour</span></a>.</p>
 </section>
 <section id="le-subnet">
 <h2>2. Le subnet<a class="headerlink" href="#le-subnet" title="Lien vers cette rubrique">#</a></h2>
@@ -839,7 +844,7 @@ prêt est refusé en <strong>422</strong>. Le modèle d’attente est décrit da
 <span class="w">  </span>-d<span class="w"> </span><span class="s1">'{"name": "sn-000001",</span>
 <span class="s1">       "vpc": "vp-admin",</span>
 <span class="s1">       "mode": "vxlan",</span>
-<span class="s1">       "vxlan_id": 1,</span>
+<span class="s1">       "vxlan_id": 65537,</span>
 <span class="s1">       "iface_type": "vms",</span>
 <span class="s1">       "cidr": "10.1.0.0/23"}'</span>
 </pre></div>
@@ -910,14 +915,14 @@ cloud-init, lui, se déroule dans le guest ; on l’observe par la console séri
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>socat<span class="w"> </span>-,raw,echo<span class="o">=</span><span class="m">0</span><span class="w"> </span>UNIX-CONNECT:/run/two/vms/serial/i-web.sock
 </pre></div>
 </div>
-<p>Puis, depuis l’host :</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ssh<span class="w"> </span>syonad@10.1.1.2
+<p>Puis, depuis l’host, en passant par le netns du VPC :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ip<span class="w"> </span>netns<span class="w"> </span><span class="nb">exec</span><span class="w"> </span>vp-admin<span class="w"> </span>ssh<span class="w"> </span>syonad@10.1.1.2
 </pre></div>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>En mode <code class="docutils literal notranslate"><span class="pre">vxlan</span></code>, la VM vit dans le netns du VPC : elle n’est pas joignable depuis l’host
-sans route explicite. En mode <code class="docutils literal notranslate"><span class="pre">bridge</span></code>, elle l’est directement.</p>
+sans route explicite, d’où le <code class="docutils literal notranslate"><span class="pre">ip</span> <span class="pre">netns</span> <span class="pre">exec</span></code>. En mode <code class="docutils literal notranslate"><span class="pre">bridge</span></code>, elle l’est directement.</p>
 </div>
 </section>
 <section id="supprimer">

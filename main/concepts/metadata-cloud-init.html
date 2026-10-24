@@ -811,14 +811,14 @@ deux processus ne doivent pas partager une même instance.</p>
 </section>
 <section id="documents-servis">
 <h2>Documents servis<a class="headerlink" href="#documents-servis" title="Lien vers cette rubrique">#</a></h2>
-<p>Chaque document suit la même règle :</p>
+<p>Quatre documents sont servis : <code class="docutils literal notranslate"><span class="pre">meta-data</span></code>, <code class="docutils literal notranslate"><span class="pre">user-data</span></code>, <code class="docutils literal notranslate"><span class="pre">network-config</span></code> et
+<code class="docutils literal notranslate"><span class="pre">vendor-data</span></code>. Seul <code class="docutils literal notranslate"><span class="pre">user-data</span></code> vient de l’appelant :</p>
 <ul class="simple">
-<li><p>fourni par l’appelant → servi <strong>verbatim</strong>, l’agent n’interprète rien ;</p></li>
-<li><p>absent → le template par défaut est rendu ;</p></li>
-<li><p>fourni <strong>vide</strong> → servi vide.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">user_data</span></code> fourni → servi <strong>verbatim</strong>, après décodage base64 ; l’agent n’interprète rien ;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">user_data</span></code> absent ou <strong>vide</strong> → <code class="docutils literal notranslate"><span class="pre">user-data</span></code> servi vide : les deux cas sont équivalents.</p></li>
 </ul>
-<p>Les deux derniers cas sont distincts, et c’est délibéré : fournir une chaîne vide est une façon
-explicite de neutraliser un document.</p>
+<p><code class="docutils literal notranslate"><span class="pre">meta-data</span></code>, <code class="docutils literal notranslate"><span class="pre">network-config</span></code> et <code class="docutils literal notranslate"><span class="pre">vendor-data</span></code> sont <strong>toujours</strong> rendus depuis les templates
+de l’agent ; <code class="docutils literal notranslate"><span class="pre">vendor-data</span></code> crée le compte <code class="docutils literal notranslate"><span class="pre">syonad</span></code> à partir de <code class="docutils literal notranslate"><span class="pre">password</span></code> et <code class="docutils literal notranslate"><span class="pre">sshkey</span></code>.</p>
 </section>
 <section id="champs-de-metadata">
 <h2>Champs de <code class="docutils literal notranslate"><span class="pre">metadata</span></code><a class="headerlink" href="#champs-de-metadata" title="Lien vers cette rubrique">#</a></h2>
@@ -874,11 +874,15 @@ NoCloud en <code class="docutils literal notranslate"><span class="pre">seedfrom
 <li><p>cloud-init 22.4 (Debian 12) ne demande jamais <code class="docutils literal notranslate"><span class="pre">network-config</span></code> par <code class="docutils literal notranslate"><span class="pre">seedfrom</span></code> et
 applique sa configuration de repli, limitée à la première interface ;</p></li>
 <li><p>cloud-init 25.1 (Debian 13) le lit et l’applique au premier démarrage, mais à chaque
-démarrage suivant l’étape locale réapplique le repli, et <code class="docutils literal notranslate"><span class="pre">network-config</span></code> n’est pas
-relu : les interfaces secondaires perdent leur configuration.</p></li>
+démarrage suivant l’étape locale réapplique le repli. L’étape réseau, qui trouve la
+source, émet alors l’événement <code class="docutils literal notranslate"><span class="pre">boot-legacy</span></code> : refusé par défaut, il est autorisé par
+<code class="docutils literal notranslate"><span class="pre">updates:</span> <span class="pre">network:</span> <span class="pre">when:</span> <span class="pre">[boot-new-instance,</span> <span class="pre">boot,</span> <span class="pre">boot-legacy]</span></code>, et <code class="docutils literal notranslate"><span class="pre">network-config</span></code>
+est alors réappliqué à chaque démarrage. Sans ce réglage, les interfaces secondaires
+perdent leur configuration.</p></li>
 </ul>
 <p>L’image doit donc faire du DHCP IPv4 sur <strong>toutes</strong> ses interfaces Ethernet, sans compter
-sur cloud-init. Voir <a class="reference internal" href="../deploiement/image-qcow2.html"><span class="doc">Construction de l’image qcow2</span></a>.</p>
+sur cloud-init, et autoriser <code class="docutils literal notranslate"><span class="pre">boot-legacy</span></code> pour que le <code class="docutils literal notranslate"><span class="pre">network-config</span></code> reste appliqué
+là où cloud-init le lit. Voir <a class="reference internal" href="../deploiement/image-qcow2.html"><span class="doc">Construction de l’image qcow2</span></a>.</p>
 </div>
 </section>
 <section id="securite">

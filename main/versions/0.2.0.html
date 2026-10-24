@@ -497,6 +497,9 @@ subnet, ce qui évite un trou noir partiel mesuré en lab</p></li>
 <li><p><strong>Un fichier de configuration présent mais invalide fait désormais échouer le démarrage.</strong>
 Jusqu’en 0.1.0 l’erreur de lecture était ignorée : l’agent tournait alors entièrement sur ses
 valeurs par défaut sans le dire, ce qui rendait indétectable une simple tabulation d’indentation</p></li>
+<li><p><strong>Réponses de l’API des subnets alignées sur la spécification</strong> : <code class="docutils literal notranslate"><span class="pre">gateway</span></code> est rendu aussi par
+<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/subnets</span></code> et par la réponse 202 de <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/subnets</span></code>, plus seulement par
+<code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/subnets/{name}</span></code> ; <code class="docutils literal notranslate"><span class="pre">vxlan_id</span></code> est omis hors mode <code class="docutils literal notranslate"><span class="pre">vxlan</span></code> au lieu de valoir 0 (#80)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">probe</span></code> annonce explicitement <code class="docutils literal notranslate"><span class="pre">&quot;served&quot;:</span> <span class="pre">false</span></code> pour une MAC non réservée, au lieu d’omettre le
 champ et de le rendre indistinguable d’une réponse tronquée</p></li>
 <li><p><strong>Le serveur DHCP intégré s’arrête proprement</strong> sur <code class="docutils literal notranslate"><span class="pre">SIGTERM</span></code> et <code class="docutils literal notranslate"><span class="pre">SIGINT</span></code> : il ferme sa socket de

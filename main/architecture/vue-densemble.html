@@ -432,11 +432,25 @@ une erreur.</p>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">internal/dhcp</span></code></p></td>
 <td><p>plan d’adressage ip → mac, et configurations dnsmasq du backend historique</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">internal/metadata</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">internal/dhcpbackend</span></code></p></td>
+<td><p>interface commune aux deux backends DHCP (<code class="docutils literal notranslate"><span class="pre">dnsmasq</span></code> et <code class="docutils literal notranslate"><span class="pre">two</span></code>), choisie par
+<code class="docutils literal notranslate"><span class="pre">dhcp.backend</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">internal/dhcpd</span></code></p></td>
+<td><p>moteur du serveur DHCP intégré : réservations en mémoire, réponses, écoute</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">internal/api/dhcp</span></code>, <code class="docutils literal notranslate"><span class="pre">internal/client/dhcp</span></code></p></td>
+<td><p>protocole de la socket de contrôle du serveur DHCP intégré (<code class="docutils literal notranslate"><span class="pre">set-host</span></code>, <code class="docutils literal notranslate"><span class="pre">probe</span></code>,
+<code class="docutils literal notranslate"><span class="pre">get-state</span></code>…), côté serveur et côté agent</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">internal/metadata</span></code></p></td>
 <td><p>serveur de metadata cloud-init et ses templates</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">internal/watchdog</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">internal/watchdog</span></code></p></td>
 <td><p>vérification périodique en lecture seule</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">internal/watchdog/notify</span></code></p></td>
+<td><p>émission des écarts relevés par le watchdog (journal)</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">internal/config/agent</span></code></p></td>
 <td><p>chargement par viper — tags <code class="docutils literal notranslate"><span class="pre">mapstructure</span></code>, jamais <code class="docutils literal notranslate"><span class="pre">yaml</span></code></p></td>
@@ -447,13 +461,16 @@ une erreur.</p>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">pkg/db/kv</span></code></p></td>
 <td><p>wrapper Badger ; toutes les valeurs sont des chaînes plates</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">pkg/worker</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">pkg/db/statefile</span></code></p></td>
+<td><p>fichier d’état JSON typé, écrit de façon atomique, utilisé par le backend DHCP <code class="docutils literal notranslate"><span class="pre">two</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">pkg/worker</span></code></p></td>
 <td><p>pool de goroutines sur canal</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">pkg/systemd</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">pkg/systemd</span></code></p></td>
 <td><p>client D-Bus systemd</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">pkg/logger</span></code>, <code class="docutils literal notranslate"><span class="pre">pkg/prometheus</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">pkg/logger</span></code>, <code class="docutils literal notranslate"><span class="pre">pkg/prometheus</span></code></p></td>
 <td><p>journalisation <code class="docutils literal notranslate"><span class="pre">slog</span></code> et serveur de métriques</p></td>
 </tr>
 </tbody>

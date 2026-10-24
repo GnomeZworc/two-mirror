@@ -372,7 +372,7 @@
 <p>Ce qui fait l’intérêt de two ne se voit qu’à partir de <strong>deux hyperviseurs</strong> : sur un nœud isolé,
 le trafic reste sur le bridge local et l’absence de plan de contrôle passe inaperçue (voir
 <a class="reference internal" href="../deploiement/architecture-cluster.html"><span class="doc">Architecture du cluster</span></a>). Le lab reproduit la topologie du cluster —
-hyperviseurs, route reflector, switch L3 — sous forme de VM, sur un serveur physique loué à
+hyperviseurs, route reflectors, switchs L3 — sous forme de VM, sur un serveur physique loué à
 l’heure.</p>
 <p>Le pourquoi des choix (serveur physique plutôt que VM cloud, câbles QEMU, MTU 9000, versions) est
 consigné sur le ticket <a class="reference external" href="https://git.g3e.fr/syonad/two/issues/50">#50</a>. Cette page décrit
@@ -383,7 +383,8 @@ comment s’en servir.</p>
 <a class="reference external" href="https://git.g3e.fr/syonad/labctl">labctl</a>, un dépôt à part, dont two épingle une release.
 Ce dépôt garde ce qui est propre à two — ses topologies, l’installation de two sur les
 hyperviseurs, les scénarios et leurs résultats. La redondance du plan de contrôle — deux route
-reflectors, deux switchs — est l’objet de <a class="reference external" href="https://git.g3e.fr/syonad/two/issues/54">#54</a>.</p>
+reflectors, deux switchs en VRRP v3 — est livrée par <a class="reference external" href="https://git.g3e.fr/syonad/two/issues/54">#54</a>
+(fermé), et qualifiée par les tests 71 et 72.</p>
 </div>
 <section id="l-outil">
 <h2>L’outil<a class="headerlink" href="#l-outil" title="Lien vers cette rubrique">#</a></h2>
@@ -473,7 +474,7 @@ et <code class="docutils literal notranslate"><span class="pre">evpn-3hv.yml</sp
 <span class="nt">      services</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">agent.service</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
 </pre></div>
 </div>
-<p>Les ASN, la loopback du route reflector, le lien <code class="docutils literal notranslate"><span class="pre">169.254.0.0/28</span></code> et le subnet des hyperviseurs
+<p>Les ASN, les loopbacks des route reflectors, le lien <code class="docutils literal notranslate"><span class="pre">169.254.0.0/28</span></code> et le subnet des hyperviseurs
 de l’exemple sont <strong>ceux de la production</strong> (décision du 2026-10-04, #50) : les fichiers de
 <code class="docutils literal notranslate"><span class="pre">test/e2e/topologies/</span></code> restent ainsi au plus près de ce qui tourne réellement. Toutes les adresses y sont
 <strong>fixées</strong> par <code class="docutils literal notranslate"><span class="pre">addresses</span></code> — les switchs en <code class="docutils literal notranslate"><span class="pre">.2</span></code> et <code class="docutils literal notranslate"><span class="pre">.3</span></code>, les route reflectors en <code class="docutils literal notranslate"><span class="pre">.4</span></code> et <code class="docutils literal notranslate"><span class="pre">.5</span></code>,
@@ -481,15 +482,16 @@ les hyperviseurs à partir de <code class="docutils literal notranslate"><span c
 de l’ordre de déclaration : le <code class="docutils literal notranslate"><span class="pre">frr.conf</span></code> d’un hyperviseur, écrit à la main, porte son adresse en
 <code class="docutils literal notranslate"><span class="pre">router-id</span></code>. Les deux switchs <code class="docutils literal notranslate"><span class="pre">sw1</span></code> et <code class="docutils literal notranslate"><span class="pre">sw2</span></code> sont les routeurs du segment (rôle <code class="docutils literal notranslate"><span class="pre">router</span></code> de
 labctl) : la passerelle, la première adresse du segment, est portée en VRRP v3 par celui qui est
-maître, sans préemption — voir la section du guide de labctl sur les routeurs. Leurs
-<code class="docutils literal notranslate"><span class="pre">frr.conf</span></code> ne diffèrent que par <code class="docutils literal notranslate"><span class="pre">hostname</span></code> et <code class="docutils literal notranslate"><span class="pre">router-id</span></code> ; labctl y ajoute la strophe VRRP.</p>
+maître, sans préemption (<code class="docutils literal notranslate"><span class="pre">no</span> <span class="pre">vrrp</span> <span class="pre">1</span> <span class="pre">preempt</span></code>) — voir la section du guide de labctl sur les
+routeurs. Leurs <code class="docutils literal notranslate"><span class="pre">frr.conf</span></code> ne diffèrent que par <code class="docutils literal notranslate"><span class="pre">hostname</span></code> et <code class="docutils literal notranslate"><span class="pre">router-id</span></code> ; labctl y ajoute
+la strophe VRRP.</p>
 <section id="roles">
 <h3>Rôles<a class="headerlink" href="#roles" title="Lien vers cette rubrique">#</a></h3>
 <p>Les configurations FRR du lab vivent dans <code class="docutils literal notranslate"><span class="pre">test/e2e/topologies/frr/</span></code>, une par nœud, <strong>écrites à la main</strong> :
 ce sont les mêmes fichiers que la documentation de déploiement inclut, pour que le lab qualifie
 exactement ce qu’elle prescrit. Celles des hyperviseurs se réduisent à <code class="docutils literal notranslate"><span class="pre">hostname</span></code> et <code class="docutils literal notranslate"><span class="pre">log</span></code> :
-la configuration BGP est posée par l’agent (section <code class="docutils literal notranslate"><span class="pre">bgp</span></code> de <code class="docutils literal notranslate"><span class="pre">agent.yml</span></code>). Celle du route
-reflector :</p>
+la configuration BGP est posée par l’agent (section <code class="docutils literal notranslate"><span class="pre">bgp</span></code> de <code class="docutils literal notranslate"><span class="pre">agent.yml</span></code>). Celle du premier
+route reflector (celle de <code class="docutils literal notranslate"><span class="pre">rr2</span></code> ne diffère que par son nom et sa loopback) :</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>frr defaults traditional
 hostname rr1
 log syslog informational
@@ -699,7 +701,7 @@ correspondance sur #70).</p>
 <p>Les tests se lancent <strong>depuis le Mac</strong>, sur un lab démarré (<code class="docutils literal notranslate"><span class="pre">up</span></code>, <code class="docutils literal notranslate"><span class="pre">push</span></code>, <code class="docutils literal notranslate"><span class="pre">./labctl</span> <span class="pre">up</span></code>) :</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>test/e2e/run.sh all              # toute la suite, dans l'ordre
 test/e2e/run.sh 40               # une couche
-test/e2e/run.sh 41 43            # des tests, par numéro ou par nom
+test/e2e/run.sh 41 dhcp-two      # des tests, par numéro à deux chiffres ou par nom exact
 test/e2e/run.sh --from 30        # à partir d'un numéro
 test/e2e/run.sh --continue all   # sans s'arrêter sur une couche en échec
 test/e2e/run.sh --connus all     # les échecs connus comptent comme des échecs
@@ -749,12 +751,12 @@ fait en fermant le ticket. Chaque ticket concerné liste ses marqueurs en commen
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">03-image</span></code></p></td>
 <td><p>hypothèses sur l’image de VM — outils (curl, python3), nom d’interface, effet réel de network-config, forme du compte verrouillé</p></td>
 <td><p>hv1</p></td>
-<td><p>#70</p></td>
+<td><p>#70, #73</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">11-validation</span></code></p></td>
 <td><p>validation de l’API — refus synchrones (400, 409, 422) des VPC, subnets et VM, sans trace en base</p></td>
 <td><p>hv1</p></td>
-<td><p>#41, #57, #33, #62</p></td>
+<td><p>#41, #57, #33, #62, #74</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">12-etats</span></code></p></td>
 <td><p>machine d’états — 409 pendant creating, suppression depuis error, dépendances VM → subnet → VPC, recréation sous le même nom</p></td>
@@ -787,7 +789,7 @@ fait en fermant le ticket. Chaque ticket concerné liste ses marqueurs en commen
 <td><p>#33, #62, #73</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">26-multi-disque</span></code></p></td>
-<td><p>VM à plusieurs disques — racine virtio (vda) et SCSI (xvdX), tailles et bus vus par la VM, liens <code class="docutils literal notranslate"><span class="pre">/dev/xvdX</span></code> et <code class="docutils literal notranslate"><span class="pre">by-id</span></code> par numéro de série, démarrage sur vda</p></td>
+<td><p>VM à plusieurs disques — racine virtio (vda) et SCSI (xvdX), tailles et bus vus par la VM, liens /dev/xvdX et by-id par numéro de série, démarrage sur vda</p></td>
 <td><p>hv1</p></td>
 <td><p>#32, #74</p></td>
 </tr>
@@ -797,7 +799,7 @@ fait en fermant le ticket. Chaque ticket concerné liste ses marqueurs en commen
 <td><p>#46</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">28-mtu</span></code></p></td>
-<td><p>MTU des VM (<code class="docutils literal notranslate"><span class="pre">network.mtu_vm</span></code>, 1500) — option DHCP 26 (serveur intégré et dnsmasq), <code class="docutils literal notranslate"><span class="pre">host_mtu</span></code> de QEMU, tap, bridge, veth et VXLAN du subnet ; subnet vxlan refusé sur un underlay qui n’est pas à 9000</p></td>
+<td><p>MTU des VM (network.mtu_vm, 1500 par défaut) — annoncé par le DHCP (option 26, serveur intégré sur hv1, dnsmasq sur hv2) et par QEMU (host_mtu), porté par le tap, le bridge, le veth et le VXLAN du subnet ; subnet vxlan refusé sur un underlay qui n’est pas à 9000</p></td>
 <td><p>hv1 hv2</p></td>
 <td><p>#56</p></td>
 </tr>
@@ -877,9 +879,9 @@ fait en fermant le ticket. Chaque ticket concerné liste ses marqueurs en commen
 <td><p>#54</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">72-perte-switch</span></code></p></td>
-<td><p>perte d’un switch de la passerelle VRRP — bascule vers l’autre en moins de 5 s, sessions EVPN jamais coupées ; au retour, le plus prioritaire redevient maître, seconde bascule mesurée</p></td>
+<td><p>perte d’un switch de la passerelle VRRP — bascule vers l’autre en moins de 5 s, sessions EVPN jamais coupées ; au retour, un seul maître (préemption désactivée : celui qui l’est est relevé), plus long silence mesuré</p></td>
 <td></td>
-<td><p>#54, #69</p></td>
+<td><p>#54, #69, #80</p></td>
 </tr>
 </tbody>
 </table>
@@ -896,7 +898,11 @@ tests ont été corrigées sur le serveur et les tests concernés rejoués. Il r
 (#73, #62), noms des disques SCSI (#74), mode <code class="docutils literal notranslate"><span class="pre">bridge</span></code> sur plusieurs hôtes (#75), filtrage au
 port (#76), socket DHCP (#77), fausse alerte du watchdog (#78) ;</p></li>
 <li><p>#69 vérifié : au retour de <code class="docutils literal notranslate"><span class="pre">sw1</span></code> (priorité 200), il redevient maître, seconde bascule en
-1,2 s, sessions EVPN jamais coupées ;</p></li>
+1,2 s, sessions EVPN jamais coupées. La préemption est pourtant <strong>désactivée</strong> dans la
+configuration (<code class="docutils literal notranslate"><span class="pre">no</span> <span class="pre">vrrp</span> <span class="pre">1</span> <span class="pre">preempt</span></code>, « Preempt Mode No » relevé le 2026-10-23) : la cause de ce
+retour, après coupure puis rétablissement de l’interface underlay du maître, <strong>n’est pas
+établie</strong>. <code class="docutils literal notranslate"><span class="pre">72-perte-switch</span></code> n’exige donc plus que le plus prioritaire redevienne maître : il
+vérifie qu’il n’y a qu’un maître, note lequel, et mesure le plus long silence après le retour ;</p></li>
 <li><p>une suppression de VM peut durer 300 s quand l’invité ignore l’arrêt ACPI (#79) : <code class="docutils literal notranslate"><span class="pre">wait_state</span></code>
 attend jusqu’à 360 s.</p></li>
 </ul>
@@ -922,16 +928,20 @@ gateway de son propre hôte. Une vérification entre hôtes passe par une VM.</p
 commence par un en-tête, puis envoie des blocs aux nœuds par <code class="docutils literal notranslate"><span class="pre">on</span> <span class="pre">&lt;nœud&gt;</span> <span class="pre">[VAR=valeur…]</span> <span class="pre">&lt;&lt;'NODE'</span></code>.
 Chaque bloc est précédé des bibliothèques de <code class="docutils literal notranslate"><span class="pre">test/e2e/lib/</span></code> :</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">core.sh</span></code> : <code class="docutils literal notranslate"><span class="pre">check</span></code>, <code class="docutils literal notranslate"><span class="pre">known</span></code>, <code class="docutils literal notranslate"><span class="pre">info</span></code>, appels à l’API, attente des états ;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">core.sh</span></code> : <code class="docutils literal notranslate"><span class="pre">check</span></code>, <code class="docutils literal notranslate"><span class="pre">known</span></code>, <code class="docutils literal notranslate"><span class="pre">known_flaky</span></code>, <code class="docutils literal notranslate"><span class="pre">info</span></code>, appels à l’API, attente des états ;</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">vm.sh</span></code> : image Debian compatible two, clé SSH, <code class="docutils literal notranslate"><span class="pre">vm_launch</span></code> (plusieurs NIC et disques, UEFI,
 <code class="docutils literal notranslate"><span class="pre">user_data</span></code>, mot de passe), SSH, bail, métadonnées. La MAC de chaque NIC est fournie à l’API :
 <code class="docutils literal notranslate"><span class="pre">52:54:00</span></code> suivi des trois derniers octets de l’IP (<code class="docutils literal notranslate"><span class="pre">mac_for_ip</span></code>), unique dans la suite
 puisque chaque test a sa plage ; <code class="docutils literal notranslate"><span class="pre">--nic</span> <span class="pre">sn=ip=mac</span></code> en impose une autre ;</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">net.sh</span></code> : VPC, subnets, MAC anycast, trames brutes, règles ebtables, VRRP ;</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">evpn.sh</span></code> : VRF, BGP, L3VNI, watchdog ;</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fixture.sh</span></code> : nettoyage et <code class="docutils literal notranslate"><span class="pre">assert_clean</span></code>, appelés par le runner.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fixture.sh</span></code> : nettoyage et <code class="docutils literal notranslate"><span class="pre">assert_clean</span></code>, appelés par le runner. Le nettoyage couvre les
+ressources <code class="docutils literal notranslate"><span class="pre">t&lt;NN&gt;</span></code> de l’API, les netns <code class="docutils literal notranslate"><span class="pre">t&lt;NN&gt;-*</span></code> et les fichiers <code class="docutils literal notranslate"><span class="pre">t&lt;NN&gt;-*</span></code> / <code class="docutils literal notranslate"><span class="pre">t&lt;NN&gt;.*</span></code> de
+<code class="docutils literal notranslate"><span class="pre">/tmp</span></code> et <code class="docutils literal notranslate"><span class="pre">/var/tmp/e2e</span></code> (sauf l’état <code class="docutils literal notranslate"><span class="pre">t&lt;NN&gt;.avant</span></code>) ; il ne joue que pour un test dont
+l’en-tête « # hôtes: » est rempli. Un test sans aucune vérification propre, hors fixtures, est
+en échec.</p></li>
 </ul>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># fonctionnalité: trafic entre deux VM d'un même subnet sur un hôte</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># fonctionnalité: trafic entre deux VM d'un même subnet sur un hôte, isolation entre VPC</span>
 <span class="c1"># hôtes: hv1</span>
 <span class="c1"># tickets: #NN</span>
 
@@ -943,7 +953,11 @@ on<span class="w"> </span>hv1<span class="w"> </span><span class="s">&lt;&lt;'NO
 <span class="s">check "VM t99-b" vm_launch t99-b --nic sn-t99=10.99.1.11 --sshkey "${KEY}"</span>
 <span class="s">check "t99-a joignable" vm_wait vp-t99 10.99.1.10</span>
 <span class="s">check "t99-a joint t99-b" vm_ssh vp-t99 10.99.1.10 'ping -c 2 -W 2 10.99.1.11'</span>
-<span class="s">check "t99-a ne joint pas 10.98.1.10" vm_fails vp-t99 10.99.1.10 'ping -c 2 -W 2 10.98.1.10'</span>
+<span class="s">check "VPC vp-t99b" vpc_create vp-t99b 10.99.0.0/16</span>
+<span class="s">check "subnet sn-t99b" subnet_create sn-t99b vp-t99b 9902 10.99.2.0/24</span>
+<span class="s">check "VM t99-c" vm_launch t99-c --nic sn-t99b=10.99.2.10 --sshkey "${KEY}"</span>
+<span class="s">check "t99-c joignable dans son VPC" vm_wait vp-t99b 10.99.2.10</span>
+<span class="s">check "t99-a ne joint pas t99-c (autre VPC)" vm_fails vp-t99 10.99.1.10 'ping -c 2 -W 2 10.99.2.10'</span>
 <span class="s">NODE</span>
 </pre></div>
 </div>

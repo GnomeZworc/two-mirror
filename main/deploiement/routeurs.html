@@ -375,9 +375,10 @@ données VXLAN.</p>
 </dl>
 <section id="routeur-de-cluster">
 <h2>Routeur de cluster<a class="headerlink" href="#routeur-de-cluster" title="Lien vers cette rubrique">#</a></h2>
-<p>Le routeur de cluster est la passerelle des hyperviseurs et le voisin eBGP des deux route
-reflectors, dont il apprend les loopbacks : c’est par lui que chaque hyperviseur joint
-<code class="docutils literal notranslate"><span class="pre">10.255.255.1</span></code> et <code class="docutils literal notranslate"><span class="pre">10.255.255.2</span></code> pour ouvrir ses sessions EVPN (<a class="reference internal" href="route-reflector.html"><span class="doc">VM route reflector</span></a>).</p>
+<p>Le routeur de cluster est la passerelle des hyperviseurs et le voisin eBGP des route reflectors
+— au moins un ; deux sont prévus dans l’architecture et dans les exemples —, dont il apprend les
+loopbacks : c’est par lui que chaque hyperviseur joint <code class="docutils literal notranslate"><span class="pre">10.255.255.1</span></code> et <code class="docutils literal notranslate"><span class="pre">10.255.255.2</span></code> pour
+ouvrir ses sessions EVPN (<a class="reference internal" href="route-reflector.html"><span class="doc">VM route reflector</span></a>).</p>
 <section id="adressage">
 <h3>Adressage<a class="headerlink" href="#adressage" title="Lien vers cette rubrique">#</a></h3>
 <div class="pst-scrollable-table-container"><table class="table">
@@ -394,8 +395,9 @@ reflectors, dont il apprend les loopbacks : c’est par lui que chaque hypervise
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">192.168.14.1/24</span></code></p></td>
-<td><p>interface du segment des hyperviseurs</p></td>
-<td><p>passerelle par défaut des hyperviseurs et du route reflector</p></td>
+<td><p>interface du segment des hyperviseurs, <strong>adresse virtuelle VRRP</strong></p></td>
+<td><p>passerelle par défaut des hyperviseurs et des route reflectors, portée par le routeur
+maître ; chaque routeur a en plus sa propre adresse sur le segment</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">169.254.0.1/28</span></code></p></td>
 <td><p>même interface, <strong>adresse secondaire</strong></p></td>
@@ -457,9 +459,9 @@ reflector : chaque côté filtre, aucun ne dépend du filtre de l’autre.</p></
 <li><p><strong>Aucune session avec les hyperviseurs</strong> : le routeur leur sert de passerelle, pas de voisin BGP.</p></li>
 </ul>
 <p>Celle du second routeur (<code class="docutils literal notranslate"><span class="pre">test/e2e/topologies/frr/sw2.conf</span></code>) ne diffère que par <code class="docutils literal notranslate"><span class="pre">hostname</span></code> et
-<code class="docutils literal notranslate"><span class="pre">router-id</span></code> (<code class="docutils literal notranslate"><span class="pre">169.254.0.2</span></code>), que les route reflectors déclarent aussi. La redondance des
-routeurs — et le mécanisme qui fait basculer la passerelle <code class="docutils literal notranslate"><span class="pre">192.168.14.1</span></code> — est l’objet de
-<a class="reference external" href="https://git.g3e.fr/syonad/two/issues/54">#54</a>.</p>
+<code class="docutils literal notranslate"><span class="pre">router-id</span></code> (<code class="docutils literal notranslate"><span class="pre">169.254.0.2</span></code>), que les route reflectors déclarent aussi. Les deux routeurs se
+partagent la passerelle <code class="docutils literal notranslate"><span class="pre">192.168.14.1</span></code> en <strong>VRRP v3</strong> : le maître la porte, l’autre attend, sans
+préemption (<a class="reference external" href="https://git.g3e.fr/syonad/two/issues/54">#54</a>, fermé).</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Ce qui précède est le contrat du routeur de cluster : adresses, ASN, session, filtres. Sa
@@ -469,9 +471,8 @@ traduction dans la configuration d’un constructeur n’a pas sa place ici.</p>
 <p class="admonition-title">Note</p>
 <p><strong>À rédiger.</strong> Reste à documenter, faute d’éléments de terrain :</p>
 <ul class="simple">
-<li><p>pour le routeur de cluster : le matériel employé et sa version de référence ; la redondance
-— deux routeurs, mécanisme de bascule, comportement attendu pendant une bascule
-(<a class="reference external" href="https://git.g3e.fr/syonad/two/issues/54">#54</a>) ;</p></li>
+<li><p>pour le routeur de cluster : le matériel employé et sa version de référence ; la traduction
+de la redondance VRRP v3 dans sa configuration ;</p></li>
 <li><p>pour les routeurs de datacentre et de bordure : tout — équipement, configuration de
 référence, ce qui est annoncé et filtré à chaque niveau, redondance ;</p></li>
 <li><p>l’ordre de mise en service, et ce qui doit être opérationnel avant de préparer le premier

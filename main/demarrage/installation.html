@@ -393,11 +393,13 @@ depuis la release, et les vérifie contre le manifeste <code class="docutils lit
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">-t</span> <span class="pre">&lt;tag&gt;</span></code></p></td>
 <td><p>déployer une release donnée</p></td>
-<td><p>dernière</p></td>
+<td><p>dernière publiée, <strong>préversions comprises</strong></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">-b</span> <span class="pre">&lt;branche&gt;</span></code></p></td>
-<td><p>branche utilisée pour l’auto-mise à jour du script</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">main</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">-b</span> <span class="pre">&lt;branche&gt;/</span></code></p></td>
+<td><p>branche d’où viennent l’auto-mise à jour du script et les scripts de <code class="docutils literal notranslate"><span class="pre">-i</span></code> ; les
+binaires viennent toujours d’une release. Le <code class="docutils literal notranslate"><span class="pre">/</span></code> final est <strong>obligatoire</strong> : l’URL est
+concaténée sans séparateur (<code class="docutils literal notranslate"><span class="pre">-b</span> <span class="pre">dev</span></code> donne <code class="docutils literal notranslate"><span class="pre">…/branch/devscripts/…</span></code>)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">main/</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">-p</span> <span class="pre">&lt;profil&gt;</span></code></p></td>
 <td><p>profil d’host ; seul <code class="docutils literal notranslate"><span class="pre">kvm</span></code> installe les units de l’agent</p></td>
@@ -416,7 +418,8 @@ depuis la release, et les vérifie contre le manifeste <code class="docutils lit
 <td><p><code class="docutils literal notranslate"><span class="pre">br-000000</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">-P</span> <span class="pre">&lt;bridge&gt;</span></code></p></td>
-<td><p>bridge supplémentaire, créé vide et réservé</p></td>
+<td><p>bridge supplémentaire, créé vide et réservé ; garder <code class="docutils literal notranslate"><span class="pre">br-public</span></code>, nom attendu par
+l’agent (voir ci-dessous)</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">br-public</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">-R</span> <span class="pre">&lt;secondes&gt;</span></code></p></td>
@@ -457,6 +460,9 @@ le serveur de metadata : sans elle, iptables ne voit pas le trafic bridgé des V
 ne se provisionne pas. Contrepartie assumée : tout le trafic inter-VM traverse les tables NAT.</p>
 <p><strong>Réseau</strong> — création du bridge réservé, puis rattachement de l’uplink au bridge principal,
 l’adresse et la route par défaut étant déplacées de l’interface physique vers le bridge.</p>
+<p>Le nom <code class="docutils literal notranslate"><span class="pre">br-public</span></code> est <strong>en dur dans l’agent</strong> : chaque VPC <code class="docutils literal notranslate"><span class="pre">vp-&lt;id&gt;</span></code> y raccorde un veth
+<code class="docutils literal notranslate"><span class="pre">vp-&lt;id&gt;-e</span></code> côté host, dont l’autre extrémité <code class="docutils literal notranslate"><span class="pre">vp-&lt;id&gt;-i</span></code> rejoint un <code class="docutils literal notranslate"><span class="pre">br-public</span></code> créé dans
+le netns du VPC. Avec un autre nom passé à <code class="docutils literal notranslate"><span class="pre">-P</span></code>, toute création de VPC échoue.</p>
 <div class="admonition danger">
 <p class="admonition-title">Danger</p>
 <p>La migration réseau <strong>coupe le réseau de l’host si elle échoue à mi-parcours</strong>, sans console
@@ -498,7 +504,8 @@ mécanisme normal, pas une réparation.</p>
 <td><p><code class="docutils literal notranslate"><span class="pre">-conf</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">db</span></code></p></td>
-<td><p>inspection de la base clé-valeur en ligne de commande</p></td>
+<td><p>inspection de la base clé-valeur en ligne de commande ; <strong>ni publié ni déployé</strong> par
+<code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code>, à compiler depuis les sources (<a class="reference internal" href="../exploitation/observabilite.html"><span class="doc">Observabilité</span></a>)</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">-conf</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">dhcp</span></code></p></td>
@@ -509,7 +516,7 @@ avec <code class="docutils literal notranslate"><span class="pre">dhcp.backend:<
 </tbody>
 </table>
 </div>
-<p>Les quatre partagent le même fichier, <code class="docutils literal notranslate"><span class="pre">/etc/two/agent.yml</span></code> — voir
+<p>Les quatre lisent le même fichier, <code class="docutils literal notranslate"><span class="pre">/etc/two/agent.yml</span></code> — voir
 <a class="reference internal" href="../exploitation/configuration.html"><span class="doc">Configuration</span></a>. <code class="docutils literal notranslate"><span class="pre">dhcp</span></code> reçoit en plus son bridge et ses deux chemins de
 fichiers en paramètres, posés par son script d’enrobage.</p>
 </section>

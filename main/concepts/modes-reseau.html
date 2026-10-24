@@ -950,11 +950,12 @@ netns relève de #61.</p>
 <section id="routes-annoncees-aux-vm">
 <h2>Routes annoncées aux VM<a class="headerlink" href="#routes-annoncees-aux-vm" title="Lien vers cette rubrique">#</a></h2>
 <p>Les routes sont poussées par DHCP, dans l”<strong>option 121</strong> (routes statiques sans classe,
-RFC 3442). Trois entrées y figurent :</p>
+RFC 3442). Trois entrées au plus y figurent :</p>
 <ol class="arabic simple">
 <li><p>la route <code class="docutils literal notranslate"><span class="pre">/32</span></code> vers <code class="docutils literal notranslate"><span class="pre">169.254.169.254</span></code>, le serveur de metadata ;</p></li>
-<li><p>la route vers le CIDR du VPC ;</p></li>
-<li><p>la route par défaut <code class="docutils literal notranslate"><span class="pre">0.0.0.0/0</span></code>.</p></li>
+<li><p>la route vers le CIDR du VPC, <strong>sauf en mode</strong> <code class="docutils literal notranslate"><span class="pre">bridge</span></code> ;</p></li>
+<li><p>la route par défaut <code class="docutils literal notranslate"><span class="pre">0.0.0.0/0</span></code>, <strong>sur l’interface</strong> <code class="docutils literal notranslate"><span class="pre">primary</span></code> <strong>seulement</strong> : les autres
+interfaces d’une VM n’en reçoivent pas.</p></li>
 </ol>
 <div class="admonition important">
 <p class="admonition-title">Important</p>
@@ -964,8 +965,8 @@ dans l’option 121 ; l’option 3 ne sert que les clients qui n’implémentent
 </section>
 <section id="route-par-defaut-default-route-et-gateway">
 <h2>Route par défaut : <code class="docutils literal notranslate"><span class="pre">default_route</span></code> et <code class="docutils literal notranslate"><span class="pre">gateway</span></code><a class="headerlink" href="#route-par-defaut-default-route-et-gateway" title="Lien vers cette rubrique">#</a></h2>
-<p>Une route par défaut est <strong>toujours</strong> annoncée. Le champ <code class="docutils literal notranslate"><span class="pre">default_route</span></code> ne choisit que son
-next-hop :</p>
+<p>Une route par défaut est <strong>toujours</strong> annoncée à l’interface <code class="docutils literal notranslate"><span class="pre">primary</span></code> d’une VM, et à elle
+seule. Le champ <code class="docutils literal notranslate"><span class="pre">default_route</span></code> ne choisit que son next-hop :</p>
 <dl class="simple">
 <dt><code class="docutils literal notranslate"><span class="pre">default_route:</span> <span class="pre">false</span></code> (défaut)</dt><dd><p>next-hop = <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> du subnet, la gateway calculée en <code class="docutils literal notranslate"><span class="pre">vxlan</span></code>.</p>
 </dd>
@@ -977,7 +978,7 @@ de l’host.</p>
 subnet relèvent de l’appelant. Fourni avec <code class="docutils literal notranslate"><span class="pre">default_route:</span> <span class="pre">false</span></code>, il est ignoré.</p>
 <p>Dans tous les modes sauf <code class="docutils literal notranslate"><span class="pre">bridge</span></code>, la route vers le CIDR du VPC garde <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> comme
 next-hop : sur un subnet à IP publique, le trafic interne ne doit pas sortir par la gateway
-publique.</p>
+publique. En mode <code class="docutils literal notranslate"><span class="pre">bridge</span></code>, cette route n’est pas annoncée du tout.</p>
 </section>
 <section id="pourquoi-la-route-32-vers-le-serveur-de-metadata-est-indispensable">
 <h2>Pourquoi la route <code class="docutils literal notranslate"><span class="pre">/32</span></code> vers le serveur de metadata est indispensable<a class="headerlink" href="#pourquoi-la-route-32-vers-le-serveur-de-metadata-est-indispensable" title="Lien vers cette rubrique">#</a></h2>
