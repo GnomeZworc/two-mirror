@@ -1,0 +1,195 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 1210" width="1500" height="1210" role="img" aria-label="Vue d'ensemble : Internet, bordures, deux clusters, route reflectors, services partagés et hyperviseurs">
+  <style>
+    .lbl { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 14px; fill: #e6edf3; }
+    .sub { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 11px; fill: #9198a1; }
+    .grp { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 12px; font-weight: 600; fill: #9198a1; letter-spacing: .04em; }
+    .ctrlt { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 11px; fill: #c297ff; }
+    .datat { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 11px; font-weight: 600; fill: #4493f8; }
+    .orcht { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 11px; font-weight: 600; fill: #3fb950; }
+    .nett { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 11px; font-weight: 600; fill: #f0883e; }
+    .box { fill: #22272e; stroke: #6e7781; stroke-width: 1.5; }
+    .future { fill: #22272e; stroke: #6e7781; stroke-width: 1.5; stroke-dasharray: 6 4; }
+    .group { fill: #1c2128; stroke: #444c56; stroke-width: 1.5; }
+    .pill { fill: #22272e; stroke: #9198a1; stroke-width: 1.5; }
+    .bus { stroke: #9198a1; stroke-width: 4; fill: none; stroke-linecap: round; }
+    .link { stroke: #9198a1; stroke-width: 1.8; fill: none; }
+    .ctrl { stroke: #c297ff; stroke-width: 1.6; fill: none; stroke-dasharray: 5 4; }
+    .data { stroke: #4493f8; stroke-width: 3; fill: none; }
+    .orch { stroke: #3fb950; stroke-width: 2; fill: none; stroke-dasharray: 8 4; }
+    .net { stroke: #f0883e; stroke-width: 2.4; fill: none; }
+    .head-ctrl { fill: #c297ff; }
+    .head-data { fill: #4493f8; }
+    .head-orch { fill: #3fb950; }
+    .head-net { fill: #f0883e; }
+  </style>
+  <defs>
+    <marker id="a-ctrl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head-ctrl" d="M0 0 L10 5 L0 10 z"/></marker>
+    <marker id="a-data" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path class="head-data" d="M0 0 L10 5 L0 10 z"/></marker>
+    <marker id="a-orch" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="head-orch" d="M0 0 L10 5 L0 10 z"/></marker>
+    <marker id="a-net" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="head-net" d="M0 0 L10 5 L0 10 z"/></marker>
+  </defs>
+  <rect class="pill" x="600" y="20" width="300" height="56" rx="28"/>
+  <text class="lbl" x="750" y="54" text-anchor="middle">Internet</text>
+  <path class="net" d="M750 76 V110" marker-start="url(#a-net)" marker-end="url(#a-net)"/>
+  <text class="nett" x="758" y="98" text-anchor="start">agrégats publics</text>
+  <rect class="group" x="560" y="110" width="380" height="130" rx="8"/>
+  <text class="grp" x="580" y="134">BORDURES · AS PUBLIC · #31</text>
+  <rect class="future" x="580" y="140" width="160" height="52" rx="6"/>
+  <text class="lbl" x="660.0" y="163.0" text-anchor="middle">bordure 1</text>
+  <text class="sub" x="660.0" y="180.0" text-anchor="middle">gateway anycast</text>
+  <rect class="future" x="760" y="140" width="160" height="52" rx="6"/>
+  <text class="lbl" x="840.0" y="163.0" text-anchor="middle">bordure 2</text>
+  <text class="sub" x="840.0" y="180.0" text-anchor="middle">gateway anycast</text>
+  <text class="sub" x="750" y="214" text-anchor="middle">même IP et même MAC de gateway · sans état</text>
+  <text class="sub" x="750" y="230" text-anchor="middle">VTEP · VNI 66001 (public)</text>
+  <rect class="group" x="1180" y="20" width="280" height="100" rx="8"/>
+  <text class="grp" x="1200" y="44">POSTE DE L'OPÉRATEUR</text>
+  <rect class="future" x="1200" y="50" width="240" height="52" rx="6"/>
+  <text class="lbl" x="1320.0" y="73.0" text-anchor="middle">Terraform / OpenTofu</text>
+  <text class="sub" x="1320.0" y="90.0" text-anchor="middle">provider two · #72</text>
+  <path class="net" d="M1180 64 H900" marker-end="url(#a-net)"/>
+  <text class="nett" x="1040" y="56" text-anchor="middle">API publique de l'orchestrateur</text>
+  <rect class="group" x="40" y="280" width="480" height="130" rx="8"/>
+  <text class="grp" x="60" y="304">CLUSTER A</text>
+  <rect class="box" x="60" y="312" width="210" height="56" rx="6"/>
+  <text class="lbl" x="165.0" y="337.0" text-anchor="middle">routeur 1</text>
+  <text class="sub" x="165.0" y="354.0" text-anchor="middle">169.254.0.1/28</text>
+  <rect class="box" x="290" y="312" width="210" height="56" rx="6"/>
+  <text class="lbl" x="395.0" y="337.0" text-anchor="middle">routeur 2</text>
+  <text class="sub" x="395.0" y="354.0" text-anchor="middle">169.254.0.2/28</text>
+  <text class="sub" x="280" y="392" text-anchor="middle">VRRP · VTEP · VNI 66000 · NAT vers le VNI 66000 · #72</text>
+  <rect class="group" x="1200" y="280" width="260" height="130" rx="8"/>
+  <text class="grp" x="1220" y="304">CLUSTER B</text>
+  <rect class="box" x="1215" y="312" width="110" height="56" rx="6"/>
+  <text class="lbl" x="1270.0" y="337.0" text-anchor="middle">routeur 1</text>
+  <text class="sub" x="1270.0" y="354.0" text-anchor="middle">169.254.0.1/28</text>
+  <rect class="box" x="1335" y="312" width="110" height="56" rx="6"/>
+  <text class="lbl" x="1390.0" y="337.0" text-anchor="middle">routeur 2</text>
+  <text class="sub" x="1390.0" y="354.0" text-anchor="middle">169.254.0.2/28</text>
+  <text class="sub" x="1330" y="388" text-anchor="middle">VRRP · VTEP · VNI 66000</text>
+  <text class="sub" x="1330" y="403" text-anchor="middle">NAT vers le VNI 66000 · #72</text>
+  <line class="bus" x1="1200" y1="460" x2="1460" y2="460"/>
+  <text class="sub" x="1205" y="478" text-anchor="start">underlay B · VXLAN UDP 4789 · BGP</text>
+  <path class="link" d="M1230 368 V460"/>
+  <path class="link" d="M1430 368 V460"/>
+  <rect class="box" x="1215" y="505" width="220" height="52" rx="6"/>
+  <text class="lbl" x="1325.0" y="528.0" text-anchor="middle">route reflector 2</text>
+  <text class="sub" x="1325.0" y="545.0" text-anchor="middle">lo 10.255.255.2/32 · 169.254.0.4/28</text>
+  <path class="link" d="M1440 460 V505"/>
+  <text class="ctrlt" x="1434" y="498" text-anchor="end">iBGP EVPN</text>
+  <rect class="group" x="1200" y="600" width="260" height="410" rx="8"/>
+  <text class="grp" x="1220" y="624">HYPERVISEURS B (×N)</text>
+  <rect class="box" x="1220" y="645" width="220" height="64" rx="6"/>
+  <text class="lbl" x="1330.0" y="666.0" text-anchor="middle">hyperviseur B1</text>
+  <text class="sub" x="1330.0" y="683.0" text-anchor="middle">agent · FRR · VPC</text>
+  <text class="sub" x="1330.0" y="698.0" text-anchor="middle">VTEP : son IP sur l'underlay B</text>
+  <rect class="box" x="1220" y="729" width="220" height="64" rx="6"/>
+  <text class="lbl" x="1330.0" y="750.0" text-anchor="middle">hyperviseur B2</text>
+  <text class="sub" x="1330.0" y="767.0" text-anchor="middle">agent · FRR · VPC</text>
+  <text class="sub" x="1330.0" y="782.0" text-anchor="middle">VTEP : son IP sur l'underlay B</text>
+  <rect class="box" x="1220" y="813" width="220" height="64" rx="6"/>
+  <text class="lbl" x="1330.0" y="834.0" text-anchor="middle">hyperviseur B3</text>
+  <text class="sub" x="1330.0" y="851.0" text-anchor="middle">agent · FRR · VPC</text>
+  <text class="sub" x="1330.0" y="866.0" text-anchor="middle">VTEP : son IP sur l'underlay B</text>
+  <text class="lbl" x="1330" y="925" text-anchor="middle">…</text>
+  <text class="sub" x="1330" y="955" text-anchor="middle">même modèle que</text>
+  <text class="sub" x="1330" y="970" text-anchor="middle">l'hyperviseur détaillé</text>
+  <path class="link" d="M1452 460 V600"/>
+  <path class="link" d="M500 340 H1215"/>
+  <text class="sub" x="860" y="332" text-anchor="middle">eBGP · routeur 2 de A → routeur 1 de B</text>
+  <path class="link" d="M660 240 V258 H210 V312"/>
+  <path class="link" d="M840 240 V258 H1315 V312"/>
+  <text class="sub" x="420" y="252" text-anchor="middle">eBGP</text>
+  <text class="sub" x="1060" y="252" text-anchor="middle">eBGP</text>
+  <line class="bus" x1="40" y1="460" x2="680" y2="460"/>
+  <text class="sub" x="690" y="465" text-anchor="start">underlay A · VXLAN UDP 4789 · BGP</text>
+  <path class="link" d="M75 368 V460"/>
+  <path class="link" d="M485 368 V460"/>
+  <rect class="box" x="60" y="490" width="230" height="52" rx="6"/>
+  <text class="lbl" x="175.0" y="513.0" text-anchor="middle">route reflector 1</text>
+  <text class="sub" x="175.0" y="530.0" text-anchor="middle">lo 10.255.255.1/32 · 169.254.0.3/28</text>
+  <path class="link" d="M175 460 V490"/>
+  <text class="ctrlt" x="183" y="482" text-anchor="start">iBGP EVPN</text>
+  <rect class="group" x="740" y="490" width="440" height="92" rx="8"/>
+  <text class="grp" x="760" y="514">SERVICES · VNI 66000 PARTAGÉ ENTRE CLUSTERS · #72</text>
+  <rect class="future" x="760" y="520" width="190" height="52" rx="6"/>
+  <text class="lbl" x="855.0" y="543.0" text-anchor="middle">broker</text>
+  <text class="sub" x="855.0" y="560.0" text-anchor="middle">MQTT · VNI 66000</text>
+  <rect class="future" x="970" y="520" width="190" height="52" rx="6"/>
+  <text class="lbl" x="1065.0" y="543.0" text-anchor="middle">orchestrateur</text>
+  <text class="sub" x="1065.0" y="560.0" text-anchor="middle">VNI 66000 et VNI 66001</text>
+  <path class="orch" d="M950 546 H970"/>
+  <path class="orch" d="M510 410 V546 H760" marker-end="url(#a-orch)"/>
+  <path class="orch" d="M1200 400 H1192 V560 H1180" marker-end="url(#a-orch)"/>
+  <rect class="group" x="40" y="600" width="1120" height="410" rx="8"/>
+  <text class="grp" x="60" y="624">HYPERVISEUR A (détaillé)</text>
+  <rect class="box" x="60" y="635" width="260" height="52" rx="6"/>
+  <text class="lbl" x="190.0" y="658.0" text-anchor="middle">br-000000</text>
+  <text class="sub" x="190.0" y="675.0" text-anchor="middle">IP de l'hyperviseur = VTEP</text>
+  <rect class="box" x="60" y="701" width="260" height="52" rx="6"/>
+  <text class="lbl" x="190.0" y="724.0" text-anchor="middle">FRR · bgpd</text>
+  <text class="sub" x="190.0" y="741.0" text-anchor="middle">sessions EVPN vers les RR</text>
+  <rect class="box" x="60" y="767" width="260" height="66" rx="6"/>
+  <text class="lbl" x="190.0" y="789.0" text-anchor="middle">agent</text>
+  <text class="sub" x="190.0" y="806.0" text-anchor="middle">API locale 127.0.0.1:8080</text>
+  <text class="sub" x="190.0" y="821.0" text-anchor="middle">client du broker, en sortie</text>
+  <rect class="future" x="60" y="849" width="260" height="56" rx="6"/>
+  <text class="lbl" x="190.0" y="874.0" text-anchor="middle">IP flottante · NAT 1:1</text>
+  <text class="sub" x="190.0" y="891.0" text-anchor="middle">hôte de la VM, sans état · #31</text>
+  <rect class="future" x="60" y="921" width="260" height="56" rx="6"/>
+  <text class="lbl" x="190.0" y="946.0" text-anchor="middle">subnet public de l'hôte</text>
+  <text class="sub" x="190.0" y="963.0" text-anchor="middle">VNI 66001 · hors VPC · #31</text>
+  <rect class="group" x="360" y="635" width="780" height="355" rx="8"/>
+  <text class="grp" x="380" y="659">VPC · netns + VRF</text>
+  <rect class="box" x="380" y="675" width="240" height="60" rx="6"/>
+  <text class="lbl" x="500.0" y="702.0" text-anchor="middle">netns du VPC</text>
+  <text class="sub" x="500.0" y="719.0" text-anchor="middle">gateway .254 · DHCP · métadonnées</text>
+  <rect class="box" x="380" y="770" width="240" height="60" rx="6"/>
+  <text class="lbl" x="500.0" y="797.0" text-anchor="middle">VRF · L3VNI</text>
+  <text class="sub" x="500.0" y="814.0" text-anchor="middle">routage entre subnets et hyperviseurs</text>
+  <rect class="future" x="660" y="770" width="200" height="60" rx="6"/>
+  <text class="lbl" x="760.0" y="797.0" text-anchor="middle">passerelle NAT du VPC</text>
+  <text class="sub" x="760.0" y="814.0" text-anchor="middle">sur un des hyperviseurs · #42</text>
+  <rect class="future" x="380" y="895" width="240" height="60" rx="6"/>
+  <text class="lbl" x="500.0" y="922.0" text-anchor="middle">subnet public du VPC</text>
+  <text class="sub" x="500.0" y="939.0" text-anchor="middle">relié au subnet public de l'hôte</text>
+  <rect class="box" x="880" y="675" width="240" height="60" rx="6"/>
+  <text class="lbl" x="1000.0" y="702.0" text-anchor="middle">VM privée</text>
+  <text class="sub" x="1000.0" y="719.0" text-anchor="middle">adresse du VPC</text>
+  <rect class="future" x="880" y="895" width="240" height="60" rx="6"/>
+  <text class="lbl" x="1000.0" y="922.0" text-anchor="middle">VM publique</text>
+  <text class="sub" x="1000.0" y="939.0" text-anchor="middle">+ NIC sur le subnet public</text>
+  <path class="link" d="M880 705 H620"/>
+  <path class="link" d="M500 735 V770"/>
+  <path class="net" d="M880 925 H620"/>
+  <path class="net" d="M380 953 H320" marker-end="url(#a-net)"/>
+  <path class="net" d="M380 810 H340 V877 H320" marker-end="url(#a-net)"/>
+  <path class="net" d="M620 800 H660" marker-end="url(#a-net)"/>
+  <path class="net" d="M760 830 V863 H350 V929 H320" marker-end="url(#a-net)"/>
+  <text class="nett" x="640" y="763" text-anchor="middle">défaut type 5</text>
+  <path class="net" d="M190 905 V921" marker-end="url(#a-net)"/>
+  <path class="data" d="M60 949 H50 V661 H60"/>
+  <text class="datat" x="30" y="805" text-anchor="middle" transform="rotate(-90 30 805)">VNI 66001</text>
+  <path class="link" d="M300 635 V460"/>
+  <path class="orch" d="M320 785 H332 V410" marker-end="url(#a-orch)"/>
+  <text class="orcht" x="340" y="596" text-anchor="start">register · ordres · événements (mTLS, sortant)</text>
+  <path class="net" d="M750 240 V300 H1140 V520" marker-end="url(#a-net)"/>
+  <text class="nett" x="1132" y="430" text-anchor="end">API publique</text>
+  <text class="nett" x="1132" y="446" text-anchor="end">VNI 66001</text>
+  <path class="data" d="M60 1045 H110"/>
+  <text class="sub" x="118" y="1049" text-anchor="start">plan de données : VXLAN</text>
+  <path class="ctrl" d="M290 1045 H340"/>
+  <text class="sub" x="348" y="1049" text-anchor="start">plan de contrôle : BGP</text>
+  <path class="orch" d="M510 1045 H560" marker-end="url(#a-orch)"/>
+  <text class="sub" x="568" y="1049" text-anchor="start">orchestration</text>
+  <path class="net" d="M690 1045 H740" marker-end="url(#a-net)"/>
+  <text class="sub" x="748" y="1049" text-anchor="start">trafic Internet</text>
+  <rect class="future" x="880" y="1035" width="34" height="20" rx="4"/>
+  <text class="sub" x="922" y="1049" text-anchor="start">à venir (ticket indiqué)</text>
+  <text class="sub" x="60" y="1089" text-anchor="start">Les agents ne sont jamais joints par l'orchestrateur : ils se connectent au broker en sortie, via leur passerelle ; les routeurs de leur cluster les traduisent (NAT) vers le VNI 66000.</text>
+  <text class="sub" x="60" y="1107" text-anchor="start">L'orchestrateur a une patte dans le VNI 66001 : son API est joignable depuis Internet, par les bordures.</text>
+  <text class="sub" x="60" y="1125" text-anchor="start">VM publique : un subnet public dans son VPC, relié au subnet public de l'hôte (VNI 66001), dont la gateway anycast est portée par toutes les bordures.</text>
+  <text class="sub" x="60" y="1143" text-anchor="start">VM privée : route par défaut de type 5 vers la passerelle NAT de son VPC (IP de sortie du VPC) si le VPC autorise Internet, ou IP flottante 1:1 sur son hôte.</text>
+  <text class="sub" x="60" y="1161" text-anchor="start">Les bordures restent sans état : tout NAT vit sur un hyperviseur. Broker et orchestrateur sont des VM du VNI 66000, partagé : elles tournent sur les hyperviseurs de n'importe quel cluster.</text>
+  <text class="sub" x="60" y="1179" text-anchor="start">Au moins un route reflector ; deux prévus, ici un par cluster : un événement d'un cluster ne coupe pas les deux sessions. Chaque lien routeurs ↔ RR est en 169.254.0.0/28, propre à son cluster.</text>
+</svg>

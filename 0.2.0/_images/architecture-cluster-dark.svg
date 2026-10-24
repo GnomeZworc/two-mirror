@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" width="1200" height="900" role="img" aria-label="Détail d'un cluster : routeurs, route reflectors, hyperviseurs, netns et VRF des VPC, plans de données et de contrôle">
+  <style>
+    .lbl { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 14px; fill: #e6edf3; }
+    .sub { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 11px; fill: #9198a1; }
+    .grp { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 12px; font-weight: 600; fill: #9198a1; letter-spacing: .04em; }
+    .ctrlt { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 11px; fill: #c297ff; }
+    .datat { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 11px; font-weight: 600; fill: #4493f8; }
+    .orcht { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 11px; font-weight: 600; fill: #3fb950; }
+    .nett { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 11px; font-weight: 600; fill: #f0883e; }
+    .box { fill: #22272e; stroke: #6e7781; stroke-width: 1.5; }
+    .future { fill: #22272e; stroke: #6e7781; stroke-width: 1.5; stroke-dasharray: 6 4; }
+    .group { fill: #1c2128; stroke: #444c56; stroke-width: 1.5; }
+    .pill { fill: #22272e; stroke: #9198a1; stroke-width: 1.5; }
+    .bus { stroke: #9198a1; stroke-width: 4; fill: none; stroke-linecap: round; }
+    .link { stroke: #9198a1; stroke-width: 1.8; fill: none; }
+    .ctrl { stroke: #c297ff; stroke-width: 1.6; fill: none; stroke-dasharray: 5 4; }
+    .data { stroke: #4493f8; stroke-width: 3; fill: none; }
+    .orch { stroke: #3fb950; stroke-width: 2; fill: none; stroke-dasharray: 8 4; }
+    .net { stroke: #f0883e; stroke-width: 2.4; fill: none; }
+    .head-ctrl { fill: #c297ff; }
+    .head-data { fill: #4493f8; }
+    .head-orch { fill: #3fb950; }
+    .head-net { fill: #f0883e; }
+    .made { stroke: #6e7781; stroke-width: 1.5; fill: none; stroke-dasharray: 2 3; }
+    .head-made { fill: #6e7781; }
+  </style>
+  <defs>
+    <marker id="a-ctrl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head-ctrl" d="M0 0 L10 5 L0 10 z"/></marker>
+    <marker id="a-data" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path class="head-data" d="M0 0 L10 5 L0 10 z"/></marker>
+    <marker id="a-orch" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="head-orch" d="M0 0 L10 5 L0 10 z"/></marker>
+    <marker id="a-net" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="head-net" d="M0 0 L10 5 L0 10 z"/></marker>
+    <marker id="a-made" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head-made" d="M0 0 L10 5 L0 10 z"/></marker>
+  </defs>
+  <rect class="group" x="40" y="20" width="440" height="140" rx="8"/>
+  <text class="grp" x="60" y="44">ROUTEURS DU CLUSTER · AS 65100</text>
+  <rect class="box" x="60" y="52" width="190" height="56" rx="6"/>
+  <text class="lbl" x="155.0" y="77.0" text-anchor="middle">routeur 1</text>
+  <text class="sub" x="155.0" y="94.0" text-anchor="middle">169.254.0.1/28</text>
+  <rect class="box" x="270" y="52" width="190" height="56" rx="6"/>
+  <text class="lbl" x="365.0" y="77.0" text-anchor="middle">routeur 2</text>
+  <text class="sub" x="365.0" y="94.0" text-anchor="middle">169.254.0.2/28</text>
+  <text class="sub" x="260" y="132" text-anchor="middle">passerelle de l'underlay en VRRP</text>
+  <text class="sub" x="260" y="148" text-anchor="middle">annoncent les loopbacks des RR, ne leur renvoient rien</text>
+  <rect class="group" x="620" y="20" width="540" height="140" rx="8"/>
+  <text class="grp" x="640" y="44">ROUTE REFLECTORS · AS 65000</text>
+  <rect class="box" x="640" y="52" width="240" height="56" rx="6"/>
+  <text class="lbl" x="760.0" y="77.0" text-anchor="middle">route reflector 1</text>
+  <text class="sub" x="760.0" y="94.0" text-anchor="middle">lo 10.255.255.1/32 · 169.254.0.3/28</text>
+  <rect class="box" x="900" y="52" width="240" height="56" rx="6"/>
+  <text class="lbl" x="1020.0" y="77.0" text-anchor="middle">route reflector 2</text>
+  <text class="sub" x="1020.0" y="94.0" text-anchor="middle">lo 10.255.255.2/32 · 169.254.0.4/28</text>
+  <text class="sub" x="890" y="132" text-anchor="middle">router-id, cluster-id et source des sessions EVPN : la loopback</text>
+  <text class="sub" x="890" y="148" text-anchor="middle">au moins un, deux prévus · AS 64600 face aux hyperviseurs (local-as)</text>
+  <path class="ctrl" d="M480 80 H640" marker-start="url(#a-ctrl)" marker-end="url(#a-ctrl)"/>
+  <text class="ctrlt" x="560" y="72" text-anchor="middle">eBGP · BFD</text>
+  <text class="ctrlt" x="560" y="98" text-anchor="middle">loopbacks seules</text>
+  <line class="bus" x1="40" y1="200" x2="1160" y2="200"/>
+  <text class="sub" x="600" y="192" text-anchor="middle">segment underlay · L2 · lien routeurs ↔ RR en 169.254.0.0/28</text>
+  <path class="link" d="M260 160 V200"/>
+  <path class="link" d="M890 160 V200"/>
+  <path class="data" d="M200 236 H780"/>
+  <text class="datat" x="490" y="230" text-anchor="middle">VXLAN · UDP 4789 · de VTEP à VTEP</text>
+  <path class="data" d="M200 236 V280"/>
+  <path class="data" d="M780 236 V280"/>
+  <rect class="group" x="40" y="250" width="540" height="450" rx="8"/>
+  <text class="grp" x="60" y="274">HYPERVISEUR 1</text>
+  <rect class="box" x="60" y="280" width="180" height="52" rx="6"/>
+  <text class="lbl" x="150.0" y="303.0" text-anchor="middle">br-000000</text>
+  <text class="sub" x="150.0" y="320.0" text-anchor="middle">IP de l'hyperviseur = VTEP</text>
+  <rect class="box" x="60" y="350" width="180" height="62" rx="6"/>
+  <text class="lbl" x="150.0" y="370.0" text-anchor="middle">FRR</text>
+  <text class="sub" x="150.0" y="387.0" text-anchor="middle">bgpd · AS 64600</text>
+  <text class="sub" x="150.0" y="402.0" text-anchor="middle">advertise-all-vni</text>
+  <rect class="box" x="60" y="430" width="180" height="52" rx="6"/>
+  <text class="lbl" x="150.0" y="453.0" text-anchor="middle">agent</text>
+  <text class="sub" x="150.0" y="470.0" text-anchor="middle">API REST · Badger</text>
+  <rect class="box" x="60" y="510" width="180" height="66" rx="6"/>
+  <text class="lbl" x="150.0" y="532.0" text-anchor="middle">br-&lt;subnet&gt; de l'hôte</text>
+  <text class="sub" x="150.0" y="549.0" text-anchor="middle">vxlan-&lt;vni&gt;, sans learning</text>
+  <text class="sub" x="150.0" y="564.0" text-anchor="middle">veth v-&lt;id&gt;-e</text>
+  <text class="sub" x="150" y="596" text-anchor="middle">veth v-&lt;id&gt;-e ↔ v-&lt;id&gt;-i</text>
+  <rect class="group" x="270" y="280" width="290" height="300" rx="8"/>
+  <text class="grp" x="290" y="304">NETNS DU VPC</text>
+  <rect class="box" x="285" y="312" width="125" height="66" rx="6"/>
+  <text class="lbl" x="347.5" y="334.0" text-anchor="middle">gw-&lt;subnet&gt;</text>
+  <text class="sub" x="347.5" y="351.0" text-anchor="middle">gateway .254</text>
+  <text class="sub" x="347.5" y="366.0" text-anchor="middle">MAC anycast</text>
+  <rect class="box" x="420" y="312" width="125" height="66" rx="6"/>
+  <text class="lbl" x="482.5" y="334.0" text-anchor="middle">DHCP</text>
+  <text class="sub" x="482.5" y="351.0" text-anchor="middle">métadonnées</text>
+  <text class="sub" x="482.5" y="366.0" text-anchor="middle">écoutent sur gw-</text>
+  <rect class="box" x="285" y="400" width="260" height="52" rx="6"/>
+  <text class="lbl" x="415.0" y="423.0" text-anchor="middle">br-&lt;subnet&gt; du netns</text>
+  <text class="sub" x="415.0" y="440.0" text-anchor="middle">adresse d'émission .253 · v-&lt;id&gt;-i</text>
+  <rect class="box" x="285" y="478" width="260" height="52" rx="6"/>
+  <text class="lbl" x="415.0" y="501.0" text-anchor="middle">VM</text>
+  <text class="sub" x="415.0" y="518.0" text-anchor="middle">QEMU / KVM · tap dans le netns</text>
+  <text class="sub" x="415" y="552" text-anchor="middle">macvlan gw- posé sur br-, confiné à l'hôte (#57)</text>
+  <rect class="box" x="270" y="610" width="290" height="62" rx="6"/>
+  <text class="lbl" x="415.0" y="630.0" text-anchor="middle">vrf-&lt;vpc&gt; · L3VNI</text>
+  <text class="sub" x="415.0" y="647.0" text-anchor="middle">brl3 · vxl3 · veth de transit</text>
+  <text class="sub" x="415.0" y="662.0" text-anchor="middle">routage entre hyperviseurs (#41)</text>
+  <path class="link" d="M347 378 V400"/>
+  <path class="link" d="M240 538 H255 V430 H285"/>
+  <path class="link" d="M415 452 V478"/>
+  <text class="sub" x="423" y="469" text-anchor="start">tap</text>
+  <path class="link" d="M415 580 V610"/>
+  <text class="sub" x="423" y="600" text-anchor="start">transit</text>
+  <path class="made" d="M60 538 H50 V306 H60" marker-end="url(#a-made)"/>
+  <path class="made" d="M240 456 H270" marker-end="url(#a-made)"/>
+  <path class="link" d="M225 280 V200"/>
+  <path class="ctrl" d="M240 365 H248 V200"/>
+  <rect class="group" x="620" y="250" width="540" height="450" rx="8"/>
+  <text class="grp" x="640" y="274">HYPERVISEUR 2</text>
+  <rect class="box" x="640" y="280" width="180" height="52" rx="6"/>
+  <text class="lbl" x="730.0" y="303.0" text-anchor="middle">br-000000</text>
+  <text class="sub" x="730.0" y="320.0" text-anchor="middle">IP de l'hyperviseur = VTEP</text>
+  <rect class="box" x="640" y="350" width="180" height="62" rx="6"/>
+  <text class="lbl" x="730.0" y="370.0" text-anchor="middle">FRR</text>
+  <text class="sub" x="730.0" y="387.0" text-anchor="middle">bgpd · AS 64600</text>
+  <text class="sub" x="730.0" y="402.0" text-anchor="middle">advertise-all-vni</text>
+  <rect class="box" x="640" y="430" width="180" height="52" rx="6"/>
+  <text class="lbl" x="730.0" y="453.0" text-anchor="middle">agent</text>
+  <text class="sub" x="730.0" y="470.0" text-anchor="middle">API REST · Badger</text>
+  <rect class="box" x="640" y="510" width="180" height="66" rx="6"/>
+  <text class="lbl" x="730.0" y="532.0" text-anchor="middle">br-&lt;subnet&gt; de l'hôte</text>
+  <text class="sub" x="730.0" y="549.0" text-anchor="middle">vxlan-&lt;vni&gt;, sans learning</text>
+  <text class="sub" x="730.0" y="564.0" text-anchor="middle">veth v-&lt;id&gt;-e</text>
+  <text class="sub" x="730" y="596" text-anchor="middle">veth v-&lt;id&gt;-e ↔ v-&lt;id&gt;-i</text>
+  <rect class="group" x="850" y="280" width="290" height="300" rx="8"/>
+  <text class="grp" x="870" y="304">NETNS DU VPC</text>
+  <rect class="box" x="865" y="312" width="125" height="66" rx="6"/>
+  <text class="lbl" x="927.5" y="334.0" text-anchor="middle">gw-&lt;subnet&gt;</text>
+  <text class="sub" x="927.5" y="351.0" text-anchor="middle">gateway .254</text>
+  <text class="sub" x="927.5" y="366.0" text-anchor="middle">MAC anycast</text>
+  <rect class="box" x="1000" y="312" width="125" height="66" rx="6"/>
+  <text class="lbl" x="1062.5" y="334.0" text-anchor="middle">DHCP</text>
+  <text class="sub" x="1062.5" y="351.0" text-anchor="middle">métadonnées</text>
+  <text class="sub" x="1062.5" y="366.0" text-anchor="middle">écoutent sur gw-</text>
+  <rect class="box" x="865" y="400" width="260" height="52" rx="6"/>
+  <text class="lbl" x="995.0" y="423.0" text-anchor="middle">br-&lt;subnet&gt; du netns</text>
+  <text class="sub" x="995.0" y="440.0" text-anchor="middle">adresse d'émission .253 · v-&lt;id&gt;-i</text>
+  <rect class="box" x="865" y="478" width="260" height="52" rx="6"/>
+  <text class="lbl" x="995.0" y="501.0" text-anchor="middle">VM</text>
+  <text class="sub" x="995.0" y="518.0" text-anchor="middle">QEMU / KVM · tap dans le netns</text>
+  <text class="sub" x="995" y="552" text-anchor="middle">macvlan gw- posé sur br-, confiné à l'hôte (#57)</text>
+  <rect class="box" x="850" y="610" width="290" height="62" rx="6"/>
+  <text class="lbl" x="995.0" y="630.0" text-anchor="middle">vrf-&lt;vpc&gt; · L3VNI</text>
+  <text class="sub" x="995.0" y="647.0" text-anchor="middle">brl3 · vxl3 · veth de transit</text>
+  <text class="sub" x="995.0" y="662.0" text-anchor="middle">routage entre hyperviseurs (#41)</text>
+  <path class="link" d="M927 378 V400"/>
+  <path class="link" d="M820 538 H835 V430 H865"/>
+  <path class="link" d="M995 452 V478"/>
+  <text class="sub" x="1003" y="469" text-anchor="start">tap</text>
+  <path class="link" d="M995 580 V610"/>
+  <text class="sub" x="1003" y="600" text-anchor="start">transit</text>
+  <path class="made" d="M640 538 H630 V306 H640" marker-end="url(#a-made)"/>
+  <path class="made" d="M820 456 H850" marker-end="url(#a-made)"/>
+  <path class="link" d="M805 280 V200"/>
+  <path class="ctrl" d="M820 365 H828 V200"/>
+  <text class="ctrlt" x="1150" y="230" text-anchor="end">iBGP l2vpn evpn · AS 64600 (FRR → RR)</text>
+  <line class="link" x1="60" y1="736" x2="110" y2="736"/>
+  <text class="sub" x="118" y="740" text-anchor="start">lien L2 / interface</text>
+  <path class="data" d="M260 736 H310"/>
+  <text class="sub" x="318" y="740" text-anchor="start">plan de données : tunnels VXLAN</text>
+  <path class="ctrl" d="M520 736 H570"/>
+  <text class="sub" x="578" y="740" text-anchor="start">plan de contrôle : sessions BGP</text>
+  <path class="made" d="M790 736 H840" marker-end="url(#a-made)"/>
+  <text class="sub" x="848" y="740" text-anchor="start">créé par l'agent</text>
+  <text class="sub" x="60" y="780" text-anchor="start">Les hyperviseurs joignent les loopbacks des route reflectors par leur passerelle : les routeurs les ont apprises en eBGP, sans rien leur renvoyer.</text>
+  <text class="sub" x="60" y="798" text-anchor="start">Les route reflectors acceptent toute session venant de l'underlay (bgp listen range) et réfléchissent les routes EVPN entre hyperviseurs ; chaque FRR en peuple la FDB des VXLAN locaux.</text>
+  <text class="sub" x="60" y="816" text-anchor="start">La gateway d'un subnet a la même IP et la même MAC sur tous les hôtes ; chaque netns émet depuis son adresse d'émission. Les subnets d'un VPC se joignent par son L3VNI.</text>
+  <text class="sub" x="60" y="834" text-anchor="start">ASN et loopbacks : valeurs de production (#50). Vue d'ensemble (bordures, Internet, orchestration, plusieurs clusters) : schéma précédent.</text>
+</svg>

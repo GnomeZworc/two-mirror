@@ -1,0 +1,615 @@
+
+<!DOCTYPE html>
+
+
+<html lang="fr" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Routeurs &#8212; Documentation two 0.2.0</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=7788c55d"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script src="../_static/translations.js?v=e6b791cb"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'deploiement/routeurs';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = '../switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '0.2.0';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Recherche" href="../search.html" />
+    <link rel="next" title="Premier hyperviseur" href="premier-hyperviseur.html" />
+    <link rel="prev" title="Construction de l’image qcow2" href="image-qcow2.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="fr"/>
+  <meta name="docsearch:version" content="0.2" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Passer au contenu principal</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Haut de page</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Alerte de version"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">Documentation two 0.2.0</p>
+  
+</a></div>
+        <div class="sidebar-primary-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://git.g3e.fr/syonad/two" title="Dépôt" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-solid fa-code-branch fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">Dépôt</span></a>
+        </li>
+</ul></div>
+        <div class="sidebar-primary-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Recherche" aria-label="Recherche" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Recherche</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        
+        <ul class="nav bd-sidenav bd-sidenav__home-link">
+            <li class="toctree-l1">
+                <a class="reference internal" href="../index.html">
+                    two
+                </a>
+            </li>
+        </ul>
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Mise en œuvre</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../demarrage/index.html">Démarrage</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../demarrage/installation.html">Installation d’un hyperviseur</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../demarrage/premier-vpc.html">Premier VPC, premier subnet, première VM</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">Déploiement d’un cluster</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="architecture-cluster.html">Architecture du cluster</a></li>
+<li class="toctree-l2"><a class="reference internal" href="image-qcow2.html">Construction de l’image qcow2</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Routeurs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="premier-hyperviseur.html">Premier hyperviseur</a></li>
+<li class="toctree-l2"><a class="reference internal" href="route-reflector.html">VM route reflector</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Exploitation</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../exploitation/index.html">Exploitation</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../exploitation/configuration.html">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../exploitation/services.html">Services systemd</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../exploitation/api-agent/index.html">API de l’agent</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../exploitation/api-agent/asynchronisme.html">Modèle asynchrone et codes de retour</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../exploitation/api-agent/reference.html">Référence</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="../exploitation/observabilite.html">Observabilité</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../exploitation/diagnostic.html">Diagnostic</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Développement</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../developpement/index.html">Développement</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../developpement/lab.html">Lab de test multi-nœud</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Interne</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../concepts/index.html">Concepts</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/vpc-subnet-vm.html">VPC, subnet et VM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/modes-reseau.html">Modes réseau</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/cycle-de-vie.html">Cycle de vie des ressources</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/metadata-cloud-init.html">Metadata et cloud-init</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../architecture/index.html">Architecture</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../architecture/vue-densemble.html">Vue d’ensemble</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../architecture/stockage.html">Schéma des clés</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../architecture/contraintes.html">Invariants et pièges</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../versions/index.html">Versions</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../versions/0.2.0.html">0.2.0 — Bael</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../versions/0.1.0.html">0.1.0 — Michael</a></li>
+</ul>
+</details></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Mode plein écran"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Thème" data-bs-title="Thème"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Clair"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Sombre"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="Paramètres système"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Recherche" aria-label="Recherche" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Routeurs</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contenu </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#routeur-de-cluster">Routeur de cluster</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#adressage">Adressage</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#configuration-de-frr">Configuration de FRR</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#contraintes-imposees-par-le-reste-du-cluster">Contraintes imposées par le reste du cluster</a></li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="routeurs">
+<h1>Routeurs<a class="headerlink" href="#routeurs" title="Lien vers cette rubrique">#</a></h1>
+<p>Trois niveaux de routage entourent le cluster, du plus proche des hyperviseurs au plus proche de
+l’extérieur. Tous préexistent à l’agent : celui-ci ne les configure pas et n’en a aucune
+connaissance.</p>
+<dl class="simple">
+<dt>Routeurs de cluster</dt><dd><p>raccordent les hyperviseurs entre eux. C’est le niveau dont dépend directement le plan de
+données VXLAN.</p>
+</dd>
+<dt>Routeurs de datacentre</dt><dd><p>agrègent les clusters d’un même site.</p>
+</dd>
+<dt>Routeurs de bordure</dt><dd><p>terminent le routage vers l’extérieur.</p>
+</dd>
+</dl>
+<section id="routeur-de-cluster">
+<h2>Routeur de cluster<a class="headerlink" href="#routeur-de-cluster" title="Lien vers cette rubrique">#</a></h2>
+<p>Le routeur de cluster est la passerelle des hyperviseurs et le voisin eBGP des route reflectors
+— au moins un ; deux sont prévus dans l’architecture et dans les exemples —, dont il apprend les
+loopbacks : c’est par lui que chaque hyperviseur joint <code class="docutils literal notranslate"><span class="pre">10.255.255.1</span></code> et <code class="docutils literal notranslate"><span class="pre">10.255.255.2</span></code> pour
+ouvrir ses sessions EVPN (<a class="reference internal" href="route-reflector.html"><span class="doc">VM route reflector</span></a>).</p>
+<section id="adressage">
+<h3>Adressage<a class="headerlink" href="#adressage" title="Lien vers cette rubrique">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="table">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 25.0%" />
+<col style="width: 45.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Adresse</p></th>
+<th class="head"><p>Interface</p></th>
+<th class="head"><p>Rôle</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">192.168.14.1/24</span></code></p></td>
+<td><p>interface du segment des hyperviseurs, <strong>adresse virtuelle VRRP</strong></p></td>
+<td><p>passerelle par défaut des hyperviseurs et des route reflectors, portée par le routeur
+maître ; chaque routeur a en plus sa propre adresse sur le segment</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">169.254.0.1/28</span></code></p></td>
+<td><p>même interface, <strong>adresse secondaire</strong></p></td>
+<td><p>lien avec les route reflectors (<code class="docutils literal notranslate"><span class="pre">169.254.0.3</span></code> et <code class="docutils literal notranslate"><span class="pre">.4</span></code>) ; <code class="docutils literal notranslate"><span class="pre">router-id</span></code> ; le second
+routeur prend <code class="docutils literal notranslate"><span class="pre">169.254.0.2</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Le MTU minimal du segment, imposé par VXLAN, est donné plus bas.</p>
+</section>
+<section id="configuration-de-frr">
+<h3>Configuration de FRR<a class="headerlink" href="#configuration-de-frr" title="Lien vers cette rubrique">#</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">bgpd</span></code> et <code class="docutils literal notranslate"><span class="pre">bfdd</span></code> activés dans <code class="docutils literal notranslate"><span class="pre">/etc/frr/daemons</span></code>.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>frr defaults traditional
+hostname sw1
+log syslog informational
+!
+ip prefix-list RR-LOOPBACK-IN seq 10 permit 10.255.255.1/32
+ip prefix-list RR-LOOPBACK-IN seq 20 permit 10.255.255.2/32
+!
+route-map RR-IN permit 10
+ match ip address prefix-list RR-LOOPBACK-IN
+exit
+!
+route-map NO-OUT deny 999
+exit
+!
+router bgp 65100
+ no bgp default ipv4-unicast
+ bgp router-id 169.254.0.1
+ neighbor 169.254.0.3 remote-as 65000
+ neighbor 169.254.0.3 description rr1
+ neighbor 169.254.0.3 bfd
+ neighbor 169.254.0.4 remote-as 65000
+ neighbor 169.254.0.4 description rr2
+ neighbor 169.254.0.4 bfd
+ !
+ address-family ipv4 unicast
+  neighbor 169.254.0.3 activate
+  neighbor 169.254.0.3 route-map RR-IN in
+  neighbor 169.254.0.3 route-map NO-OUT out
+  neighbor 169.254.0.4 activate
+  neighbor 169.254.0.4 route-map RR-IN in
+  neighbor 169.254.0.4 route-map NO-OUT out
+ exit-address-family
+ !
+exit
+!
+</pre></div>
+</div>
+<p>Ce qu’elle établit :</p>
+<ul class="simple">
+<li><p><strong>Route reflectors</strong> : une session eBGP vers chacun, de l’AS 65100 vers l’AS 65000, avec BFD,
+en IPv4 unicast.</p></li>
+<li><p><strong>En entrée</strong>, seules les loopbacks des route reflectors sont acceptées (<code class="docutils literal notranslate"><span class="pre">RR-IN</span></code>) ; <strong>en sortie</strong>,
+rien n’est annoncé (<code class="docutils literal notranslate"><span class="pre">NO-OUT</span></code>). Symétrique de <code class="docutils literal notranslate"><span class="pre">RR-LOOPBACK-OUT</span></code> et <code class="docutils literal notranslate"><span class="pre">NO-IN</span></code> côté route
+reflector : chaque côté filtre, aucun ne dépend du filtre de l’autre.</p></li>
+<li><p><strong>Aucune session avec les hyperviseurs</strong> : le routeur leur sert de passerelle, pas de voisin BGP.</p></li>
+</ul>
+<p>Celle du second routeur (<code class="docutils literal notranslate"><span class="pre">test/e2e/topologies/frr/sw2.conf</span></code>) ne diffère que par <code class="docutils literal notranslate"><span class="pre">hostname</span></code> et
+<code class="docutils literal notranslate"><span class="pre">router-id</span></code> (<code class="docutils literal notranslate"><span class="pre">169.254.0.2</span></code>), que les route reflectors déclarent aussi. Les deux routeurs se
+partagent la passerelle <code class="docutils literal notranslate"><span class="pre">192.168.14.1</span></code> en <strong>VRRP v3</strong> : le maître la porte, l’autre attend, sans
+préemption (<a class="reference external" href="https://git.g3e.fr/syonad/two/issues/54">#54</a>, fermé).</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Ce qui précède est le contrat du routeur de cluster : adresses, ASN, session, filtres. Sa
+traduction dans la configuration d’un constructeur n’a pas sa place ici.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>À rédiger.</strong> Reste à documenter, faute d’éléments de terrain :</p>
+<ul class="simple">
+<li><p>pour le routeur de cluster : le matériel employé et sa version de référence ; la traduction
+de la redondance VRRP v3 dans sa configuration ;</p></li>
+<li><p>pour les routeurs de datacentre et de bordure : tout — équipement, configuration de
+référence, ce qui est annoncé et filtré à chaque niveau, redondance ;</p></li>
+<li><p>l’ordre de mise en service, et ce qui doit être opérationnel avant de préparer le premier
+hyperviseur.</p></li>
+</ul>
+</div>
+</section>
+</section>
+<section id="contraintes-imposees-par-le-reste-du-cluster">
+<h2>Contraintes imposées par le reste du cluster<a class="headerlink" href="#contraintes-imposees-par-le-reste-du-cluster" title="Lien vers cette rubrique">#</a></h2>
+<p>Indépendamment des choix d’équipement, deux contraintes viennent de ce que fait l’agent.</p>
+<div class="admonition warning">
+<p class="admonition-title">Avertissement</p>
+<p><strong>MTU</strong> — l’underlay est attendu à <strong>9000</strong> : l’agent refuse un subnet <code class="docutils literal notranslate"><span class="pre">vxlan</span></code> sur une
+interface à un autre MTU, sauf option, et les VM sont à 1500 plus 50 octets d’encapsulation.
+L’interface d’un routeur qui sert de gateway à un segment de VM doit être au MTU des VM
+(1500). Cf. <a class="reference internal" href="architecture-cluster.html"><span class="doc">Architecture du cluster</span></a>.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Avertissement</p>
+<p><strong>UDP 4789</strong> doit passer entre hyperviseurs, dans les deux sens : c’est le port des tunnels
+VXLAN.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Avertissement</p>
+<p><strong>L’API de l’agent n’a aucune authentification.</strong> Le filtrage réalisé ici est aujourd’hui
+l’une des rares barrières entre cette API et le reste du réseau : son port ne doit être
+joignable que depuis le réseau d’administration. Cf. <a class="reference internal" href="../exploitation/configuration.html"><span class="doc">Configuration</span></a>.</p>
+</div>
+</section>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="image-qcow2.html"
+       title="page précédente">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">précédent</p>
+        <p class="prev-next-title">Construction de l’image qcow2</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="premier-hyperviseur.html"
+       title="page suivante">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">suivant</p>
+        <p class="prev-next-title">Premier hyperviseur</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contenu
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#routeur-de-cluster">Routeur de cluster</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#adressage">Adressage</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#configuration-de-frr">Configuration de FRR</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#contraintes-imposees-par-le-reste-du-cluster">Contraintes imposées par le reste du cluster</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+Par Nicolas Boufidjeline
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2026, Nicolas Boufidjeline.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>
