@@ -4,7 +4,7 @@ Lab de test multi-nœud
 Ce qui fait l'intérêt de two ne se voit qu'à partir de **deux hyperviseurs** : sur un nœud isolé,
 le trafic reste sur le bridge local et l'absence de plan de contrôle passe inaperçue (voir
 :doc:`/deploiement/architecture-cluster`). Le lab reproduit la topologie du cluster —
-hyperviseurs, route reflector, switch L3 — sous forme de VM, sur un serveur physique loué à
+hyperviseurs, route reflectors, switchs L3 — sous forme de VM, sur un serveur physique loué à
 l'heure.
 
 Le pourquoi des choix (serveur physique plutôt que VM cloud, câbles QEMU, MTU 9000, versions) est
@@ -17,7 +17,8 @@ comment s'en servir.
    `labctl <https://git.g3e.fr/syonad/labctl>`_, un dépôt à part, dont two épingle une release.
    Ce dépôt garde ce qui est propre à two — ses topologies, l'installation de two sur les
    hyperviseurs, les scénarios et leurs résultats. La redondance du plan de contrôle — deux route
-   reflectors, deux switchs — est l'objet de `#54 <https://git.g3e.fr/syonad/two/issues/54>`_.
+   reflectors, deux switchs en VRRP v3 — est livrée par `#54 <https://git.g3e.fr/syonad/two/issues/54>`_
+   (fermé), et qualifiée par les tests 71 et 72.
 
 L'outil
 -------
@@ -69,7 +70,7 @@ et ``evpn-3hv.yml`` (trois, celle de la suite). Le format est celui de ``labctl`
 .. literalinclude:: ../../test/e2e/topologies/evpn-2hv.yml
    :language: yaml
 
-Les ASN, la loopback du route reflector, le lien ``169.254.0.0/28`` et le subnet des hyperviseurs
+Les ASN, les loopbacks des route reflectors, le lien ``169.254.0.0/28`` et le subnet des hyperviseurs
 de l'exemple sont **ceux de la production** (décision du 2026-10-04, #50) : les fichiers de
 ``test/e2e/topologies/`` restent ainsi au plus près de ce qui tourne réellement. Toutes les adresses y sont
 **fixées** par ``addresses`` — les switchs en ``.2`` et ``.3``, les route reflectors en ``.4`` et ``.5``,
@@ -77,8 +78,9 @@ les hyperviseurs à partir de ``.11`` — pour que le modèle se lise sans le pl
 de l'ordre de déclaration : le ``frr.conf`` d'un hyperviseur, écrit à la main, porte son adresse en
 ``router-id``. Les deux switchs ``sw1`` et ``sw2`` sont les routeurs du segment (rôle ``router`` de
 labctl) : la passerelle, la première adresse du segment, est portée en VRRP v3 par celui qui est
-maître, sans préemption — voir la section du guide de labctl sur les routeurs. Leurs
-``frr.conf`` ne diffèrent que par ``hostname`` et ``router-id`` ; labctl y ajoute la strophe VRRP.
+maître, sans préemption (``no vrrp 1 preempt``) — voir la section du guide de labctl sur les
+routeurs. Leurs ``frr.conf`` ne diffèrent que par ``hostname`` et ``router-id`` ; labctl y ajoute
+la strophe VRRP.
 
 Rôles
 ~~~~~
@@ -86,8 +88,8 @@ Rôles
 Les configurations FRR du lab vivent dans ``test/e2e/topologies/frr/``, une par nœud, **écrites à la main** :
 ce sont les mêmes fichiers que la documentation de déploiement inclut, pour que le lab qualifie
 exactement ce qu'elle prescrit. Celles des hyperviseurs se réduisent à ``hostname`` et ``log`` :
-la configuration BGP est posée par l'agent (section ``bgp`` de ``agent.yml``). Celle du route
-reflector :
+la configuration BGP est posée par l'agent (section ``bgp`` de ``agent.yml``). Celle du premier
+route reflector (celle de ``rr2`` ne diffère que par son nom et sa loopback) :
 
 .. literalinclude:: ../../test/e2e/topologies/frr/rr1.conf
    :language: text
@@ -239,7 +241,7 @@ Les tests se lancent **depuis le Mac**, sur un lab démarré (``up``, ``push``, 
 
    test/e2e/run.sh all              # toute la suite, dans l'ordre
    test/e2e/run.sh 40               # une couche
-   test/e2e/run.sh 41 43            # des tests, par numéro ou par nom
+   test/e2e/run.sh 41 dhcp-two      # des tests, par numéro à deux chiffres ou par nom exact
    test/e2e/run.sh --from 30        # à partir d'un numéro
    test/e2e/run.sh --continue all   # sans s'arrêter sur une couche en échec
    test/e2e/run.sh --connus all     # les échecs connus comptent comme des échecs
@@ -290,11 +292,11 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
    * - ``03-image``
      - hypothèses sur l'image de VM — outils (curl, python3), nom d'interface, effet réel de network-config, forme du compte verrouillé
      - hv1
-     - #70
+     - #70, #73
    * - ``11-validation``
      - validation de l'API — refus synchrones (400, 409, 422) des VPC, subnets et VM, sans trace en base
      - hv1
-     - #41, #57, #33, #62
+     - #41, #57, #33, #62, #74
    * - ``12-etats``
      - machine d'états — 409 pendant creating, suppression depuis error, dépendances VM → subnet → VPC, recréation sous le même nom
      - hv1
@@ -320,7 +322,7 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - hv1
      - #33, #62, #73
    * - ``26-multi-disque``
-     - VM à plusieurs disques — racine virtio (vda) et SCSI (xvdX), tailles et bus vus par la VM, liens ``/dev/xvdX`` et ``by-id`` par numéro de série, démarrage sur vda
+     - VM à plusieurs disques — racine virtio (vda) et SCSI (xvdX), tailles et bus vus par la VM, liens /dev/xvdX et by-id par numéro de série, démarrage sur vda
      - hv1
      - #32, #74
    * - ``27-reboot``
@@ -328,7 +330,7 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - hv1
      - #46
    * - ``28-mtu``
-     - MTU des VM (``network.mtu_vm``, 1500) — option DHCP 26 (serveur intégré et dnsmasq), ``host_mtu`` de QEMU, tap, bridge, veth et VXLAN du subnet ; subnet vxlan refusé sur un underlay qui n'est pas à 9000
+     - MTU des VM (network.mtu_vm, 1500 par défaut) — annoncé par le DHCP (option 26, serveur intégré sur hv1, dnsmasq sur hv2) et par QEMU (host_mtu), porté par le tap, le bridge, le veth et le VXLAN du subnet ; subnet vxlan refusé sur un underlay qui n'est pas à 9000
      - hv1 hv2
      - #56
    * - ``31-gateway``
@@ -392,9 +394,9 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - hv1 hv2
      - #54
    * - ``72-perte-switch``
-     - perte d'un switch de la passerelle VRRP — bascule vers l'autre en moins de 5 s, sessions EVPN jamais coupées ; au retour, le plus prioritaire redevient maître, seconde bascule mesurée
+     - perte d'un switch de la passerelle VRRP — bascule vers l'autre en moins de 5 s, sessions EVPN jamais coupées ; au retour, un seul maître (préemption désactivée : celui qui l'est est relevé), plus long silence mesuré
      - 
-     - #54, #69
+     - #54, #69, #80
 
 Campagne du 2026-10-17
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -408,7 +410,11 @@ tests ont été corrigées sur le serveur et les tests concernés rejoués. Il r
   (#73, #62), noms des disques SCSI (#74), mode ``bridge`` sur plusieurs hôtes (#75), filtrage au
   port (#76), socket DHCP (#77), fausse alerte du watchdog (#78) ;
 * #69 vérifié : au retour de ``sw1`` (priorité 200), il redevient maître, seconde bascule en
-  1,2 s, sessions EVPN jamais coupées ;
+  1,2 s, sessions EVPN jamais coupées. La préemption est pourtant **désactivée** dans la
+  configuration (``no vrrp 1 preempt``, « Preempt Mode No » relevé le 2026-10-23) : la cause de ce
+  retour, après coupure puis rétablissement de l'interface underlay du maître, **n'est pas
+  établie**. ``72-perte-switch`` n'exige donc plus que le plus prioritaire redevienne maître : il
+  vérifie qu'il n'y a qu'un maître, note lequel, et mesure le plus long silence après le retour ;
 * une suppression de VM peut durer 300 s quand l'invité ignore l'arrêt ACPI (#79) : ``wait_state``
   attend jusqu'à 360 s.
 
@@ -436,18 +442,22 @@ Un test est un fichier ``test/e2e/suite/NN-nom.sh``, exécuté par ``run.sh`` su
 commence par un en-tête, puis envoie des blocs aux nœuds par ``on <nœud> [VAR=valeur…] <<'NODE'``.
 Chaque bloc est précédé des bibliothèques de ``test/e2e/lib/`` :
 
-* ``core.sh`` : ``check``, ``known``, ``info``, appels à l'API, attente des états ;
+* ``core.sh`` : ``check``, ``known``, ``known_flaky``, ``info``, appels à l'API, attente des états ;
 * ``vm.sh`` : image Debian compatible two, clé SSH, ``vm_launch`` (plusieurs NIC et disques, UEFI,
   ``user_data``, mot de passe), SSH, bail, métadonnées. La MAC de chaque NIC est fournie à l'API :
   ``52:54:00`` suivi des trois derniers octets de l'IP (``mac_for_ip``), unique dans la suite
   puisque chaque test a sa plage ; ``--nic sn=ip=mac`` en impose une autre ;
 * ``net.sh`` : VPC, subnets, MAC anycast, trames brutes, règles ebtables, VRRP ;
 * ``evpn.sh`` : VRF, BGP, L3VNI, watchdog ;
-* ``fixture.sh`` : nettoyage et ``assert_clean``, appelés par le runner.
+* ``fixture.sh`` : nettoyage et ``assert_clean``, appelés par le runner. Le nettoyage couvre les
+  ressources ``t<NN>`` de l'API, les netns ``t<NN>-*`` et les fichiers ``t<NN>-*`` / ``t<NN>.*`` de
+  ``/tmp`` et ``/var/tmp/e2e`` (sauf l'état ``t<NN>.avant``) ; il ne joue que pour un test dont
+  l'en-tête « # hôtes: » est rempli. Un test sans aucune vérification propre, hors fixtures, est
+  en échec.
 
 .. code-block:: bash
 
-   # fonctionnalité: trafic entre deux VM d'un même subnet sur un hôte
+   # fonctionnalité: trafic entre deux VM d'un même subnet sur un hôte, isolation entre VPC
    # hôtes: hv1
    # tickets: #NN
 
@@ -459,7 +469,11 @@ Chaque bloc est précédé des bibliothèques de ``test/e2e/lib/`` :
    check "VM t99-b" vm_launch t99-b --nic sn-t99=10.99.1.11 --sshkey "${KEY}"
    check "t99-a joignable" vm_wait vp-t99 10.99.1.10
    check "t99-a joint t99-b" vm_ssh vp-t99 10.99.1.10 'ping -c 2 -W 2 10.99.1.11'
-   check "t99-a ne joint pas 10.98.1.10" vm_fails vp-t99 10.99.1.10 'ping -c 2 -W 2 10.98.1.10'
+   check "VPC vp-t99b" vpc_create vp-t99b 10.99.0.0/16
+   check "subnet sn-t99b" subnet_create sn-t99b vp-t99b 9902 10.99.2.0/24
+   check "VM t99-c" vm_launch t99-c --nic sn-t99b=10.99.2.10 --sshkey "${KEY}"
+   check "t99-c joignable dans son VPC" vm_wait vp-t99b 10.99.2.10
+   check "t99-a ne joint pas t99-c (autre VPC)" vm_fails vp-t99 10.99.1.10 'ping -c 2 -W 2 10.99.2.10'
    NODE
 
 Les règles :

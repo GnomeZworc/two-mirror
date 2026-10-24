@@ -11,10 +11,10 @@ pip install -r requirements.txt
 sphinx-autobuild . "${TMPDIR}/build"
 ```
 
-Construction simple :
+Construction simple, avec les mêmes options que la CI (avertissements bloquants) :
 
 ```bash
-sphinx-build -b html . _build/html
+sphinx-build -b html -W --keep-going . _build/html
 ```
 
 La référence de l'API est générée depuis `../api/agent.yaml` : c'est la source unique du

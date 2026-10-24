@@ -14,16 +14,19 @@ Ce que l'on construit
 
    graph LR
      subgraph netns vp-admin
-       BR["br-sn000001<br/>10.1.1.254"]
+       BR["br-000001<br/>10.1.1.253"]
+       GW["gw-000001<br/>gateway 10.1.1.254"]
        MD["metadata@i-web<br/>169.254.169.254"]
      end
      VM["VM i-web<br/>10.1.1.2"] --- BR
-     BR --- MD
-     BR --- VXLAN["VXLAN vni 1<br/>br-000000"]
+     BR --- GW
+     GW --- MD
+     BR --- VXLAN["VXLAN vni 65537<br/>br-000000"]
 
-Le VPC est un network namespace ; le subnet y pose un bridge porteur de la gateway ; la VM s'y
-raccroche par un tap, reçoit son adresse en DHCP et son cloud-init depuis le serveur de metadata
-du netns.
+Le VPC est un network namespace ; le subnet y pose un bridge ``br-000001`` — ``br-`` suivi de ce
+qui suit le premier tiret du nom du subnet — porteur de l'adresse d'émission, et un macvlan
+``gw-000001`` porteur de la gateway ; la VM se raccroche au bridge par un tap, reçoit son
+adresse en DHCP et son cloud-init depuis le serveur de metadata du netns.
 
 1. Le VPC
 ---------
@@ -43,8 +46,10 @@ La réponse est un **202** : la création est acceptée, pas terminée.
 
    curl -s http://127.0.0.1:8080/vpcs/vp-admin
 
-Attendez ``"state": "running"`` avant l'étape suivante — un subnet dont le VPC parent n'est pas
-prêt est refusé en **422**. Le modèle d'attente est décrit dans :doc:`/exploitation/api-agent/asynchronisme`.
+Un subnet peut être demandé dès maintenant : il est accepté tant que le VPC est en ``creating``
+ou ``running``, et sa création attend que le VPC soit ``running``, dans la limite de
+``dispatcher.timeout_seconds``. Il n'est refusé en **422** que si le VPC est absent, en ``error``
+ou en ``deleting``. Le modèle d'attente est décrit dans :doc:`/exploitation/api-agent/asynchronisme`.
 
 2. Le subnet
 ------------
@@ -56,7 +61,7 @@ prêt est refusé en **422**. Le modèle d'attente est décrit dans :doc:`/explo
      -d '{"name": "sn-000001",
           "vpc": "vp-admin",
           "mode": "vxlan",
-          "vxlan_id": 1,
+          "vxlan_id": 65537,
           "iface_type": "vms",
           "cidr": "10.1.0.0/23"}'
 
@@ -140,16 +145,16 @@ cloud-init, lui, se déroule dans le guest ; on l'observe par la console série 
 
    socat -,raw,echo=0 UNIX-CONNECT:/run/two/vms/serial/i-web.sock
 
-Puis, depuis l'host :
+Puis, depuis l'host, en passant par le netns du VPC :
 
 .. code-block:: bash
 
-   ssh syonad@10.1.1.2
+   ip netns exec vp-admin ssh syonad@10.1.1.2
 
 .. note::
 
    En mode ``vxlan``, la VM vit dans le netns du VPC : elle n'est pas joignable depuis l'host
-   sans route explicite. En mode ``bridge``, elle l'est directement.
+   sans route explicite, d'où le ``ip netns exec``. En mode ``bridge``, elle l'est directement.
 
 5. Supprimer
 ------------

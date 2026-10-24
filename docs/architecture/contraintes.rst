@@ -4,11 +4,6 @@ Invariants et pièges
 Contraintes découvertes en production ou en corrigeant des bugs. Les enfreindre casse quelque
 chose qui fonctionne, souvent en silence.
 
-.. note::
-
-   Cette page reprend la section « Invariants et pièges » de ``CLAUDE.md``, qui reste la
-   référence de développement et fait foi en cas d'écart.
-
 Réseau
 ------
 

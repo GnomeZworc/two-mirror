@@ -76,20 +76,24 @@ wait_watchdog () {
 }
 
 watchdog_alerts () {
-    journalctl -u agent --since "-${1:-300}s" --no-pager -o cat | grep -F 'watchdog: inconsistency detected'
+    local log
+    log=$(journalctl -u agent --since "-${1:-300}s" --no-pager -o cat) || { echo "journal de l'agent illisible (journalctl en échec)"; return 1; }
+    grep -F 'watchdog: inconsistency detected' <<<"${log}" || true
 }
 
 watchdog_quiet () {
-    local out
-    out=$(watchdog_alerts "${1:-300}" | { if [ -n "${2:-}" ]; then grep -vF -- "${2}"; else cat; fi; })
+    local alerts out
+    alerts=$(watchdog_alerts "${1:-300}") || { printf '%s\n' "${alerts}"; return 1; }
+    out=$(printf '%s\n' "${alerts}" | { if [ -n "${2:-}" ]; then grep -vF -- "${2}"; else cat; fi; })
     [ -z "${out}" ] && return 0
     printf '%s\n' "${out}"
     return 1
 }
 
 watchdog_quiet_about () {
-    local out
-    out=$(watchdog_alerts "${1}" | grep -F -- "${2}") || return 0
+    local alerts out
+    alerts=$(watchdog_alerts "${1}") || { printf '%s\n' "${alerts}"; return 1; }
+    out=$(grep -F -- "${2}" <<<"${alerts}") || return 0
     printf '%s\n' "${out}"
     return 1
 }
@@ -129,8 +133,9 @@ wait_bgp_paths () {
 }
 
 watchdog_l3_quiet () {
-    local out
-    out=$(journalctl -u agent --since "-${1:-60}s" --no-pager -o cat | grep -F 'watchdog: inconsistency detected' | grep -E '"kind":"bgp"|l3vni [0-9]|interface (vrf|brl3|vxl3|l3)-') || return 0
+    local alerts out
+    alerts=$(watchdog_alerts "${1:-60}") || { printf '%s\n' "${alerts}"; return 1; }
+    out=$(grep -E '"kind":"bgp"|l3vni [0-9]|interface (vrf|brl3|vxl3|l3)-' <<<"${alerts}") || return 0
     printf '%s\n' "${out}"
     return 1
 }

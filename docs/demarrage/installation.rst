@@ -31,10 +31,12 @@ depuis la release, et les vérifie contre le manifeste ``SHA256SUMS``.
      - Défaut
    * - ``-t <tag>``
      - déployer une release donnée
-     - dernière
-   * - ``-b <branche>``
-     - branche utilisée pour l'auto-mise à jour du script
-     - ``main``
+     - dernière publiée, **préversions comprises**
+   * - ``-b <branche>/``
+     - branche d'où viennent l'auto-mise à jour du script et les scripts de ``-i`` ; les
+       binaires viennent toujours d'une release. Le ``/`` final est **obligatoire** : l'URL est
+       concaténée sans séparateur (``-b dev`` donne ``…/branch/devscripts/…``)
+     - ``main/``
    * - ``-p <profil>``
      - profil d'host ; seul ``kvm`` installe les units de l'agent
      - ``kvm``
@@ -48,7 +50,8 @@ depuis la release, et les vérifie contre le manifeste ``SHA256SUMS``.
      - bridge principal, auquel l'uplink est rattaché
      - ``br-000000``
    * - ``-P <bridge>``
-     - bridge supplémentaire, créé vide et réservé
+     - bridge supplémentaire, créé vide et réservé ; garder ``br-public``, nom attendu par
+       l'agent (voir ci-dessous)
      - ``br-public``
    * - ``-R <secondes>``
      - délai avant le redémarrage de secours pendant la migration réseau
@@ -89,6 +92,10 @@ ne se provisionne pas. Contrepartie assumée : tout le trafic inter-VM traverse 
 **Réseau** — création du bridge réservé, puis rattachement de l'uplink au bridge principal,
 l'adresse et la route par défaut étant déplacées de l'interface physique vers le bridge.
 
+Le nom ``br-public`` est **en dur dans l'agent** : chaque VPC ``vp-<id>`` y raccorde un veth
+``vp-<id>-e`` côté host, dont l'autre extrémité ``vp-<id>-i`` rejoint un ``br-public`` créé dans
+le netns du VPC. Avec un autre nom passé à ``-P``, toute création de VPC échoue.
+
 .. danger::
 
    La migration réseau **coupe le réseau de l'host si elle échoue à mi-parcours**, sans console
@@ -124,14 +131,15 @@ Binaires installés
      - serveur de metadata cloud-init, une instance par VM dans le netns du VPC
      - ``-conf``
    * - ``db``
-     - inspection de la base clé-valeur en ligne de commande
+     - inspection de la base clé-valeur en ligne de commande ; **ni publié ni déployé** par
+       ``deploy.sh``, à compiler depuis les sources (:doc:`/exploitation/observabilite`)
      - ``-conf``
    * - ``dhcp``
      - serveur DHCP intégré, une instance par subnet dans le netns du VPC ; démarré uniquement
        avec ``dhcp.backend: two``
      - ``-conf``
 
-Les quatre partagent le même fichier, ``/etc/two/agent.yml`` — voir
+Les quatre lisent le même fichier, ``/etc/two/agent.yml`` — voir
 :doc:`/exploitation/configuration`. ``dhcp`` reçoit en plus son bridge et ses deux chemins de
 fichiers en paramètres, posés par son script d'enrobage.
 

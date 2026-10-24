@@ -76,7 +76,7 @@ qemu:
   ovmf_code_path: "/usr/share/OVMF/OVMF_CODE.fd"
   ovmf_vars_template: "/usr/share/OVMF/OVMF_VARS.fd"
   # Per-VM UEFI variable store (writable copy, created at start / deleted at stop)
-  uefi_vars_dir: "/run/two/vms/efi"
+  uefi_vars_dir: "/run/two/vms/uefi"
   # QEMU Unix socket directories
   serial_dir: "/run/two/vms/serial"
   monitor_dir: "/run/two/vms/monitor"

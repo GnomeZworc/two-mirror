@@ -10,7 +10,6 @@ VPC, subnets et VM partagent le même jeu d'états.
      creating --> running
      creating --> error
      running --> deleting
-     running --> error
      deleting --> deleted
      deleting --> error
      error --> deleting
@@ -27,7 +26,9 @@ VPC, subnets et VM partagent le même jeu d'états.
    * - ``running``
      - la ressource existe sur le système
    * - ``error``
-     - ``Execute`` a échoué ; état **terminal**, il n'y a pas de reprise automatique
+     - ``Execute`` a échoué, ou la migration du démarrage a trouvé la ressource en ``creating`` ou
+       ``deleting`` ; état **terminal**, il n'y a pas de reprise automatique. Une ressource
+       ``running`` ne passe jamais en ``error``
    * - ``deleting``
      - suppression en cours
    * - ``deleted``

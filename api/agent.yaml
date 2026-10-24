@@ -2,7 +2,7 @@ openapi: "3.1.0"
 info:
   title: Two API
   version: "0.1.0"
-  description: REST API for managing VPCs and Subnets in the Two orchestrator.
+  description: REST API for managing VPCs, Subnets and VMs in the Two orchestrator.
 
 servers:
   - url: http://localhost:8080
@@ -45,7 +45,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/VPC"
         "400":
-          description: Missing required field, invalid request body, or l3vni out of range
+          description: Missing required field, invalid request body, invalid CIDR, or l3vni out of range
           content:
             application/json:
               schema:
@@ -360,7 +360,11 @@ components:
       properties:
         name:
           type: string
-          description: Unique name for the subnet
+          description: >
+            Unique name for the subnet. Must contain a "-": the system id (bridge br-<id>) is
+            what follows the first one. Not validated by the agent (caller's responsibility): a name
+            without "-" makes the agent worker panic.
+          pattern: '^[^-]+-.+'
           example: sn-00001
         vpc:
           type: string
@@ -482,6 +486,7 @@ components:
         interfaces:
           type: array
           minItems: 1
+          maxItems: 27
           description: >
             Network interfaces, in order. The position determines the PCI slot
             (0x03 + index) and therefore the interface name inside the guest.

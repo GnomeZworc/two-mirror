@@ -58,16 +58,28 @@ Paquets
      - cycle de vie d'une VM : tap, iptables, metadata, qemu
    * - ``internal/dhcp``
      - plan d'adressage ip → mac, et configurations dnsmasq du backend historique
+   * - ``internal/dhcpbackend``
+     - interface commune aux deux backends DHCP (``dnsmasq`` et ``two``), choisie par
+       ``dhcp.backend``
+   * - ``internal/dhcpd``
+     - moteur du serveur DHCP intégré : réservations en mémoire, réponses, écoute
+   * - ``internal/api/dhcp``, ``internal/client/dhcp``
+     - protocole de la socket de contrôle du serveur DHCP intégré (``set-host``, ``probe``,
+       ``get-state``…), côté serveur et côté agent
    * - ``internal/metadata``
      - serveur de metadata cloud-init et ses templates
    * - ``internal/watchdog``
      - vérification périodique en lecture seule
+   * - ``internal/watchdog/notify``
+     - émission des écarts relevés par le watchdog (journal)
    * - ``internal/config/agent``
      - chargement par viper — tags ``mapstructure``, jamais ``yaml``
    * - ``internal/prometheus/agent``
      - collector des métriques ``syonad_*``
    * - ``pkg/db/kv``
      - wrapper Badger ; toutes les valeurs sont des chaînes plates
+   * - ``pkg/db/statefile``
+     - fichier d'état JSON typé, écrit de façon atomique, utilisé par le backend DHCP ``two``
    * - ``pkg/worker``
      - pool de goroutines sur canal
    * - ``pkg/systemd``

@@ -20,7 +20,11 @@ if ! bash -n "${FAKE_DIR}/payload.$(( N + 1 ))" 2>"${FAKE_DIR}/syntax.$(( N + 1 
     echo "ÉCHOUÉ: syntaxe du bloc $(( N + 1 ))"
     exit 0
 fi
-[ -n "${FAKE_OUT:-}" ] && printf '%b\n' "${FAKE_OUT}"
+case "$(tail -n 1 "${FAKE_DIR}/payload.$(( N + 1 ))")" in
+    prepare_test|finish_test) OUT="${FAKE_FIXTURE_OUT:-${FAKE_OUT:-}}" ;;
+    *) OUT="${FAKE_OUT:-}" ;;
+esac
+[ -n "${OUT}" ] && printf '%b\n' "${OUT}"
 exit 0
 FAKE
     chmod +x "${WORK}/lab-host"
@@ -29,7 +33,7 @@ FAKE
 
 run () {
     env LAB_HOST="${WORK}/lab-host" FAKE_DIR="${WORK}" SUITE_DIR="${SUITE_DIR:-${WORK}/scenarios}" \
-        FAKE_OUT="${FAKE_OUT:-}" bash "${DIR}/run.sh" "$@" > "${WORK}/out.log" 2>&1
+        FAKE_OUT="${FAKE_OUT:-}" FAKE_FIXTURE_OUT="${FAKE_FIXTURE_OUT:-}" bash "${DIR}/run.sh" "$@" > "${WORK}/out.log" 2>&1
 }
 
 teardown () {
@@ -39,7 +43,7 @@ teardown () {
 }
 
 node () {
-    bash -c "$(printf ". '%s'; " "${DIR}"/lib/{core,vm,net,evpn,fixture}.sh)${1}" 2>&1
+    bash -c "$(printf ". '%s'; " "${DIR}"/lib/{core,vm,net,evpn,fixture}.sh)two_image () { echo 'two_image non simulée' >&2; return 1; }; ${1}" 2>&1
 }
 
 test_on_sends_assignments_library_and_block_to_the_node () {
@@ -135,7 +139,84 @@ test_wait_state () {
     local start=${SECONDS}
     [[ $(node 'api_state () { echo error; }; wait_state vms/x running 2>&1 || echo NON') == *NON ]] || fail "error accepté"
     (( SECONDS - start < 5 )) || fail "une ressource en error n'arrête pas l'attente immédiatement ($(( SECONDS - start )) s)"
-    [[ $(node 'api_state () { echo; }; wait_state vms/x deleted && echo OUI') == OUI ]] || fail "absence = supprimé"
+    [[ $(node 'api_state () { echo; }; api_code () { echo 404; }; wait_state vms/x deleted && echo OUI') == OUI ]] || fail "absence (404) = supprimé"
+    [[ $(node 'api_state () { echo; }; api_code () { echo 000; }; sleep () { :; }; wait_state vms/x deleted 2>&1 || echo NON') == *'(HTTP 000), deleted attendu'*NON ]] \
+        || fail "API injoignable prise pour une suppression : $(node 'api_state () { echo; }; api_code () { echo 000; }; sleep () { :; }; wait_state vms/x deleted 2>&1 || echo NON')"
+    teardown
+}
+
+test_api_names_and_teardown_fail_when_the_api_is_unreachable () {
+    setup "api_names, delete_owned, teardown_owned : échec si l'API est injoignable"
+    local stub='curl () { return 7; }; scratch_netns () { :; }; scratch_files () { :; }; rm () { :; }; '
+    [[ $(node "${stub}api_names vms 2>&1 || echo NON") == *'API injoignable (vms)'*NON ]] || fail "api_names : $(node "${stub}api_names vms 2>&1 || echo NON")"
+    [[ $(node "T=41; ${stub}delete_owned vms 2>&1 || echo NON") == *NON ]] || fail "delete_owned réussit sans API"
+    [[ $(node "T=41; ${stub}teardown_owned 2>&1 || echo NON") == *NON ]] || fail "teardown_owned réussit sans API"
+    teardown
+}
+
+test_prepare_reports_an_unreachable_api () {
+    setup "prepare_test : API injoignable signalée en ÉCHOUÉ"
+    local dir
+    dir=$(mktemp -d)
+    [[ $(node "T=41; HOST=hv1; STATE_DIR='${dir}'; curl () { return 7; }; api_names () { return 1; }; scratch_netns () { :; }; scratch_files () { :; }; host_state () { :; }; prepare_test") == "ÉCHOUÉ: hv1 : API de l'agent injoignable avant le test" ]] \
+        || fail "$(node "T=41; HOST=hv1; STATE_DIR='${dir}'; curl () { return 7; }; api_names () { return 1; }; scratch_netns () { :; }; scratch_files () { :; }; host_state () { :; }; prepare_test")"
+    rm -rf "${dir}"
+    teardown
+}
+
+test_clean_scratch_removes_only_the_test_netns_and_files () {
+    setup "clean_scratch : netns et fichiers t<NN> du test, rien d'autre, état d'avant gardé"
+    local dir out
+    dir=$(mktemp -d)
+    mkdir "${dir}/tmp" "${dir}/state"
+    touch "${dir}/tmp/t41-a2.log" "${dir}/tmp/t41.log" "${dir}/tmp/t41.10.255.255.1" "${dir}/tmp/t411.log" "${dir}/tmp/t42-a.log" \
+        "${dir}/state/t41.restart" "${dir}/state/t41.avant" "${dir}/state/t42.avant"
+    out=$(node "T=41; SCRATCH_DIR='${dir}/tmp'; STATE_DIR='${dir}/state'; ip () { if [ \"\$1 \$2\" = 'netns list' ]; then printf '%s\n' 't41-ebt (id: 3)' vp-t41a t42-ebt; else echo \"ip \$*\"; fi; }; clean_scratch && echo OUI")
+    [[ $(tr '\n' '|' <<< "${out}") == "ip netns del t41-ebt|OUI|" ]] || fail "netns : ${out}"
+    [[ $(cd "${dir}" && find . -type f | sort | tr '\n' ' ') == "./state/t41.avant ./state/t42.avant ./tmp/t411.log ./tmp/t42-a.log " ]] \
+        || fail "fichiers restants : $(cd "${dir}" && find . -type f | sort | tr '\n' ' ')"
+    rm -rf "${dir}"
+    teardown
+}
+
+test_scenario_without_its_own_check_fails_despite_fixtures () {
+    setup "un scénario sans vérification propre échoue, même si les fixtures réussissent"
+    suite_file 41-x hv1
+    FAKE_FIXTURE_OUT='RÉUSSI: teardown\nRÉUSSI: assert_clean' FAKE_OUT='INFO: rien' run 41; [[ $? -eq 1 ]] || fail "scénario muet accepté"
+    grep -q "aucune vérification propre au scénario" "${WORK}/out.log" || fail "cause non annoncée"
+    FAKE_FIXTURE_OUT='RÉUSSI: teardown' FAKE_OUT='CONNU: x (#1)' run 41; [[ $? -eq 0 ]] || fail "un CONNU propre au scénario n'est pas compté comme une vérification"
+    FAKE_FIXTURE_OUT='INFO: rien' FAKE_OUT='RÉUSSI: x' run 41; [[ $? -eq 0 ]] || fail "vérification propre non comptée"
+    teardown
+}
+
+test_selection_requires_two_digits_or_an_exact_name () {
+    setup "sélection : numéro à deux chiffres ou nom exact, sans préfixe partiel"
+    suite_file 21-dhcp-two ""; suite_file 41-x ""; suite_file 42-y ""
+    run 4; [[ $? -eq 2 ]] || fail "« 4 » accepté"
+    run dhcp; [[ $? -eq 2 ]] || fail "« dhcp » accepté"
+    FAKE_OUT='RÉUSSI: x' run dhcp-two
+    [[ $(grep '^=== [0-9a-z-]*$' "${WORK}/out.log" | tr '\n' ' ') == "=== 21-dhcp-two " ]] || fail "par nom : $(grep '^=== ' "${WORK}/out.log" | tr '\n' ' ')"
+    FAKE_OUT='RÉUSSI: x' run 21-dhcp-two 42
+    [[ $(grep '^=== [0-9a-z-]*$' "${WORK}/out.log" | tr '\n' ' ') == "=== 21-dhcp-two === 42-y " ]] || fail "nom complet et numéro : $(grep '^=== ' "${WORK}/out.log" | tr '\n' ' ')"
+    teardown
+}
+
+test_vm_volume_builds_the_image_before_copying () {
+    setup "vm_volume : image construite si absente, échec sans image"
+    local dir
+    dir=$(mktemp -d)
+    [[ $(node "VOLUMES='${dir}/v'; TWO_IMAGE='${dir}/img'; two_image () { echo base > \"\${TWO_IMAGE}\"; }; vm_volume t41-a && cat '${dir}/v/t41-a.qcow2'") == base ]] || fail "image non construite ou non copiée"
+    [[ $(node "VOLUMES='${dir}/w'; TWO_IMAGE='${dir}/absente'; two_image () { return 1; }; vm_volume t41-a 2>&1 || echo NON") == *NON ]] || fail "volume sans image accepté"
+    [[ ! -e "${dir}/w/t41-a.qcow2" ]] || fail "volume créé sans image"
+    rm -rf "${dir}"
+    teardown
+}
+
+test_vm_output_empty_needs_a_working_command () {
+    setup "vm_output_empty : sortie vide d'une commande réussie, SSH ou commande en échec refusés"
+    [[ $(node 'vm_ssh () { :; }; vm_output_empty v 1.2.3.4 x && echo OUI') == OUI ]] || fail "sortie vide refusée"
+    [[ $(node 'vm_ssh () { echo "10.33.0.0/16 via 10.33.0.1"; }; vm_output_empty v 1.2.3.4 x || echo NON') == *NON ]] || fail "sortie non vide acceptée"
+    [[ $(node 'vm_ssh () { return 255; }; vm_output_empty v 1.2.3.4 x || echo NON') == *NON ]] || fail "SSH en panne pris pour une sortie vide"
     teardown
 }
 
@@ -240,6 +321,13 @@ test_watchdog_quiet_passes_without_alert_and_fails_on_one () {
     [[ $(node "journalctl () { echo '${alert}'; }; watchdog_quiet 300 >/dev/null || echo NON") == NON ]] || fail "alerte acceptée sans exclusion"
     [[ $(node "journalctl () { echo '${alert}'; }; watchdog_quiet 300 'stale dhcp' && echo OUI") == OUI ]] || fail "alerte exclue refusée"
     teardown
+    setup "watchdog_quiet, watchdog_quiet_about, watchdog_l3_quiet : échec si le journal est illisible"
+    local f
+    for f in 'watchdog_quiet 300' "watchdog_quiet 300 'stale dhcp'" "watchdog_quiet_about 300 'stale dhcp'" 'watchdog_l3_quiet 60'; do
+        [[ $(node "journalctl () { return 1; }; ${f} || echo NON") == *'journalctl en échec'*NON ]] || fail "${f} : $(node "journalctl () { return 1; }; ${f} || echo NON")"
+    done
+    [[ $(node "journalctl () { :; }; watchdog_quiet_about 300 'stale dhcp' && echo OUI") == OUI ]] || fail "watchdog_quiet_about : journal vide refusé"
+    teardown
 }
 
 test_watchdog_reported_matches_only_watchdog_alerts () {
@@ -319,7 +407,7 @@ test_owned_keeps_only_the_resources_of_the_test () {
 
 test_teardown_deletes_vms_then_subnets_then_vpcs () {
     setup "teardown_owned : VM, puis subnets, puis VPC, et rien d'autre"
-    local stub='api_names () { case $1 in vms) [ -f /tmp/.t70.$$ ] || echo t41-a; echo t42-z ;; subnets) echo sn-t41a ;; vpcs) echo vp-t41a ;; esac; }; api_delete () { echo "DEL $1"; [ "$1" = vms/t41-a ] && touch /tmp/.t70.$$; :; }; wait_state () { :; }; rm () { :; }; '
+    local stub='api_names () { case $1 in vms) [ -f /tmp/.t70.$$ ] || echo t41-a; echo t42-z ;; subnets) echo sn-t41a ;; vpcs) echo vp-t41a ;; esac; }; api_delete () { echo "DEL $1"; [ "$1" = vms/t41-a ] && touch /tmp/.t70.$$; :; }; wait_state () { :; }; rm () { :; }; scratch_netns () { :; }; scratch_files () { :; }; '
     local out
     out=$(node "T=41; ${stub}teardown_owned; command rm -f /tmp/.t70.\$\$")
     [[ $(grep '^DEL' <<< "${out}" | tr '\n' ' ') == "DEL vms/t41-a DEL subnets/sn-t41a DEL vpcs/vp-t41a " ]] || fail "ordre : ${out}"
@@ -384,7 +472,7 @@ test_vm_json_builds_nics_disks_metadata_and_uefi () {
 test_vm_launch_copies_the_system_disk_first_and_waits () {
     setup "vm_launch : disque système vda copié en premier, POST, attente de running"
     local out
-    out=$(node 'VOLUMES=/v; TWO_IMAGE=/img; api_state () { echo; }; mkdir () { :; }; cp () { echo "CP $*"; }; api_post () { echo "POST $1 $(jq -c "[.storage[].dev, .interfaces[0].ip]" <<<"$2")"; }; wait_state () { echo "WAIT $*"; }; vm_launch t26-d --nic sn=10.0.0.10 --disk xvda=/v/s.qcow2')
+    out=$(node 'VOLUMES=/v; TWO_IMAGE=/img; two_image () { :; }; api_state () { echo; }; mkdir () { :; }; cp () { echo "CP $*"; }; api_post () { echo "POST $1 $(jq -c "[.storage[].dev, .interfaces[0].ip]" <<<"$2")"; }; wait_state () { echo "WAIT $*"; }; vm_launch t26-d --nic sn=10.0.0.10 --disk xvda=/v/s.qcow2')
     [[ "${out}" == $'CP /img /v/t26-d.qcow2\nPOST vms ["vda","xvda","10.0.0.10"]\nWAIT vms/t26-d running' ]] || fail "${out}"
     [[ $(node 'api_state () { echo running; }; cp () { echo CP; }; api_post () { echo POST; }; vm_launch t --nic s=1.2.3.4 && echo OK') == OK ]] || fail "VM en running relancée"
     [[ $(node 'api_state () { echo; }; cp () { echo CP; }; vm_launch t --bad x || echo NON') == *NON ]] || fail "option invalide : disque copié ou POST envoyé"

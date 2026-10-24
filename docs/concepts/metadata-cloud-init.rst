@@ -20,14 +20,14 @@ deux processus ne doivent pas partager une même instance.
 Documents servis
 ----------------
 
-Chaque document suit la même règle :
+Quatre documents sont servis : ``meta-data``, ``user-data``, ``network-config`` et
+``vendor-data``. Seul ``user-data`` vient de l'appelant :
 
-* fourni par l'appelant → servi **verbatim**, l'agent n'interprète rien ;
-* absent → le template par défaut est rendu ;
-* fourni **vide** → servi vide.
+* ``user_data`` fourni → servi **verbatim**, après décodage base64 ; l'agent n'interprète rien ;
+* ``user_data`` absent ou **vide** → ``user-data`` servi vide : les deux cas sont équivalents.
 
-Les deux derniers cas sont distincts, et c'est délibéré : fournir une chaîne vide est une façon
-explicite de neutraliser un document.
+``meta-data``, ``network-config`` et ``vendor-data`` sont **toujours** rendus depuis les templates
+de l'agent ; ``vendor-data`` crée le compte ``syonad`` à partir de ``password`` et ``sshkey``.
 
 Champs de ``metadata``
 ----------------------
@@ -90,11 +90,15 @@ défaut. Départager les routes en double relève de l'utilisateur de la VM, par
    * cloud-init 22.4 (Debian 12) ne demande jamais ``network-config`` par ``seedfrom`` et
      applique sa configuration de repli, limitée à la première interface ;
    * cloud-init 25.1 (Debian 13) le lit et l'applique au premier démarrage, mais à chaque
-     démarrage suivant l'étape locale réapplique le repli, et ``network-config`` n'est pas
-     relu : les interfaces secondaires perdent leur configuration.
+     démarrage suivant l'étape locale réapplique le repli. L'étape réseau, qui trouve la
+     source, émet alors l'événement ``boot-legacy`` : refusé par défaut, il est autorisé par
+     ``updates: network: when: [boot-new-instance, boot, boot-legacy]``, et ``network-config``
+     est alors réappliqué à chaque démarrage. Sans ce réglage, les interfaces secondaires
+     perdent leur configuration.
 
    L'image doit donc faire du DHCP IPv4 sur **toutes** ses interfaces Ethernet, sans compter
-   sur cloud-init. Voir :doc:`/deploiement/image-qcow2`.
+   sur cloud-init, et autoriser ``boot-legacy`` pour que le ``network-config`` reste appliqué
+   là où cloud-init le lit. Voir :doc:`/deploiement/image-qcow2`.
 
 Sécurité
 --------

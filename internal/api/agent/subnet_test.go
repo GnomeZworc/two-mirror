@@ -329,6 +329,13 @@ func TestCreateSubnet_GatewayRoundTrip(t *testing.T) {
 	if w.Code != http.StatusAccepted {
 		t.Fatalf("attendu 202, obtenu %d : %s", w.Code, w.Body.String())
 	}
+	var created Subnet
+	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
+		t.Fatalf("réponse 202 illisible : %v", err)
+	}
+	if created.Gateway != "203.0.113.1" {
+		t.Errorf("gateway absente de la réponse 202 : %+v", created)
+	}
 
 	if gw, _ := kv.GetFromDB(db, "subnet/sn-gw/gateway"); gw != "203.0.113.1" {
 		t.Errorf("gateway attendue en DB, obtenu %q", gw)
@@ -342,6 +349,58 @@ func TestCreateSubnet_GatewayRoundTrip(t *testing.T) {
 	}
 	if got.Gateway != "203.0.113.1" {
 		t.Errorf("gateway absente de la réponse GET : %+v", got)
+	}
+
+	w = httptest.NewRecorder()
+	s.SubnetsHandler(w, httptest.NewRequest(http.MethodGet, "/subnets", nil))
+	var list []Subnet
+	if err := json.Unmarshal(w.Body.Bytes(), &list); err != nil {
+		t.Fatalf("liste illisible : %v", err)
+	}
+	if len(list) != 1 || list[0].Gateway != "203.0.113.1" {
+		t.Errorf("gateway absente de la liste : %+v", list)
+	}
+}
+
+func TestSubnet_VxlanIDOnlyForVxlan(t *testing.T) {
+	s, db := newTestServer(t)
+	kv.AddInDB(db, "vpc/vpc-1/state", "running")
+	vx := postSubnetRequest(t, s, SubnetCreateRequest{
+		Name: "sn-vx", VPC: "vpc-1", Mode: "vxlan", VxlanID: 65537, CIDR: "10.0.0.0/24",
+	})
+	if vx.Code != http.StatusAccepted {
+		t.Fatalf("vxlan : attendu 202, obtenu %d : %s", vx.Code, vx.Body.String())
+	}
+	if !strings.Contains(vx.Body.String(), `"vxlan_id":65537`) {
+		t.Errorf("vxlan_id absent de la réponse 202 vxlan : %s", vx.Body.String())
+	}
+	br := postSubnetRequest(t, s, SubnetCreateRequest{
+		Name: "sn-br", VPC: "vpc-1", Mode: "bridge", VxlanID: 65538, InterfaceIP: "10.1.0.1", CIDR: "10.1.0.0/24",
+	})
+	if br.Code != http.StatusAccepted {
+		t.Fatalf("bridge : attendu 202, obtenu %d : %s", br.Code, br.Body.String())
+	}
+	if strings.Contains(br.Body.String(), "vxlan_id") {
+		t.Errorf("vxlan_id ne doit pas apparaître dans la réponse 202 bridge : %s", br.Body.String())
+	}
+
+	w := httptest.NewRecorder()
+	s.SubnetByNameHandler(w, httptest.NewRequest(http.MethodGet, "/subnets/sn-br", nil))
+	if strings.Contains(w.Body.String(), "vxlan_id") {
+		t.Errorf("vxlan_id ne doit pas apparaître pour un subnet bridge : %s", w.Body.String())
+	}
+
+	w = httptest.NewRecorder()
+	s.SubnetsHandler(w, httptest.NewRequest(http.MethodGet, "/subnets", nil))
+	var list []map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &list); err != nil {
+		t.Fatalf("liste illisible : %v", err)
+	}
+	for _, sub := range list {
+		_, has := sub["vxlan_id"]
+		if want := sub["name"] == "sn-vx"; has != want {
+			t.Errorf("%v : vxlan_id présent=%v, attendu %v", sub["name"], has, want)
+		}
 	}
 }
 

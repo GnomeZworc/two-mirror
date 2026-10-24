@@ -15,12 +15,13 @@ def hv(x0, name):
     g.box(x0 + 20, 280, 180, 52, "br-000000", ["IP de l'hyperviseur = VTEP"])
     g.box(x0 + 20, 350, 180, 62, "FRR", ["bgpd · AS 64600", "advertise-all-vni"])
     g.box(x0 + 20, 430, 180, 52, "agent", ["API REST · Badger"])
-    g.box(x0 + 20, 510, 180, 56, "vxlan-<vni>", ["dans br-<subnet>, sans learning"])
+    g.box(x0 + 20, 510, 180, 66, "br-<subnet> de l'hôte", ["vxlan-<vni>, sans learning", "veth v-<id>-e"])
+    g.text(x0 + 110, 596, "veth v-<id>-e ↔ v-<id>-i", "sub", "middle")
 
     g.group(x0 + 230, 280, 290, 300, "NETNS DU VPC")
     g.box(x0 + 245, 312, 125, 66, "gw-<subnet>", ["gateway .254", "MAC anycast"])
     g.box(x0 + 380, 312, 125, 66, "DHCP", ["métadonnées", "écoutent sur gw-"])
-    g.box(x0 + 245, 400, 260, 52, "br-<subnet>", ["adresse d'émission .253"])
+    g.box(x0 + 245, 400, 260, 52, "br-<subnet> du netns", ["adresse d'émission .253 · v-<id>-i"])
     g.box(x0 + 245, 478, 260, 52, "VM", ["QEMU / KVM · tap dans le netns"])
     g.text(x0 + 375, 552, "macvlan gw- posé sur br-, confiné à l'hôte (#57)", "sub", "middle")
     g.box(x0 + 230, 610, 290, 62, "vrf-<vpc> · L3VNI", ["brl3 · vxl3 · veth de transit", "routage entre hyperviseurs (#41)"])
@@ -48,7 +49,7 @@ def draw():
     g.box(640, 52, 240, 56, "route reflector 1", ["lo 10.255.255.1/32 · 169.254.0.3/28"])
     g.box(900, 52, 240, 56, "route reflector 2", ["lo 10.255.255.2/32 · 169.254.0.4/28"])
     g.text(890, 132, "router-id, cluster-id et source des sessions EVPN : la loopback", "sub", "middle")
-    g.text(890, 148, "un par cluster (vue d'ensemble) ; le lab les réunit dans un seul", "sub", "middle")
+    g.text(890, 148, "au moins un, deux prévus · AS 64600 face aux hyperviseurs (local-as)", "sub", "middle")
 
     g.path("M480 80 H640", "ctrl", start=True, end=True)
     g.text(560, 72, "eBGP · BFD", "ctrlt", "middle")
@@ -91,7 +92,7 @@ def draw():
 def render(p):
     g.out.clear()
     draw()
-    head = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" role="img" aria-label="Architecture du cluster : routeurs, route reflectors, hyperviseurs, plans de données et de contrôle">'
+    head = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" role="img" aria-label="Détail d\'un cluster : routeurs, route reflectors, hyperviseurs, netns et VRF des VPC, plans de données et de contrôle">'
     st = g.style(p).replace("  </style>", made_style(p) + "  </style>").replace(
         "  </defs>",
         '    <marker id="a-made" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="head-made" d="M0 0 L10 5 L0 10 z"/></marker>\n  </defs>')

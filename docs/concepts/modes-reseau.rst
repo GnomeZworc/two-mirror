@@ -149,11 +149,12 @@ Routes annoncées aux VM
 -----------------------
 
 Les routes sont poussées par DHCP, dans l'**option 121** (routes statiques sans classe,
-RFC 3442). Trois entrées y figurent :
+RFC 3442). Trois entrées au plus y figurent :
 
 #. la route ``/32`` vers ``169.254.169.254``, le serveur de metadata ;
-#. la route vers le CIDR du VPC ;
-#. la route par défaut ``0.0.0.0/0``.
+#. la route vers le CIDR du VPC, **sauf en mode** ``bridge`` ;
+#. la route par défaut ``0.0.0.0/0``, **sur l'interface** ``primary`` **seulement** : les autres
+   interfaces d'une VM n'en reçoivent pas.
 
 .. important::
 
@@ -163,8 +164,8 @@ RFC 3442). Trois entrées y figurent :
 Route par défaut : ``default_route`` et ``gateway``
 ----------------------------------------------------------
 
-Une route par défaut est **toujours** annoncée. Le champ ``default_route`` ne choisit que son
-next-hop :
+Une route par défaut est **toujours** annoncée à l'interface ``primary`` d'une VM, et à elle
+seule. Le champ ``default_route`` ne choisit que son next-hop :
 
 ``default_route: false`` (défaut)
    next-hop = ``interface_ip`` du subnet, la gateway calculée en ``vxlan``.
@@ -178,7 +179,7 @@ subnet relèvent de l'appelant. Fourni avec ``default_route: false``, il est ign
 
 Dans tous les modes sauf ``bridge``, la route vers le CIDR du VPC garde ``interface_ip`` comme
 next-hop : sur un subnet à IP publique, le trafic interne ne doit pas sortir par la gateway
-publique.
+publique. En mode ``bridge``, cette route n'est pas annoncée du tout.
 
 Pourquoi la route ``/32`` vers le serveur de metadata est indispensable
 ----------------------------------------------------------------------------

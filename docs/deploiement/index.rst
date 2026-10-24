@@ -7,7 +7,7 @@ même nœud. Cette section couvre la mise en place d'un **cluster** complet, dan
 
 Cet ordre n'est pas indifférent : chaque étape a besoin de la précédente. L'image doit exister
 avant qu'on puisse démarrer quoi que ce soit ; le réseau doit être en place avant le premier
-hyperviseur ; le route reflector est lui-même une VM, il lui faut donc un hyperviseur qui
+hyperviseur ; chaque route reflector est lui-même une VM, il lui faut donc un hyperviseur qui
 fonctionne.
 
 Étapes
