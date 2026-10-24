@@ -278,11 +278,32 @@ première : cloud-init ne configure les interfaces secondaires qu'au premier dé
 Le préfixe ``90`` laisse la priorité aux fichiers écrits par cloud-init pour la première
 interface (``10-netplan-*``). Sur une image démarrée avec ``net.ifnames=0``, viser ``eth*``.
 
-.. note::
+Pour une image sous NetworkManager, comme l'image Rocky de cette page, un profil qui s'applique à
+toutes les interfaces ``en*`` à la fois :
 
-   **À établir pour NetworkManager** — l'équivalent pour une image sous NetworkManager, dont
-   l'image Rocky de cette page, n'est pas encore vérifié. Sans lui, une VM à plusieurs
-   interfaces n'a de bail que sur la première.
+.. code-block:: bash
+
+   install -m 0600 /dev/stdin /mnt/etc/NetworkManager/system-connections/90-all-en.nmconnection << 'ENDFILE'
+   [connection]
+   id=two-all-en
+   type=ethernet
+   autoconnect-priority=-100
+   multi-connect=3
+
+   [match]
+   interface-name=en*
+
+   [ipv4]
+   method=auto
+
+   [ipv6]
+   method=ignore
+   ENDFILE
+
+``multi-connect=3`` permet au même profil d'être actif sur plusieurs interfaces ; la priorité
+négative sert à laisser la première interface au profil écrit par cloud-init. Le fichier est en ``0600``,
+comme les profils de NetworkManager. Vérifié sous Rocky 10.2 : la seconde interface obtient
+son bail au premier démarrage et après redémarrage (``nmcli`` : connexion ``two-all-en``).
 
 **Noms stables des disques additionnels**
 
@@ -365,6 +386,16 @@ Points de vigilance
    23.1, un drapeau actif par défaut (``NOCLOUD_SEED_URL_APPEND_FORWARD_SLASH``) ajoute la barre
    oblique manquante, ce qui explique qu'une image récente fonctionne sans elle. Avec la barre
    oblique, la configuration fonctionne quelle que soit la version de cloud-init.
+
+.. warning::
+
+   **Sans serveur de metadata, la VM reste bloquée au démarrage.** Quand ``seedfrom`` figure dans
+   la configuration de la source, cloud-init lit les documents par
+   ``util.read_seeded(seedfrom, timeout=None)`` (``DataSourceNoCloud.py``, vérifié en 25.1.4) :
+   ``timeout`` et ``max_wait`` ne s'appliquent pas à cette lecture. Si ``169.254.169.254`` ne
+   répond pas, l'étape réseau de cloud-init ne se termine pas et la VM n'a pas de SSH (constaté
+   hors agent, sur une image Debian 13 démarrée sans serveur de metadata). ``seedfrom`` a aussi
+   priorité sur une ISO ``cidata`` : une telle image ne se teste pas avec un simple seed local.
 
 .. note::
 
