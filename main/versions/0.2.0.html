@@ -385,8 +385,7 @@ l’annoncer que sur une interface d’une VM multi-réseaux</p></li>
 <p><strong>Coexistence avec dnsmasq</strong></p>
 <ul class="simple">
 <li><p>Nouvelle clé <code class="docutils literal notranslate"><span class="pre">dhcp.backend</span></code>, <code class="docutils literal notranslate"><span class="pre">dnsmasq</span></code> ou <code class="docutils literal notranslate"><span class="pre">two</span></code>, qui choisit le serveur des subnets <strong>créés par
-cet agent</strong>. Le défaut est <code class="docutils literal notranslate"><span class="pre">dnsmasq</span></code> : un fichier de configuration de la 0.1.0, non modifié, se
-comporte exactement comme avant</p></li>
+cet agent</strong>. Le défaut est <code class="docutils literal notranslate"><span class="pre">two</span></code> (#85) ; <code class="docutils literal notranslate"><span class="pre">dnsmasq</span></code> reste disponible jusqu’à son retrait (#49)</p></li>
 <li><p>La bascule est une <strong>opération manuelle</strong> sur un hyperviseur vide — l’option ne migre rien, un
 subnet déjà créé reste servi par le serveur qui l’a été. La procédure est documentée</p></li>
 <li><p>Toute valeur autre que <code class="docutils literal notranslate"><span class="pre">dnsmasq</span></code> ou <code class="docutils literal notranslate"><span class="pre">two</span></code> fait échouer le démarrage de l’agent</p></li>
@@ -562,8 +561,8 @@ le dialogue avec le serveur intégré, est couvert sur toute plateforme</p></li>
 bash<span class="w"> </span>./deploy.sh<span class="w"> </span>-t<span class="w"> </span><span class="m">0</span>.2.0
 </pre></div>
 </div>
-<p>Sans <code class="docutils literal notranslate"><span class="pre">dhcp.backend</span></code> ni <code class="docutils literal notranslate"><span class="pre">bgp</span></code> dans <code class="docutils literal notranslate"><span class="pre">/etc/two/agent.yml</span></code>, le comportement est celui de la 0.1.0, à
-cinq exceptions près ; les quatre premières touchent les appelants de l’API :</p>
+<p>Sans <code class="docutils literal notranslate"><span class="pre">bgp</span></code> dans <code class="docutils literal notranslate"><span class="pre">/etc/two/agent.yml</span></code>, le comportement est celui de la 0.1.0, à six exceptions
+près ; les quatre premières touchent les appelants de l’API :</p>
 <ul class="simple">
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> ne se fournit plus pour un subnet <code class="docutils literal notranslate"><span class="pre">vxlan</span></code></strong> : il est refusé (400), l’agent le
 calcule. Le retirer des appels de création, et ne plus placer de VM sur les deux dernières
@@ -579,6 +578,11 @@ d’un <code class="docutils literal notranslate"><span class="pre">iface_type</
 l’underlay à 9000, ou poser <code class="docutils literal notranslate"><span class="pre">network.allow_mtu_underlay_below_9000:</span> <span class="pre">true</span></code> — sous 1550, il faut
 aussi abaisser <code class="docutils literal notranslate"><span class="pre">network.mtu_vm</span></code> avec <code class="docutils literal notranslate"><span class="pre">allow_mtu_vm_below_1500</span></code>. Les subnets existants gardent
 leurs interfaces à 1500 jusqu’à leur recréation</p></li>
+<li><p><strong>le DHCP passe par défaut au serveur intégré</strong> (<code class="docutils literal notranslate"><span class="pre">dhcp.backend:</span> <span class="pre">two</span></code>) : sur un hyperviseur qui a
+déjà des subnets, ajouter <code class="docutils literal notranslate"><span class="pre">dhcp.backend:</span> <span class="pre">dnsmasq</span></code> à <code class="docutils literal notranslate"><span class="pre">/etc/two/agent.yml</span></code> <strong>avant</strong>
+<code class="docutils literal notranslate"><span class="pre">deploy.sh</span> <span class="pre">-t</span> <span class="pre">0.2.0</span></code>. Sinon ses subnets restent servis par dnsmasq pendant que l’agent s’adresse
+au serveur intégré : les VM existantes continuent, les nouvelles n’obtiennent pas d’adresse.
+Un hyperviseur vide n’a rien à faire</p></li>
 </ul>
 <p>Les subnets <code class="docutils literal notranslate"><span class="pre">vxlan</span></code> existants gardent leur adressage et le modèle précédent (gateway sur le
 bridge) jusqu’à leur recréation. Les subnets <code class="docutils literal notranslate"><span class="pre">bridge</span></code> existants restent sans le confinement de

@@ -451,9 +451,9 @@ démarrage, la racine étant en tmpfs. <code class="docutils literal notranslate
 à la construction de l’image (<a class="reference internal" href="../deploiement/image-qcow2.html"><span class="doc">Construction de l’image qcow2</span></a>). Le service <code class="docutils literal notranslate"><span class="pre">dnsmasq</span></code> du système est ensuite désactivé et
 <strong>masqué</strong> : il prendrait le port 53 en concurrence des instances <code class="docutils literal notranslate"><span class="pre">dnsmasq&#64;</span></code> que l’agent lance
 dans les netns.</p>
-<p><code class="docutils literal notranslate"><span class="pre">dnsmasq</span></code> reste installé même avec <code class="docutils literal notranslate"><span class="pre">dhcp.backend:</span> <span class="pre">two</span></code> : le backend intégré ne le remplace que
-pour les subnets créés après la bascule, et le paquet est nécessaire tant qu’un hyperviseur peut
-revenir en arrière. Voir <a class="reference internal" href="../exploitation/configuration.html"><span class="doc">Configuration</span></a>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">dnsmasq</span></code> reste installé bien que <code class="docutils literal notranslate"><span class="pre">dhcp.backend</span></code> vaille <code class="docutils literal notranslate"><span class="pre">two</span></code> par défaut : le paquet sert
+aux hyperviseurs qui déclarent <code class="docutils literal notranslate"><span class="pre">dhcp.backend:</span> <span class="pre">dnsmasq</span></code>, et tant qu’un hyperviseur peut revenir
+en arrière. Voir <a class="reference internal" href="../exploitation/configuration.html"><span class="doc">Configuration</span></a>.</p>
 <p><strong>Noyau</strong> — chargement de <code class="docutils literal notranslate"><span class="pre">br_netfilter</span></code>, puis <code class="docutils literal notranslate"><span class="pre">net.ipv4.ip_forward</span> <span class="pre">=</span> <span class="pre">1</span></code> et
 <code class="docutils literal notranslate"><span class="pre">net.bridge.bridge-nf-call-iptables</span> <span class="pre">=</span> <span class="pre">1</span></code>. Cette dernière clé est <strong>requise</strong> par la DNAT vers
 le serveur de metadata : sans elle, iptables ne voit pas le trafic bridgé des VM et cloud-init
