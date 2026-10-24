@@ -292,11 +292,11 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
    * - ``03-image``
      - hypothèses sur l'image de VM — outils (curl, python3), nom d'interface, effet réel de network-config, forme du compte verrouillé
      - hv1
-     - #70
+     - #70, #73
    * - ``11-validation``
      - validation de l'API — refus synchrones (400, 409, 422) des VPC, subnets et VM, sans trace en base
      - hv1
-     - #41, #57, #33, #62
+     - #41, #57, #33, #62, #74
    * - ``12-etats``
      - machine d'états — 409 pendant creating, suppression depuis error, dépendances VM → subnet → VPC, recréation sous le même nom
      - hv1
@@ -322,7 +322,7 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - hv1
      - #33, #62, #73
    * - ``26-multi-disque``
-     - VM à plusieurs disques — racine virtio (vda) et SCSI (xvdX), tailles et bus vus par la VM, liens ``/dev/xvdX`` et ``by-id`` par numéro de série, démarrage sur vda
+     - VM à plusieurs disques — racine virtio (vda) et SCSI (xvdX), tailles et bus vus par la VM, liens /dev/xvdX et by-id par numéro de série, démarrage sur vda
      - hv1
      - #32, #74
    * - ``27-reboot``
@@ -330,7 +330,7 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - hv1
      - #46
    * - ``28-mtu``
-     - MTU des VM (``network.mtu_vm``, 1500) — option DHCP 26 (serveur intégré et dnsmasq), ``host_mtu`` de QEMU, tap, bridge, veth et VXLAN du subnet ; subnet vxlan refusé sur un underlay qui n'est pas à 9000
+     - MTU des VM (network.mtu_vm, 1500 par défaut) — annoncé par le DHCP (option 26, serveur intégré sur hv1, dnsmasq sur hv2) et par QEMU (host_mtu), porté par le tap, le bridge, le veth et le VXLAN du subnet ; subnet vxlan refusé sur un underlay qui n'est pas à 9000
      - hv1 hv2
      - #56
    * - ``31-gateway``
@@ -394,9 +394,9 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - hv1 hv2
      - #54
    * - ``72-perte-switch``
-     - perte d'un switch de la passerelle VRRP — bascule vers l'autre en moins de 5 s, sessions EVPN jamais coupées ; au retour, le plus prioritaire redevient maître, seconde bascule mesurée
+     - perte d'un switch de la passerelle VRRP — bascule vers l'autre en moins de 5 s, sessions EVPN jamais coupées ; au retour, un seul maître (préemption désactivée : celui qui l'est est relevé), plus long silence mesuré
      - 
-     - #54, #69
+     - #54, #69, #80
 
 Campagne du 2026-10-17
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -413,7 +413,8 @@ tests ont été corrigées sur le serveur et les tests concernés rejoués. Il r
   1,2 s, sessions EVPN jamais coupées. La préemption est pourtant **désactivée** dans la
   configuration (``no vrrp 1 preempt``, « Preempt Mode No » relevé le 2026-10-23) : la cause de ce
   retour, après coupure puis rétablissement de l'interface underlay du maître, **n'est pas
-  établie** ;
+  établie**. ``72-perte-switch`` n'exige donc plus que le plus prioritaire redevienne maître : il
+  vérifie qu'il n'y a qu'un maître, note lequel, et mesure le plus long silence après le retour ;
 * une suppression de VM peut durer 300 s quand l'invité ignore l'arrêt ACPI (#79) : ``wait_state``
   attend jusqu'à 360 s.
 
