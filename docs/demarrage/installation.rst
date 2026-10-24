@@ -80,9 +80,9 @@ démarrage, la racine étant en tmpfs. ``qemu-utils`` est demandé explicitement
 **masqué** : il prendrait le port 53 en concurrence des instances ``dnsmasq@`` que l'agent lance
 dans les netns.
 
-``dnsmasq`` reste installé même avec ``dhcp.backend: two`` : le backend intégré ne le remplace que
-pour les subnets créés après la bascule, et le paquet est nécessaire tant qu'un hyperviseur peut
-revenir en arrière. Voir :doc:`/exploitation/configuration`.
+``dnsmasq`` reste installé bien que ``dhcp.backend`` vaille ``two`` par défaut : le paquet sert
+aux hyperviseurs qui déclarent ``dhcp.backend: dnsmasq``, et tant qu'un hyperviseur peut revenir
+en arrière. Voir :doc:`/exploitation/configuration`.
 
 **Noyau** — chargement de ``br_netfilter``, puis ``net.ipv4.ip_forward = 1`` et
 ``net.bridge.bridge-nf-call-iptables = 1``. Cette dernière clé est **requise** par la DNAT vers
