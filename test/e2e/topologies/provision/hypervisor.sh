@@ -1,6 +1,6 @@
 #!/bin/sh
 set -eu
-RELEASE=0.2.0rc009
+RELEASE=0.2.0
 GIT_SERVER=https://git.g3e.fr/
 REPO=syonad/two
 n=0

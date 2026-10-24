@@ -11,7 +11,7 @@ DHCP, routage et metadata cloud-init fournis automatiquement.
 
 ```bash
 curl -O https://git.g3e.fr/syonad/two/raw/branch/main/scripts/deploy.sh
-bash ./deploy.sh -t 0.1.0 -i
+bash ./deploy.sh -t 0.2.0 -i
 ```
 
 `deploy.sh` se met à jour lui-même depuis la branche, télécharge binaires, units systemd et
