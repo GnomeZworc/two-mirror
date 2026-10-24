@@ -484,6 +484,8 @@ suppression, adresse ou route par défaut divergente — et reste en lecture seu
 absente sans alerte, le temps que la création ou la suppression aboutisse (#78)</p></li>
 <li><p>La socket de contrôle répond à <code class="docutils literal notranslate"><span class="pre">get-state</span></code> et à <code class="docutils literal notranslate"><span class="pre">probe</span></code>, ce dernier montrant sans effet de bord
 ce qui serait envoyé à une MAC donnée : adresse, masque, routeur, DNS et routes</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bootstrap_kvm.sh</span></code> installe les paquets KVM sans les paquets recommandés et demande <code class="docutils literal notranslate"><span class="pre">qemu-utils</span></code>
+explicitement : l’installation, rejouée à chaque démarrage, passe d’environ 270 à 65 Mo (#64)</p></li>
 <li><p>Documentation Sphinx du projet : concepts, architecture, déploiement et exploitation</p></li>
 </ul>
 </section>
@@ -505,6 +507,13 @@ champ et de le rendre indistinguable d’une réponse tronquée</p></li>
 contrôle et sa socket UDP avant de sortir. Il mourait jusque-là sans nettoyer, et laissait
 <code class="docutils literal notranslate"><span class="pre">/run/two/dhcp/&lt;netns&gt;_&lt;bridge&gt;.sock</span></code> après la suppression du subnet. L’agent supprime aussi
 cette socket avec le fichier d’état, ce qui couvre une mort brutale du processus (#77)</p></li>
+<li><p><strong>Les VXLAN portent l’adresse VTEP locale (#51).</strong> Créés sans adresse source, ils laissaient FRR
+sans VTEP local : aucune route EVPN annoncée, et les VM d’un même subnet <code class="docutils literal notranslate"><span class="pre">vxlan</span></code> ne se
+joignaient pas d’un hyperviseur à l’autre</p></li>
+<li><p><strong>VM multi-NIC : les interfaces secondaires obtiennent leur bail (#73).</strong> Le <code class="docutils literal notranslate"><span class="pre">network-config</span></code>
+servi par le serveur de metadata ne déclarait que <code class="docutils literal notranslate"><span class="pre">eth0</span></code> ; il déclare désormais une entrée par
+interface, reconnue par sa MAC. L’image doit en outre lancer DHCP sur toutes ses interfaces
+<code class="docutils literal notranslate"><span class="pre">en*</span></code> : voir la documentation de l’image</p></li>
 <li><p><strong>Mode <code class="docutils literal notranslate"><span class="pre">bridge</span></code> sur plusieurs hôtes : <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> confinée à son hôte (#75).</strong> Chaque hôte
 portant la même <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code>, une VM obtenait parfois l’ARP, les métadonnées ou le DHCP d’un
 autre hôte : en lab, une VM ne recevait ses propres métadonnées que 3 à 4 fois sur 5. L’agent
@@ -521,7 +530,13 @@ subnet ne retire que les règles présentes</p></li>
 démontage ordonné, relecture de la configuration après démontage) et <code class="docutils literal notranslate"><span class="pre">internal/sysctl</span></code> ; une
 remarque de <code class="docutils literal notranslate"><span class="pre">vtysh</span></code> (« Configuration applied with notes ») n’est pas une erreur, et la
 suppression d’une instance BGP de VRF est réessayée tant que <code class="docutils literal notranslate"><span class="pre">bgpd</span></code> n’a pas libéré la L3VNI</p></li>
-<li><p>Les tests du dispatcher arrêtent les workers avant de fermer la base (#47)</p></li>
+<li><p>Les tests du dispatcher arrêtent les workers avant de fermer la base (#47), ceux du watchdog
+attendent la fin de <code class="docutils literal notranslate"><span class="pre">Run</span></code> avant de la fermer (#83)</p></li>
+<li><p><strong>Lab de test</strong> : labctl, qui monte un lab virtuel (hyperviseurs en KVM imbriqué, route
+reflectors, switchs L3), vit dans son propre dépôt (#50, #55) ; la suite <code class="docutils literal notranslate"><span class="pre">test/e2e</span></code> reste dans
+two, refondue par fonctionnalité dans un ordre fixe (#70), sur un plan de contrôle redondant —
+deux route reflectors, deux switchs (#54). L’image Rocky 10 des VM de test se construit de
+façon reproductible dans <code class="docutils literal notranslate"><span class="pre">syonad/two-images</span></code> (#53)</p></li>
 <li><p>Le module passe à <strong>Go 1.25</strong>, exigé par la bibliothèque DHCP retenue. La version de Go du
 workflow de build, restée à 1.21 alors que le module en demandait davantage, est alignée</p></li>
 <li><p>Nouveau paquet <code class="docutils literal notranslate"><span class="pre">pkg/db/statefile</span></code> : persistance générique d’un état de composant dans un
@@ -542,8 +557,9 @@ rejetés comme « martiens » (traceroute partiel)</p></li>
 au démarrage, l’ordre est migration réseau, puis FRR, puis l’agent (#52)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">bootstrap_kvm.sh</span></code> active <code class="docutils literal notranslate"><span class="pre">net.ipv4.ip_forward</span></code> en global ; le forwarding que l’agent active
 sur les seules interfaces de la VRF n’en restreint donc pas la portée</p></li>
-<li><p><strong>dnsmasq n’est pas retiré</strong> et reste un paquet requis : le backend intégré ne sert que les
-subnets créés après la bascule, et le retour arrière suppose dnsmasq installé</p></li>
+<li><p><strong>dnsmasq n’est pas retiré</strong> et reste un paquet requis : il sert les hyperviseurs qui déclarent
+<code class="docutils literal notranslate"><span class="pre">dhcp.backend:</span> <span class="pre">dnsmasq</span></code>, dont ceux mis à jour avec des subnets existants, et le retour arrière
+suppose dnsmasq installé. Son retrait est prévu en 0.4.0 (#49)</p></li>
 <li><p>Pas de DNS, pas de pool dynamique, pas de PXE, pas de DHCPv6 dans le serveur intégré</p></li>
 <li><p>La comparaison faite par le watchdog porte sur les <strong>réservations</strong> et non sur la configuration
 du subnet : celle-ci dépend de la route par défaut de l’host, dont la lecture au moment du
