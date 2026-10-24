@@ -1,6 +1,6 @@
-# fonctionnalité: perte d'un switch de la passerelle VRRP — bascule vers l'autre en moins de 5 s, sessions EVPN jamais coupées ; au retour, le plus prioritaire redevient maître, seconde bascule mesurée
+# fonctionnalité: perte d'un switch de la passerelle VRRP — bascule vers l'autre en moins de 5 s, sessions EVPN jamais coupées ; au retour, un seul maître (préemption désactivée : celui qui l'est est relevé), plus long silence mesuré
 # hôtes:
-# tickets: #54, #69
+# tickets: #54, #69, #80
 
 . "${LAB_DIR}/lib/net.sh"
 
@@ -38,9 +38,10 @@ SW1=$(vrrp_state sw1)
 SW2=$(vrrp_state sw2)
 P1=$(vrrp_priority sw1)
 P2=$(vrrp_priority sw2)
-if [[ "${SW1}" == Master ]]; then
+MASTER="" BACKUP=""
+if [[ "${SW1} ${SW2}" == "Master Backup" ]]; then
     MASTER=sw1 BACKUP=sw2
-else
+elif [[ "${SW1} ${SW2}" == "Backup Master" ]]; then
     MASTER=sw2 BACKUP=sw1
 fi
 
@@ -48,6 +49,17 @@ on hv1 "SW1=${SW1}" "SW2=${SW2}" "P1=${P1}" "P2=${P2}" "MASTER=${MASTER}" <<'NOD
 info "état VRRP : sw1 ${SW1} (priorité ${P1}), sw2 ${SW2} (priorité ${P2})"
 check "priorités VRRP lues sur sw1 et sw2" sh -c "[ -n \"\$1\" ] && [ -n \"\$2\" ]" _ "${P1}" "${P2}"
 check "un seul maître VRRP pour la passerelle, l'autre en attente" sh -c "[ \"\$1 \$2\" = 'Master Backup' ] || [ \"\$1 \$2\" = 'Backup Master' ]" _ "${SW1}" "${SW2}"
+NODE
+
+if [[ -z "${MASTER}" ]]; then
+    on hv1 <<'NODE'
+pkill -f 'ping -D -i 0.2 10.255.255.1'
+rm -f /tmp/t72.log /tmp/t72.10.255.255.1 /tmp/t72.10.255.255.2
+check "état VRRP lisible avec un seul maître : aucune panne simulée" false
+NODE
+    return 1
+fi
+on hv1 "MASTER=${MASTER}" <<'NODE'
 info "panne simulée sur ${MASTER} : interface underlay coupée"
 NODE
 
@@ -80,14 +92,15 @@ NODE
 sleep 10
 
 if [[ "${MASTER}" == sw1 ]]; then CUT_PRIO=${P1}; else CUT_PRIO=${P2}; fi
-EXPECTED=$(vrrp_expected_master "sw1:${P1}:192.168.14.2" "sw2:${P2}:192.168.14.3")
-if [[ "${EXPECTED}" == sw1 ]]; then OTHER=sw2; else OTHER=sw1; fi
+HIGHEST=$(vrrp_expected_master "sw1:${P1}:192.168.14.2" "sw2:${P2}:192.168.14.3")
 
-on hv1 "MASTER=${MASTER}" "CUT_PRIO=${CUT_PRIO}" "EXPECTED=${EXPECTED}" "OTHER=${OTHER}" "T_UP=${T_UP}" \
-    "EXPECTED_STATE=$(vrrp_state "${EXPECTED}")" "OTHER_STATE=$(vrrp_state "${OTHER}")" <<'NODE'
-info "${MASTER} rétabli (priorité ${CUT_PRIO}) : maître attendu ${EXPECTED}, le plus prioritaire"
-check "${MASTER} rétabli : ${EXPECTED}, le plus prioritaire, est maître" test "${EXPECTED_STATE}" = Master
-check "${MASTER} rétabli : ${OTHER} en attente" test "${OTHER_STATE}" = Backup
+on hv1 "MASTER=${MASTER}" "CUT_PRIO=${CUT_PRIO}" "HIGHEST=${HIGHEST}" "T_UP=${T_UP}" \
+    "SW1=$(vrrp_state sw1)" "SW2=$(vrrp_state sw2)" <<'NODE'
+NOW_MASTER=""
+[ "${SW1}" = Master ] && NOW_MASTER=sw1
+[ "${SW2}" = Master ] && NOW_MASTER=sw2
+info "${MASTER} rétabli (priorité ${CUT_PRIO}) : sw1 ${SW1}, sw2 ${SW2} ; maître ${NOW_MASTER:-aucun}, le plus prioritaire est ${HIGHEST} (préemption désactivée)"
+check "${MASTER} rétabli : un seul maître VRRP, l'autre en attente" sh -c "[ \"\$1 \$2\" = 'Master Backup' ] || [ \"\$1 \$2\" = 'Backup Master' ]" _ "${SW1}" "${SW2}"
 pkill -f 'ping -D -i 0.2 10.255.255.1' || true
 sleep 1
 for rr in 10.255.255.1 10.255.255.2; do
@@ -101,9 +114,6 @@ sent=${stats#* }
 after=$(LC_ALL=C awk -F'[][]' -v from="${T_UP}" '/bytes from/ && $2 >= from' /tmp/t72.log | wc -l)
 info "pendant tout le scénario : ${received} réponses pour ${sent} requêtes, $(( sent - received )) perdues ; première bascule : silence de $(( first / 10 )),$(( first % 10 )) s ; après le retour de ${MASTER} : ${after} réponses, silence de $(( second / 10 )),$(( second % 10 )) s"
 check "première bascule de la passerelle en moins de 5 s" test "${first}" -lt 50
-if [ "${EXPECTED}" = "${MASTER}" ]; then
-    check "seconde bascule (retour de ${MASTER}, le plus prioritaire) en moins de 5 s" test "${second}" -lt 50
-else
-    check "retour de ${MASTER} sans seconde bascule (plus long silence < 5 s)" test "${second}" -lt 50
-fi
+check "retour de ${MASTER} : plus long silence de moins de 5 s, qu'il redevienne maître ou non" test "${second}" -lt 50
+rm -f /tmp/t72.log /tmp/t72.10.255.255.1 /tmp/t72.10.255.255.2
 NODE
