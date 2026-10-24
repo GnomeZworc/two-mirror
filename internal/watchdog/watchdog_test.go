@@ -111,8 +111,15 @@ func TestRun_VerifieLesTroisTypesDeRessource(t *testing.T) {
 	w := New(db, testCfg(t), n, l, 10*time.Millisecond)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go w.Run(ctx)
+	done := make(chan struct{})
+	go func() {
+		w.Run(ctx)
+		close(done)
+	}()
+	defer func() {
+		cancel()
+		<-done
+	}()
 
 	kinds := map[string]bool{}
 	deadline := time.After(5 * time.Second)
