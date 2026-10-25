@@ -48,7 +48,7 @@ La réponse est un **202** : la création est acceptée, pas terminée.
 
 Un subnet peut être demandé dès maintenant : il est accepté tant que le VPC est en ``creating``
 ou ``running``, et sa création attend que le VPC soit ``running``, dans la limite de
-``dispatcher.timeout_seconds``. Il n'est refusé en **422** que si le VPC est absent, en ``error``
+``times.timeout_subnet_start``. Il n'est refusé en **422** que si le VPC est absent, en ``error``
 ou en ``deleting``. Le modèle d'attente est décrit dans :doc:`/exploitation/api-agent/asynchronisme`.
 
 2. Le subnet

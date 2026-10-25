@@ -40,7 +40,10 @@ Suppression
 Elle n'est autorisée que depuis ``running`` ou ``error`` — sinon **409**. Depuis ``error``, elle
 est **best-effort** : les ressources système peuvent n'avoir été créées que partiellement.
 
-Un VPC ne peut être supprimé qu'une fois tous ses subnets supprimés.
+Un VPC ne peut être supprimé qu'une fois tous ses subnets supprimés ou en ``deleting``, un subnet
+qu'une fois toutes ses VM supprimées ou en ``deleting``. Les enfants encore en ``deleting`` sont
+attendus (``times.timeout_vpc_stop``, ``times.timeout_subnet_stop``) ; si l'un d'eux passe en
+``error``, la suppression du parent échoue, et le parent passe en ``error`` à son tour.
 
 Pas de rollback
 ---------------

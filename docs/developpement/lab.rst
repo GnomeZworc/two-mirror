@@ -298,9 +298,9 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - hv1
      - #41, #57, #33, #62, #74, #81
    * - ``12-etats``
-     - machine d'états — 409 pendant creating, suppression depuis error, sockets QEMU d'une VM en error retirés, dépendances VM → subnet → VPC, recréation sous le même nom
+     - machine d'états — 409 pendant creating, suppression depuis error, sockets QEMU d'une VM en error retirés, dépendances VM → subnet → VPC, suppression d'un subnet en attente de ses VM, arrêt d'une VM juste démarrée par renvoi de system_powerdown, recréation sous le même nom
      - hv1
-     - #41, #84
+     - #41, #84, #79
    * - ``21-dhcp-two``
      - DHCP par le serveur intégré (backend two) — bail, server-id, renouvellement, option 121, un serveur par subnet, démarrages simultanés
      - hv1
@@ -416,7 +416,7 @@ tests ont été corrigées sur le serveur et les tests concernés rejoués. Il r
   établie**. ``72-perte-switch`` n'exige donc plus que le plus prioritaire redevienne maître : il
   vérifie qu'il n'y a qu'un maître, note lequel, et mesure le plus long silence après le retour ;
 * une suppression de VM peut durer 300 s quand l'invité ignore l'arrêt ACPI (#79) : ``wait_state``
-  attend jusqu'à 360 s.
+  attend jusqu'à 480 s, au-delà du ``times.timeout_vpc_stop`` par défaut (420 s).
 
 Hypothèses vérifiées en lab, à garder en tête en écrivant un test :
 

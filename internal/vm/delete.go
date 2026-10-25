@@ -1,6 +1,7 @@
 package vm
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -49,13 +50,7 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 
 	if _, err := os.Stat(socketPath); err == nil {
 		// socket présent : tenter l'arrêt gracieux
-		if _, err := qmp.Send(socketPath, []string{`{"execute":"system_powerdown"}`}); err == nil {
-			waitQMPDead(socketPath,
-				time.Duration(cfg.Dispatcher.TimeoutSeconds)*time.Second,
-				time.Duration(cfg.Dispatcher.PollSeconds)*time.Second,
-			)
-		}
-		// connexion QMP échouée : QEMU déjà mort
+		shutdownQEMU(qmp.Send, socketPath, cfg.Times.VMsStop(), cfg.Times.VMsShutdown(), cfg.Times.Poll())
 	}
 	// socket absent ou QEMU déjà arrêté : cleanup direct
 
@@ -115,15 +110,31 @@ func removeDHCPFiles(d vmData, name string, backend dhcpbackend.Backend) error {
 	return nil
 }
 
-func waitQMPDead(socketPath string, timeout, poll time.Duration) {
-	timer := time.After(timeout)
+type qmpSender func(socketPath string, commands []string) ([]json.RawMessage, error)
+
+const (
+	qmpPowerdown = `{"execute":"system_powerdown"}`
+	qmpQuit      = `{"execute":"quit"}`
+)
+
+func shutdownQEMU(send qmpSender, socketPath string, timeout, resend, poll time.Duration) {
+	if _, err := send(socketPath, []string{qmpPowerdown}); err != nil {
+		return
+	}
+	deadline := time.After(timeout)
+	again := time.NewTicker(resend)
+	defer again.Stop()
 	for {
 		select {
-		case <-timer:
-			qmp.Send(socketPath, []string{`{"execute":"quit"}`})
+		case <-deadline:
+			send(socketPath, []string{qmpQuit})
 			return
+		case <-again.C:
+			if _, err := send(socketPath, []string{qmpPowerdown}); err != nil {
+				return
+			}
 		case <-time.After(poll):
-			if _, err := qmp.Send(socketPath, nil); err != nil {
+			if _, err := send(socketPath, nil); err != nil {
 				return
 			}
 		}

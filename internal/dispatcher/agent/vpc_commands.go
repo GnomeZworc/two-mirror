@@ -1,6 +1,7 @@
 package dispatcher
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -129,31 +130,8 @@ func (c DeleteVPCCommand) Prepare(db *badger.DB, _ *configuration.Config) error 
 }
 
 func (c DeleteVPCCommand) Execute(db *badger.DB, cfg *configuration.Config) error {
-	timeout := time.After(time.Duration(cfg.Dispatcher.TimeoutSeconds) * time.Second)
-	for {
-		entries, err := kv.ListByPrefix(db, "subnet/")
-		if err != nil {
-			return fmt.Errorf("failed to list subnets: %w", err)
-		}
-		pending := false
-		for key, value := range entries {
-			if strings.HasSuffix(key, "/vpc") && value == c.Name {
-				subnetName := strings.Split(key, "/")[1]
-				s, _ := state.Get(db, "subnet/"+subnetName)
-				if s == state.Deleting {
-					pending = true
-					break
-				}
-			}
-		}
-		if !pending {
-			break
-		}
-		select {
-		case <-timeout:
-			return fmt.Errorf("timed out waiting for subnets of vpc %q to be deleted", c.Name)
-		case <-time.After(time.Duration(cfg.Dispatcher.PollSeconds) * time.Second):
-		}
+	if err := waitSubnetsDeleted(db, c.Name, cfg.Times.VPCStop(), cfg.Times.Poll()); err != nil {
+		return err
 	}
 	if err := vpc.DeleteVPC(db, c.Name); err != nil {
 		return err
@@ -166,4 +144,36 @@ func (c DeleteVPCCommand) Execute(db *badger.DB, cfg *configuration.Config) erro
 		kv.DeleteInDB(db, "vpc/"+c.Name)
 	}
 	return nil
+}
+
+func waitSubnetsDeleted(db *badger.DB, vpcName string, timeout, poll time.Duration) error {
+	err := waitUntil(timeout, poll, func() (bool, error) {
+		entries, err := kv.ListByPrefix(db, "subnet/")
+		if err != nil {
+			return false, fmt.Errorf("failed to list subnets: %w", err)
+		}
+		pending := false
+		for key, value := range entries {
+			if !strings.HasSuffix(key, "/vpc") || value != vpcName {
+				continue
+			}
+			subnetName := strings.Split(key, "/")[1]
+			s, err := state.Get(db, "subnet/"+subnetName)
+			if err != nil {
+				continue
+			}
+			switch s {
+			case state.Deleted:
+			case state.Deleting:
+				pending = true
+			default:
+				return false, fmt.Errorf("subnet %q is %s, vpc %q cannot be deleted", subnetName, s, vpcName)
+			}
+		}
+		return !pending, nil
+	})
+	if errors.Is(err, errWaitTimeout) {
+		return fmt.Errorf("timed out waiting for subnets of vpc %q to be deleted", vpcName)
+	}
+	return err
 }

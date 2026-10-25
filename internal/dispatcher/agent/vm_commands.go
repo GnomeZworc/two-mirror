@@ -1,6 +1,7 @@
 package dispatcher
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 	"strconv"
@@ -151,24 +152,23 @@ func allocateMetadataPort(db *badger.DB) (int, error) {
 }
 
 func (c StartVMCommand) Execute(db *badger.DB, cfg *configuration.Config) error {
-	timeout := time.After(time.Duration(cfg.Dispatcher.TimeoutSeconds) * time.Second)
+	timeout := time.Now().Add(cfg.Times.VMsStart())
 	for _, n := range c.NICs {
-		for {
+		err := waitUntil(time.Until(timeout), cfg.Times.Poll(), func() (bool, error) {
 			subnetState, err := state.Get(db, "subnet/"+n.Subnet)
 			if err != nil {
-				return fmt.Errorf("subnet %q not found while waiting", n.Subnet)
+				return false, fmt.Errorf("subnet %q not found while waiting", n.Subnet)
 			}
-			if subnetState == state.Running {
-				break
+			if subnetState != state.Running && subnetState != state.Creating {
+				return false, fmt.Errorf("subnet %q is %s, cannot start vm %q", n.Subnet, subnetState, c.Name)
 			}
-			if subnetState != state.Creating {
-				return fmt.Errorf("subnet %q is %s, cannot start vm %q", n.Subnet, subnetState, c.Name)
-			}
-			select {
-			case <-timeout:
-				return fmt.Errorf("timed out waiting for subnet %q to be running", n.Subnet)
-			case <-time.After(time.Duration(cfg.Dispatcher.PollSeconds) * time.Second):
-			}
+			return subnetState == state.Running, nil
+		})
+		if errors.Is(err, errWaitTimeout) {
+			return fmt.Errorf("timed out waiting for subnet %q to be running", n.Subnet)
+		}
+		if err != nil {
+			return err
 		}
 	}
 	return vm.StartVM(db, c.Name, cfg)

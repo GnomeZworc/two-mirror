@@ -1,6 +1,7 @@
 package dispatcher
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -93,23 +94,21 @@ func (c CreateSubnetCommand) Prepare(db *badger.DB, cfg *configuration.Config) e
 }
 
 func (c CreateSubnetCommand) Execute(db *badger.DB, cfg *configuration.Config) error {
-	timeout := time.After(time.Duration(cfg.Dispatcher.TimeoutSeconds) * time.Second)
-	for {
+	err := waitUntil(cfg.Times.SubnetStart(), cfg.Times.Poll(), func() (bool, error) {
 		vpcState, err := state.Get(db, "vpc/"+c.VPC)
 		if err != nil {
-			return fmt.Errorf("vpc %q not found while waiting", c.VPC)
+			return false, fmt.Errorf("vpc %q not found while waiting", c.VPC)
 		}
-		if vpcState == state.Running {
-			break
+		if vpcState != state.Running && vpcState != state.Creating {
+			return false, fmt.Errorf("vpc %q is %s, cannot create subnet %q", c.VPC, vpcState, c.Name)
 		}
-		if vpcState != state.Creating {
-			return fmt.Errorf("vpc %q is %s, cannot create subnet %q", c.VPC, vpcState, c.Name)
-		}
-		select {
-		case <-timeout:
-			return fmt.Errorf("timed out waiting for vpc %q to be running", c.VPC)
-		case <-time.After(time.Duration(cfg.Dispatcher.PollSeconds) * time.Second):
-		}
+		return vpcState == state.Running, nil
+	})
+	if errors.Is(err, errWaitTimeout) {
+		return fmt.Errorf("timed out waiting for vpc %q to be running", c.VPC)
+	}
+	if err != nil {
+		return err
 	}
 	return subnet.CreateSubnet(db, c.Name, cfg)
 }
@@ -132,10 +131,39 @@ func (c DeleteSubnetCommand) Prepare(db *badger.DB, _ *configuration.Config) err
 	if err != nil {
 		return err
 	}
-	if len(vms) > 0 {
-		return fmt.Errorf("subnet %q is still used by vms %s", c.Name, strings.Join(vms, ", "))
+	var blocking []string
+	for _, name := range vms {
+		if s, err := state.Get(db, "vm/"+name); err != nil || s != state.Deleting {
+			blocking = append(blocking, name)
+		}
+	}
+	if len(blocking) > 0 {
+		return fmt.Errorf("subnet %q is still used by vms %s", c.Name, strings.Join(blocking, ", "))
 	}
 	return state.Set(db, c.Key(), state.Deleting)
+}
+
+func waitVMsDeleted(db *badger.DB, subnetName string, timeout, poll time.Duration) error {
+	err := waitUntil(timeout, poll, func() (bool, error) {
+		vms, err := vmsUsingSubnet(db, subnetName)
+		if err != nil {
+			return false, err
+		}
+		for _, name := range vms {
+			s, err := state.Get(db, "vm/"+name)
+			if err != nil {
+				continue
+			}
+			if s != state.Deleting {
+				return false, fmt.Errorf("vm %q is %s, subnet %q cannot be deleted", name, s, subnetName)
+			}
+		}
+		return len(vms) == 0, nil
+	})
+	if errors.Is(err, errWaitTimeout) {
+		return fmt.Errorf("timed out waiting for the vms of subnet %q to be deleted", subnetName)
+	}
+	return err
 }
 
 func vmsUsingSubnet(db *badger.DB, subnetName string) ([]string, error) {
@@ -159,6 +187,9 @@ func vmsUsingSubnet(db *badger.DB, subnetName string) ([]string, error) {
 }
 
 func (c DeleteSubnetCommand) Execute(db *badger.DB, cfg *configuration.Config) error {
+	if err := waitVMsDeleted(db, c.Name, cfg.Times.SubnetStop(), cfg.Times.Poll()); err != nil {
+		return err
+	}
 	if err := subnet.DeleteSubnet(db, c.Name, cfg); err != nil {
 		return err
 	}

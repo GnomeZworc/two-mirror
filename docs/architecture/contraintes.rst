@@ -50,7 +50,8 @@ QEMU et VM
   exécuté par le processus appelant et hérite du netns posé par ``netns.Call``. Une unit
   transitoire, forkée par PID 1, démarrerait dans le netns racine et ne verrait pas le tap.
 * L'arrêt d'une VM ne touche **jamais** aux fichiers disque. En revanche, un ``quit`` brutal est
-  envoyé à l'expiration de ``dispatcher.timeout_seconds``.
+  envoyé à l'expiration de ``times.timeout_vms_stop``. ``system_powerdown`` est renvoyé toutes les
+  ``times.next_vms_shutdown`` : un appui ACPI arrivé avant que l'invité sache le traiter est perdu.
 
 Arrêt de l'agent
 ----------------

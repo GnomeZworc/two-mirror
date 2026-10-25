@@ -24,10 +24,7 @@ type Config struct {
 		Count      int `mapstructure:"count"`
 		BufferSize int `mapstructure:"buffer_size"`
 	} `mapstructure:"worker"`
-	Dispatcher struct {
-		TimeoutSeconds int `mapstructure:"timeout_seconds"`
-		PollSeconds    int `mapstructure:"poll_seconds"`
-	} `mapstructure:"dispatcher"`
+	Times  Times `mapstructure:"times"`
 	Logger struct {
 		Level string `mapstructure:"level"`
 		Debug bool   `mapstructure:"debug"`
@@ -73,8 +70,13 @@ func LoadConfig(path string) (*Config, error) {
 	v.SetDefault("prometheus.port", 9090)
 	v.SetDefault("worker.count", 4)
 	v.SetDefault("worker.buffer_size", 100)
-	v.SetDefault("dispatcher.timeout_seconds", 300)
-	v.SetDefault("dispatcher.poll_seconds", 2)
+	v.SetDefault("times.timeout_vms_stop", TimeoutVMsStop)
+	v.SetDefault("times.next_vms_shutdown", NextVMsShutdown)
+	v.SetDefault("times.timeout_subnet_stop", TimeoutSubnetStop)
+	v.SetDefault("times.timeout_vpc_stop", TimeoutVPCStop)
+	v.SetDefault("times.timeout_subnet_start", TimeoutSubnetStart)
+	v.SetDefault("times.timeout_vms_start", TimeoutVMsStart)
+	v.SetDefault("times.poll_interval", PollInterval)
 	v.SetDefault("metadata.run_dir", "/run/two/metadata")
 	v.SetDefault("dhcp.backend", BackendTwo)
 	v.SetDefault("qemu.ovmf_code_path", "/usr/share/OVMF/OVMF_CODE.fd")
@@ -104,6 +106,9 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, err
 	}
 	if err := cfg.Network.Validate(); err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	if err := cfg.Times.Validate(); err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 
