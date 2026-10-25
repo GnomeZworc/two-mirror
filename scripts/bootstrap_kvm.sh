@@ -77,8 +77,8 @@ kvm_network () {
 
     info "réseau"
 
-    # Bridge public : créé à vide, réservé pour un usage futur. Aucune adresse,
-    # aucun esclave, pas référencé dans la config agent.
+    # Bridge public : sans adresse. Il reçoit le VXLAN du segment public
+    # (kvm_public_segment) et les veth vp-<id>-e des VPC (interfaces.internet).
     kvm_ensure_bridge "${DRY_RUN}" "${PUBLIC_BRIDGE}"
 
     MASTER=""
@@ -153,6 +153,49 @@ EOF
     info "  rollback désarmé"
 }
 
+# VXLAN du segment public, partagé avec les bordures, esclave du bridge public.
+# VTEP = IPv4 du bridge principal, comme les VXLAN de l'agent ; sans
+# apprentissage, les MAC distantes viennent d'EVPN. Recréé si le VNI ou le VTEP
+# a changé.
+kvm_public_segment () {
+    local DRY_RUN="${1}"
+    local WITH_NETWORK="${2}"
+    local BRIDGE="${3}"
+    local PUBLIC_BRIDGE="${4}"
+    local PUBLIC_VNI="${5}"
+    local NAME="vxlan-public"
+    local VTEP CURRENT=""
+
+    [[ ${WITH_NETWORK} -eq ${FLAGS_TRUE} ]] || return 0
+    [[ "${PUBLIC_VNI}" =~ ^[0-9]+$ ]] && (( PUBLIC_VNI >= 1 && PUBLIC_VNI <= 16777215 )) \
+        || die "VNI du segment public invalide : ${PUBLIC_VNI} (1-16777215)"
+
+    info "segment public : ${NAME}, VNI ${PUBLIC_VNI}, sur ${PUBLIC_BRIDGE}"
+
+    if [[ ${DRY_RUN} -eq ${FLAGS_TRUE} ]]
+    then
+        VTEP="<ip(${BRIDGE})>"
+    else
+        VTEP=$(ip -j addr show dev "${BRIDGE}" | jq -r '[.[0].addr_info[] | select(.family=="inet" and .scope=="global")][0].local // ""')
+        [[ -n "${VTEP}" ]] || die "aucune adresse IPv4 globale sur ${BRIDGE} pour le VTEP du segment public"
+        if ip link show dev "${NAME}" >/dev/null 2>&1
+        then
+            CURRENT=$(ip -j -d link show dev "${NAME}" | jq -r '.[0].linkinfo.info_data | "\(.id) \(.local)"')
+        fi
+    fi
+
+    if [[ -n "${CURRENT}" && "${CURRENT}" != "${PUBLIC_VNI} ${VTEP}" ]]
+    then
+        info "  ${NAME} porte ${CURRENT} (VNI VTEP) : recréé"
+        run "${DRY_RUN}" "ip link del dev '${NAME}'"
+        CURRENT=""
+    fi
+    [[ -n "${CURRENT}" ]] \
+        || run "${DRY_RUN}" "ip link add '${NAME}' type vxlan id ${PUBLIC_VNI} local '${VTEP}' dstport 4789 nolearning"
+    run "${DRY_RUN}" "ip link set dev '${NAME}' mtu 1500 master '${PUBLIC_BRIDGE}'"
+    run "${DRY_RUN}" "ip link set up dev '${NAME}'"
+}
+
 # Point d'entrée appelé par deploy.sh --bootstrap.
 bootstrap_host () {
     local DRY_RUN="${1}"
@@ -162,8 +205,10 @@ bootstrap_host () {
     local BRIDGE="${5}"
     local PUBLIC_BRIDGE="${6}"
     local ROLLBACK_DELAY="${7}"
+    local PUBLIC_VNI="${8:-1}"
 
-    kvm_packages "${DRY_RUN}" "${WITH_PACKAGES}"
-    kvm_kernel   "${DRY_RUN}"
-    kvm_network  "${DRY_RUN}" "${WITH_NETWORK}" "${UPLINK}" "${BRIDGE}" "${PUBLIC_BRIDGE}" "${ROLLBACK_DELAY}"
+    kvm_packages       "${DRY_RUN}" "${WITH_PACKAGES}"
+    kvm_kernel         "${DRY_RUN}"
+    kvm_network        "${DRY_RUN}" "${WITH_NETWORK}" "${UPLINK}" "${BRIDGE}" "${PUBLIC_BRIDGE}" "${ROLLBACK_DELAY}"
+    kvm_public_segment "${DRY_RUN}" "${WITH_NETWORK}" "${BRIDGE}" "${PUBLIC_BRIDGE}" "${PUBLIC_VNI}"
 }

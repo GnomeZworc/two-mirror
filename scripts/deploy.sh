@@ -159,7 +159,7 @@ run_bootstrap () {
         || die "bootstrap_host() introuvable — ni ${SCRIPTS_DIR}/${NAME} ni ${BOOTSTRAP_URL} n'ont pu être chargés"
 
     bootstrap_host "${DRY_RUN}" "${FLAGS_packages}" "${FLAGS_network}" \
-        "${FLAGS_uplink}" "${FLAGS_bridge}" "${FLAGS_pub_bridge}" "${FLAGS_rollback}"
+        "${FLAGS_uplink}" "${FLAGS_bridge}" "${FLAGS_pub_bridge}" "${FLAGS_rollback}" "${FLAGS_public_vni}"
 }
 
 resolve_tag () {
@@ -335,7 +335,8 @@ main () {
     DEFINE_boolean 'network'    true                  'Configure bridges during --bootstrap'           'n'
     DEFINE_string  'uplink'     'eno1'                'Physical uplink interface'                      'u'
     DEFINE_string  'bridge'     'br-000000'           'Main bridge, uplink is enslaved to it'          'B'
-    DEFINE_string  'pub_bridge' 'br-public'           'Reserved empty bridge'                          'P'
+    DEFINE_string  'pub_bridge' 'br-public'           'Public bridge, carries vxlan-public'            'P'
+    DEFINE_integer 'public_vni' 1                     'VNI of the public segment (vxlan-public)'       'N'
     DEFINE_integer 'rollback'   120                   'Rollback reboot delay in seconds'               'R'
     DEFINE_boolean 'verify'     true                  'Check assets against SHA256SUMS'                'V'
 
