@@ -386,6 +386,10 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - fenêtre ARP de la gateway anycast entre deux hôtes — relais L2 depuis l'adresse d'émission d'un hôte, gateway de la VM inchangée, métadonnées, renouvellement DHCP et TCP local sans perte pendant la fenêtre
      - hv1 hv2
      - #57
+   * - ``45-segment-public``
+     - segment public de l'hôte — vxlan-public (VNI 1) posé par le bootstrap sur br-public, VNI annoncé en EVPN et vu par les bordures, gateway anycast des bordures installée vers une seule bordure, gateway et destination de test joignables sans doublon, L2 entre hyperviseurs, veth des VPC sur le bridge public, watchdog
+     - hv1 hv2 hv3
+     - #87
    * - ``51-l3vni``
      - routage inter-subnet entre hôtes par L3VNI (IRB symétrique) — VRF, RMAC, exports /24 et /32, RT-5 réfléchies, TTL, isolation par RT, unreachable default dans la VRF, démontage d'un VPC routé
      - hv1 hv2
