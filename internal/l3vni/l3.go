@@ -14,6 +14,8 @@ import (
 	"github.com/dgraph-io/badger/v4"
 )
 
+const UnreachableMetric = 4278198272
+
 var (
 	transitHost  = &net.IPNet{IP: net.IPv4(169, 254, 0, 1).To4(), Mask: net.CIDRMask(30, 32)}
 	transitNetns = &net.IPNet{IP: net.IPv4(169, 254, 0, 2).To4(), Mask: net.CIDRMask(30, 32)}
@@ -84,6 +86,7 @@ func createL3(h host, cfg *configuration.Config, v l3VPC) error {
 		run  func() error
 	}{
 		{"create " + v.vrf(), func() error { return h.CreateVRF(v.vrf(), v.vni) }},
+		{"unreachable default in " + v.vrf(), func() error { return h.TableUnreachableDefault(v.vni) }},
 		{"create " + v.bridge(), func() error { return h.CreateBridge(v.bridge(), mtu, rmac) }},
 		{"attach " + v.bridge(), func() error { return h.SetMaster(v.bridge(), v.vrf()) }},
 		{"create " + v.vxlan(), func() error { return h.CreateVxlan(v.vxlan(), int(v.vni), cfg.DefaultInterface, mtu) }},
@@ -122,6 +125,9 @@ func deleteL3(h host, v l3VPC) error {
 		if err := h.DeleteLink(link); err != nil {
 			return fmt.Errorf("l3vni %d: delete %s: %w", v.vni, link, err)
 		}
+	}
+	if err := h.TableUnreachableDefaultDel(v.vni); err != nil {
+		return fmt.Errorf("l3vni %d: delete unreachable default from table %d: %w", v.vni, v.vni, err)
 	}
 	if err := h.RemoveVRF(frrVRF); err != nil {
 		return fmt.Errorf("l3vni %d: remove frr vrf: %w", v.vni, err)

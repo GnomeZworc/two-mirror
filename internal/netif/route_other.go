@@ -18,3 +18,15 @@ func RouteAddFrom(_ string, _ *net.IPNet, _ net.IP) error {
 func TableRoutesVia(_ int, _ string) ([]*net.IPNet, error) {
 	return nil, errors.New("route listing is only implemented on linux")
 }
+
+func RouteReplaceUnreachableDefault(_, _ int) error {
+	return errors.New("not supported on this platform")
+}
+
+func RouteDelUnreachableDefaultIfExists(_, _ int) error {
+	return errors.New("not supported on this platform")
+}
+
+func HasUnreachableDefault(_, _ int) (bool, error) {
+	return false, errors.New("route listing is only implemented on linux")
+}

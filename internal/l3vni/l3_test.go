@@ -83,6 +83,14 @@ func (f *fakeHost) TableRouteDel(table uint32, dst *net.IPNet) error {
 	return f.record(fmt.Sprintf("table %d del %s", table, dst))
 }
 
+func (f *fakeHost) TableUnreachableDefault(table uint32) error {
+	return f.record(fmt.Sprintf("table %d unreachable default", table))
+}
+
+func (f *fakeHost) TableUnreachableDefaultDel(table uint32) error {
+	return f.record(fmt.Sprintf("table %d del unreachable default", table))
+}
+
 func (f *fakeHost) ApplyVRF(v frr.VRF) error {
 	return f.record(fmt.Sprintf("frr apply asn=%d id=%s vni=%d vtep=%s supernet=%s", v.ASN, v.ID, v.L3VNI, v.VTEP, v.Supernet))
 }
@@ -121,6 +129,7 @@ func TestCreateL3FollowsTheLabRecipe(t *testing.T) {
 	want := []string{
 		"vtep br-000000",
 		"vrf vrf-s7 table 2700",
+		"table 2700 unreachable default",
 		"bridge brl3-s7 mtu 1450 mac 02:02:c0:a8:0e:0b",
 		"master brl3-s7 vrf-s7",
 		"vxlan vxl3-s7 id 2700 dev br-000000 mtu 1450",
@@ -179,6 +188,7 @@ func TestDeleteL3WithdrawsFRRThenTheKernelThenTheVRF(t *testing.T) {
 		"del vxl3-s7",
 		"del brl3-s7",
 		"del vrf-s7",
+		"table 2700 del unreachable default",
 		"frr remove asn=0 id=s7 vni=0",
 	}
 	if !reflect.DeepEqual(f.calls, want) {
@@ -209,9 +219,39 @@ func TestDeleteL3KeepsTheFRRVRFWhenAKernelLinkCannotBeDeleted(t *testing.T) {
 	}
 }
 
+func TestCreateL3LeavesNoVRFWithoutItsUnreachableDefault(t *testing.T) {
+	f := &fakeHost{fail: map[string]error{"table 2700 unreachable default": errors.New("operation not permitted")}}
+	err := createL3(f, bgpConfig(), labL3(t))
+	if err == nil || !strings.Contains(err.Error(), "l3vni 2700: unreachable default in vrf-s7: operation not permitted") {
+		t.Errorf("erreur %v", err)
+	}
+	if last := f.calls[len(f.calls)-1]; last != "table 2700 unreachable default" {
+		t.Errorf("appels après l'échec : %q", f.calls)
+	}
+}
+
+func TestDeleteL3KeepsTheFRRVRFWhenTheUnreachableDefaultCannotBeDeleted(t *testing.T) {
+	f := &fakeHost{fail: map[string]error{"table 2700 del unreachable default": errors.New("operation not permitted")}}
+	err := deleteL3(f, labL3(t))
+	if err == nil || !strings.Contains(err.Error(), "delete unreachable default from table 2700") {
+		t.Errorf("erreur %v", err)
+	}
+	for _, c := range f.calls {
+		if strings.HasPrefix(c, "frr remove") {
+			t.Errorf("étape exécutée après l'échec : %q", f.calls)
+		}
+	}
+}
+
+func TestUnreachableMetricIsTheHighestRecommendedByTheKernel(t *testing.T) {
+	if UnreachableMetric != 4278198272 {
+		t.Errorf("UnreachableMetric = %d", UnreachableMetric)
+	}
+}
+
 func TestDeleteL3DoesNotDependOnTheAgentBGPSection(t *testing.T) {
 	f := &fakeHost{}
-	if err := deleteL3(f, labL3(t)); err != nil || len(f.calls) != 6 {
+	if err := deleteL3(f, labL3(t)); err != nil || len(f.calls) != 7 {
 		t.Errorf("erreur %v, appels %q", err, f.calls)
 	}
 }
