@@ -38,7 +38,17 @@ fi
 for binary in "${LAB_FILES}"/bin/*; do
     [ -f "${binary}" ] || continue
     name=$(basename "${binary}")
+    case "${name}" in *.service) continue ;; esac
     install -D -m 0755 "${binary}" "/opt/two/local/bin/${name}"
     ln -sfn "/opt/two/local/bin/${name}" "/opt/two/bin/${name}"
     echo "lab: ${name} compilé en local remplace celui de la release ${RELEASE}"
+done
+for unit in "${LAB_FILES}"/bin/*.service; do
+    [ -f "${unit}" ] || continue
+    name=$(basename "${unit}")
+    install -m 0644 "${unit}" "/etc/systemd/system/${name}"
+    systemctl daemon-reload
+    systemctl enable "${name}"
+    systemctl restart "${name}"
+    echo "lab: unité ${name} de l'arbre local installée par-dessus la release ${RELEASE}"
 done
