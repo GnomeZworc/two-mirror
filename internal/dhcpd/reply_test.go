@@ -244,8 +244,11 @@ func TestBuildReply_CarriesAddressMaskLeaseAndServerIdentifier(t *testing.T) {
 	if got := reply.ServerIdentifier(); !got.Equal(c.InterfaceIP) {
 		t.Errorf("server identifier = %s, want %s", got, c.InterfaceIP)
 	}
-	if got := reply.DNS(); len(got) != 2 || !got[0].Equal(net.IPv4(1, 1, 1, 1)) || !got[1].Equal(net.IPv4(8, 8, 8, 8)) {
-		t.Errorf("dns = %v, want 1.1.1.1 and 8.8.8.8", got)
+	if got := reply.DNS(); len(got) != 1 || !got[0].Equal(net.ParseIP("10.0.5.1")) {
+		t.Errorf("dns = %v, want only the interface ip 10.0.5.1, relayed by two-hostsvc", got)
+	}
+	if got := reply.NTPServers(); len(got) != 1 || !got[0].Equal(net.ParseIP("10.0.5.1")) {
+		t.Errorf("ntp = %v, want only the interface ip 10.0.5.1, relayed by two-hostsvc", got)
 	}
 }
 

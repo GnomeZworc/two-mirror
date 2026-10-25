@@ -23,6 +23,7 @@ type Watchdog struct {
 	interval time.Duration
 	dbusDown bool
 	l3       l3Probe
+	hostsvc  hostSvcProbe
 	public   publicProbe
 }
 
@@ -42,6 +43,7 @@ func New(db *badger.DB, cfg *configuration.Config, n notify.Notifier, logger *sl
 		logger:   logger,
 		interval: interval,
 		l3:       systemProbe{frr: frr.NewClient()},
+		hostsvc:  newSystemHostSvcProbe(),
 		public:   systemPublicProbe{},
 	}
 }
@@ -69,6 +71,9 @@ func (w *Watchdog) tick() {
 
 	if err := CheckVPCs(w.db, w.notifier); err != nil {
 		w.logger.Error("watchdog: vpc check failed", "err", err)
+	}
+	if err := CheckHostSvc(w.db, w.hostsvc, w.notifier); err != nil {
+		w.logger.Error("watchdog: hostsvc check failed", "err", err)
 	}
 	if err := CheckSubnets(w.db, w.cfg, u, w.notifier); err != nil {
 		w.logger.Error("watchdog: subnet check failed", "err", err)

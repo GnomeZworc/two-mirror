@@ -30,7 +30,8 @@ func GenerateConfig(c Config) (string, error) {
 	} else {
 		fmt.Fprintf(&sb, "dhcp-option=3\n")
 	}
-	fmt.Fprintf(&sb, "dhcp-option=6,1.1.1.1,8.8.8.8\n")
+	fmt.Fprintf(&sb, "dhcp-option=6,%s\n", c.InterfaceIP.String())
+	fmt.Fprintf(&sb, "dhcp-option=42,%s\n", c.InterfaceIP.String())
 	fmt.Fprintf(&sb, "dhcp-option=26,%d\n", c.interfaceMTU())
 	fmt.Fprintf(&sb, "dhcp-hostsdir=%s\n", HostsDir(c.ConfDir, c.Name))
 	fmt.Fprintf(&sb, "dhcp-optsdir=%s\n", OptsDir(c.ConfDir, c.Name))

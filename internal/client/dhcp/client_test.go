@@ -248,8 +248,8 @@ func TestProbe_DescribesWhatWouldBeSent(t *testing.T) {
 	if lease.Router != "10.0.5.254" {
 		t.Errorf("router = %s, want 10.0.5.254", lease.Router)
 	}
-	if len(lease.DNS) != 2 {
-		t.Errorf("dns = %v, want two servers", lease.DNS)
+	if len(lease.DNS) != 1 || lease.DNS[0] != "10.0.5.1" {
+		t.Errorf("dns = %v, want only the interface ip 10.0.5.1", lease.DNS)
 	}
 	if len(lease.Routes) != 3 {
 		t.Errorf("routes = %v, want metadata, vpc and default", lease.Routes)
