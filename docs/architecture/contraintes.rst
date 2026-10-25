@@ -49,6 +49,9 @@ QEMU et VM
 * QEMU est lancé par ``systemd-run --scope``, **jamais** en unit transitoire : le scope est
   exécuté par le processus appelant et hérite du netns posé par ``netns.Call``. Une unit
   transitoire, forkée par PID 1, démarrerait dans le netns racine et ne verrait pas le tap.
+* **Un tap n'existe jamais sans ses règles** : la chaîne ``pre-tap<id>`` est posée avant la
+  création du tap et retirée après sa suppression. Dans l'autre ordre, une VM pourrait émettre
+  sans filtre entre deux étapes.
 * L'arrêt d'une VM ne touche **jamais** aux fichiers disque. En revanche, un ``quit`` brutal est
   envoyé à l'expiration de ``times.timeout_vms_stop``. ``system_powerdown`` est renvoyé toutes les
   ``times.next_vms_shutdown`` : un appui ACPI arrivé avant que l'invité sache le traiter est perdu.

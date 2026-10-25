@@ -145,7 +145,10 @@ Dans les deux modes, les règles de couche 2 vivent dans une table nftables ``br
 du VPC. Trois chaînes de base (``prerouting``, ``forward``, ``output``) aiguillent chaque trame,
 selon l'interface d'entrée ou de sortie, vers la chaîne du port concerné (``pre-<port>``,
 ``fwd-<port>``, ``out-<port>``) par les tables ``pre_ports``, ``fwd_ports`` et ``out_ports``.
-L'agent pose ou retire toutes les règles d'un port en une seule transaction.
+L'agent pose ou retire toutes les règles d'un port en une seule transaction. Les ports sont le
+veth de chaque subnet (``v-<subnet>-i``, règles décrites plus haut) et le tap de chaque interface
+de VM (``tap<id>``, chaîne ``pre-tap<id>`` : ce que la VM émet, voir
+:doc:`/concepts/vpc-subnet-vm`).
 
 .. note::
 

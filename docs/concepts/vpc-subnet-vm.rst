@@ -104,6 +104,30 @@ la route par défaut et le serveur de metadata. Tous les subnets d'une VM doiven
 telle quelle à QEMU et à la réservation DHCP, sans en vérifier le format ni l'unicité : c'est à
 l'appelant de garantir qu'elle est unique sur le segment L2.
 
+**Filtrage.** Chaque interface ne peut émettre que depuis sa propre MAC et sa propre IP. L'agent
+pose sur son tap, avant de le créer, des règles qui rejettent toute trame émise par la VM :
+
+* dont la MAC source n'est pas celle de l'interface ;
+* d'un autre type qu'IPv4, ARP ou IPv6 (une trame étiquetée VLAN par exemple) ;
+* ARP, dont la MAC ou l'adresse d'émetteur n'est pas celle de l'interface, sauf l'adresse
+  ``0.0.0.0`` d'une sonde de conflit d'adresse ;
+* IPv4, dont la source n'est pas l'adresse de l'interface, sauf ``0.0.0.0`` vers le port 67 (un
+  client DHCP qui n'a pas encore de bail) ;
+* réponse de serveur DHCP (UDP depuis le port 67).
+
+Une VM ne peut donc ni se faire passer pour la gateway ou une autre VM, ni distribuer de baux. Une
+VM qui route pour d'autres machines ou porte des adresses supplémentaires ne peut pas émettre
+depuis ces adresses. L'IPv6 n'est pas filtrée (#61). Les règles sont retirées après la suppression
+du tap ; le watchdog signale une interface d'une VM ``running`` dont les règles manquent ou ont
+été modifiées.
+
+**Serveur DHCP.** ``dhcp_server: true`` sur une interface lève le seul blocage des réponses DHCP,
+pour cette interface. Cas d'usage : une VM d'un subnet ``bridge`` qui sert le DHCP et le PXE de
+machines diskless du segment physique, avec des réservations statiques. Les autres contrôles
+restent en place. L'agent applique ce champ quel que soit le mode du subnet : le réserver au mode
+``bridge`` revient à l'appelant. Le serveur de la VM reçoit aussi les requêtes des VM du subnet, à
+côté du DHCP de l'agent : il ne doit répondre qu'aux machines qui lui sont destinées.
+
 **Routes.** Dans un VPC routé par ``l3vni``, chaque interface sur un subnet ``vxlan`` est annoncée
 en ``/32`` dans la VRF du VPC une fois QEMU démarré, juste avant le passage en ``running``. À la
 suppression, ces ``/32`` sont retirés **avant** l'arrêt de QEMU. Comme un subnet ne peut être
