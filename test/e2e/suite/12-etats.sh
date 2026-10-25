@@ -1,6 +1,6 @@
-# fonctionnalité: machine d'états — 409 pendant creating, suppression depuis error, dépendances VM → subnet → VPC, recréation sous le même nom
+# fonctionnalité: machine d'états — 409 pendant creating, suppression depuis error, sockets QEMU d'une VM en error retirés, dépendances VM → subnet → VPC, recréation sous le même nom
 # hôtes: hv1
-# tickets: #41
+# tickets: #41, #84
 
 on hv1 <<'NODE'
 check "VPC vp-t12a" vpc_create vp-t12a 10.12.0.0/16
@@ -23,8 +23,11 @@ check "suppression d'un VPC inconnu, 404" expect_code 404 api_code DELETE vpcs/v
 
 check "VM t12-err sur un disque absent : acceptée, 202 (pas de refus synchrone)" expect_code 202 api_post_code vms "$(vm_body t12-err sn-t12a 10.12.1.11 "${VOLUMES}/t12-absent.qcow2")"
 check "t12-err passe en error" wait_state vms/t12-err error
+info "t12-err : sockets laissés par QEMU : $(ls /run/two/vms/serial/t12-err.sock /run/two/vms/monitor/t12-err.sock /run/two/vms/qmp/t12-err.sock 2>&1 | tr '\n' ' ')"
+check "t12-err : les trois sockets QEMU posés à la main s'ils manquent" sh -c 'for d in serial monitor qmp; do [ -e "/run/two/vms/${d}/t12-err.sock" ] || : > "/run/two/vms/${d}/t12-err.sock" || exit 1; done'
 check "suppression de t12-err depuis error, 202" expect_code 202 api_code DELETE vms/t12-err
 check "t12-err supprimée" wait_state vms/t12-err deleted
+check "t12-err : aucun socket QEMU laissé dans /run/two/vms" sh -c 'for d in serial monitor qmp; do [ ! -e "/run/two/vms/${d}/t12-err.sock" ] || { echo "/run/two/vms/${d}/t12-err.sock laissé"; exit 1; }; done'
 check "t12-err : aucune unité two-vm-t12-err" sh -c '! systemctl list-units --all --plain --no-legend "two-vm-t12-err*" | grep -q .'
 
 check "suppression de t12-a" vm_delete t12-a

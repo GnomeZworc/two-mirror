@@ -298,9 +298,9 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - hv1
      - #41, #57, #33, #62, #74, #81
    * - ``12-etats``
-     - machine d'états — 409 pendant creating, suppression depuis error, dépendances VM → subnet → VPC, recréation sous le même nom
+     - machine d'états — 409 pendant creating, suppression depuis error, sockets QEMU d'une VM en error retirés, dépendances VM → subnet → VPC, recréation sous le même nom
      - hv1
-     - #41
+     - #41, #84
    * - ``21-dhcp-two``
      - DHCP par le serveur intégré (backend two) — bail, server-id, renouvellement, option 121, un serveur par subnet, démarrages simultanés
      - hv1

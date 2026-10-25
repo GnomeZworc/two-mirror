@@ -1,7 +1,9 @@
 package vm
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"time"
@@ -57,6 +59,10 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	}
 	// socket absent ou QEMU déjà arrêté : cleanup direct
 
+	if err := removeQEMUSockets(cfg, name); err != nil {
+		return err
+	}
+
 	if err := netns.Call(nic.vpcName, func() error {
 		for _, n := range d.nics {
 			if err := iptables.DeleteMetadataRedirect(n.ip, nic.interfaceIP, d.metadataPort); err != nil {
@@ -88,6 +94,16 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	}
 
 	return state.Set(db, "vm/"+name, state.Deleted)
+}
+
+func removeQEMUSockets(cfg *configuration.Config, name string) error {
+	for _, dir := range []string{cfg.QEMU.SerialDir, cfg.QEMU.MonitorDir, cfg.QEMU.QMPDir} {
+		path := filepath.Join(dir, name+".sock")
+		if err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("remove qemu socket: %w", err)
+		}
+	}
+	return nil
 }
 
 func removeDHCPFiles(d vmData, name string, backend dhcpbackend.Backend) error {
