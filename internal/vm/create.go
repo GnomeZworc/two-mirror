@@ -15,6 +15,7 @@ import (
 	"git.g3e.fr/syonad/two/internal/metadata"
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
+	"git.g3e.fr/syonad/two/internal/nft"
 	"git.g3e.fr/syonad/two/internal/qemu"
 	"git.g3e.fr/syonad/two/internal/state"
 
@@ -39,6 +40,17 @@ func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	backend, err := dhcpbackend.New(cfg)
 	if err != nil {
 		return err
+	}
+
+	if err := netns.Call(nic.vpcName, func() error {
+		for _, n := range d.nics {
+			if err := nft.SetPort(n.tapPort()); err != nil {
+				return fmt.Errorf("interface %d: %w", n.index, err)
+			}
+		}
+		return nil
+	}); err != nil {
+		return fmt.Errorf("filter taps: %w", err)
 	}
 
 	for _, n := range d.nics {

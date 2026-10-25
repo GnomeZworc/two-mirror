@@ -27,6 +27,7 @@ type nicData struct {
 	mac         string
 	tapID       int
 	primary     bool
+	dhcpServer  bool
 	mode        string
 	vpcCIDR     *net.IPNet
 }
@@ -179,6 +180,7 @@ func loadNIC(db *badger.DB, name string, idx int, entries map[string]string) (ni
 	}
 	n.bridge = "br-" + strings.SplitN(n.subnetName, "-", 2)[1]
 	n.primary = entries[prefix+"primary"] == "true"
+	n.dhcpServer = entries[prefix+"dhcp_server"] == "true"
 
 	vpcName, err := kv.GetFromDB(db, "subnet/"+n.subnetName+"/vpc")
 	if err != nil {

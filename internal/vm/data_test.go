@@ -125,6 +125,23 @@ func TestLoadVM_SingleNIC(t *testing.T) {
 	}
 }
 
+func TestLoadVM_ReadsDHCPServer(t *testing.T) {
+	db := newVMInDB(t)
+	addNIC(t, db, 1, "sn-000002", "10.2.0.5", "00:22:33:00:02:05", false)
+	kv.AddInDB(db, "vm/vm-1/nic/1/dhcp_server", "true")
+
+	d, err := loadVM(db, "vm-1")
+	if err != nil {
+		t.Fatalf("loadVM : %v", err)
+	}
+	if len(d.nics) != 2 {
+		t.Fatalf("2 interfaces attendues, obtenu %d", len(d.nics))
+	}
+	if d.nics[0].dhcpServer || !d.nics[1].dhcpServer {
+		t.Errorf("dhcp_server attendu sur l'index 1 seulement : %+v", d.nics)
+	}
+}
+
 func TestLoadVM_MultipleNICsSortedByIndex(t *testing.T) {
 	db := newVMInDB(t)
 	addNIC(t, db, 2, "sn-000003", "10.3.0.9", "00:22:33:00:03:09", false)

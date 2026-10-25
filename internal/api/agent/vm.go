@@ -104,6 +104,8 @@ func interfacesFromDB(prefix string, entries map[string]string) []VMInterface {
 			byIndex[idx].MAC = value
 		case "primary":
 			byIndex[idx].Primary = value == "true"
+		case "dhcp_server":
+			byIndex[idx].DHCPServer = value == "true"
 		}
 	}
 

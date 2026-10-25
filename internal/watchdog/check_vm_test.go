@@ -34,6 +34,27 @@ func TestTapName(t *testing.T) {
 	}
 }
 
+func TestTapPortFromEntries(t *testing.T) {
+	prefix := prefixVM + "i-pxe/nic/1/"
+	entries := map[string]string{
+		prefix + "mac":         "52:54:00:00:0B:07",
+		prefix + "ip":          "10.0.1.7",
+		prefix + "dhcp_server": "true",
+	}
+	p := tapPortFromEntries(entries, prefix, 87654321)
+	got := strings.Join(p.Prerouting, "|")
+	if p.Name != "tap87654321" || !strings.Contains(got, "ether saddr != 52:54:00:00:0b:07 drop") || !strings.Contains(got, "ip saddr != { 0.0.0.0, 10.0.1.7 } drop") {
+		t.Errorf("port %+v", p)
+	}
+	if strings.Contains(got, "udp sport 67 drop") {
+		t.Errorf("dhcp_server lu en base ignoré : %s", got)
+	}
+	delete(entries, prefix+"dhcp_server")
+	if !strings.Contains(strings.Join(tapPortFromEntries(entries, prefix, 87654321).Prerouting, "|"), "udp sport 67 drop") {
+		t.Errorf("sans dhcp_server, le blocage du serveur DHCP doit être attendu")
+	}
+}
+
 func TestCheckVMs_ConfigNil(t *testing.T) {
 	db := newTestDB(t)
 	r := &recorder{}

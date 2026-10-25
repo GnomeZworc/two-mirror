@@ -10,9 +10,11 @@ import (
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/netns"
+	"git.g3e.fr/syonad/two/internal/nft"
 	"git.g3e.fr/syonad/two/internal/qemu"
 	"git.g3e.fr/syonad/two/internal/qmp"
 	"git.g3e.fr/syonad/two/internal/state"
+	"git.g3e.fr/syonad/two/internal/vm"
 	"git.g3e.fr/syonad/two/internal/watchdog/notify"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 
@@ -71,7 +73,7 @@ func checkVM(db *badger.DB, cfg *configuration.Config, name string, u unitChecke
 			n.Notify(kindVM, name, fmt.Sprintf("vpc of subnet %s unreadable in database: %v", subnetName, err))
 			continue
 		}
-		checkVMTap(entries[prefix+"tap_id"], name, vpc, idx, n)
+		checkVMTap(entries, prefix, name, vpc, idx, n)
 	}
 
 	checkVMQemu(cfg, name, n)
@@ -99,7 +101,12 @@ func nicIndexes(entries map[string]string, prefix string) []int {
 	return indexes
 }
 
-func checkVMTap(raw, name, vpc string, idx int, n notify.Notifier) {
+func tapPortFromEntries(entries map[string]string, prefix string, tapID int) nft.Port {
+	return vm.TapPort(tapID, entries[prefix+"mac"], entries[prefix+"ip"], entries[prefix+"dhcp_server"] == "true")
+}
+
+func checkVMTap(entries map[string]string, prefix, name, vpc string, idx int, n notify.Notifier) {
+	raw := entries[prefix+"tap_id"]
 	if raw == "" {
 		n.Notify(kindVM, name, fmt.Sprintf("interface %d has no tap_id in database", idx))
 		return
@@ -118,6 +125,14 @@ func checkVMTap(raw, name, vpc string, idx int, n notify.Notifier) {
 	if err := netns.Call(vpc, func() error {
 		if p := linkProblem(tapName(tapID)); p != "" {
 			n.Notify(kindVM, name, p+" (in netns "+vpc+")")
+		}
+		missing, err := nft.MissingRules(tapPortFromEntries(entries, prefix, tapID))
+		if err != nil {
+			n.Notify(kindVM, name, fmt.Sprintf("interface %d: nftables rules unreadable in netns %s: %v", idx, vpc, err))
+			return nil
+		}
+		for _, rule := range missing {
+			n.Notify(kindVM, name, fmt.Sprintf("interface %d: nftables rule missing in netns %s: %s", idx, vpc, rule))
 		}
 		return nil
 	}); err != nil {

@@ -36,14 +36,27 @@ func mustParse(t *testing.T, data string) table {
 
 func TestRuleTexts(t *testing.T) {
 	for got, want := range map[string]string{
-		DropSourceMAC("02:01:00:00:0b:5f"): "ether saddr 02:01:00:00:0b:5f drop",
-		DropARPRequestTo("10.33.0.1"):      "arp operation request arp daddr ip 10.33.0.1 drop",
-		DropARPFrom("10.33.0.1"):           "arp saddr ip 10.33.0.1 drop",
-		DropDHCPFrom("10.33.0.1"):          "ip saddr 10.33.0.1 udp sport 67-68 udp dport 67-68 drop",
+		DropSourceMAC("02:01:00:00:0b:5f"):             "ether saddr 02:01:00:00:0b:5f drop",
+		DropARPRequestTo("10.33.0.1"):                  "arp operation request arp daddr ip 10.33.0.1 drop",
+		DropARPFrom("10.33.0.1"):                       "arp saddr ip 10.33.0.1 drop",
+		DropDHCPFrom("10.33.0.1"):                      "ip saddr 10.33.0.1 udp sport 67-68 udp dport 67-68 drop",
+		DropSourceMACOtherThan("52:54:00:00:0a:05"):    "ether saddr != 52:54:00:00:0a:05 drop",
+		DropEtherTypesOtherThanIPAndARP():              "ether type != { ip, arp, ip6 } drop",
+		DropARPSenderMACOtherThan("52:54:00:00:0a:05"): "arp saddr ether != 52:54:00:00:0a:05 drop",
+		DropARPSenderIPOtherThan("10.0.0.5"):           "arp saddr ip != { 0.0.0.0, 10.0.0.5 } drop",
+		DropDHCPServer():                               "udp sport 67 drop",
+		DropIPSourceOtherThan("10.0.0.5"):              "ip saddr != { 0.0.0.0, 10.0.0.5 } drop",
 	} {
 		if got != want {
 			t.Errorf("%q, %q attendu", got, want)
 		}
+	}
+}
+
+func TestDropUnspecifiedSourceOutsideDHCP(t *testing.T) {
+	want := "ip saddr 0.0.0.0 ip protocol != udp drop|ip saddr 0.0.0.0 udp dport != 67 drop"
+	if got := strings.Join(DropUnspecifiedSourceOutsideDHCP(), "|"); got != want {
+		t.Errorf("%q, %q attendu", got, want)
 	}
 }
 

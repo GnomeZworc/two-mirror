@@ -40,10 +40,11 @@ type Subnet struct {
 }
 
 type VMInterface struct {
-	Subnet  string `json:"subnet"`
-	IP      string `json:"ip"`
-	MAC     string `json:"mac"`
-	Primary bool   `json:"primary"`
+	Subnet     string `json:"subnet"`
+	IP         string `json:"ip"`
+	MAC        string `json:"mac"`
+	Primary    bool   `json:"primary"`
+	DHCPServer bool   `json:"dhcp_server"`
 }
 
 type VMStorage struct {

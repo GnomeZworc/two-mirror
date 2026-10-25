@@ -59,6 +59,37 @@ func DropDHCPFrom(ip string) string {
 	return "ip saddr " + ip + " udp sport 67-68 udp dport 67-68 drop"
 }
 
+func DropSourceMACOtherThan(mac string) string {
+	return "ether saddr != " + mac + " drop"
+}
+
+func DropEtherTypesOtherThanIPAndARP() string {
+	return "ether type != { ip, arp, ip6 } drop"
+}
+
+func DropARPSenderMACOtherThan(mac string) string {
+	return "arp saddr ether != " + mac + " drop"
+}
+
+func DropARPSenderIPOtherThan(ip string) string {
+	return "arp saddr ip != { 0.0.0.0, " + ip + " } drop"
+}
+
+func DropDHCPServer() string {
+	return "udp sport 67 drop"
+}
+
+func DropIPSourceOtherThan(ip string) string {
+	return "ip saddr != { 0.0.0.0, " + ip + " } drop"
+}
+
+func DropUnspecifiedSourceOutsideDHCP() []string {
+	return []string{
+		"ip saddr 0.0.0.0 ip protocol != udp drop",
+		"ip saddr 0.0.0.0 udp dport != 67 drop",
+	}
+}
+
 func run(args []string, script string) ([]byte, error) {
 	cmd := exec.Command("nft", args...)
 	if script != "" {
