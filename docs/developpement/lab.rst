@@ -133,11 +133,16 @@ routeurs de bordure du segment public. Ce sont des nœuds ``host`` sans agent : 
 (VNI 66001, VTEP = adresse de l'underlay, ``nolearning``), et pose sur le bridge la **gateway
 anycast** ``240.0.0.1/24`` avec la même MAC sur les deux, ``02:01:00:01:01:d1`` (la MAC anycast
 de two pour le VNI 66001), ainsi qu'une destination de test ``240.255.0.1/32`` sur une interface
-``dummy`` ``internet``. Leur ``frr.conf`` est celui d'un hyperviseur : iBGP AS 64600 vers les
-deux route reflectors, ``advertise-all-vni``. Les adresses publiques du lab sont prises dans
-``240.0.0.0/4``, réservée (RFC 1112, registre RFC 6890) et jamais routée sur Internet. Les bordures
-sont déclarées après les hyperviseurs : les adresses et les taps de l'underlay ne changent pas,
-ceux du segment ``lan`` sont renumérotés.
+``dummy`` ``internet``. Leur ``frr.conf`` est celui d'un hyperviseur — iBGP AS 64600 vers les
+deux route reflectors, ``advertise-all-vni`` — plus ``advertise-default-gw`` : la MAC et l'IP
+de la gateway sont annoncées en type 2 avec la communauté *Default Gateway* (RFC 7432, §7.8 et
+§10.1). Sans elle, la MAC propre du bridge n'est pas annoncée, les hyperviseurs inondent le
+trafic vers tous les VTEP et les deux bordures répondent ; avec elle, chaque hyperviseur installe
+la MAC vers une seule bordure et bascule sur l'autre quand elle disparaît (mesuré le 2026-10-25,
+#87). Les adresses publiques du lab sont prises dans ``240.0.0.0/4``, réservée (RFC 1112,
+registre RFC 6890) et jamais routée sur Internet. Les bordures sont déclarées après les
+hyperviseurs : les adresses et les taps de l'underlay ne changent pas, ceux du segment ``lan``
+sont renumérotés.
 
 **Tester l'arbre courant plutôt que la release.** ``test/e2e/build.sh`` compile ``agent``,
 ``dhcp`` et ``metadata`` pour linux/amd64 dans ``test/e2e/topologies/bin/`` (ignoré par git),
