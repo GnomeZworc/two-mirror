@@ -350,6 +350,10 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - MTU des VM (network.mtu_vm, 1500 par défaut) — annoncé par le DHCP (option 26, serveur intégré sur hv1, dnsmasq sur hv2) et par QEMU (host_mtu), porté par le tap, le bridge, le veth et le VXLAN du subnet ; subnet vxlan refusé sur un underlay qui n'est pas à 9000
      - hv1 hv2
      - #56
+   * - ``29-dns-ntp``
+     - DNS et NTP des VM par two-hostsvc — options DHCP 6 et 42 = interface_ip, redirection vers 169.254.169.253 dans le VPC (vxlan et bridge), seuls 53 et 123 servis, alertes du watchdog, VPC en error si two-hostsvc ne répond pas
+     - hv1
+     - #86
    * - ``31-gateway``
      - gateway d'un subnet vxlan — gateway anycast et adresse d'émission calculées, default_route et gateway explicite, routes DHCP, macvlan gw-, FDB locale, sysctls ARP, règles de confinement, suppression et recréation
      - hv1
