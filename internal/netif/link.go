@@ -46,3 +46,21 @@ func LinkMTU(name string) (int, error) {
 	}
 	return link.Attrs().MTU, nil
 }
+
+func BridgeVxlanPorts(bridge string) ([]string, error) {
+	br, err := netlink.LinkByName(bridge)
+	if err != nil {
+		return nil, err
+	}
+	links, err := netlink.LinkList()
+	if err != nil {
+		return nil, err
+	}
+	var ports []string
+	for _, l := range links {
+		if l.Attrs().MasterIndex == br.Attrs().Index && l.Type() == "vxlan" {
+			ports = append(ports, l.Attrs().Name)
+		}
+	}
+	return ports, nil
+}

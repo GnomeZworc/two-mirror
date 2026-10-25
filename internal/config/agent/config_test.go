@@ -145,4 +145,21 @@ func TestLoadConfig_ExempleFourniEstValide(t *testing.T) {
 	if cfg.QEMU.QMPDir == "" {
 		t.Error("config.exemple.yml devrait définir qemu.qmp_dir")
 	}
+	if got := cfg.PublicBridge(); got != "br-public" {
+		t.Errorf("config.exemple.yml : bridge public %q, br-public attendu", got)
+	}
+}
+
+func TestLoadConfig_PublicBridgeWithoutInternetKey(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "agent.yml")
+	if err := os.WriteFile(path, []byte("default_interface: br-000000\ninterfaces:\n  lan: br-lan\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := LoadConfig(path)
+	if err != nil {
+		t.Fatalf("LoadConfig : %v", err)
+	}
+	if got := cfg.PublicBridge(); got != "br-public" {
+		t.Errorf("bridge public %q, br-public attendu (jamais default_interface)", got)
+	}
 }
