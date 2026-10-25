@@ -19,6 +19,8 @@ type fakeProbe struct {
 	routesErr   error
 	links       map[string]string
 	vtepErr     error
+	unreachable map[uint32]bool
+	unreachErr  error
 }
 
 func (f *fakeProbe) VTEPAddress(string) (net.IP, error) {
@@ -47,6 +49,13 @@ func (f *fakeProbe) ExportedRoutes(table uint32, _ string) ([]*net.IPNet, error)
 		out = append(out, n)
 	}
 	return out, f.routesErr
+}
+
+func (f *fakeProbe) UnreachableDefault(table uint32) (bool, error) {
+	if f.unreachable == nil {
+		return true, f.unreachErr
+	}
+	return f.unreachable[table], f.unreachErr
 }
 
 func (f *fakeProbe) LinkProblem(ns, iface string) string {
@@ -238,5 +247,34 @@ func TestCheckL3VPCsReportsUnreadableRoutesAndVTEP(t *testing.T) {
 	}
 	if r.hasProblemContaining("router mac") {
 		t.Errorf("RMAC comparée sans VTEP : %q", notified(r))
+	}
+}
+
+func TestCheckL3VPCsReportsAVRFWithoutUnreachableDefault(t *testing.T) {
+	db := newTestDB(t)
+	seedResource(t, db, prefixVPC, "vp-s7", state.Running)
+	seedKV(t, db, "vpc/vp-s7/cidr", "10.241.0.0/16")
+	seedKV(t, db, "vpc/vp-s7/l3vni", "2700")
+	seedResource(t, db, prefixVPC, "vp-s8", state.Running)
+	seedKV(t, db, "vpc/vp-s8/cidr", "10.242.0.0/16")
+	seedKV(t, db, "vpc/vp-s8/l3vni", "2800")
+	p := seedRoutedVPC(t)
+	p.vni[2800] = frr.VNIState{Type: "L3", State: "Up", RouterMAC: "02:02:c0:a8:0e:0b"}
+	p.unreachable = map[uint32]bool{2700: true}
+	r := &recorder{}
+	if err := CheckL3VPCs(db, bgpCfg(), p, r); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"vpc vp-s8: no unreachable default in vrf-s8: traffic to an unknown destination leaves through the host routing table"}
+	if got := notified(r); !reflect.DeepEqual(got, want) {
+		t.Errorf("notifications :\n%q\nattendu :\n%q", got, want)
+	}
+
+	p.unreachable = map[uint32]bool{2700: true, 2800: true}
+	p.unreachErr = errors.New("netlink refused")
+	r = &recorder{}
+	CheckL3VPCs(db, bgpCfg(), p, r)
+	if !r.hasProblemContaining("unreachable default of vrf-s7 unreadable: netlink refused") || r.hasProblemContaining("no unreachable default") {
+		t.Errorf("notifications %q", notified(r))
 	}
 }

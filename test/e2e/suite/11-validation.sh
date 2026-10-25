@@ -1,6 +1,6 @@
 # fonctionnalité: validation de l'API — refus synchrones (400, 409, 422) des VPC, subnets et VM, sans trace en base
 # hôtes: hv1
-# tickets: #41, #57, #33, #62, #74
+# tickets: #41, #57, #33, #62, #74, #81
 
 on hv1 <<'NODE'
 check "VPC vp-t11a, l3vni 1100 (témoin)" vpc_create vp-t11a 10.11.0.0/16 1100
@@ -19,6 +19,8 @@ check "sn-t11a : adresse d'émission calculée .253" test "$(api_field subnets/s
 check "subnet : nom déjà pris, 409" expect_code 409 api_post_code subnets '{"name":"sn-t11a","vpc":"vp-t11a","mode":"vxlan","vxlan_id":1101,"cidr":"10.11.1.0/24"}'
 check "subnet : mode inconnu, 422" expect_code 422 api_post_code subnets '{"name":"sn-t11x","vpc":"vp-t11a","mode":"vlan","vxlan_id":1109,"cidr":"10.11.9.0/24"}'
 check "subnet : interface_ip fournie en vxlan, 400" expect_code 400 api_post_code subnets '{"name":"sn-t11x","vpc":"vp-t11a","mode":"vxlan","vxlan_id":1109,"cidr":"10.11.9.0/24","interface_ip":"10.11.9.1"}'
+check "subnet : default_route sans gateway en vxlan, 400" expect_code 400 api_post_code subnets '{"name":"sn-t11x","vpc":"vp-t11a","mode":"vxlan","vxlan_id":1109,"cidr":"10.11.9.0/24","default_route":true}'
+check "subnet : default_route sans gateway, mode omis, 400" expect_code 400 api_post_code subnets '{"name":"sn-t11x","vpc":"vp-t11a","vxlan_id":1109,"cidr":"10.11.9.0/24","default_route":true}'
 check "subnet : interface_ip absente en bridge, 400" expect_code 400 api_post_code subnets '{"name":"sn-t11x","vpc":"vp-t11a","mode":"bridge","cidr":"10.11.9.0/24"}'
 check "subnet : préfixe /30 en vxlan, 422" expect_code 422 api_post_code subnets '{"name":"sn-t11x","vpc":"vp-t11a","mode":"vxlan","vxlan_id":1109,"cidr":"10.11.9.0/30"}'
 check "subnet : préfixe /29 en vxlan accepté (témoin)" expect_code 202 api_post_code subnets '{"name":"sn-t11p","vpc":"vp-t11a","mode":"vxlan","vxlan_id":1103,"cidr":"10.11.3.0/29"}'

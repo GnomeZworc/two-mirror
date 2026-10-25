@@ -25,6 +25,7 @@ type l3Probe interface {
 	NeighborEstablished(peer net.IP) (bool, error)
 	VNI(vni uint32) (frr.VNIState, error)
 	ExportedRoutes(table uint32, iface string) ([]*net.IPNet, error)
+	UnreachableDefault(table uint32) (bool, error)
 	LinkProblem(ns, iface string) string
 }
 
@@ -42,6 +43,10 @@ func (p systemProbe) VNI(vni uint32) (frr.VNIState, error) { return p.frr.VNI(vn
 
 func (systemProbe) ExportedRoutes(table uint32, iface string) ([]*net.IPNet, error) {
 	return netif.TableRoutesVia(int(table), iface)
+}
+
+func (systemProbe) UnreachableDefault(table uint32) (bool, error) {
+	return netif.HasUnreachableDefault(int(table), l3vni.UnreachableMetric)
 }
 
 func (systemProbe) LinkProblem(ns, iface string) string {
@@ -143,6 +148,14 @@ func checkL3VPC(db *badger.DB, name string, r l3vni.Routing, rmac string, p l3Pr
 		n.Notify(kindVPC, name, fmt.Sprintf("l3vni %d is type %q state %q in frr, expected L3 Up", r.VNI, s.Type, s.State))
 	case rmac != "unknown" && s.RouterMAC != rmac:
 		n.Notify(kindVPC, name, fmt.Sprintf("l3vni %d has router mac %q in frr, expected %s", r.VNI, s.RouterMAC, rmac))
+	}
+
+	present, err := p.UnreachableDefault(r.VNI)
+	switch {
+	case err != nil:
+		n.Notify(kindVPC, name, fmt.Sprintf("unreachable default of %s unreadable: %v", r.VRF, err))
+	case !present:
+		n.Notify(kindVPC, name, fmt.Sprintf("no unreachable default in %s: traffic to an unknown destination leaves through the host routing table", r.VRF))
 	}
 
 	actual, err := p.ExportedRoutes(r.VNI, r.VethHost)

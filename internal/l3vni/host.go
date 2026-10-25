@@ -23,6 +23,8 @@ type host interface {
 	DeleteLink(name string) error
 	TableRouteVia(table uint32, dst *net.IPNet, gw net.IP, iface string) error
 	TableRouteDel(table uint32, dst *net.IPNet) error
+	TableUnreachableDefault(table uint32) error
+	TableUnreachableDefaultDel(table uint32) error
 	ApplyVRF(v frr.VRF) error
 	WithdrawVRF(v frr.VRF) error
 	RemoveVRF(v frr.VRF) error
@@ -85,6 +87,14 @@ func (system) TableRouteVia(table uint32, dst *net.IPNet, gw net.IP, iface strin
 
 func (system) TableRouteDel(table uint32, dst *net.IPNet) error {
 	return netif.RouteDelIfExists(int(table), dst)
+}
+
+func (system) TableUnreachableDefault(table uint32) error {
+	return netif.RouteReplaceUnreachableDefault(int(table), UnreachableMetric)
+}
+
+func (system) TableUnreachableDefaultDel(table uint32) error {
+	return netif.RouteDelUnreachableDefaultIfExists(int(table), UnreachableMetric)
 }
 
 func (s system) ApplyVRF(v frr.VRF) error { return s.frr.ApplyVRF(v) }

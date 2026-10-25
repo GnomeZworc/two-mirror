@@ -296,7 +296,7 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
    * - ``11-validation``
      - validation de l'API — refus synchrones (400, 409, 422) des VPC, subnets et VM, sans trace en base
      - hv1
-     - #41, #57, #33, #62, #74
+     - #41, #57, #33, #62, #74, #81
    * - ``12-etats``
      - machine d'états — 409 pendant creating, suppression depuis error, dépendances VM → subnet → VPC, recréation sous le même nom
      - hv1
@@ -370,17 +370,17 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - hv1 hv2
      - #57
    * - ``51-l3vni``
-     - routage inter-subnet entre hôtes par L3VNI (IRB symétrique) — VRF, RMAC, exports /24 et /32, RT-5 réfléchies, TTL, isolation par RT, démontage d'un VPC routé
+     - routage inter-subnet entre hôtes par L3VNI (IRB symétrique) — VRF, RMAC, exports /24 et /32, RT-5 réfléchies, TTL, isolation par RT, unreachable default dans la VRF, démontage d'un VPC routé
      - hv1 hv2
-     - #41
+     - #41, #81
    * - ``52-migration``
      - migration d'une adresse de VM entre hôtes d'un VPC routé — /32 retiré en premier, /24 en filet puis en ECMP, séquence orchestrée, 40 sources, suppression du subnet refusée tant qu'une VM l'utilise, MAC anycast hors EVPN
      - hv1 hv2 hv3
      - #41, #57
    * - ``53-watchdog-l3``
-     - watchdog d'un VPC routé — /32 orphelin signalé comme trou noir, /32 manquant signalé, aucune fausse alerte BGP ni L3VNI, trafic intact après les essais
+     - watchdog d'un VPC routé — /32 orphelin signalé comme trou noir, /32 manquant signalé, unreachable default absente signalée, aucune fausse alerte BGP ni L3VNI, trafic intact après les essais
      - hv1 hv3
-     - #41
+     - #41, #81
    * - ``61-redemarrage-agent``
      - redémarrage de l'agent avec des VM en marche — rien ne disparaît ni n'est recréé, trafic routé sans perte, DHCP et métadonnées servis, base BGP réappliquée à l'identique, ressources toujours gérées
      - hv1 hv2
