@@ -82,6 +82,20 @@ metadata:
 dhcp:
   backend: two
 
+# DNS and NTP relay of the VMs (two-hostsvc, one process per hypervisor).
+# It listens on 169.254.169.253 in every VPC netns of the host; the VMs reach it
+# through their gateway (interface_ip, announced by DHCP options 6 and 42).
+#   dns_upstream : resolvers queried first (ip or ip:port, port 53 by default);
+#                  the host resolver (/etc/resolv.conf) comes after them
+#   ntp_upstream : NTP servers relayed first (ip or ip:port, port 123 by
+#                  default); without an answer, the host clock replies
+#   rate_limit_per_vpc : requests per second, DNS and NTP together, per VPC
+# Its control socket and state file live in /run/two/hostsvc.
+hostsvc:
+  dns_upstream: []
+  ntp_upstream: []
+  rate_limit_per_vpc: 100
+
 # QEMU runtime paths
 qemu:
   # UEFI firmware (requires apt install ovmf on Debian/Ubuntu)
