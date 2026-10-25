@@ -18,11 +18,12 @@ VPC
 Un VPC est un **network namespace** portant un espace d'adressage (``cidr``). C'est l'unité
 d'isolation : deux VPC ne se voient pas, et peuvent réutiliser les mêmes plages d'adresses.
 
-À la création, l'agent relie le netns au bridge ``br-public`` de l'host par un veth
-``vp-<id>-e`` (côté host) ↔ ``vp-<id>-i`` (côté netns, rattaché à un ``br-public`` propre au
-netns). Ce nom de bridge est **en dur** : l'host doit porter un bridge ``br-public``, celui que
-crée ``deploy.sh -i`` avec la valeur par défaut de ``-P`` (:doc:`/demarrage/installation`) ;
-sans lui, toute création de VPC échoue.
+À la création, l'agent relie le netns au **bridge public** de l'host par un veth ``vp-<id>-e``
+(côté host) ↔ ``vp-<id>-i`` (côté netns, rattaché à un ``br-public`` propre au netns). Le bridge
+public est celui de ``interfaces.internet``, ``br-public`` si la clé est absente, jamais
+``default_interface`` (:doc:`/exploitation/configuration`). ``deploy.sh -i`` le crée et y
+accroche ``vxlan-public``, le VXLAN du segment public partagé avec les bordures
+(:doc:`/demarrage/installation`) ; sans ce bridge, toute création de VPC échoue.
 
 Un VPC ne peut être supprimé que si tous ses subnets le sont déjà — sinon 409.
 
@@ -35,10 +36,13 @@ plus besoin de porter un subnet pour joindre ses VM. Sans ``l3vni``, le VPC se c
 avant. Le champ exige la section ``bgp`` de l'agent (:doc:`/exploitation/configuration`) et ne
 se change pas après création.
 
-**Plan de VNI.** L3VNI et ``vxlan_id`` des subnets partagent l'espace des VNI VXLAN : la plage
-**1–65535** (sauf 253–255, tables du noyau) est réservée aux L3VNI des VPC, **65536–16777215** aux
-subnets. L'agent n'impose que la première borne (le RD ``<VTEP>:<l3vni>`` porte un numéro sur
-16 bits) ; le respect du plan revient à l'appelant, qui alloue les deux.
+**Plan de VNI.** Segment public, L3VNI et ``vxlan_id`` des subnets partagent l'espace des VNI
+VXLAN : le VNI **1** est celui du segment public (``deploy.sh --public_vni``, 1 par défaut), la
+plage **2–65535** (sauf 253–255, tables du noyau) est réservée aux L3VNI des VPC,
+**65536–16777215** aux subnets. L'agent n'impose que la borne haute des L3VNI (le RD
+``<VTEP>:<l3vni>`` porte un numéro sur 16 bits) ; le respect du plan revient à l'appelant, qui
+alloue les L3VNI et les ``vxlan_id``. Un VPC créé avec le VNI du segment public pour ``l3vni``
+passe en ``error`` : ce VNI est déjà porté par ``vxlan-public``.
 
 À la création, l'agent pose sur l'hyperviseur, pour un VPC ``vp-<id>`` :
 

@@ -30,8 +30,9 @@ encore est décrit sur son ticket :
 
 * **Internet** (`#31 <https://git.g3e.fr/syonad/two/issues/31>`_,
   `#42 <https://git.g3e.fr/syonad/two/issues/42>`_). Les bordures partagent avec les hyperviseurs
-  un VXLAN public (VNI 66001) et portent toutes la même IP et la même MAC de gateway. Elles restent
-  sans état : tout NAT vit sur un hyperviseur. Trois façons de sortir :
+  un VXLAN public (VNI 1, ``vxlan-public`` sur ``br-public``, #87) et portent toutes la même IP et
+  la même MAC de gateway. Elles restent sans état : tout NAT vit sur un hyperviseur. Trois façons
+  de sortir :
 
   * une VM qui porte une IP publique a une NIC sur un subnet public de son VPC, relié au subnet
     public de l'hôte ;
@@ -43,7 +44,8 @@ encore est décrit sur son ticket :
   l'orchestrateur sont des VM du VNI 66000, partagé entre clusters. Les agents s'y connectent
   **en sortie**, par leur passerelle ; les routeurs de chaque cluster les traduisent (NAT) vers le
   VNI 66000.
-  L'orchestrateur a aussi une patte dans le VNI 66001 : son API est joignable depuis Internet.
+  L'orchestrateur a aussi une patte dans le segment public (VNI 1) : son API est joignable
+  depuis Internet.
 
 * **Route reflectors.** Au moins un ; deux sont prévus dans l'architecture et dans les exemples
   (plages d'adresses de :doc:`route-reflector`), placés ici dans deux clusters différents pour
@@ -172,5 +174,4 @@ Adressage
    * la plage utilisée pour les adresses d'hyperviseurs, et son rapport avec ``br-000000`` ;
    * l'allocation des VNI VXLAN : qui la tient, et comment on évite les collisions, puisque
      l'agent ne valide pas ``vxlan_id`` ;
-   * l'usage prévu de ``br-public``, créé vide et réservé par le bootstrap ;
    * le plan d'adressage des VPC, et ce qui garantit qu'ils ne se recouvrent pas entre clients.
