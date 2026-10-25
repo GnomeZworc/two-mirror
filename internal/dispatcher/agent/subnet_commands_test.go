@@ -418,7 +418,7 @@ func TestDeleteSubnetCommand_Prepare_RefusedWhileAVMUsesIt(t *testing.T) {
 	kv.AddInDB(db, "vm/i-c/state", "running")
 	kv.AddInDB(db, "vm/i-c/nic/0/subnet", "sn-a")
 	err := DeleteSubnetCommand{Name: "sn-a"}.Prepare(db, nil)
-	if err == nil || !strings.Contains(err.Error(), `subnet "sn-a" is still used by vms i-a, i-b, i-c`) {
+	if err == nil || !strings.Contains(err.Error(), `subnet "sn-a" is still used by vms i-a, i-c`) {
 		t.Fatalf("erreur %v", err)
 	}
 	if s, _ := kv.GetFromDB(db, "subnet/sn-a/state"); s != "running" {

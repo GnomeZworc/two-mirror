@@ -19,12 +19,22 @@ worker:
   # Maximum number of commands queued before Dispatch blocks
   buffer_size: 100
 
-# Timing for commands that wait on resource state transitions
-dispatcher:
-  # How long (in seconds) to wait before giving up
-  timeout_seconds: 300
-  # Interval (in seconds) between each state check
-  poll_seconds: 2
+# Timing (in seconds) for commands that wait on resource state transitions
+times:
+  # Graceful VM shutdown before QMP quit
+  timeout_vms_stop: 300
+  # Interval between two system_powerdown during the shutdown
+  next_vms_shutdown: 30
+  # Subnet deletion: wait for its VMs still deleting
+  timeout_subnet_stop: 360
+  # VPC deletion: wait for its subnets still deleting
+  timeout_vpc_stop: 420
+  # Subnet creation: wait for its VPC to be running
+  timeout_subnet_start: 300
+  # VM creation: wait for the subnets of its interfaces to be running
+  timeout_vms_start: 300
+  # Interval between each state check
+  poll_interval: 2
 
 # Bridge interface used when the requested iface_type is not found in interfaces
 default_interface: br-000000
