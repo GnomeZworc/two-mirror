@@ -1,6 +1,6 @@
-# fonctionnalité: machine d'états — 409 pendant creating, suppression depuis error, sockets QEMU d'une VM en error retirés, dépendances VM → subnet → VPC, recréation sous le même nom
+# fonctionnalité: machine d'états — 409 pendant creating, suppression depuis error, sockets QEMU d'une VM en error retirés, dépendances VM → subnet → VPC, suppression d'un subnet en attente de ses VM, arrêt d'une VM juste démarrée par renvoi de system_powerdown, recréation sous le même nom
 # hôtes: hv1
-# tickets: #41, #84
+# tickets: #41, #84, #79
 
 on hv1 <<'NODE'
 check "VPC vp-t12a" vpc_create vp-t12a 10.12.0.0/16
@@ -41,4 +41,16 @@ check "sn-t12a recréé puis supprimé" wait_state subnets/sn-t12a deleted
 check "suppression de vp-t12a, sans subnet, 202 (témoin)" expect_code 202 api_code DELETE vpcs/vp-t12a
 check "vp-t12a supprimé" wait_state vpcs/vp-t12a deleted
 check "vp-t12a recréé sous le même nom" vpc_create vp-t12a 10.12.0.0/16
+
+check "subnet sn-t12q (VNI 1202)" subnet_create sn-t12q vp-t12a 1202 10.12.2.0/24
+check "VM t12-q" vm_create t12-q sn-t12q 10.12.2.10
+sleep 3
+T12Q=$(date +%s)
+check "t12-q : suppression 3 s après running, 202" expect_code 202 api_code DELETE vms/t12-q
+check "sn-t12q : suppression envoyée aussitôt, acceptée malgré t12-q en deleting, 202" expect_code 202 api_code DELETE subnets/sn-t12q
+info "sn-t12q juste après sa suppression : $(api_state subnets/sn-t12q), t12-q : $(api_state vms/t12-q)"
+check "t12-q supprimée" wait_state vms/t12-q deleted
+check "sn-t12q supprimé après t12-q" wait_state subnets/sn-t12q deleted
+info "t12-q puis sn-t12q supprimés en $(( $(date +%s) - T12Q )) s"
+check "t12-q : arrêtée bien avant times.timeout_vms_stop (300 s), par un system_powerdown renvoyé si le premier est perdu" test "$(( $(date +%s) - T12Q ))" -lt 200
 NODE
