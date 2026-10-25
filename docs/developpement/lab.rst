@@ -145,11 +145,13 @@ hyperviseurs : les adresses et les taps de l'underlay ne changent pas, ceux du s
 sont renumérotés.
 
 **Tester l'arbre courant plutôt que la release.** ``test/e2e/build.sh`` compile ``agent``,
-``dhcp`` et ``metadata`` pour linux/amd64 dans ``test/e2e/topologies/bin/`` (ignoré par git),
-que les hyperviseurs reçoivent par ``files: {bin: bin}``. Après ``deploy.sh``,
+``dhcp``, ``metadata`` et ``two-hostsvc`` pour linux/amd64 dans ``test/e2e/topologies/bin/``
+(ignoré par git), et y copie l'unit ``two-hostsvc.service``, absente de la release 0.2.0 ; les
+hyperviseurs reçoivent le répertoire par ``files: {bin: bin}``. Après ``deploy.sh``,
 ``hypervisor.sh`` installe chaque binaire présent dans ``/opt/two/local/bin/`` et y fait pointer
-``/opt/two/bin/<nom>`` ; le reste (units, scripts) vient de la release. ``build.sh --clean`` vide
-le répertoire : le lab suivant teste la release seule.
+``/opt/two/bin/<nom>``, puis installe, active et redémarre chaque unit ``*.service`` présente ; le
+reste (units, scripts) vient de la release. ``build.sh --clean`` vide le répertoire : le lab
+suivant teste la release seule.
 
 .. code-block:: text
 
