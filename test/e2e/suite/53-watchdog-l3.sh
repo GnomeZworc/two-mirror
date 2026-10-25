@@ -1,6 +1,6 @@
-# fonctionnalité: watchdog d'un VPC routé — /32 orphelin signalé comme trou noir, /32 manquant signalé, aucune fausse alerte BGP ni L3VNI, trafic intact après les essais
+# fonctionnalité: watchdog d'un VPC routé — /32 orphelin signalé comme trou noir, /32 manquant signalé, unreachable default absente signalée, aucune fausse alerte BGP ni L3VNI, trafic intact après les essais
 # hôtes: hv1 hv3
-# tickets: #41
+# tickets: #41, #81
 
 on hv1 <<'NODE'
 check "hv1 : VPC vp-t53, l3vni 5300" vpc_create vp-t53 10.53.0.0/16 5300
@@ -28,6 +28,10 @@ check "watchdog : /32 de t53-m retiré à la main" ip route del 10.53.1.50/32 vr
 check "hypothèse du test : FRR retire le /32 de t53-m de sa table BGP quand la route du noyau disparaît" wait_bgp_paths vp-t53 10.53.1.50/32 0
 check "watchdog : /32 manquant signalé" wait_watchdog "route 10.53.1.50/32 not exported in vrf-t53"
 check "watchdog : /32 de t53-m rétabli" ip route replace 10.53.1.50/32 via 169.254.0.2 dev l3-t53-o vrf vrf-t53
+check "watchdog : aucune alerte sur l'unreachable default avant son retrait (témoin)" watchdog_quiet_about 60 "no unreachable default"
+check "watchdog : unreachable default retirée à la main de la table 5300" ip route del unreachable default metric 4278198272 table 5300
+check "watchdog : unreachable default absente signalée" wait_watchdog "no unreachable default in vrf-t53"
+check "watchdog : unreachable default rétablie" ip route replace unreachable default metric 4278198272 table 5300
 check "watchdog : aucune alerte BGP ni L3VNI sur hv1" watchdog_l3_quiet 60
 NODE
 on hv3 <<'NODE'

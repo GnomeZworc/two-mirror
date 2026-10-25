@@ -1,6 +1,6 @@
-# fonctionnalité: routage inter-subnet entre hôtes par L3VNI (IRB symétrique) — VRF, RMAC, exports /24 et /32, RT-5 réfléchies, TTL, isolation par RT, démontage d'un VPC routé
+# fonctionnalité: routage inter-subnet entre hôtes par L3VNI (IRB symétrique) — VRF, RMAC, exports /24 et /32, RT-5 réfléchies, TTL, isolation par RT, unreachable default dans la VRF, démontage d'un VPC routé
 # hôtes: hv1 hv2
-# tickets: #41
+# tickets: #41, #81
 
 on hv1 <<'NODE'
 KEY=$(vm_key)
@@ -23,6 +23,9 @@ check "hv1 : vrf-t51 contient exactement brl3-t51 et l3-t51-o" sh -c "[ \"\$1\" 
 check "hv1 : brl3-t51 sans adresse IPv4" sh -c "! ip -4 -o addr show dev brl3-t51 | grep -q inet"
 check "hv1 : RMAC de brl3-t51 dérivée du VTEP 192.168.14.11" sh -c "ip -o link show brl3-t51 | grep -q 'link/ether 02:02:c0:a8:0e:0b '"
 check "hv1 : route du supernet dans vp-t51 vers le transit" sh -c "ip -n vp-t51 -4 route show 10.51.0.0/18 | grep -q 'via 169.254.0.1 dev l3-t51-i'"
+check "hv1 : table 5100 de vrf-t51 : unreachable default de métrique 4278198272" sh -c "ip -4 route show table 5100 | grep -q '^unreachable default metric 4278198272'"
+check "hv1 : adresse du VPC inconnue (10.51.5.5) injoignable dans vrf-t51, pas de repli sur la table main" sh -c "ip -4 route get 10.51.5.5 vrf vrf-t51 2>&1 | grep -q 'No route to host'"
+check "hv1 : adresse externe (8.8.8.8) injoignable dans vrf-t51" sh -c "ip -4 route get 8.8.8.8 vrf vrf-t51 2>&1 | grep -q 'No route to host'"
 check "hv1 : forwarding sur brl3-t51 et l3-t51-o" sh -c "[ \"\$(sysctl -n net.ipv4.conf.brl3-t51.forwarding net.ipv4.conf.l3-t51-o.forwarding | tr '\n' ' ')\" = '1 1 ' ]"
 check "hv1 : ip_forward dans le netns vp-t51" sh -c "[ \"\$(ip netns exec vp-t51 sysctl -n net.ipv4.ip_forward)\" = 1 ]"
 info "hv1 : ip_forward global de l'hôte : $(sysctl -n net.ipv4.ip_forward) (non modifié par l'agent)"
@@ -41,6 +44,7 @@ check "hv2 : RMAC de hv1 dans la FDB de vxl3-t51" sh -c "bridge fdb show dev vxl
 NODE
 on rr1 <<'NODE'
 check "rr1 : RT-5 10.51.1.10/32 de hv1 (RD 192.168.14.11:5100) reçue et réfléchie" sh -c "vtysh -c 'show bgp l2vpn evpn route rd 192.168.14.11:5100 type prefix' | grep -q '\[10.51.1.10\]'"
+check "rr1 : aucune RT-5 0.0.0.0/0 de hv1 (RD 192.168.14.11:5100) : l'unreachable default n'est pas annoncée" sh -c "! vtysh -c 'show bgp l2vpn evpn route rd 192.168.14.11:5100 type prefix' | grep -q '\[0.0.0.0\]'"
 check "rr1 : RT-5 10.51.2.20/32 de vp-t51b (RD 192.168.14.12:5101) présente (témoin du test négatif)" sh -c "vtysh -c 'show bgp l2vpn evpn route rd 192.168.14.12:5101 type prefix' | grep -q '\[10.51.2.20\]'"
 NODE
 on hv1 <<'NODE'
@@ -56,6 +60,7 @@ check "TTL 2 : expire dans la VRF de hv1 (169.254.0.1)" vm_grep vp-t51 10.51.1.1
 check "TTL 5 : atteint t51-b — quatre routeurs : gateway hv1, VRF hv1, VRF hv2, netns hv2" vm_ssh vp-t51 10.51.1.10 'ping -n -c 1 -W 2 -t 5 10.51.2.10'
 check "hv1 : vrf-t51 n'importe pas 10.51.2.20/32 de vp-t51b (RT 64600:5101)" sh -c "[ -z \"\$(ip -4 route show vrf vrf-t51 10.51.2.20)\" ]"
 check "t51-a ne joint pas t51-x, autre VPC, même plage" vm_fails vp-t51 10.51.1.10 'ping -c 3 -W 2 10.51.2.20'
+check "t51-a vers une adresse inconnue du VPC (10.51.5.5) : refusé par vrf-t51 (169.254.0.1), rien vers l'underlay" vm_grep vp-t51 10.51.1.10 'ping -n -c 2 -W 2 10.51.5.5' 'From 169.254.0.1 .*Unreachable'
 NODE
 on hv2 <<'NODE'
 BGPD=$(pidof bgpd)
@@ -64,9 +69,11 @@ check "hv2 : suppression de t51-x" vm_delete t51-x
 check "hv2 : vrf-t51b ne porte plus le /32 de t51-x" test -z "$(ip -4 route show vrf vrf-t51b 10.51.2.20/32)"
 check "hv2 : suppression de sn-t51x" api_delete subnets/sn-t51x
 check "hv2 : sn-t51x supprimé" wait_state subnets/sn-t51x deleted
+check "hv2 : table 5101 de vrf-t51b : unreachable default avant le démontage (témoin)" sh -c "ip -4 route show table 5101 | grep -q '^unreachable default metric 4278198272'"
 check "hv2 : suppression de vp-t51b" api_delete vpcs/vp-t51b
 check "hv2 : vp-t51b supprimé" wait_state vpcs/vp-t51b deleted
 check "hv2 : plus aucune interface de vp-t51b" sh -c "! ip -o link show | grep -qE '(vrf|brl3|vxl3)-t51b|l3-t51b-o'"
+check "hv2 : table 5101 vide après le démontage, unreachable default comprise" sh -c "! ip -4 route show table 5101 2>&1 | grep -qE '^(unreachable|default|[0-9])'"
 check "hv2 : plus rien de vrf-t51b dans FRR, en mémoire ni dans frr.conf" sh -c "! vtysh -c 'show running-config' | grep -q 'vrf-t51b' && ! grep -q 'vrf-t51b' /etc/frr/frr.conf"
 check "hv2 : bgpd n'a pas redémarré pendant le démontage" sh -c "[ \"\$(pidof bgpd)\" = '${BGPD}' ]"
 check "hv2 : vp-t51 toujours en service" wait_l3vni 5100 02:02:c0:a8:0e:0c
