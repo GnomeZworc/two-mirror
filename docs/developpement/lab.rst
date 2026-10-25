@@ -127,6 +127,18 @@ un subnet créé avec ``mode: bridge`` et ``iface_type: lan`` rattache son veth 
 subnets ``vxlan`` (``iface_type: vms``, clé absente) restent sur ``default_interface`` : le VTEP
 ne change pas. Le bridge n'est créé qu'au premier démarrage, comme le reste du provisionnement.
 
+**Bordures (``evpn-3hv``, #87).** ``bd1`` et ``bd2`` (``192.168.14.21`` et ``.22``) jouent les
+routeurs de bordure du segment public. Ce sont des nœuds ``host`` sans agent : leur provision
+(``test/e2e/topologies/provision/border.sh``) crée ``br-public``, y accroche ``vxlan-66001``
+(VNI 66001, VTEP = adresse de l'underlay, ``nolearning``), et pose sur le bridge la **gateway
+anycast** ``240.0.0.1/24`` avec la même MAC sur les deux, ``02:01:00:01:01:d1`` (la MAC anycast
+de two pour le VNI 66001), ainsi qu'une destination de test ``240.255.0.1/32`` sur une interface
+``dummy`` ``internet``. Leur ``frr.conf`` est celui d'un hyperviseur : iBGP AS 64600 vers les
+deux route reflectors, ``advertise-all-vni``. Les adresses publiques du lab sont prises dans
+``240.0.0.0/4``, réservée (RFC 1112, registre RFC 6890) et jamais routée sur Internet. Les bordures
+sont déclarées après les hyperviseurs : les adresses et les taps de l'underlay ne changent pas,
+ceux du segment ``lan`` sont renumérotés.
+
 **Tester l'arbre courant plutôt que la release.** ``test/e2e/build.sh`` compile ``agent``,
 ``dhcp`` et ``metadata`` pour linux/amd64 dans ``test/e2e/topologies/bin/`` (ignoré par git),
 que les hyperviseurs reçoivent par ``files: {bin: bin}``. Après ``deploy.sh``,

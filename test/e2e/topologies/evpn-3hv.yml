@@ -48,3 +48,9 @@ nodes:
       addresses: { underlay: 192.168.14.13 }, frr: frr/hv3.conf, provision: provision/hypervisor.sh,
       post_provision: provision/hypervisor-post.sh, files: { agent.yml: agent/dnsmasq.yml, bin: bin },
       services: [agent.service] }
+  bd1:
+    { role: host, image: debian12, cpus: 1, memory: 1024, segments: [underlay],
+      addresses: { underlay: 192.168.14.21 }, frr: frr/bd1.conf, provision: provision/border.sh }
+  bd2:
+    { role: host, image: debian12, cpus: 1, memory: 1024, segments: [underlay],
+      addresses: { underlay: 192.168.14.22 }, frr: frr/bd2.conf, provision: provision/border.sh }
