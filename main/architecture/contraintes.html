@@ -389,6 +389,13 @@ autre symptôme.</p></li>
 <li><p><strong>La route du subnet garde la gateway pour source</strong> (<code class="docutils literal notranslate"><span class="pre">src</span></code>) : le netns parle à ses VM depuis
 la gateway, leurs réponses reviennent à l’hôte local. Depuis l’adresse d’émission, partagée par
 tous les hôtes, une réponse peut partir vers un autre hôte.</p></li>
+<li><p><strong>Chaque VRF de VPC porte une route ``unreachable default`` de métrique maximale.</strong> Sans elle,
+une recherche manquée dans la VRF retombe dans la table <code class="docutils literal notranslate"><span class="pre">main</span></code> de l’hôte et le paquet du
+locataire sort par l’underlay. Elle survit à la suppression de la VRF (aucune interface) : la
+retirer explicitement au démontage.</p></li>
+<li><p><strong>``default_route: true`` sans ``gateway`` est réservé au mode ``bridge``</strong> : en <code class="docutils literal notranslate"><span class="pre">vxlan</span></code>, la
+gateway de l’hôte n’est pas sur le subnet, la route par défaut serait inutilisable, et jointe
+elle contournerait le netns et la VRF.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">169.254.169.254</span></code> est centralisé dans <code class="docutils literal notranslate"><span class="pre">metadata.ServiceIP</span></code> — ne pas le réécrire en dur.</p></li>
 </ul>
 </section>

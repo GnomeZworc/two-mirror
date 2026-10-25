@@ -972,7 +972,9 @@ seule. Le champ <code class="docutils literal notranslate"><span class="pre">def
 <dt><code class="docutils literal notranslate"><span class="pre">default_route:</span> <span class="pre">false</span></code> (défaut)</dt><dd><p>next-hop = <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> du subnet, la gateway calculée en <code class="docutils literal notranslate"><span class="pre">vxlan</span></code>.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">default_route:</span> <span class="pre">true</span></code></dt><dd><p>next-hop = le champ <code class="docutils literal notranslate"><span class="pre">gateway</span></code> s’il est fourni, sinon la gateway lue dans la table de routage
-de l’host.</p>
+de l’host, à la création du subnet. Ce dernier cas est <strong>réservé au mode</strong> <code class="docutils literal notranslate"><span class="pre">bridge</span></code>, où la VM
+partage le L2 de cette gateway : sans <code class="docutils literal notranslate"><span class="pre">gateway</span></code>, <code class="docutils literal notranslate"><span class="pre">default_route:</span> <span class="pre">true</span></code> est refusé (400) en
+<code class="docutils literal notranslate"><span class="pre">vxlan</span></code> et en <code class="docutils literal notranslate"><span class="pre">public_ip</span></code>.</p>
 </dd>
 </dl>
 <p><code class="docutils literal notranslate"><span class="pre">gateway</span></code> n’est <strong>pas validé</strong> par l’agent : sa joignabilité et sa cohérence avec le CIDR du
