@@ -1,6 +1,6 @@
-# fonctionnalité: subnet en mode bridge rattaché au bridge br-lan de l'hôte — un hôte, puis le même subnet sur deux hôtes (interface_ip confinée à son hôte : une seule réponse ARP, métadonnées servies par l'hôte de la VM, ni ARP ni DHCP de la gateway sur le segment, règles surveillées par le watchdog)
+# fonctionnalité: subnet en mode bridge rattaché au bridge br-lan de l'hôte — un hôte, puis le même subnet sur deux hôtes (interface_ip confinée à son hôte : une seule réponse ARP, métadonnées servies par l'hôte de la VM, ni ARP ni DHCP de la gateway sur le segment, règles surveillées par le watchdog) ; VM serveur DHCP des machines diskless (dhcp_server) entendue sur le segment, voisine bloquée
 # hôtes: hv1 hv2
-# tickets: #70, #75
+# tickets: #70, #75, #76
 
 on hv1 <<'NODE'
 KEY=$(vm_key)
@@ -92,4 +92,20 @@ own_meta () {
 }
 check "deux hôtes : t33-b1 (hv2) reçoit toujours ses propres métadonnées (5 essais, cache ARP vidé)" own_meta 10.33.0.23 t33-b1
 check "deux hôtes : t33-b1 (hv2) joint t33-a2 (hv1)" vm_ssh vp-t33 10.33.0.23 'ping -n -c 3 -W 2 10.33.0.22'
+NODE
+
+on hv1 <<'NODE'
+KEY=$(vm_key)
+check "VM t33-px 10.33.0.24, serveur DHCP des machines diskless (dhcp_server)" vm_launch t33-px --nic sn-t33a=10.33.0.24 --dhcp-server --sshkey "${KEY}"
+check "10.33.0.24 joignable" vm_wait vp-t33 10.33.0.24
+S=$(mktemp -d)
+sniff_start "${S}/px" lan 8 udp-from 10.33.0.24 67
+vm_frames vp-t33 10.33.0.24 dhcp ens3 10.33.0.24 68 5 >/dev/null 2>&1
+wait
+check "réponse DHCP de t33-px, autorisée : sort sur le segment physique par lan ($(cat "${S}/px") vue(s))" test "$(cat "${S}/px")" -gt 0
+sniff_start "${S}/a1" lan 8 udp-from 10.33.0.21 67
+vm_frames vp-t33 10.33.0.21 dhcp ens3 10.33.0.21 68 5 >/dev/null 2>&1
+wait
+check "même réponse DHCP de t33-a1, non autorisée : n'atteint pas le segment ($(cat "${S}/a1") vue(s))" test "$(cat "${S}/a1")" -eq 0
+rm -r "${S}"
 NODE

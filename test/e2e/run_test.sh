@@ -464,6 +464,8 @@ test_vm_json_builds_nics_disks_metadata_and_uefi () {
     [[ "${out}" == '{"name":"t21-a","memory":1024,"cpus":1,"metadata":{},"interfaces":[{"subnet":"sn-a","ip":"10.0.1.10","mac":"52:54:00:00:01:0a","primary":true}],"storage":[],"uefi":false}' ]] || fail "minimal : ${out}"
     out=$(node 'vm_json t21-m --nic sn-a=10.0.1.12=02:de:ad:be:ef:01 | jq -c ".interfaces[0] | [.ip, .mac]"')
     [[ "${out}" == '["10.0.1.12","02:de:ad:be:ef:01"]' ]] || fail "mac forcée : ${out}"
+    out=$(node 'vm_json t76-p --nic sn-a=10.0.1.10 --nic sn-b=10.0.2.10 --dhcp-server | jq -c "[.interfaces[] | .dhcp_server]"')
+    [[ "${out}" == '[null,true]' ]] || fail "--dhcp-server : ${out}"
     [[ $(node 'vm_json t || echo NON' 2>&1) == '{"name":"t","memory":1024,"cpus":1,"metadata":{},"interfaces":[],"storage":[],"uefi":false}' ]] || fail "vide"
     [[ $(node 'vm_json t --inconnue x || echo NON') == *NON ]] || fail "option inconnue acceptée"
     teardown
@@ -599,6 +601,15 @@ test_nft_matchers_read_the_rules () {
     teardown
 }
 
+test_nft_tap_of_finds_the_tap_of_a_mac () {
+    setup "nft_tap_of : tap dont la chaîne pre- n'accepte que cette MAC"
+    local stub
+    stub="nft_table () { printf '%s\\n' 'table bridge two {' '	chain pre-v-x-i {' '		ether saddr != 52:54:00:00:0a:05 drop' '	}' '	chain pre-tap11 {' '		ether saddr != 52:54:00:00:0a:06 drop' '	}' '	chain pre-tap22 {' '		ether saddr != 52:54:00:00:0a:05 drop' '		udp sport 67 drop' '	}' '}'; }; "
+    [[ $(node "${stub}nft_tap_of ns 52:54:00:00:0A:05") == tap22 ]] || fail "$(node "${stub}nft_tap_of ns 52:54:00:00:0A:05")"
+    [[ -z $(node "${stub}nft_tap_of ns 52:54:00:00:0a:07") ]] || fail "MAC inconnue trouvée"
+    teardown
+}
+
 test_nft_handle_finds_the_exact_rule () {
     setup "nft_handle : numéro de la règle exacte dans nft -a list chain"
     local stub
@@ -609,15 +620,23 @@ test_nft_handle_finds_the_exact_rule () {
 }
 
 test_frames_builds_arp_dhcp_and_marker_frames () {
-    setup "frames : requête ARP, DHCP en broadcast (somme IP juste) et trame marquée"
+    setup "frames : requête ARP, DHCP et UDP quelconque en broadcast (somme IP juste), trame marquée"
     local arp dhcp mark
     arp=$(node 'FRAMES_DRY=1 FRAMES_MAC=02:00:00:00:00:0a frames arp ens3 10.35.1.10 10.35.1.254 1')
     dhcp=$(node 'FRAMES_DRY=1 FRAMES_MAC=02:00:00:00:00:0a frames dhcp ens3 10.35.1.254 68 1')
     mark=$(node 'FRAMES_DRY=1 frames marker v-x-e 02:01:00:00:0d:ad t35-x 1')
     garp=$(node 'FRAMES_DRY=1 FRAMES_MAC=02:00:00:00:00:0a frames garp ens3 10.35.1.254 1')
-    python3 - "${arp}" "${dhcp}" "${mark}" "${garp}" <<'PY' || fail "trames : ${arp} / ${dhcp} / ${mark} / ${garp}"
+    udp=$(node 'FRAMES_DRY=1 FRAMES_MAC=02:00:00:00:00:0a frames udp ens3 0.0.0.0 68 53 1')
+    spoof=$(node 'FRAMES_DRY=1 FRAMES_MAC=02:00:00:00:00:0a frames udp ens3 10.35.1.99 4000 4001 1 02:35:00:00:00:01')
+    python3 - "${arp}" "${dhcp}" "${mark}" "${garp}" "${udp}" "${spoof}" <<'PY' || fail "trames : ${arp} / ${dhcp} / ${mark} / ${garp} / ${udp} / ${spoof}"
 import socket, struct, sys
-arp, dhcp, mark, garp = (bytes.fromhex(x) for x in sys.argv[1:])
+arp, dhcp, mark, garp, udp, spoof = (bytes.fromhex(x) for x in sys.argv[1:])
+assert udp[6:12] == bytes.fromhex('02000000000a') and udp[12:14] == b'\x08\x00' and udp[23] == 17, 'udp type'
+assert udp[26:30] == socket.inet_aton('0.0.0.0') and struct.unpack('!HH', udp[34:38]) == (68, 53), 'udp source et ports'
+assert spoof[6:12] == bytes.fromhex('023500000001'), 'udp mac source imposée'
+assert spoof[26:30] == socket.inet_aton('10.35.1.99') and struct.unpack('!HH', spoof[34:38]) == (4000, 4001), 'udp ip et ports'
+s = sum(struct.unpack('!10H', spoof[14:34])); s = (s >> 16) + (s & 0xffff); s += s >> 16
+assert s & 0xffff == 0xffff, 'somme IP udp'
 assert garp[:6] == b'\xff' * 6 and garp[6:12] == bytes.fromhex('02000000000a'), 'garp mac'
 assert garp[12:14] == b'\x08\x06' and garp[20:22] == b'\x00\x02', 'garp type/op'
 assert garp[22:28] == bytes.fromhex('02000000000a') and garp[28:32] == socket.inet_aton('10.35.1.254'), 'garp émetteur'

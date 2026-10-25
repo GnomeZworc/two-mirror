@@ -342,17 +342,17 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - hv1
      - #57, #41
    * - ``33-bridge``
-     - subnet en mode bridge rattaché au bridge br-lan de l'hôte — un hôte, puis le même subnet sur deux hôtes (interface_ip confinée à son hôte : une seule réponse ARP, métadonnées servies par l'hôte de la VM, ni ARP ni DHCP de la gateway sur le segment, règles surveillées par le watchdog)
+     - subnet en mode bridge rattaché au bridge br-lan de l'hôte — un hôte, puis le même subnet sur deux hôtes (interface_ip confinée à son hôte : une seule réponse ARP, métadonnées servies par l'hôte de la VM, ni ARP ni DHCP de la gateway sur le segment, règles surveillées par le watchdog) ; VM serveur DHCP des machines diskless (dhcp_server) entendue sur le segment, voisine bloquée
      - hv1 hv2
-     - #70, #75
+     - #70, #75, #76
    * - ``34-isolation-locale``
      - isolation entre deux VPC sur un même hôte — ni ICMP ni TCP d'un VPC à l'autre
      - hv1
      - #50
    * - ``35-filtrage-port``
-     - filtrage au port — en sortie vers le fabric (v-<id>-i) : ARP vers la gateway et l'adresse d'émission, DHCP émis depuis ces adresses, MAC anycast confinée dans les deux sens ; entre VM d'un même hôte : faux serveur DHCP et usurpation ARP de la gateway (comportement attendu, non filtré à ce jour)
+     - filtrage au port — en sortie vers le fabric (v-<id>-i) : ARP vers la gateway et l'adresse d'émission, DHCP émis depuis ces adresses, MAC anycast confinée dans les deux sens ; à la sortie de chaque VM (pre-tap<id>) : MAC, IP et ARP usurpés, faux serveur DHCP, source 0.0.0.0 hors DHCP, type de trame non IP, NIC autorisée en serveur DHCP (dhcp_server), règles surveillées par le watchdog et retirées avec la VM
      - hv1
-     - #57
+     - #57, #76
    * - ``41-evpn-l2``
      - subnet vxlan étendu entre deux hôtes par EVPN — VTEP local, VTEP distant et inondation appris, MAC des VM en type 2, trafic ICMP et TCP, MTU 1500 de bout en bout
      - hv1 hv2

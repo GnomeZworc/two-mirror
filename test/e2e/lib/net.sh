@@ -139,6 +139,8 @@ if cmd == 'arp':
     emit(a[0], arp_req(ifmac(a[0]), a[1], a[2]), int(a[3]))
 elif cmd == 'dhcp':
     emit(a[0], udp_bcast(ifmac(a[0]), a[1], 67, int(a[2]), b'two-e2e-dhcp'.ljust(240, b'\0')), int(a[3]))
+elif cmd == 'udp':
+    emit(a[0], udp_bcast(a[5] if len(a) > 5 else ifmac(a[0]), a[1], int(a[2]), int(a[3]), b'two-e2e-udp'.ljust(46, b'\0')), int(a[4]))
 elif cmd == 'garp':
     emit(a[0], garp(ifmac(a[0]), a[1]), int(a[2]))
 elif cmd == 'marker':
@@ -164,6 +166,12 @@ vm_frames () {
     local vpc="${1}" ip="${2}"
     shift 2
     vm_ssh "${vpc}" "${ip}" "echo $(frames_py | base64 | tr -d '\n') | base64 -d > /tmp/frames.py && sudo python3 /tmp/frames.py $*"
+}
+
+ns_frames () {
+    local ns="${1}"
+    shift
+    frames_py | ip netns exec "${ns}" python3 - "$@"
 }
 
 sniff_start () {
@@ -207,6 +215,10 @@ nft_arp_drop () {
 
 nft_dhcp_drop () {
     [ "$(nft_count "${1}" "${2}" "ip saddr ${3} udp sport 67-68 udp dport 67-68 drop")" -gt 0 ]
+}
+
+nft_tap_of () {
+    nft_table "${1}" | awk -v r="ether saddr != $(tr 'A-F' 'a-f' <<<"${2}") drop" '$1 == "chain" {c = $2; next} {line = $0; sub(/^[ \t]+/, "", line)} line == r && c ~ /^pre-tap/ {print substr(c, 5)}'
 }
 
 nft_handle () {

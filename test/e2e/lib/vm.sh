@@ -122,6 +122,7 @@ vm_json () {
                 sn=${2%%=*}; rest=${2#*=}; ip=${rest%%=*}; mac=$(mac_for_ip "${ip}")
                 [ "${rest}" != "${ip}" ] && mac=${rest#*=}
                 nics=$(jq -c --arg s "${sn}" --arg ip "${ip}" --arg m "${mac}" --argjson p "${primary}" '. + [{subnet: $s, ip: $ip, mac: $m, primary: $p}]' <<<"${nics}"); primary=false; shift 2 ;;
+            --dhcp-server) nics=$(jq -c '.[-1].dhcp_server = true' <<<"${nics}"); shift ;;
             --disk) disks=$(jq -c --arg d "${2%%=*}" --arg p "${2#*=}" '. + [{path: $p, dev: $d}]' <<<"${disks}"); shift 2 ;;
             --sshkey) meta=$(jq -c --arg v "${2}" '. + {sshkey: $v}' <<<"${meta}"); shift 2 ;;
             --password) meta=$(jq -c --arg v "${2}" '. + {password: $v}' <<<"${meta}"); shift 2 ;;
