@@ -44,7 +44,7 @@ subnets. L'agent n'impose que la première borne (le RD ``<VTEP>:<l3vni>`` porte
 
 .. code-block:: text
 
-   vrf-<id>         VRF, table de routage = l3vni
+   vrf-<id>         VRF, table de routage = l3vni, unreachable default metric 4278198272
    ├── brl3-<id>    bridge sans adresse, MAC de routeur 02:02:<IPv4 du VTEP>
    │   └── vxl3-<id>    VXLAN du l3vni, VTEP = IPv4 primaire de default_interface
    └── l3-<id>-o    169.254.0.1/30 ── l3-<id>-i 169.254.0.2/30, dans le netns du VPC
@@ -56,8 +56,18 @@ touche pas au réglage global, que ``bootstrap_kvm.sh`` met déjà à 1. FRR re�
 ``router bgp <asn> vrf vrf-<id>`` avec RD ``<VTEP>:<l3vni>`` et RT ``<asn>:<l3vni>``, et
 l'export des routes du ``cidr`` présentes dans la VRF.
 
-La suppression retire d'abord la configuration de routage de FRR, puis les interfaces, puis la
-VRF de FRR. Cet ordre est imposé : supprimer la VRF du noyau sous une instance BGP encore
+La table de la VRF reçoit, juste après sa création, une route ``unreachable default`` de métrique
+maximale (``4278198272``, valeur recommandée par la documentation VRF du noyau). Sans elle, une
+recherche qui échoue dans la VRF continue dans les règles suivantes, donc dans la table ``main``
+de l'hôte : un paquet d'un locataire vers une adresse inconnue de la VRF sortirait par l'underlay,
+avec ``169.254.0.2`` pour source (mesuré, `#81 <https://git.g3e.fr/syonad/two/issues/81>`_). La
+métrique maximale laisse passer avant elle toute route réelle de la VRF. Cette route n'est pas
+annoncée en EVPN : le route-map de la VRF n'exporte que le ``cidr`` du VPC. Elle n'est liée à
+aucune interface et ne disparaît pas avec la VRF : la suppression la retire explicitement. IPv4
+seulement.
+
+La suppression retire d'abord la configuration de routage de FRR, puis les interfaces, la route
+``unreachable default``, puis la VRF de FRR. Cet ordre est imposé : supprimer la VRF du noyau sous une instance BGP encore
 configurée fait planter ``bgpd`` (FRR 10.7.1).
 
 Subnet

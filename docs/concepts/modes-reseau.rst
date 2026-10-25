@@ -172,7 +172,9 @@ seule. Le champ ``default_route`` ne choisit que son next-hop :
 
 ``default_route: true``
    next-hop = le champ ``gateway`` s'il est fourni, sinon la gateway lue dans la table de routage
-   de l'host.
+   de l'host, à la création du subnet. Ce dernier cas est **réservé au mode** ``bridge``, où la VM
+   partage le L2 de cette gateway : sans ``gateway``, ``default_route: true`` est refusé (400) en
+   ``vxlan`` et en ``public_ip``.
 
 ``gateway`` n'est **pas validé** par l'agent : sa joignabilité et sa cohérence avec le CIDR du
 subnet relèvent de l'appelant. Fourni avec ``default_route: false``, il est ignoré.

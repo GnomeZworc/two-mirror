@@ -29,6 +29,13 @@ Réseau
 * **La route du subnet garde la gateway pour source** (``src``) : le netns parle à ses VM depuis
   la gateway, leurs réponses reviennent à l'hôte local. Depuis l'adresse d'émission, partagée par
   tous les hôtes, une réponse peut partir vers un autre hôte.
+* **Chaque VRF de VPC porte une route ``unreachable default`` de métrique maximale.** Sans elle,
+  une recherche manquée dans la VRF retombe dans la table ``main`` de l'hôte et le paquet du
+  locataire sort par l'underlay. Elle survit à la suppression de la VRF (aucune interface) : la
+  retirer explicitement au démontage.
+* **``default_route: true`` sans ``gateway`` est réservé au mode ``bridge``** : en ``vxlan``, la
+  gateway de l'hôte n'est pas sur le subnet, la route par défaut serait inutilisable, et jointe
+  elle contournerait le netns et la VRF.
 * ``169.254.169.254`` est centralisé dans ``metadata.ServiceIP`` — ne pas le réécrire en dur.
 
 QEMU et VM
