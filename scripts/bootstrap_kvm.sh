@@ -16,7 +16,7 @@
 # L'host est stateless (root sur tmpfs) : rien de ce qui suit ne survit à un
 # reboot, deploy.sh --bootstrap est rejoué à chaque démarrage.
 
-KVM_PACKAGES="qemu-system-x86 qemu-utils ovmf dnsmasq ebtables iptables nfs-common jq curl"
+KVM_PACKAGES="qemu-system-x86 qemu-utils ovmf dnsmasq nftables iptables nfs-common jq curl"
 
 kvm_packages () {
     local DRY_RUN="${1}"

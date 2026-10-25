@@ -1,4 +1,4 @@
-# fonctionnalité: hypothèses d'environnement de la suite — firmware UEFI, unités modèles de l'agent, journalctl, format de ebtables -L, br-lan, priorités VRRP lues dans FRR
+# fonctionnalité: hypothèses d'environnement de la suite — firmware UEFI, unités modèles de l'agent, journalctl, format de nft list table, br-lan, priorités VRRP lues dans FRR
 # hôtes: hv1 hv2 hv3
 # tickets: #70
 
@@ -17,20 +17,32 @@ check "${HOST} : journalctl accepte --since @<epoch>" journalctl --since "@$(dat
 for unit in dhcp@.service dnsmasq@.service metadata@.service; do
     check "${HOST} : unité modèle ${unit} installée" systemctl cat "${unit}"
 done
-NS=t02-ebt
+NS=t02-nft
 MAC=02:01:00:00:0c:27
 ip netns add "${NS}"
-check "${HOST} : ebtables -L, aucune règle avant (témoin)" test "$(ebt_confined "${NS}" v-t02-i "${MAC}")" -eq 0
-ip netns exec "${NS}" ebtables -t nat -A PREROUTING --in-interface v-t02-i -s "${MAC}" -j DROP
-ip netns exec "${NS}" ebtables -t filter -A FORWARD --out-interface v-t02-i -s "${MAC}" -j DROP
-ip netns exec "${NS}" ebtables -t filter -A OUTPUT --out-interface v-t02-i -s "${MAC}" -j DROP
-ip netns exec "${NS}" ebtables -A FORWARD --out-interface v-t02-i -p arp --arp-op Request --arp-ip-dst 10.2.1.254 -j DROP
-ip netns exec "${NS}" ebtables -A FORWARD --out-interface v-t02-i -p IPv4 --ip-protocol udp --ip-source-port 67:68 --ip-destination-port 67:68 --ip-source 10.2.1.254 -j DROP
-check "${HOST} : ebtables -L, confinement de MAC lu par ebt_confined (3 règles)" test "$(ebt_confined "${NS}" v-t02-i "${MAC}")" -eq 3
-check "${HOST} : ebtables -L, blocage ARP vers la gateway lu par ebt_arp_drop" ebt_arp_drop "${NS}" v-t02-i 10.2.1.254
-check "${HOST} : ebtables -L, blocage DHCP lu par ebt_dhcp_drop" ebt_dhcp_drop "${NS}" v-t02-i 10.2.1.254
-other_ip_ignored () { ! ebt_arp_drop "${NS}" v-t02-i 10.2.1.25; }
-check "${HOST} : ebt_arp_drop ne confond pas une autre adresse (témoin)" other_ip_ignored
+check "${HOST} : nft installé" command -v nft
+check "${HOST} : nft list table, aucune règle avant (témoin)" test "$(nft_confined "${NS}" v-t02-i "${MAC}")" -eq 0
+ip netns exec "${NS}" nft -f - <<NFT
+add table bridge two
+add chain bridge two pre-v-t02-i
+add rule bridge two pre-v-t02-i ether saddr ${MAC} drop
+add chain bridge two fwd-v-t02-i
+add rule bridge two fwd-v-t02-i ether saddr ${MAC} drop
+add rule bridge two fwd-v-t02-i arp operation request arp daddr ip 10.2.1.254 drop
+add rule bridge two fwd-v-t02-i ip saddr 10.2.1.254 udp sport 67-68 udp dport 67-68 drop
+add chain bridge two out-v-t02-i
+add rule bridge two out-v-t02-i ether saddr ${MAC} drop
+add chain bridge two fwd-v-t02x-i
+add rule bridge two fwd-v-t02x-i arp operation request arp daddr ip 10.2.9.254 drop
+NFT
+check "${HOST} : nft list table, confinement de MAC lu par nft_confined (3 règles)" test "$(nft_confined "${NS}" v-t02-i "${MAC}")" -eq 3
+check "${HOST} : nft list table, blocage ARP vers la gateway lu par nft_arp_drop" nft_arp_drop "${NS}" v-t02-i 10.2.1.254
+check "${HOST} : nft list table, blocage DHCP lu par nft_dhcp_drop" nft_dhcp_drop "${NS}" v-t02-i 10.2.1.254
+other_ip_ignored () { ! nft_arp_drop "${NS}" v-t02-i 10.2.1.25; }
+check "${HOST} : nft_arp_drop ne confond pas une autre adresse (témoin)" other_ip_ignored
+other_port_ignored () { ! nft_arp_drop "${NS}" v-t02-i 10.2.9.254; }
+check "${HOST} : nft_rules ne lit pas la chaîne d'un autre port (témoin)" other_port_ignored
+check "${HOST} : nft_handle trouve le numéro d'une règle" test -n "$(nft_handle "${NS}" out-v-t02-i "ether saddr ${MAC} drop")"
 ip netns del "${NS}"
 case "${HOST}" in
     hv1) LAN=10.33.0.11 ;;

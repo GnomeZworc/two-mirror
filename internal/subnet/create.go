@@ -6,10 +6,10 @@ import (
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/dhcpbackend"
-	"git.g3e.fr/syonad/two/internal/ebtables"
 	"git.g3e.fr/syonad/two/internal/l3vni"
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
+	"git.g3e.fr/syonad/two/internal/nft"
 	"git.g3e.fr/syonad/two/internal/state"
 
 	"github.com/dgraph-io/badger/v4"
@@ -118,10 +118,7 @@ func createSubnet(db *badger.DB, subnetName string, d subnetData, backend dhcpba
 			if err := netif.RouteAdd(d.bridge, d.cidr); err != nil {
 				return fmt.Errorf("add route: %w", err)
 			}
-			if err := ebtables.DropARPToGateway(vethI, d.interfaceIP.String()); err != nil {
-				return err
-			}
-			return ebtables.DropDHCP(vethI, d.interfaceIP.String())
+			return nft.SetPort(VxlanFabricPort(vethI, d.interfaceIP.String()))
 		}); err != nil {
 			return fmt.Errorf("configure netns: %w", err)
 		}
@@ -133,7 +130,7 @@ func createSubnet(db *badger.DB, subnetName string, d subnetData, backend dhcpba
 			if err := netif.RouteAdd(d.bridge, d.cidr); err != nil {
 				return fmt.Errorf("add route: %w", err)
 			}
-			return ebtables.ConfineGateway(vethI, d.interfaceIP.String())
+			return nft.SetPort(BridgeFabricPort(vethI, d.interfaceIP.String()))
 		}); err != nil {
 			return fmt.Errorf("configure netns: %w", err)
 		}

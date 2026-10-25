@@ -47,7 +47,7 @@ own_meta () {
     done
     [ "${ok}" -eq 5 ] || { echo "${2} : ${ok}/5 réponses avec ses propres métadonnées"; return 1; }
 }
-check "hv1 : quatre règles de confinement de 10.33.0.1 sur v-t33a-i" test "$(ebt_rules vp-t33 v-t33a-i | grep -c '10.33.0.1 ')" -eq 4
+check "hv1 : quatre règles de confinement de 10.33.0.1 sur v-t33a-i" test "$(nft_rules vp-t33 v-t33a-i | grep -c '10.33.0.1 ')" -eq 4
 RESPONDERS=$(vm_frames vp-t33 10.33.0.21 arp-who ens3 10.33.0.21 10.33.0.1 2)
 info "MAC qui répondent pour 10.33.0.1 vues de t33-a1 : $(echo ${RESPONDERS})"
 check "deux hôtes : t33-a1 (hv1) joint t33-b1 (hv2) sur le segment lan" vm_ssh vp-t33 10.33.0.21 'ping -n -c 3 -W 2 10.33.0.23'
@@ -74,10 +74,11 @@ check "témoin : l'ARP émis par t33-a1 atteint le segment par v-t33a-e (capture
 check "aucune trame ARP depuis 10.33.0.1 vers le segment (v-t33a-e)" test "$(cat "${S}/arp")" -eq 0
 check "aucune trame DHCP depuis 10.33.0.1 vers le segment (v-t33a-e)" test "$(cat "${S}/dhcp")" -eq 0
 rm -r "${S}"
-RULE='OUTPUT --out-interface v-t33a-i -p arp --arp-ip-src 10.33.0.1 -j DROP'
-check "règle ARP OUTPUT retirée à la main" ip netns exec vp-t33 ebtables -D ${RULE}
-check "watchdog : règle manquante signalée pour sn-t33a" wait_watchdog "ebtables rule missing in netns vp-t33"
-check "règle ARP OUTPUT reposée" ip netns exec vp-t33 ebtables -A ${RULE}
+RULE='arp saddr ip 10.33.0.1 drop'
+HANDLE=$(nft_handle vp-t33 out-v-t33a-i "${RULE}")
+check "règle ARP output retirée à la main (handle ${HANDLE:-absent})" ip netns exec vp-t33 nft delete rule bridge two out-v-t33a-i handle "${HANDLE}"
+check "watchdog : règle manquante signalée pour sn-t33a" wait_watchdog "nftables rule missing in netns vp-t33: out-v-t33a-i: ${RULE}"
+check "règle ARP output reposée" ip netns exec vp-t33 nft add rule bridge two out-v-t33a-i ${RULE}
 NODE
 
 on hv2 <<'NODE'

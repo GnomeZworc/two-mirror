@@ -3,11 +3,10 @@ package subnet
 import (
 	"errors"
 	"fmt"
-	"net"
 
-	"git.g3e.fr/syonad/two/internal/ebtables"
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
+	"git.g3e.fr/syonad/two/internal/nft"
 	"git.g3e.fr/syonad/two/internal/sysctl"
 )
 
@@ -32,7 +31,9 @@ func setupAnycastGateway(d subnetData, vethI string) error {
 		name string
 		fn   func() error
 	}{
-		{"confine " + mac.String(), func() error { return ebtables.ConfineMAC(vethI, mac.String()) }},
+		{"filter " + vethI, func() error {
+			return nft.SetPort(AnycastFabricPort(vethI, mac.String(), d.interfaceIP.String(), d.relayIP.String()))
+		}},
 		{"arp sysctls on " + d.bridge, func() error { return setSysctls(arpSysctls(d.bridge)) }},
 		{"relay address on " + d.bridge, func() error { return netif.AddrAdd(d.bridge, d.relayIP) }},
 		{"create " + gw, func() error { return netif.CreateMacvlan(gw, d.bridge, mac) }},
@@ -41,10 +42,6 @@ func setupAnycastGateway(d subnetData, vethI string) error {
 		{"gateway address on " + gw, func() error { return netif.AddrAdd(gw, d.interfaceIP) }},
 		{"route " + d.cidr.String(), func() error { return netif.RouteAddFrom(d.bridge, d.cidr, d.interfaceIP) }},
 		{"set up " + gw, func() error { return netif.LinkSetUp(gw) }},
-		{"drop arp to gateway", func() error { return ebtables.DropARPToGateway(vethI, d.interfaceIP.String()) }},
-		{"drop arp to relay", func() error { return ebtables.DropARPToGateway(vethI, d.relayIP.String()) }},
-		{"drop dhcp from gateway", func() error { return ebtables.DropDHCP(vethI, d.interfaceIP.String()) }},
-		{"drop dhcp from relay", func() error { return ebtables.DropDHCP(vethI, d.relayIP.String()) }},
 	}
 	return netns.Call(d.vpc, func() error {
 		for _, step := range steps {
@@ -57,21 +54,9 @@ func setupAnycastGateway(d subnetData, vethI string) error {
 }
 
 func deleteAnycastGateway(d subnetData, vethI string) error {
-	mac, err := netif.AnycastMAC(d.vxlanID)
-	if err != nil {
-		return err
-	}
 	return netns.Call(d.vpc, func() error {
 		var errs []error
-		for _, ip := range []net.IP{d.interfaceIP, d.relayIP} {
-			if err := ebtables.DeleteARPToGateway(vethI, ip.String()); err != nil {
-				errs = append(errs, fmt.Errorf("delete ebtables arp rule %s: %w", ip, err))
-			}
-			if err := ebtables.DeleteDHCP(vethI, ip.String()); err != nil {
-				errs = append(errs, fmt.Errorf("delete ebtables dhcp rule %s: %w", ip, err))
-			}
-		}
-		if err := ebtables.DeleteConfineMAC(vethI, mac.String()); err != nil {
+		if err := nft.DeletePort(vethI); err != nil {
 			errs = append(errs, err)
 		}
 		if err := netif.DeleteLink(d.gatewayLink()); err != nil {

@@ -180,24 +180,37 @@ vm_sniff_start () {
     sleep 3
 }
 
-ebt_mac () {
-    awk -F: 'BEGIN {OFS = ":"} {for (i = 1; i <= NF; i++) sub(/^0/, "", $i); $1 = $1; print tolower($0)}' <<<"${1}"
+nft_table () {
+    local tables
+    tables=$(ip netns exec "${1}" nft list tables bridge) || return 1
+    grep -qx 'table bridge two' <<<"${tables}" || return 0
+    ip netns exec "${1}" nft list table bridge two
 }
 
-ebt_rules () {
-    { ip netns exec "${1}" ebtables -t nat -L; ip netns exec "${1}" ebtables -t filter -L; } | grep -- "${2}"
+nft_rules () {
+    local table
+    table=$(nft_table "${1}") || return 1
+    awk -v p="${2}" '$1 == "chain" {c = ($2 == "pre-" p || $2 == "fwd-" p || $2 == "out-" p) ? $2 : ""; next} $1 == "}" {c = ""; next} c != "" && NF {$1 = $1; print c, $0}' <<<"${table}"
 }
 
-ebt_confined () {
-    ebt_rules "${1}" "${2}" | grep -ciE -- "-s ($(ebt_mac "${3}")|${3}) .*DROP"
+nft_count () {
+    nft_rules "${1}" "${2}" | cut -d' ' -f2- | grep -cxF -- "${3}"
 }
 
-ebt_arp_drop () {
-    ebt_rules "${1}" "${2}" | grep -i arp | grep -i request | grep -q -- "${3} "
+nft_confined () {
+    nft_count "${1}" "${2}" "ether saddr $(tr 'A-F' 'a-f' <<<"${3}") drop"
 }
 
-ebt_dhcp_drop () {
-    ebt_rules "${1}" "${2}" | grep -i udp | grep -- "${3} " | grep -q "67:68"
+nft_arp_drop () {
+    [ "$(nft_count "${1}" "${2}" "arp operation request arp daddr ip ${3} drop")" -gt 0 ]
+}
+
+nft_dhcp_drop () {
+    [ "$(nft_count "${1}" "${2}" "ip saddr ${3} udp sport 67-68 udp dport 67-68 drop")" -gt 0 ]
+}
+
+nft_handle () {
+    ip netns exec "${1}" nft -a list chain bridge two "${2}" | awk -v r="${3}" '{line = $0; sub(/^[ \t]+/, "", line); if (sub(/ # handle [0-9]+$/, "", line) && line == r) print $NF}'
 }
 
 vrrp_expected_master () {

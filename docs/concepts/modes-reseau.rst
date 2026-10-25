@@ -96,8 +96,8 @@ La MAC anycast ne doit **jamais** sortir du netns : vue depuis le fabric, elle s
 EVPN par chaque hôte, détectée en double, et déplacerait l'apprentissage des bridges. Trois
 mécanismes la confinent :
 
-* ebtables, sur le veth du subnet : toute trame de **source** anycast est rejetée à l'entrée
-  (``nat PREROUTING``) et à la sortie (``FORWARD`` et ``OUTPUT``) ;
+* nftables, sur le veth du subnet : toute trame de **source** anycast est rejetée à l'entrée
+  (``prerouting``) et à la sortie (``forward`` et ``output``) ;
 * une **entrée FDB locale** pour la MAC anycast dans le bridge du netns. Le macvlan ne la crée pas
   lui-même : sans elle, toute trame d'une VM vers sa gateway est inondée vers le fabric et les
   autres VM, et traitée par la gateway de chaque hôte ;
@@ -106,7 +106,7 @@ mécanismes la confinent :
 
 IPv6 n'est pas désactivé sur le macvlan : ses trames (DAD, ND) sont arrêtées par le confinement.
 Le watchdog contrôle le macvlan, sa MAC, les deux adresses et l'entrée FDB ; il ne relit pas les
-règles ebtables.
+règles nftables.
 
 Subnets créés avant la gateway anycast
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -124,19 +124,28 @@ VPC : le trafic sort par le bridge, et la VM est joignable depuis l'host.
 
 Le même subnet peut être posé sur plusieurs hôtes raccordés au même segment. Chaque hôte porte
 alors la **même** ``interface_ip`` dans son netns, avec sa propre MAC. Pour qu'une VM ne voie que
-l'``interface_ip`` de son hôte (gateway, metadata, DHCP), l'agent pose quatre règles ebtables sur
+l'``interface_ip`` de son hôte (gateway, metadata, DHCP), l'agent pose quatre règles nftables sur
 le veth du subnet dans le netns (``v-<subnet>-i``), en sortie vers le bridge de l'host :
 
-* les requêtes ARP des VM **vers** ``interface_ip`` ne quittent pas l'hôte (``FORWARD``) ;
+* les requêtes ARP des VM **vers** ``interface_ip`` ne quittent pas l'hôte (``forward``) ;
 * l'ARP émis **depuis** ``interface_ip`` par le netns, requêtes et réponses, ne sort pas
-  (``OUTPUT``) : une VM d'un autre hôte n'associe jamais ``interface_ip`` à cet hôte ;
-* le DHCP émis depuis ``interface_ip`` ne sort ni en transit (``FORWARD``) ni depuis le serveur
-  local lui-même (``OUTPUT``).
+  (``output``) : une VM d'un autre hôte n'associe jamais ``interface_ip`` à cet hôte ;
+* le DHCP émis depuis ``interface_ip`` ne sort ni en transit (``forward``) ni depuis le serveur
+  local lui-même (``output``).
 
 Le trafic entre VM du subnet, sur un même hôte ou sur des hôtes différents, n'est pas concerné.
 Par conception, une VM ne joint pas le netns d'un autre hôte. Les règles sont retirées à la
 suppression du subnet ; une règle déjà absente ne fait pas échouer la suppression. Le watchdog
-signale les règles manquantes.
+signale les règles manquantes et celles qui ne sont pas de l'agent.
+
+Règles de pont
+--------------
+
+Dans les deux modes, les règles de couche 2 vivent dans une table nftables ``bridge two`` du netns
+du VPC. Trois chaînes de base (``prerouting``, ``forward``, ``output``) aiguillent chaque trame,
+selon l'interface d'entrée ou de sortie, vers la chaîne du port concerné (``pre-<port>``,
+``fwd-<port>``, ``out-<port>``) par les tables ``pre_ports``, ``fwd_ports`` et ``out_ports``.
+L'agent pose ou retire toutes les règles d'un port en une seule transaction.
 
 .. note::
 

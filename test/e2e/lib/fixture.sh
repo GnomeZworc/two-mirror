@@ -55,7 +55,7 @@ host_state () {
     echo "## liens"; ip -o link show | awk -F': ' '{print $2}' | cut -d@ -f1 | sort
     echo "## adresses"; ip -o -4 addr show | awk '{print $2, $4}' | sort
     echo "## routes"; ip -4 route show table all | grep -v '^local \|^broadcast ' | sort
-    echo "## ebtables"; ebtables -t filter -L; ebtables -t nat -L
+    echo "## nftables bridge"; nft list ruleset bridge
     echo "## iptables"; iptables-save | grep -v '^#' | sed 's/ \[[0-9]*:[0-9]*\]$//'
     echo "## frr"; vtysh -c 'show running-config' | grep -v '^Building\|^Current configuration\|^!'
     echo "## frr.conf"; sha256sum /etc/frr/frr.conf | cut -d' ' -f1

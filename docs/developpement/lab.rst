@@ -255,9 +255,9 @@ code de sortie vaut 1 si une vérification échoue **ou si aucune n'a été fait
 **Tests autonomes.** Avant chaque test, le runner supprime les ressources ``tNN`` laissées par un
 passage précédent, puis relève l'état de chaque hôte de l'en-tête ``# hôtes:``. Après le test, il
 supprime ses VM, ses subnets puis ses VPC, et vérifie que l'hôte est revenu à l'état relevé
-(``assert_clean`` : netns, liens, adresses, routes, règles ebtables et iptables, configuration FRR et
-``frr.conf``, fichiers de ``/run/two``, ``dnsmasq.d`` et des volumes, unités ``two-vm-*``,
-processus dnsmasq et QEMU). Aucun test ne dépend d'un autre : n'importe lequel se lance seul.
+(``assert_clean`` : netns, liens, adresses, routes, règles nftables de pont et iptables,
+configuration FRR et ``frr.conf``, fichiers de ``/run/two``, ``dnsmasq.d`` et des volumes, unités
+``two-vm-*``, processus dnsmasq et QEMU). Aucun test ne dépend d'un autre : n'importe lequel se lance seul.
 
 **Plages.** Le test ``NN`` nomme ses ressources ``vp-tNN*``, ``sn-tNN*`` et ``tNN-*``, et utilise
 ``10.NN.0.0/16`` et les VNI ``NN00`` à ``NN99`` : aucune collision entre tests.
@@ -286,7 +286,7 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - hv1 hv2 hv3
      - #50, #51, #54, #41
    * - ``02-prerequis``
-     - hypothèses d'environnement de la suite — firmware UEFI, unités modèles de l'agent, journalctl, format de ebtables -L, br-lan, priorités VRRP lues dans FRR
+     - hypothèses d'environnement de la suite — firmware UEFI, unités modèles de l'agent, journalctl, format de nft list table, br-lan, priorités VRRP lues dans FRR
      - hv1 hv2 hv3
      - #70
    * - ``03-image``
@@ -423,7 +423,6 @@ Hypothèses vérifiées en lab, à garder en tête en écrivant un test :
 * systemd-networkd **ne réécrit pas** un bail renouvelé à l'identique : un renouvellement se
   vérifie par le DHCPACK dans le journal du serveur (``lease_renewed``), pas par le fichier de bail ;
 * l'agent n'accepte **qu'un seul disque virtio** (le disque racine, ``vda``) ; les autres sont des ``xvdX`` ;
-* sur Debian 12, ``ebtables -L`` (nft) garde les zéros de tête des MAC ;
 * ``interface_ip`` est posée en ``/32`` sur le bridge du netns en mode ``bridge`` ;
 * depuis le netns d'un hôte, une VM d'un autre hôte ne répond pas : la réponse repart vers la
   gateway de son propre hôte. Une vérification entre hôtes passe par une VM.
@@ -447,7 +446,7 @@ Chaque bloc est précédé des bibliothèques de ``test/e2e/lib/`` :
   ``user_data``, mot de passe), SSH, bail, métadonnées. La MAC de chaque NIC est fournie à l'API :
   ``52:54:00`` suivi des trois derniers octets de l'IP (``mac_for_ip``), unique dans la suite
   puisque chaque test a sa plage ; ``--nic sn=ip=mac`` en impose une autre ;
-* ``net.sh`` : VPC, subnets, MAC anycast, trames brutes, règles ebtables, VRRP ;
+* ``net.sh`` : VPC, subnets, MAC anycast, trames brutes, règles nftables, VRRP ;
 * ``evpn.sh`` : VRF, BGP, L3VNI, watchdog ;
 * ``fixture.sh`` : nettoyage et ``assert_clean``, appelés par le runner. Le nettoyage couvre les
   ressources ``t<NN>`` de l'API, les netns ``t<NN>-*`` et les fichiers ``t<NN>-*`` / ``t<NN>.*`` de
