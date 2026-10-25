@@ -234,7 +234,8 @@ paths:
         "400":
           description: >
             Missing required field; interface_ip missing on a bridge or public_ip subnet, or
-            supplied on a vxlan subnet (it is computed)
+            supplied on a vxlan subnet (it is computed); default_route true without gateway on a
+            vxlan or public_ip subnet
           content:
             application/json:
               schema:
@@ -408,8 +409,9 @@ components:
           description: >
             A default route is always advertised via DHCP; this flag only chooses its next-hop.
             When false, the next-hop is the subnet interface_ip. When true, it is the `gateway`
-            field if supplied, otherwise the gateway read from the host routing table.
-            The route to the VPC CIDR always keeps interface_ip as its next-hop (except in bridge
+            field if supplied, otherwise the gateway read from the host routing table — this last
+            case is bridge mode only (400 in vxlan and public_ip modes, whose guests do not share
+            the L2 segment of the host gateway). The route to the VPC CIDR always keeps interface_ip as its next-hop (except in bridge
             mode, which has no VPC route), so VPC traffic never leaves through a public gateway.
           default: false
         gateway:

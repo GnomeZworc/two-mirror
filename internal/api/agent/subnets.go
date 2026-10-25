@@ -78,6 +78,11 @@ func (s *Server) postSubnet(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(ErrorResponse{Error: "interface_ip is computed for vxlan subnets, do not set it"})
 		return
 	}
+	if req.DefaultRoute && req.Gateway == "" && req.Mode != subnet.ModeBridge {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "default_route without gateway is only allowed for bridge subnets: the host gateway is not on the subnet"})
+		return
+	}
 	cmd := dispatcher.CreateSubnetCommand{
 		Name:         req.Name,
 		VPC:          req.VPC,

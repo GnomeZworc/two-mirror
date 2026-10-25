@@ -499,3 +499,42 @@ func TestGetSubnet_RelayIPOnlyForVxlan(t *testing.T) {
 		t.Errorf("relay_ip inattendus dans la liste : %v", relays)
 	}
 }
+
+func TestPostSubnet_DefaultRouteWithoutGatewayOnlyForBridge(t *testing.T) {
+	for _, req := range []SubnetCreateRequest{
+		{Mode: "", CIDR: "10.0.0.0/24"},
+		{Mode: "vxlan", VxlanID: 1101, CIDR: "10.0.0.0/24"},
+		{Mode: "public_ip", InterfaceIP: "203.0.113.254", CIDR: "203.0.113.0/24"},
+	} {
+		s, db := newTestServer(t)
+		kv.AddInDB(db, "vpc/vpc-1/state", "running")
+		req.Name, req.VPC, req.DefaultRoute = "sn-1", "vpc-1", true
+		w := postSubnetRequest(t, s, req)
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("mode %q : attendu 400, obtenu %d : %s", req.Mode, w.Code, w.Body.String())
+		}
+		if !strings.Contains(w.Body.String(), "default_route without gateway is only allowed for bridge subnets") {
+			t.Errorf("mode %q : message %s", req.Mode, w.Body.String())
+		}
+		if _, err := kv.GetFromDB(db, "subnet/sn-1/state"); err == nil {
+			t.Errorf("mode %q : aucun subnet ne doit être créé", req.Mode)
+		}
+	}
+}
+
+func TestPostSubnet_DefaultRouteAccepted(t *testing.T) {
+	for _, req := range []SubnetCreateRequest{
+		{Mode: "bridge", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24"},
+		{Mode: "bridge", InterfaceIP: "10.0.0.1", CIDR: "10.0.0.0/24", Gateway: "10.0.0.254"},
+		{Mode: "", CIDR: "10.0.0.0/24", Gateway: "10.0.0.1"},
+		{Mode: "vxlan", VxlanID: 1101, CIDR: "10.0.0.0/24", Gateway: "10.0.0.1"},
+		{Mode: "public_ip", InterfaceIP: "203.0.113.254", CIDR: "203.0.113.0/24", Gateway: "203.0.113.1"},
+	} {
+		s, db := newTestServer(t)
+		kv.AddInDB(db, "vpc/vpc-1/state", "running")
+		req.Name, req.VPC, req.DefaultRoute = "sn-1", "vpc-1", true
+		if w := postSubnetRequest(t, s, req); w.Code != http.StatusAccepted {
+			t.Errorf("mode %q gateway %q : attendu 202, obtenu %d : %s", req.Mode, req.Gateway, w.Code, w.Body.String())
+		}
+	}
+}
