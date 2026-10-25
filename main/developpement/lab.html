@@ -760,9 +760,9 @@ fait en fermant le ticket. Chaque ticket concerné liste ses marqueurs en commen
 <td><p>#41, #57, #33, #62, #74, #81</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">12-etats</span></code></p></td>
-<td><p>machine d’états — 409 pendant creating, suppression depuis error, sockets QEMU d’une VM en error retirés, dépendances VM → subnet → VPC, recréation sous le même nom</p></td>
+<td><p>machine d’états — 409 pendant creating, suppression depuis error, sockets QEMU d’une VM en error retirés, dépendances VM → subnet → VPC, suppression d’un subnet en attente de ses VM, arrêt d’une VM juste démarrée par renvoi de system_powerdown, recréation sous le même nom</p></td>
 <td><p>hv1</p></td>
-<td><p>#41, #84</p></td>
+<td><p>#41, #84, #79</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">21-dhcp-two</span></code></p></td>
 <td><p>DHCP par le serveur intégré (backend two) — bail, server-id, renouvellement, option 121, un serveur par subnet, démarrages simultanés</p></td>
@@ -905,7 +905,7 @@ retour, après coupure puis rétablissement de l’interface underlay du maître
 établie</strong>. <code class="docutils literal notranslate"><span class="pre">72-perte-switch</span></code> n’exige donc plus que le plus prioritaire redevienne maître : il
 vérifie qu’il n’y a qu’un maître, note lequel, et mesure le plus long silence après le retour ;</p></li>
 <li><p>une suppression de VM peut durer 300 s quand l’invité ignore l’arrêt ACPI (#79) : <code class="docutils literal notranslate"><span class="pre">wait_state</span></code>
-attend jusqu’à 360 s.</p></li>
+attend jusqu’à 480 s, au-delà du <code class="docutils literal notranslate"><span class="pre">times.timeout_vpc_stop</span></code> par défaut (420 s).</p></li>
 </ul>
 <p>Hypothèses vérifiées en lab, à garder en tête en écrivant un test :</p>
 <ul class="simple">

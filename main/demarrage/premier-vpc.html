@@ -835,7 +835,7 @@ route interne, quel que soit le mode du subnet.</p>
 </div>
 <p>Un subnet peut être demandé dès maintenant : il est accepté tant que le VPC est en <code class="docutils literal notranslate"><span class="pre">creating</span></code>
 ou <code class="docutils literal notranslate"><span class="pre">running</span></code>, et sa création attend que le VPC soit <code class="docutils literal notranslate"><span class="pre">running</span></code>, dans la limite de
-<code class="docutils literal notranslate"><span class="pre">dispatcher.timeout_seconds</span></code>. Il n’est refusé en <strong>422</strong> que si le VPC est absent, en <code class="docutils literal notranslate"><span class="pre">error</span></code>
+<code class="docutils literal notranslate"><span class="pre">times.timeout_subnet_start</span></code>. Il n’est refusé en <strong>422</strong> que si le VPC est absent, en <code class="docutils literal notranslate"><span class="pre">error</span></code>
 ou en <code class="docutils literal notranslate"><span class="pre">deleting</span></code>. Le modèle d’attente est décrit dans <a class="reference internal" href="../exploitation/api-agent/asynchronisme.html"><span class="doc">Modèle asynchrone et codes de retour</span></a>.</p>
 </section>
 <section id="le-subnet">

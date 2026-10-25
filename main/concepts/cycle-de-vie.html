@@ -841,7 +841,10 @@ window.runMermaid = runMermaid;</script>
 <h2>Suppression<a class="headerlink" href="#suppression" title="Lien vers cette rubrique">#</a></h2>
 <p>Elle n’est autorisée que depuis <code class="docutils literal notranslate"><span class="pre">running</span></code> ou <code class="docutils literal notranslate"><span class="pre">error</span></code> — sinon <strong>409</strong>. Depuis <code class="docutils literal notranslate"><span class="pre">error</span></code>, elle
 est <strong>best-effort</strong> : les ressources système peuvent n’avoir été créées que partiellement.</p>
-<p>Un VPC ne peut être supprimé qu’une fois tous ses subnets supprimés.</p>
+<p>Un VPC ne peut être supprimé qu’une fois tous ses subnets supprimés ou en <code class="docutils literal notranslate"><span class="pre">deleting</span></code>, un subnet
+qu’une fois toutes ses VM supprimées ou en <code class="docutils literal notranslate"><span class="pre">deleting</span></code>. Les enfants encore en <code class="docutils literal notranslate"><span class="pre">deleting</span></code> sont
+attendus (<code class="docutils literal notranslate"><span class="pre">times.timeout_vpc_stop</span></code>, <code class="docutils literal notranslate"><span class="pre">times.timeout_subnet_stop</span></code>) ; si l’un d’eux passe en
+<code class="docutils literal notranslate"><span class="pre">error</span></code>, la suppression du parent échoue, et le parent passe en <code class="docutils literal notranslate"><span class="pre">error</span></code> à son tour.</p>
 </section>
 <section id="pas-de-rollback">
 <h2>Pas de rollback<a class="headerlink" href="#pas-de-rollback" title="Lien vers cette rubrique">#</a></h2>

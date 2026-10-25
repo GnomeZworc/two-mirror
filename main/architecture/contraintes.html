@@ -411,7 +411,8 @@ casserait le démarrage (<code class="docutils literal notranslate"><span class=
 exécuté par le processus appelant et hérite du netns posé par <code class="docutils literal notranslate"><span class="pre">netns.Call</span></code>. Une unit
 transitoire, forkée par PID 1, démarrerait dans le netns racine et ne verrait pas le tap.</p></li>
 <li><p>L’arrêt d’une VM ne touche <strong>jamais</strong> aux fichiers disque. En revanche, un <code class="docutils literal notranslate"><span class="pre">quit</span></code> brutal est
-envoyé à l’expiration de <code class="docutils literal notranslate"><span class="pre">dispatcher.timeout_seconds</span></code>.</p></li>
+envoyé à l’expiration de <code class="docutils literal notranslate"><span class="pre">times.timeout_vms_stop</span></code>. <code class="docutils literal notranslate"><span class="pre">system_powerdown</span></code> est renvoyé toutes les
+<code class="docutils literal notranslate"><span class="pre">times.next_vms_shutdown</span></code> : un appui ACPI arrivé avant que l’invité sache le traiter est perdu.</p></li>
 </ul>
 </section>
 <section id="arret-de-l-agent">
