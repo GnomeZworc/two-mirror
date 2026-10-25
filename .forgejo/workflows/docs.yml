@@ -22,13 +22,6 @@ jobs:
     env:
       TOKEN: ${{ secrets.RELEASE }}
       SITE_DIR: /tmp/site
-      # Préfixe de chemin sous lequel le site est servi. Vide = racine du
-      # domaine, ce qui couvre le cas courant et un serveur de test local.
-      # À renseigner (par exemple /two) seulement si les pages sont publiées
-      # sous un sous-chemin. Aucun nom d'hôte ici : les liens du menu de
-      # version sont relatifs à l'origine, donc le site fonctionne à
-      # l'identique en local et en production.
-      DOCS_BASE_PATH: ''
     steps:
       # fetch-depth: 0 — les tags et leur contenu sont nécessaires : chaque
       # version est construite depuis son propre ref.
@@ -68,12 +61,16 @@ jobs:
       # doit toujours partir. L'échec d'une version figée est signalé mais ne
       # bloque pas la publication — une vieille version qui ne se reconstruit
       # plus ne doit pas empêcher de publier la doc du jour.
+      # Le script du menu de version est pris dans l'arbre de main et injecté
+      # dans chaque version : une version figée le reçoit sans retoucher son tag.
       - name: Construire chaque version
         run: |
           build () {
             local ref="$1" src="$2"
             DOCS_VERSION="${ref}" \
               /tmp/venv/bin/sphinx-build -b html -W --keep-going \
+                -D html_static_path="${GITHUB_WORKSPACE}/docs/_static" \
+                -D html_js_files=version-switcher.js \
                 -d "/tmp/doctrees-${ref}" "${src}/docs" "${SITE_DIR}/${ref}"
           }
 
@@ -93,11 +90,10 @@ jobs:
             git worktree remove --force "/tmp/src-${version}"
           done
 
-      # Les liens du menu de version sont relatifs à l'origine : le thème les
-      # concatène au chemin de la page courante avant de les poser en href, si
-      # bien qu'un chemin relatif y serait résolu depuis la page et casserait
-      # selon sa profondeur. Une barre initiale les ancre à la racine du site,
-      # sans jamais nommer d'hôte.
+      # Les liens du menu de version sont relatifs à switcher.json, posé à la
+      # racine du site : version-switcher.js les résout depuis
+      # cet emplacement. Ni hôte ni sous-chemin ici, le site fonctionne donc
+      # à l'identique sous /two/, à la racine d'un domaine ou en local.
       - name: Assembler la racine du site
         run: |
           preferred="$(echo ${VERSIONS} | tr ' ' '\n' | head -1)"
@@ -105,14 +101,14 @@ jobs:
 
           {
             echo '['
-            echo '  {"name": "dev (main)", "version": "main", "url": "'"${DOCS_BASE_PATH}"'/main/"},'
+            echo '  {"name": "dev (main)", "version": "main", "url": "main/"},'
             first=1
             for version in ${VERSIONS}
             do
               [ -d "${SITE_DIR}/${version}" ] || continue
               [ ${first} -eq 1 ] && suffix=', "preferred": true' || suffix=''
               first=0
-              echo '  {"name": "'"${version}"'", "version": "'"${version}"'", "url": "'"${DOCS_BASE_PATH}"'/'"${version}"'/"'"${suffix}"'},'
+              echo '  {"name": "'"${version}"'", "version": "'"${version}"'", "url": "'"${version}"'/"'"${suffix}"'},'
             done
           } | sed '$ s/,$//' > "${SITE_DIR}/switcher.json"
           echo ']' >> "${SITE_DIR}/switcher.json"
