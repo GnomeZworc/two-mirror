@@ -360,6 +360,62 @@ func TestStartVM_StoresAllInterfaces(t *testing.T) {
 	}
 }
 
+func TestStartVM_StoresDHCPServerOnlyWhenRequested(t *testing.T) {
+	s, db := newTestServer(t)
+	for sn, cidr := range map[string]string{"sn-1": "10.1.0.0/24", "sn-2": "10.2.0.0/24"} {
+		kv.AddInDB(db, "subnet/"+sn+"/state", "running")
+		kv.AddInDB(db, "subnet/"+sn+"/vpc", "vpc-1")
+		kv.AddInDB(db, "subnet/"+sn+"/cidr", cidr)
+	}
+
+	body, _ := json.Marshal(VMCreateRequest{
+		Name: "vm-pxe",
+		Interfaces: []VMInterface{
+			{Subnet: "sn-1", IP: "10.1.0.5", MAC: "52:54:00:00:00:05", Primary: true},
+			{Subnet: "sn-2", IP: "10.2.0.5", MAC: "52:54:00:aa:bb:cc", DHCPServer: true},
+		},
+		Storage: []VMStorage{{Path: "/data/root.qcow2", Dev: "vda"}},
+	})
+
+	w := httptest.NewRecorder()
+	s.VmsHandler(w, httptest.NewRequest(http.MethodPost, "/vms", bytes.NewReader(body)))
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("attendu 202, obtenu %d : %s", w.Code, w.Body.String())
+	}
+	if got, _ := kv.GetFromDB(db, "vm/vm-pxe/nic/1/dhcp_server"); got != "true" {
+		t.Errorf("dhcp_server de la seconde interface non stocké : %q", got)
+	}
+	if _, err := kv.GetFromDB(db, "vm/vm-pxe/nic/0/dhcp_server"); err == nil {
+		t.Error("une interface sans dhcp_server ne doit pas porter la clé")
+	}
+}
+
+func TestVmFromDB_ReturnsDHCPServer(t *testing.T) {
+	vm, err := vmFromDB("vm-pxe", map[string]string{
+		"vm/vm-pxe/state":             "running",
+		"vm/vm-pxe/nic/0/subnet":      "sn-1",
+		"vm/vm-pxe/nic/0/ip":          "10.1.0.5",
+		"vm/vm-pxe/nic/0/primary":     "true",
+		"vm/vm-pxe/nic/1/subnet":      "sn-2",
+		"vm/vm-pxe/nic/1/ip":          "10.2.0.5",
+		"vm/vm-pxe/nic/1/dhcp_server": "true",
+		"vm/vm-pxe/disk/vda":          "/data/root.qcow2",
+	})
+	if err != nil {
+		t.Fatalf("vmFromDB : %v", err)
+	}
+	if len(vm.Interfaces) != 2 {
+		t.Fatalf("2 interfaces attendues : %+v", vm.Interfaces)
+	}
+	if vm.Interfaces[0].DHCPServer || !vm.Interfaces[1].DHCPServer {
+		t.Errorf("dhcp_server attendu sur l'index 1 seulement : %+v", vm.Interfaces)
+	}
+	raw, _ := json.Marshal(vm.Interfaces[0])
+	if !strings.Contains(string(raw), `"dhcp_server":false`) {
+		t.Errorf("dhcp_server faux absent du JSON : %s", raw)
+	}
+}
+
 func TestStartVM_RejectsZeroOrTwoPrimaries(t *testing.T) {
 	cases := map[string][]VMInterface{
 		"aucune primaire": {{Subnet: "sn-1", IP: "10.1.0.5", MAC: "52:54:00:00:00:05"}},

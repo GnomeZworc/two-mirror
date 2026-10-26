@@ -18,10 +18,10 @@ check "sn-t31a : route du subnet émise depuis la gateway" sh -c "ip -n vp-t31 -
 for dev in br-t31a gw-t31a; do
     check "sn-t31a : ${dev}, arp_ignore=1 et arp_announce=2" sh -c "[ \"\$(ip netns exec vp-t31 sysctl -n net.ipv4.conf.${dev}.arp_ignore) \$(ip netns exec vp-t31 sysctl -n net.ipv4.conf.${dev}.arp_announce)\" = '1 2' ]"
 done
-check "sn-t31a : confinement de la MAC anycast sur v-t31a-i (nat PREROUTING, FORWARD, OUTPUT)" test "$(ebt_confined vp-t31 v-t31a-i "${MAC}")" -eq 3
+check "sn-t31a : confinement de la MAC anycast sur v-t31a-i (prerouting, forward, output)" test "$(nft_confined vp-t31 v-t31a-i "${MAC}")" -eq 3
 for ip in 10.31.1.254 10.31.1.253; do
-    check "sn-t31a : requêtes ARP vers ${ip} bloquées en sortie de v-t31a-i" ebt_arp_drop vp-t31 v-t31a-i "${ip}"
-    check "sn-t31a : DHCP émis depuis ${ip} bloqué en sortie de v-t31a-i" ebt_dhcp_drop vp-t31 v-t31a-i "${ip}"
+    check "sn-t31a : requêtes ARP vers ${ip} bloquées en sortie de v-t31a-i" nft_arp_drop vp-t31 v-t31a-i "${ip}"
+    check "sn-t31a : DHCP émis depuis ${ip} bloqué en sortie de v-t31a-i" nft_dhcp_drop vp-t31 v-t31a-i "${ip}"
 done
 check "VM t31-a" vm_create t31-a sn-t31a 10.31.1.10 "${KEY}"
 check "VM t31-b" vm_create t31-b sn-t31b 10.31.2.10 "${KEY}"
@@ -39,8 +39,8 @@ check "suppression de t31-a" vm_delete t31-a
 check "suppression de sn-t31a" api_delete subnets/sn-t31a
 check "sn-t31a supprimé" wait_state subnets/sn-t31a deleted
 check "sn-t31a : plus de macvlan gw-t31a dans le netns" sh -c "! ip -n vp-t31 link show gw-t31a >/dev/null 2>&1"
-check "sn-t31a : plus aucune règle ebtables pour v-t31a-i" test -z "$(ebt_rules vp-t31 v-t31a-i)"
-check "sn-t31b : règles de son propre subnet toujours présentes (témoin)" test -n "$(ebt_rules vp-t31 v-t31b-i)"
+check "sn-t31a : plus aucune règle nftables pour v-t31a-i" test -z "$(nft_rules vp-t31 v-t31a-i)"
+check "sn-t31b : règles de son propre subnet toujours présentes (témoin)" test -n "$(nft_rules vp-t31 v-t31b-i)"
 check "sn-t31a recréé" subnet_create sn-t31a vp-t31 3101 10.31.1.0/24
 check "VM t31-a2 sur le subnet recréé" vm_create t31-a2 sn-t31a 10.31.1.11 "${KEY}"
 check "t31-a2 joignable" vm_wait vp-t31 10.31.1.11

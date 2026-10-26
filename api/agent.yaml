@@ -562,6 +562,17 @@ components:
         primary:
           type: boolean
           example: true
+        dhcp_server:
+          type: boolean
+          default: false
+          description: >
+            Lets the VM answer DHCP (UDP from port 67) on this interface, for
+            instance a PXE server for diskless hosts on a `bridge` subnet. Every
+            other interface may not send DHCP answers. The interface still sends
+            only from its own MAC and IP. The agent applies it whatever the mode
+            of the subnet: restricting it is the caller's job. Always returned
+            by GET.
+          example: false
 
     VMStorage:
       type: object

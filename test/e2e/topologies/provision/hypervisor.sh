@@ -28,6 +28,7 @@ for script in deploy.sh bootstrap_kvm.sh; do
 done
 chmod 0755 deploy.sh bootstrap_kvm.sh
 bash ./deploy.sh --noup_script -i -u "${LAB_UPLINK}" -t "${RELEASE}"
+DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends nftables
 for binary in "${LAB_FILES}"/bin/*; do
     [ -f "${binary}" ] || continue
     name=$(basename "${binary}")

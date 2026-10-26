@@ -464,6 +464,8 @@ test_vm_json_builds_nics_disks_metadata_and_uefi () {
     [[ "${out}" == '{"name":"t21-a","memory":1024,"cpus":1,"metadata":{},"interfaces":[{"subnet":"sn-a","ip":"10.0.1.10","mac":"52:54:00:00:01:0a","primary":true}],"storage":[],"uefi":false}' ]] || fail "minimal : ${out}"
     out=$(node 'vm_json t21-m --nic sn-a=10.0.1.12=02:de:ad:be:ef:01 | jq -c ".interfaces[0] | [.ip, .mac]"')
     [[ "${out}" == '["10.0.1.12","02:de:ad:be:ef:01"]' ]] || fail "mac forcée : ${out}"
+    out=$(node 'vm_json t76-p --nic sn-a=10.0.1.10 --nic sn-b=10.0.2.10 --dhcp-server | jq -c "[.interfaces[] | .dhcp_server]"')
+    [[ "${out}" == '[null,true]' ]] || fail "--dhcp-server : ${out}"
     [[ $(node 'vm_json t || echo NON' 2>&1) == '{"name":"t","memory":1024,"cpus":1,"metadata":{},"interfaces":[],"storage":[],"uefi":false}' ]] || fail "vide"
     [[ $(node 'vm_json t --inconnue x || echo NON') == *NON ]] || fail "option inconnue acceptée"
     teardown
@@ -552,30 +554,89 @@ test_subnet_create_bridge_sends_mode_iface_type_and_interface_ip () {
     teardown
 }
 
-test_ebt_confined_reads_both_mac_forms () {
-    setup "ebt_confined : MAC avec ou sans zéros de tête (ebtables legacy et nft)"
-    local stub='ebt_rules () { printf "%s\\n" "-s 02:01:00:00:0c:27 -o v-x-i -j DROP" "-s 2:1:0:0:c:27 -i v-x-i -j DROP" "-s 02:01:00:00:0c:28 -o v-x-i -j DROP"; }; '
-    [[ $(node "${stub}ebt_confined ns v-x-i 02:01:00:00:0C:27") == 2 ]] || fail "$(node "${stub}ebt_confined ns v-x-i 02:01:00:00:0C:27")"
+nft_listing () {
+    printf '%s\n' 'table bridge two {' '	map fwd_ports {' '		type ifname : verdict' '		elements = { "v-x-i" : jump fwd-v-x-i,' '			     "v-y-i" : jump fwd-v-y-i }' '	}' '' \
+        '	chain forward {' '		type filter hook forward priority filter; policy accept;' '		oifname vmap @fwd_ports' '	}' '' \
+        '	chain pre-v-x-i {' '		ether saddr 02:01:00:00:0c:27 drop' '	}' '' \
+        '	chain fwd-v-x-i {' '		ether saddr 02:01:00:00:0c:27 drop' '		arp operation request arp daddr ip 10.2.1.254 drop' '		ip saddr 10.2.1.254 udp sport 67-68 udp dport 67-68 drop' '		ip saddr 10.2.1.254 udp dport 53 drop' '	}' '' \
+        '	chain fwd-v-x-ix {' '		arp operation request arp daddr ip 10.2.9.254 drop' '	}' '' \
+        '	chain fwd-v-y-i {' '		arp operation request arp daddr ip 10.2.2.254 drop' '	}' '}'
+}
+
+test_nft_table_reads_the_two_table_only_when_present () {
+    setup "nft_table : table bridge two lue si elle existe, rien sinon, échec si nft échoue"
+    local listing
+    listing=$(mktemp)
+    nft_listing > "${listing}"
+    [[ $(node "ip () { case \"\$*\" in 'netns exec ns nft list tables bridge') echo 'table bridge filter'; echo 'table bridge two' ;; 'netns exec ns nft list table bridge two') cat '${listing}' ;; *) echo \"ip \$*\"; return 1 ;; esac; }; nft_table ns") == "$(cat "${listing}")" ]] || fail "table présente non lue"
+    [[ $(node "ip () { case \"\$*\" in 'netns exec ns nft list tables bridge') echo 'table bridge filter' ;; *) echo \"ip \$*\"; return 1 ;; esac; }; nft_table ns && echo VIDE") == VIDE ]] || fail "table absente : $(node "ip () { echo 'table bridge filter'; }; nft_table ns")"
+    [[ $(node "ip () { return 1; }; nft_table ns || echo ÉCHEC") == ÉCHEC ]] || fail "échec de nft avalé"
+    [[ $(node "nft_table () { return 1; }; nft_rules ns v-x-i || echo ÉCHEC") == ÉCHEC ]] || fail "nft_rules avale l'échec de nft_table"
+    rm -f "${listing}"
     teardown
 }
 
-test_ebt_mac_drops_leading_zeros_like_ebtables () {
-    setup "ebt_mac : octets sans zéro de tête, en minuscules, comme ebtables -L"
-    [[ $(node 'ebt_mac 02:01:00:00:0C:1d') == 2:1:0:0:c:1d ]] || fail "$(node 'ebt_mac 02:01:00:00:0C:1d')"
-    [[ $(node 'ebt_mac aa:10:00:ff:01:00') == aa:10:0:ff:1:0 ]] || fail "$(node 'ebt_mac aa:10:00:ff:01:00')"
+test_nft_rules_reads_only_the_chains_of_the_port () {
+    setup "nft_rules : règles des chaînes pre-, fwd- et out- du port, préfixées par la chaîne"
+    local stub got want
+    stub="nft_table () { $(declare -f nft_listing | sed 1,2d | sed '$d'); }; "
+    got=$(node "${stub}nft_rules ns v-x-i")
+    want=$(printf '%s\n' 'pre-v-x-i ether saddr 02:01:00:00:0c:27 drop' 'fwd-v-x-i ether saddr 02:01:00:00:0c:27 drop' 'fwd-v-x-i arp operation request arp daddr ip 10.2.1.254 drop' 'fwd-v-x-i ip saddr 10.2.1.254 udp sport 67-68 udp dport 67-68 drop' 'fwd-v-x-i ip saddr 10.2.1.254 udp dport 53 drop')
+    [[ "${got}" == "${want}" ]] || fail "règles lues : ${got}"
+    teardown
+}
+
+test_nft_matchers_read_the_rules () {
+    setup "nft_confined / nft_arp_drop / nft_dhcp_drop : règle exacte, MAC en minuscules"
+    local stub
+    stub="nft_table () { $(declare -f nft_listing | sed 1,2d | sed '$d'); }; "
+    [[ $(node "${stub}nft_confined ns v-x-i 02:01:00:00:0C:27") == 2 ]] || fail "confinement : $(node "${stub}nft_confined ns v-x-i 02:01:00:00:0C:27")"
+    [[ $(node "${stub}nft_confined ns v-x-i 02:01:00:00:0c:28") == 0 ]] || fail "autre MAC comptée"
+    [[ $(node "${stub}nft_arp_drop ns v-x-i 10.2.1.254 && echo OUI") == OUI ]] || fail "ARP non lu"
+    [[ $(node "${stub}nft_arp_drop ns v-x-i 10.2.1.25 || echo NON") == NON ]] || fail "10.2.1.25 pris pour 10.2.1.254"
+    [[ $(node "${stub}nft_arp_drop ns v-x-i 10.2.9.254 || echo NON") == NON ]] || fail "chaîne de v-x-ix lue pour v-x-i"
+    [[ $(node "${stub}nft_dhcp_drop ns v-x-i 10.2.1.254 && echo OUI") == OUI ]] || fail "DHCP non lu"
+    [[ $(node "${stub}nft_dhcp_drop ns v-y-i 10.2.1.254 || echo NON") == NON ]] || fail "autre interface acceptée"
+    [[ $(node "nft_rules () { echo 'fwd-v-z-i ip saddr 10.2.1.254 udp dport 53 drop'; }; nft_dhcp_drop ns v-z-i 10.2.1.254 || echo NON") == NON ]] || fail "règle UDP hors DHCP prise pour un blocage DHCP"
+    teardown
+}
+
+test_nft_tap_of_finds_the_tap_of_a_mac () {
+    setup "nft_tap_of : tap dont la chaîne pre- n'accepte que cette MAC"
+    local stub
+    stub="nft_table () { printf '%s\\n' 'table bridge two {' '	chain pre-v-x-i {' '		ether saddr != 52:54:00:00:0a:05 drop' '	}' '	chain pre-tap11 {' '		ether saddr != 52:54:00:00:0a:06 drop' '	}' '	chain pre-tap22 {' '		ether saddr != 52:54:00:00:0a:05 drop' '		udp sport 67 drop' '	}' '}'; }; "
+    [[ $(node "${stub}nft_tap_of ns 52:54:00:00:0A:05") == tap22 ]] || fail "$(node "${stub}nft_tap_of ns 52:54:00:00:0A:05")"
+    [[ -z $(node "${stub}nft_tap_of ns 52:54:00:00:0a:07") ]] || fail "MAC inconnue trouvée"
+    teardown
+}
+
+test_nft_handle_finds_the_exact_rule () {
+    setup "nft_handle : numéro de la règle exacte dans nft -a list chain"
+    local stub
+    stub="ip () { printf '%s\\n' 'table bridge two {' '	chain out-v-x-i { # handle 9' '		arp saddr ip 10.2.1.25 drop # handle 11' '		arp saddr ip 10.2.1.254 drop # handle 12' '	}' '}'; }; "
+    [[ $(node "${stub}nft_handle ns out-v-x-i 'arp saddr ip 10.2.1.254 drop'") == 12 ]] || fail "$(node "${stub}nft_handle ns out-v-x-i 'arp saddr ip 10.2.1.254 drop'")"
+    [[ -z $(node "${stub}nft_handle ns out-v-x-i 'arp saddr ip 10.2.1.2 drop'") ]] || fail "règle absente trouvée"
     teardown
 }
 
 test_frames_builds_arp_dhcp_and_marker_frames () {
-    setup "frames : requête ARP, DHCP en broadcast (somme IP juste) et trame marquée"
+    setup "frames : requête ARP, DHCP et UDP quelconque en broadcast (somme IP juste), trame marquée"
     local arp dhcp mark
     arp=$(node 'FRAMES_DRY=1 FRAMES_MAC=02:00:00:00:00:0a frames arp ens3 10.35.1.10 10.35.1.254 1')
     dhcp=$(node 'FRAMES_DRY=1 FRAMES_MAC=02:00:00:00:00:0a frames dhcp ens3 10.35.1.254 68 1')
     mark=$(node 'FRAMES_DRY=1 frames marker v-x-e 02:01:00:00:0d:ad t35-x 1')
     garp=$(node 'FRAMES_DRY=1 FRAMES_MAC=02:00:00:00:00:0a frames garp ens3 10.35.1.254 1')
-    python3 - "${arp}" "${dhcp}" "${mark}" "${garp}" <<'PY' || fail "trames : ${arp} / ${dhcp} / ${mark} / ${garp}"
+    udp=$(node 'FRAMES_DRY=1 FRAMES_MAC=02:00:00:00:00:0a frames udp ens3 0.0.0.0 68 53 1')
+    spoof=$(node 'FRAMES_DRY=1 FRAMES_MAC=02:00:00:00:00:0a frames udp ens3 10.35.1.99 4000 4001 1 02:35:00:00:00:01')
+    python3 - "${arp}" "${dhcp}" "${mark}" "${garp}" "${udp}" "${spoof}" <<'PY' || fail "trames : ${arp} / ${dhcp} / ${mark} / ${garp} / ${udp} / ${spoof}"
 import socket, struct, sys
-arp, dhcp, mark, garp = (bytes.fromhex(x) for x in sys.argv[1:])
+arp, dhcp, mark, garp, udp, spoof = (bytes.fromhex(x) for x in sys.argv[1:])
+assert udp[6:12] == bytes.fromhex('02000000000a') and udp[12:14] == b'\x08\x00' and udp[23] == 17, 'udp type'
+assert udp[26:30] == socket.inet_aton('0.0.0.0') and struct.unpack('!HH', udp[34:38]) == (68, 53), 'udp source et ports'
+assert spoof[6:12] == bytes.fromhex('023500000001'), 'udp mac source imposée'
+assert spoof[26:30] == socket.inet_aton('10.35.1.99') and struct.unpack('!HH', spoof[34:38]) == (4000, 4001), 'udp ip et ports'
+s = sum(struct.unpack('!10H', spoof[14:34])); s = (s >> 16) + (s & 0xffff); s += s >> 16
+assert s & 0xffff == 0xffff, 'somme IP udp'
 assert garp[:6] == b'\xff' * 6 and garp[6:12] == bytes.fromhex('02000000000a'), 'garp mac'
 assert garp[12:14] == b'\x08\x06' and garp[20:22] == b'\x00\x02', 'garp type/op'
 assert garp[22:28] == bytes.fromhex('02000000000a') and garp[28:32] == socket.inet_aton('10.35.1.254'), 'garp émetteur'
@@ -661,19 +722,6 @@ test_log_gap_measures_the_longest_silence_in_a_window () {
     [[ $(node "log_gap '${log}' 105 0") == 68 ]] || fail "silence à cheval sur 105 : $(node "log_gap '${log}' 105 0")"
     [[ $(node "log_gap '${log}' 110.1 0") == 2 ]] || fail "après 110.1 : $(node "log_gap '${log}' 110.1 0")"
     rm -f "${log}"
-    teardown
-}
-
-test_ebt_matchers_read_the_ebtables_listing () {
-    setup "ebt_confined / ebt_arp_drop / ebt_dhcp_drop : lecture de ebtables -L"
-    local stub='ebt_rules () { printf "%s\n" "-s 2:1:0:0:c:27 -i v-x-i -j DROP" "-s 2:1:0:0:c:27 -o v-x-i -j DROP" "-p ARP -o v-x-i --arp-op Request --arp-ip-dst 10.2.1.254 -j DROP" "-p IPv4 -o v-x-i --ip-src 10.2.1.254 --ip-proto udp --ip-sport 67:68 --ip-dport 67:68 -j DROP" | grep -- "$2"; }; '
-    [[ $(node "${stub}ebt_confined ns v-x-i 02:01:00:00:0c:27") == 2 ]] || fail "confinement : $(node "${stub}ebt_confined ns v-x-i 02:01:00:00:0c:27")"
-    [[ $(node "${stub}ebt_confined ns v-x-i 02:01:00:00:0c:28") == 0 ]] || fail "autre MAC comptée"
-    [[ $(node "${stub}ebt_arp_drop ns v-x-i 10.2.1.254 && echo OUI") == OUI ]] || fail "ARP non lu"
-    [[ $(node "${stub}ebt_arp_drop ns v-x-i 10.2.1.25 || echo NON") == NON ]] || fail "10.2.1.25 pris pour 10.2.1.254"
-    [[ $(node "${stub}ebt_dhcp_drop ns v-x-i 10.2.1.254 && echo OUI") == OUI ]] || fail "DHCP non lu"
-    [[ $(node "${stub}ebt_dhcp_drop ns v-y-i 10.2.1.254 || echo NON") == NON ]] || fail "autre interface acceptée"
-    [[ $(node 'ebt_rules () { echo "-p IPv4 -o v-z-i --ip-src 10.2.1.254 --ip-proto udp --ip-dport 53 -j DROP"; }; ebt_dhcp_drop ns v-z-i 10.2.1.254 || echo NON') == NON ]] || fail "règle UDP hors DHCP prise pour un blocage DHCP"
     teardown
 }
 

@@ -1,6 +1,6 @@
-# fonctionnalité: subnet en mode bridge rattaché au bridge br-lan de l'hôte — un hôte, puis le même subnet sur deux hôtes (interface_ip confinée à son hôte : une seule réponse ARP, métadonnées servies par l'hôte de la VM, ni ARP ni DHCP de la gateway sur le segment, règles surveillées par le watchdog)
+# fonctionnalité: subnet en mode bridge rattaché au bridge br-lan de l'hôte — un hôte, puis le même subnet sur deux hôtes (interface_ip confinée à son hôte : une seule réponse ARP, métadonnées servies par l'hôte de la VM, ni ARP ni DHCP de la gateway sur le segment, règles surveillées par le watchdog) ; VM serveur DHCP des machines diskless (dhcp_server) entendue sur le segment, voisine bloquée
 # hôtes: hv1 hv2
-# tickets: #70, #75
+# tickets: #70, #75, #76
 
 on hv1 <<'NODE'
 KEY=$(vm_key)
@@ -47,7 +47,7 @@ own_meta () {
     done
     [ "${ok}" -eq 5 ] || { echo "${2} : ${ok}/5 réponses avec ses propres métadonnées"; return 1; }
 }
-check "hv1 : quatre règles de confinement de 10.33.0.1 sur v-t33a-i" test "$(ebt_rules vp-t33 v-t33a-i | grep -c '10.33.0.1 ')" -eq 4
+check "hv1 : quatre règles de confinement de 10.33.0.1 sur v-t33a-i" test "$(nft_rules vp-t33 v-t33a-i | grep -c '10.33.0.1 ')" -eq 4
 RESPONDERS=$(vm_frames vp-t33 10.33.0.21 arp-who ens3 10.33.0.21 10.33.0.1 2)
 info "MAC qui répondent pour 10.33.0.1 vues de t33-a1 : $(echo ${RESPONDERS})"
 check "deux hôtes : t33-a1 (hv1) joint t33-b1 (hv2) sur le segment lan" vm_ssh vp-t33 10.33.0.21 'ping -n -c 3 -W 2 10.33.0.23'
@@ -74,10 +74,11 @@ check "témoin : l'ARP émis par t33-a1 atteint le segment par v-t33a-e (capture
 check "aucune trame ARP depuis 10.33.0.1 vers le segment (v-t33a-e)" test "$(cat "${S}/arp")" -eq 0
 check "aucune trame DHCP depuis 10.33.0.1 vers le segment (v-t33a-e)" test "$(cat "${S}/dhcp")" -eq 0
 rm -r "${S}"
-RULE='OUTPUT --out-interface v-t33a-i -p arp --arp-ip-src 10.33.0.1 -j DROP'
-check "règle ARP OUTPUT retirée à la main" ip netns exec vp-t33 ebtables -D ${RULE}
-check "watchdog : règle manquante signalée pour sn-t33a" wait_watchdog "ebtables rule missing in netns vp-t33"
-check "règle ARP OUTPUT reposée" ip netns exec vp-t33 ebtables -A ${RULE}
+RULE='arp saddr ip 10.33.0.1 drop'
+HANDLE=$(nft_handle vp-t33 out-v-t33a-i "${RULE}")
+check "règle ARP output retirée à la main (handle ${HANDLE:-absent})" ip netns exec vp-t33 nft delete rule bridge two out-v-t33a-i handle "${HANDLE}"
+check "watchdog : règle manquante signalée pour sn-t33a" wait_watchdog "nftables rule missing in netns vp-t33: out-v-t33a-i: ${RULE}"
+check "règle ARP output reposée" ip netns exec vp-t33 nft add rule bridge two out-v-t33a-i ${RULE}
 NODE
 
 on hv2 <<'NODE'
@@ -91,4 +92,20 @@ own_meta () {
 }
 check "deux hôtes : t33-b1 (hv2) reçoit toujours ses propres métadonnées (5 essais, cache ARP vidé)" own_meta 10.33.0.23 t33-b1
 check "deux hôtes : t33-b1 (hv2) joint t33-a2 (hv1)" vm_ssh vp-t33 10.33.0.23 'ping -n -c 3 -W 2 10.33.0.22'
+NODE
+
+on hv1 <<'NODE'
+KEY=$(vm_key)
+check "VM t33-px 10.33.0.24, serveur DHCP des machines diskless (dhcp_server)" vm_launch t33-px --nic sn-t33a=10.33.0.24 --dhcp-server --sshkey "${KEY}"
+check "10.33.0.24 joignable" vm_wait vp-t33 10.33.0.24
+S=$(mktemp -d)
+sniff_start "${S}/px" v-t33a-e 8 udp-from 10.33.0.24 67
+vm_frames vp-t33 10.33.0.24 dhcp ens3 10.33.0.24 68 5 >/dev/null 2>&1
+wait
+check "réponse DHCP de t33-px, autorisée : atteint le segment par v-t33a-e ($(cat "${S}/px") vue(s))" test "$(cat "${S}/px")" -gt 0
+sniff_start "${S}/a1" v-t33a-e 8 udp-from 10.33.0.21 67
+vm_frames vp-t33 10.33.0.21 dhcp ens3 10.33.0.21 68 5 >/dev/null 2>&1
+wait
+check "même réponse DHCP de t33-a1, non autorisée : n'atteint pas le segment par v-t33a-e ($(cat "${S}/a1") vue(s))" test "$(cat "${S}/a1")" -eq 0
+rm -r "${S}"
 NODE

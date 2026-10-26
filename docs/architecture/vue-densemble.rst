@@ -50,7 +50,7 @@ Paquets
      - network namespaces : create/enter/delete/call
    * - ``internal/netif``
      - netlink : bridge, veth, vxlan, tap, routes, adresses
-   * - ``internal/ebtables``, ``internal/iptables``
+   * - ``internal/nft``, ``internal/iptables``
      - wrappers dédiés ; ne pas appeler ces binaires ailleurs
    * - ``internal/qemu``, ``internal/qmp``
      - lancement de QEMU et client QMP sur socket Unix

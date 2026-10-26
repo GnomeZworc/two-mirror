@@ -5,10 +5,10 @@ import (
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/dhcpbackend"
-	"git.g3e.fr/syonad/two/internal/ebtables"
 	"git.g3e.fr/syonad/two/internal/l3vni"
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
+	"git.g3e.fr/syonad/two/internal/nft"
 	"git.g3e.fr/syonad/two/internal/state"
 
 	"github.com/dgraph-io/badger/v4"
@@ -76,11 +76,8 @@ func deleteSubnetVxlan(d subnetData) error {
 			return fmt.Errorf("delete netns resources: %w", err)
 		}
 	} else if err := netns.Call(d.vpc, func() error {
-		if err := ebtables.DeleteARPToGateway(vethI, d.interfaceIP.String()); err != nil {
-			return fmt.Errorf("delete ebtables arp rule: %w", err)
-		}
-		if err := ebtables.DeleteDHCP(vethI, d.interfaceIP.String()); err != nil {
-			return fmt.Errorf("delete ebtables dhcp rule: %w", err)
+		if err := nft.DeletePort(vethI); err != nil {
+			return err
 		}
 		return netif.DeleteLink(d.bridge)
 	}); err != nil {
@@ -105,8 +102,8 @@ func deleteSubnetBridge(d subnetData) error {
 	vethI := "v-" + d.subnetID + "-i"
 
 	if err := netns.Call(d.vpc, func() error {
-		if err := ebtables.DeleteConfineGateway(vethI, d.interfaceIP.String()); err != nil {
-			return fmt.Errorf("delete ebtables gateway rules: %w", err)
+		if err := nft.DeletePort(vethI); err != nil {
+			return err
 		}
 		return netif.DeleteLink(d.bridge)
 	}); err != nil {

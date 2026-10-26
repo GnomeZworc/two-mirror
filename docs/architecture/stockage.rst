@@ -26,6 +26,7 @@ de sérialisation structurée.
    vm/<name>/nic/<i>/ip         → <ip>
    vm/<name>/nic/<i>/mac        → <mac>           (fournie par l'appelant, conservée telle quelle)
    vm/<name>/nic/<i>/primary    → "true"          (exactement une interface ; absent sur les autres)
+   vm/<name>/nic/<i>/dhcp_server → "true"         (absent si l'interface ne sert pas le DHCP)
    vm/<name>/nic/<i>/tap_id     → <int>           (alloué au premier démarrage, puis conservé)
    vm/<name>/metadata_port      → <port>
    vm/<name>/disk/<dev>         → <path>          (une clé par disque : vda, xvda, xvdb, …)

@@ -16,6 +16,7 @@ import (
 	"git.g3e.fr/syonad/two/internal/metadata"
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
+	"git.g3e.fr/syonad/two/internal/nft"
 	"git.g3e.fr/syonad/two/internal/qmp"
 	"git.g3e.fr/syonad/two/internal/state"
 
@@ -77,6 +78,17 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 		if err := netif.DeleteTap(n.tapID, n.vpcName); err != nil {
 			return fmt.Errorf("delete tap of interface %d: %w", n.index, err)
 		}
+	}
+
+	if err := netns.Call(nic.vpcName, func() error {
+		for _, n := range d.nics {
+			if err := nft.DeletePort(n.tapPort().Name); err != nil {
+				return fmt.Errorf("interface %d: %w", n.index, err)
+			}
+		}
+		return nil
+	}); err != nil {
+		return fmt.Errorf("unfilter taps: %w", err)
 	}
 
 	if err := removeDHCPFiles(d, name, backend); err != nil {

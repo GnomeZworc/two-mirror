@@ -8,7 +8,7 @@ Prérequis
 ---------
 
 Un host Linux avec KVM, sur lequel vous avez ``root``. Les opérations réseau (network
-namespaces, netlink, VXLAN, ebtables, iptables) et QEMU ne fonctionnent que sous Linux.
+namespaces, netlink, VXLAN, nftables, iptables) et QEMU ne fonctionnent que sous Linux.
 
 Déploiement
 -----------
@@ -71,7 +71,7 @@ Les options booléennes actives par défaut se **désactivent** par leur forme l
 Ce que fait ``-i``
 ------------------
 
-**Paquets** — ``qemu-system-x86``, ``qemu-utils``, ``ovmf``, ``dnsmasq``, ``ebtables``,
+**Paquets** — ``qemu-system-x86``, ``qemu-utils``, ``ovmf``, ``dnsmasq``, ``nftables``,
 ``iptables``, ``nfs-common``, ``jq``, ``curl``, **sans les paquets recommandés** : ceux de
 ``qemu-system-x86`` (interface graphique, gtk, gstreamer, pilotes de stockage réseau) ne servent
 pas à un hyperviseur sans écran, et l'installation passe d'environ 270 à 65 Mo — rejouée à chaque

@@ -139,6 +139,8 @@ if cmd == 'arp':
     emit(a[0], arp_req(ifmac(a[0]), a[1], a[2]), int(a[3]))
 elif cmd == 'dhcp':
     emit(a[0], udp_bcast(ifmac(a[0]), a[1], 67, int(a[2]), b'two-e2e-dhcp'.ljust(240, b'\0')), int(a[3]))
+elif cmd == 'udp':
+    emit(a[0], udp_bcast(a[5] if len(a) > 5 else ifmac(a[0]), a[1], int(a[2]), int(a[3]), b'two-e2e-udp'.ljust(46, b'\0')), int(a[4]))
 elif cmd == 'garp':
     emit(a[0], garp(ifmac(a[0]), a[1]), int(a[2]))
 elif cmd == 'marker':
@@ -166,6 +168,12 @@ vm_frames () {
     vm_ssh "${vpc}" "${ip}" "echo $(frames_py | base64 | tr -d '\n') | base64 -d > /tmp/frames.py && sudo python3 /tmp/frames.py $*"
 }
 
+ns_frames () {
+    local ns="${1}"
+    shift
+    frames_py | ip netns exec "${ns}" python3 - "$@"
+}
+
 sniff_start () {
     local out="${1}"
     shift
@@ -180,24 +188,41 @@ vm_sniff_start () {
     sleep 3
 }
 
-ebt_mac () {
-    awk -F: 'BEGIN {OFS = ":"} {for (i = 1; i <= NF; i++) sub(/^0/, "", $i); $1 = $1; print tolower($0)}' <<<"${1}"
+nft_table () {
+    local tables
+    tables=$(ip netns exec "${1}" nft list tables bridge) || return 1
+    grep -qx 'table bridge two' <<<"${tables}" || return 0
+    ip netns exec "${1}" nft list table bridge two
 }
 
-ebt_rules () {
-    { ip netns exec "${1}" ebtables -t nat -L; ip netns exec "${1}" ebtables -t filter -L; } | grep -- "${2}"
+nft_rules () {
+    local table
+    table=$(nft_table "${1}") || return 1
+    awk -v p="${2}" '$1 == "chain" {c = ($2 == "pre-" p || $2 == "fwd-" p || $2 == "out-" p) ? $2 : ""; next} $1 == "}" {c = ""; next} c != "" && NF {$1 = $1; print c, $0}' <<<"${table}"
 }
 
-ebt_confined () {
-    ebt_rules "${1}" "${2}" | grep -ciE -- "-s ($(ebt_mac "${3}")|${3}) .*DROP"
+nft_count () {
+    nft_rules "${1}" "${2}" | cut -d' ' -f2- | grep -cxF -- "${3}"
 }
 
-ebt_arp_drop () {
-    ebt_rules "${1}" "${2}" | grep -i arp | grep -i request | grep -q -- "${3} "
+nft_confined () {
+    nft_count "${1}" "${2}" "ether saddr $(tr 'A-F' 'a-f' <<<"${3}") drop"
 }
 
-ebt_dhcp_drop () {
-    ebt_rules "${1}" "${2}" | grep -i udp | grep -- "${3} " | grep -q "67:68"
+nft_arp_drop () {
+    [ "$(nft_count "${1}" "${2}" "arp operation request arp daddr ip ${3} drop")" -gt 0 ]
+}
+
+nft_dhcp_drop () {
+    [ "$(nft_count "${1}" "${2}" "ip saddr ${3} udp sport 67-68 udp dport 67-68 drop")" -gt 0 ]
+}
+
+nft_tap_of () {
+    nft_table "${1}" | awk -v r="ether saddr != $(tr 'A-F' 'a-f' <<<"${2}") drop" '$1 == "chain" {c = $2; next} {line = $0; sub(/^[ \t]+/, "", line)} line == r && c ~ /^pre-tap/ {print substr(c, 5)}'
+}
+
+nft_handle () {
+    ip netns exec "${1}" nft -a list chain bridge two "${2}" | awk -v r="${3}" '{line = $0; sub(/^[ \t]+/, "", line); if (sub(/ # handle [0-9]+$/, "", line) && line == r) print $NF}'
 }
 
 vrrp_expected_master () {

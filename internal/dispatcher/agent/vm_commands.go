@@ -22,10 +22,11 @@ type VMDisk struct {
 }
 
 type VMNIC struct {
-	Subnet  string
-	IP      string
-	MAC     string
-	Primary bool
+	Subnet     string
+	IP         string
+	MAC        string
+	Primary    bool
+	DHCPServer bool
 }
 
 type StartVMCommand struct {
@@ -68,6 +69,11 @@ func (c StartVMCommand) Prepare(db *badger.DB, _ *configuration.Config) error {
 		if n.Primary {
 			if err := kv.AddInDB(db, prefix+"primary", "true"); err != nil {
 				return fmt.Errorf("store nic %d primary: %w", i, err)
+			}
+		}
+		if n.DHCPServer {
+			if err := kv.AddInDB(db, prefix+"dhcp_server", "true"); err != nil {
+				return fmt.Errorf("store nic %d dhcp_server: %w", i, err)
 			}
 		}
 	}

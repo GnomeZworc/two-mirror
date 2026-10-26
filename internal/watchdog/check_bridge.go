@@ -3,8 +3,9 @@ package watchdog
 import (
 	"fmt"
 
-	"git.g3e.fr/syonad/two/internal/ebtables"
 	"git.g3e.fr/syonad/two/internal/netns"
+	"git.g3e.fr/syonad/two/internal/nft"
+	"git.g3e.fr/syonad/two/internal/subnet"
 	"git.g3e.fr/syonad/two/internal/watchdog/notify"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 
@@ -21,13 +22,13 @@ func checkBridgeGateway(db *badger.DB, name, vpc, nsVeth string, n notify.Notifi
 		return
 	}
 	if err := netns.Call(vpc, func() error {
-		missing, err := ebtables.MissingGatewayRules(nsVeth, gatewayIP)
+		missing, err := nft.MissingRules(subnet.BridgeFabricPort(nsVeth, gatewayIP))
 		if err != nil {
-			n.Notify(kindSubnet, name, fmt.Sprintf("gateway ebtables rules unreadable in netns %s: %v", vpc, err))
+			n.Notify(kindSubnet, name, fmt.Sprintf("gateway nftables rules unreadable in netns %s: %v", vpc, err))
 			return nil
 		}
 		for _, rule := range missing {
-			n.Notify(kindSubnet, name, fmt.Sprintf("ebtables rule missing in netns %s: %s", vpc, rule))
+			n.Notify(kindSubnet, name, fmt.Sprintf("nftables rule missing in netns %s: %s", vpc, rule))
 		}
 		return nil
 	}); err != nil {

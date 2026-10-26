@@ -48,7 +48,7 @@ sleep 20
 check "après redémarrage : même processus QEMU pour t61-a (ni arrêtée ni recréée)" test "$(pgrep -f "${VOLUMES}/t61-a.qcow2" | sort | tr '\n' ' ')" = "${QEMU}"
 check "après redémarrage : même processus QEMU pour t61-d" test "$(pgrep -f "${VOLUMES}/t61-d.qcow2" | sort | tr '\n' ' ')" = "${QEMU_D}"
 check "après redémarrage : mêmes fichiers sous /run/two, /etc/dnsmasq.d et les volumes (sinon, fichiers en cause)" section_unchanged "${STATE_DIR}/t61.restart" fichiers
-check "après redémarrage : hôte inchangé (netns, liens, taps, adresses, routes, ebtables, iptables, FRR, frr.conf, fichiers, unités)" same_as "${STATE_DIR}/t61.restart" host_state
+check "après redémarrage : hôte inchangé (netns, liens, taps, adresses, routes, nftables de pont, iptables, FRR, frr.conf, fichiers, unités)" same_as "${STATE_DIR}/t61.restart" host_state
 check "après redémarrage : l'API rend les mêmes ressources dans le même état" same_as "${STATE_DIR}/t61.api" api_snapshot
 for rr in 10.255.255.1 10.255.255.2; do
     check "après redémarrage : session EVPN vers ${rr} établie, jamais coupée" sh -c "vtysh -c 'show bgp neighbors ${rr}' | grep -q 'BGP state = Established' && [ \"\$(vtysh -c 'show bgp neighbors ${rr}' | grep -o 'dropped [0-9]*')\" = \"\$(cat '${STATE_DIR}/t61.${rr}')\" ]"

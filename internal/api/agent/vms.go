@@ -78,7 +78,7 @@ func (s *Server) startVM(w http.ResponseWriter, r *http.Request) {
 			json.NewEncoder(w).Encode(ErrorResponse{Error: fmt.Sprintf("interface %d: mac is required", i)})
 			return
 		}
-		nics[i] = dispatcher.VMNIC{Subnet: iface.Subnet, IP: iface.IP, MAC: iface.MAC, Primary: iface.Primary}
+		nics[i] = dispatcher.VMNIC{Subnet: iface.Subnet, IP: iface.IP, MAC: iface.MAC, Primary: iface.Primary, DHCPServer: iface.DHCPServer}
 		if iface.Primary {
 			primaries++
 		}
