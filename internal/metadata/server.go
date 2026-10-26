@@ -72,15 +72,27 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 func StartServer(config ServerConfig) {
 	data = getFromFiles(config)
 
-	if data.NetNs != "" {
-		if err := netns.Enter(data.NetNs); err != nil {
-			log.Fatalf("Impossible d'entrer dans le netns: %v", err)
-		}
+	address := fmt.Sprintf("%s:%d", data.Iface, data.Port)
+	ln, err := listen(data.NetNs, address)
+	if err != nil {
+		log.Fatalf("Impossible d'écouter sur %s dans le netns %q: %v", address, data.NetNs, err)
 	}
 
 	http.HandleFunc("/", rootHandler)
 
-	address := fmt.Sprintf("%s:%d", data.Iface, data.Port)
 	log.Printf("Serveur NoCloud démarré sur http://%s/", address)
-	log.Fatal(http.ListenAndServe(address, nil))
+	log.Fatal(http.Serve(ln, nil))
+}
+
+func listen(netNs, address string) (net.Listener, error) {
+	if netNs == "" {
+		return net.Listen("tcp", address)
+	}
+	var ln net.Listener
+	err := netns.Call(netNs, func() error {
+		var err error
+		ln, err = net.Listen("tcp", address)
+		return err
+	})
+	return ln, err
 }
