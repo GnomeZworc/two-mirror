@@ -99,13 +99,13 @@ KEY=$(vm_key)
 check "VM t33-px 10.33.0.24, serveur DHCP des machines diskless (dhcp_server)" vm_launch t33-px --nic sn-t33a=10.33.0.24 --dhcp-server --sshkey "${KEY}"
 check "10.33.0.24 joignable" vm_wait vp-t33 10.33.0.24
 S=$(mktemp -d)
-sniff_start "${S}/px" lan 8 udp-from 10.33.0.24 67
+sniff_start "${S}/px" v-t33a-e 8 udp-from 10.33.0.24 67
 vm_frames vp-t33 10.33.0.24 dhcp ens3 10.33.0.24 68 5 >/dev/null 2>&1
 wait
-check "réponse DHCP de t33-px, autorisée : sort sur le segment physique par lan ($(cat "${S}/px") vue(s))" test "$(cat "${S}/px")" -gt 0
-sniff_start "${S}/a1" lan 8 udp-from 10.33.0.21 67
+check "réponse DHCP de t33-px, autorisée : atteint le segment par v-t33a-e ($(cat "${S}/px") vue(s))" test "$(cat "${S}/px")" -gt 0
+sniff_start "${S}/a1" v-t33a-e 8 udp-from 10.33.0.21 67
 vm_frames vp-t33 10.33.0.21 dhcp ens3 10.33.0.21 68 5 >/dev/null 2>&1
 wait
-check "même réponse DHCP de t33-a1, non autorisée : n'atteint pas le segment ($(cat "${S}/a1") vue(s))" test "$(cat "${S}/a1")" -eq 0
+check "même réponse DHCP de t33-a1, non autorisée : n'atteint pas le segment par v-t33a-e ($(cat "${S}/a1") vue(s))" test "$(cat "${S}/a1")" -eq 0
 rm -r "${S}"
 NODE
