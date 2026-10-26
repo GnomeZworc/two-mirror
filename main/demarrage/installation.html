@@ -419,15 +419,19 @@ concaténée sans séparateur (<code class="docutils literal notranslate"><span 
 <td><p><code class="docutils literal notranslate"><span class="pre">br-000000</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">-P</span> <span class="pre">&lt;bridge&gt;</span></code></p></td>
-<td><p>bridge supplémentaire, créé vide et réservé ; garder <code class="docutils literal notranslate"><span class="pre">br-public</span></code>, nom attendu par
-l’agent (voir ci-dessous)</p></td>
+<td><p>bridge public, sans adresse : il porte <code class="docutils literal notranslate"><span class="pre">vxlan-public</span></code> et les veth des VPC ; à
+reporter dans <code class="docutils literal notranslate"><span class="pre">interfaces.internet</span></code> s’il change (voir ci-dessous)</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">br-public</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">-R</span> <span class="pre">&lt;secondes&gt;</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">-N</span> <span class="pre">&lt;vni&gt;</span></code></p></td>
+<td><p>VNI du segment public, partagé avec les bordures (<code class="docutils literal notranslate"><span class="pre">vxlan-public</span></code>)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">-R</span> <span class="pre">&lt;secondes&gt;</span></code></p></td>
 <td><p>délai avant le redémarrage de secours pendant la migration réseau</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">120</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">-d</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">-d</span></code></p></td>
 <td><p>dry-run : affiche les commandes sans les exécuter</p></td>
 <td><p>désactivé</p></td>
 </tr>
@@ -459,11 +463,17 @@ en arrière. Voir <a class="reference internal" href="../exploitation/configurat
 <code class="docutils literal notranslate"><span class="pre">net.bridge.bridge-nf-call-iptables</span> <span class="pre">=</span> <span class="pre">1</span></code>. Cette dernière clé est <strong>requise</strong> par la DNAT vers
 le serveur de metadata : sans elle, iptables ne voit pas le trafic bridgé des VM et cloud-init
 ne se provisionne pas. Contrepartie assumée : tout le trafic inter-VM traverse les tables NAT.</p>
-<p><strong>Réseau</strong> — création du bridge réservé, puis rattachement de l’uplink au bridge principal,
+<p><strong>Réseau</strong> — création du bridge public, puis rattachement de l’uplink au bridge principal,
 l’adresse et la route par défaut étant déplacées de l’interface physique vers le bridge.</p>
-<p>Le nom <code class="docutils literal notranslate"><span class="pre">br-public</span></code> est <strong>en dur dans l’agent</strong> : chaque VPC <code class="docutils literal notranslate"><span class="pre">vp-&lt;id&gt;</span></code> y raccorde un veth
-<code class="docutils literal notranslate"><span class="pre">vp-&lt;id&gt;-e</span></code> côté host, dont l’autre extrémité <code class="docutils literal notranslate"><span class="pre">vp-&lt;id&gt;-i</span></code> rejoint un <code class="docutils literal notranslate"><span class="pre">br-public</span></code> créé dans
-le netns du VPC. Avec un autre nom passé à <code class="docutils literal notranslate"><span class="pre">-P</span></code>, toute création de VPC échoue.</p>
+<p><strong>Segment public</strong> — <code class="docutils literal notranslate"><span class="pre">vxlan-public</span></code> est créé avec le VNI de <code class="docutils literal notranslate"><span class="pre">-N</span></code>, l’adresse IPv4 du bridge
+principal pour VTEP (comme les VXLAN de l’agent), le port 4789, sans apprentissage (les MAC
+distantes viennent d’EVPN) et un MTU de 1500, puis rattaché au bridge public. FRR l’annonce de
+lui-même (<code class="docutils literal notranslate"><span class="pre">advertise-all-vni</span></code>). Relancer <code class="docutils literal notranslate"><span class="pre">-i</span></code> ne change rien ; le VXLAN est recréé si son VNI
+ou son VTEP a changé.</p>
+<p>Chaque VPC <code class="docutils literal notranslate"><span class="pre">vp-&lt;id&gt;</span></code> raccorde au bridge public un veth <code class="docutils literal notranslate"><span class="pre">vp-&lt;id&gt;-e</span></code> côté host, dont l’autre
+extrémité <code class="docutils literal notranslate"><span class="pre">vp-&lt;id&gt;-i</span></code> rejoint un <code class="docutils literal notranslate"><span class="pre">br-public</span></code> créé dans le netns du VPC. L’agent lit le nom
+du bridge public dans <code class="docutils literal notranslate"><span class="pre">interfaces.internet</span></code> (<code class="docutils literal notranslate"><span class="pre">br-public</span></code> par défaut) : avec un autre nom
+passé à <code class="docutils literal notranslate"><span class="pre">-P</span></code> sans le reporter dans cette clé, toute création de VPC échoue.</p>
 <div class="admonition danger">
 <p class="admonition-title">Danger</p>
 <p>La migration réseau <strong>coupe le réseau de l’host si elle échoue à mi-parcours</strong>, sans console

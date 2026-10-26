@@ -465,13 +465,13 @@ et <code class="docutils literal notranslate"><span class="pre">evpn-3hv.yml</sp
 <span class="w">    </span><span class="p p-Indicator">{</span><span class="nt"> role</span><span class="p">:</span><span class="w"> </span><span class="nv">host</span><span class="p p-Indicator">,</span><span class="nt"> image</span><span class="p">:</span><span class="w"> </span><span class="nv">debian12</span><span class="p p-Indicator">,</span><span class="nt"> cpus</span><span class="p">:</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">,</span><span class="nt"> memory</span><span class="p">:</span><span class="w"> </span><span class="nv">16384</span><span class="p p-Indicator">,</span>
 <span class="nt">      segments</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">underlay</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">lan</span><span class="p p-Indicator">],</span><span class="nt"> addresses</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> underlay</span><span class="p">:</span><span class="w"> </span><span class="nv">192.168.14.11</span><span class="p p-Indicator">,</span><span class="nt"> lan</span><span class="p">:</span><span class="w"> </span><span class="nv">10.33.0.11</span><span class="w"> </span><span class="p p-Indicator">},</span>
 <span class="nt">      frr</span><span class="p">:</span><span class="w"> </span><span class="nv">frr/hv1.conf</span><span class="p p-Indicator">,</span><span class="nt"> provision</span><span class="p">:</span><span class="w"> </span><span class="nv">provision/hypervisor.sh</span><span class="p p-Indicator">,</span>
-<span class="nt">      post_provision</span><span class="p">:</span><span class="w"> </span><span class="nv">provision/hypervisor-post.sh</span><span class="p p-Indicator">,</span><span class="nt"> files</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> agent.yml</span><span class="p">:</span><span class="w"> </span><span class="nv">agent/two.yml</span><span class="p p-Indicator">,</span><span class="nt"> bin</span><span class="p">:</span><span class="w"> </span><span class="nv">bin</span><span class="w"> </span><span class="p p-Indicator">},</span>
+<span class="nt">      post_provision</span><span class="p">:</span><span class="w"> </span><span class="nv">provision/hypervisor-post.sh</span><span class="p p-Indicator">,</span><span class="nt"> files</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> agent.yml</span><span class="p">:</span><span class="w"> </span><span class="nv">agent/two.yml</span><span class="p p-Indicator">,</span><span class="nt"> bin</span><span class="p">:</span><span class="w"> </span><span class="nv">bin</span><span class="p p-Indicator">,</span><span class="nt"> scripts</span><span class="p">:</span><span class="w"> </span><span class="nv">scripts</span><span class="w"> </span><span class="p p-Indicator">},</span>
 <span class="nt">      services</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">agent.service</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
 <span class="w">  </span><span class="nt">hv2</span><span class="p">:</span>
 <span class="w">    </span><span class="p p-Indicator">{</span><span class="nt"> role</span><span class="p">:</span><span class="w"> </span><span class="nv">host</span><span class="p p-Indicator">,</span><span class="nt"> image</span><span class="p">:</span><span class="w"> </span><span class="nv">debian12</span><span class="p p-Indicator">,</span><span class="nt"> cpus</span><span class="p">:</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">,</span><span class="nt"> memory</span><span class="p">:</span><span class="w"> </span><span class="nv">16384</span><span class="p p-Indicator">,</span>
 <span class="nt">      segments</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">underlay</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">lan</span><span class="p p-Indicator">],</span><span class="nt"> addresses</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> underlay</span><span class="p">:</span><span class="w"> </span><span class="nv">192.168.14.12</span><span class="p p-Indicator">,</span><span class="nt"> lan</span><span class="p">:</span><span class="w"> </span><span class="nv">10.33.0.12</span><span class="w"> </span><span class="p p-Indicator">},</span>
 <span class="nt">      frr</span><span class="p">:</span><span class="w"> </span><span class="nv">frr/hv2.conf</span><span class="p p-Indicator">,</span><span class="nt"> provision</span><span class="p">:</span><span class="w"> </span><span class="nv">provision/hypervisor.sh</span><span class="p p-Indicator">,</span>
-<span class="nt">      post_provision</span><span class="p">:</span><span class="w"> </span><span class="nv">provision/hypervisor-post.sh</span><span class="p p-Indicator">,</span><span class="nt"> files</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> agent.yml</span><span class="p">:</span><span class="w"> </span><span class="nv">agent/dnsmasq.yml</span><span class="p p-Indicator">,</span><span class="nt"> bin</span><span class="p">:</span><span class="w"> </span><span class="nv">bin</span><span class="w"> </span><span class="p p-Indicator">},</span>
+<span class="nt">      post_provision</span><span class="p">:</span><span class="w"> </span><span class="nv">provision/hypervisor-post.sh</span><span class="p p-Indicator">,</span><span class="nt"> files</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> agent.yml</span><span class="p">:</span><span class="w"> </span><span class="nv">agent/dnsmasq.yml</span><span class="p p-Indicator">,</span><span class="nt"> bin</span><span class="p">:</span><span class="w"> </span><span class="nv">bin</span><span class="p p-Indicator">,</span><span class="nt"> scripts</span><span class="p">:</span><span class="w"> </span><span class="nv">scripts</span><span class="w"> </span><span class="p p-Indicator">},</span>
 <span class="nt">      services</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">agent.service</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
 </pre></div>
 </div>
@@ -566,6 +566,22 @@ l’interface <code class="docutils literal notranslate"><span class="pre">lan</
 un subnet créé avec <code class="docutils literal notranslate"><span class="pre">mode:</span> <span class="pre">bridge</span></code> et <code class="docutils literal notranslate"><span class="pre">iface_type:</span> <span class="pre">lan</span></code> rattache son veth à <code class="docutils literal notranslate"><span class="pre">br-lan</span></code>. Les
 subnets <code class="docutils literal notranslate"><span class="pre">vxlan</span></code> (<code class="docutils literal notranslate"><span class="pre">iface_type:</span> <span class="pre">vms</span></code>, clé absente) restent sur <code class="docutils literal notranslate"><span class="pre">default_interface</span></code> : le VTEP
 ne change pas. Le bridge n’est créé qu’au premier démarrage, comme le reste du provisionnement.</p>
+<p><strong>Bordures (``evpn-3hv``, #87).</strong> <code class="docutils literal notranslate"><span class="pre">bd1</span></code> et <code class="docutils literal notranslate"><span class="pre">bd2</span></code> (<code class="docutils literal notranslate"><span class="pre">192.168.14.21</span></code> et <code class="docutils literal notranslate"><span class="pre">.22</span></code>) jouent les
+routeurs de bordure du segment public. Ce sont des nœuds <code class="docutils literal notranslate"><span class="pre">host</span></code> sans agent : leur provision
+(<code class="docutils literal notranslate"><span class="pre">test/e2e/topologies/provision/border.sh</span></code>) crée <code class="docutils literal notranslate"><span class="pre">br-public</span></code>, y accroche <code class="docutils literal notranslate"><span class="pre">vxlan-public</span></code>
+(VNI 1, VTEP = adresse de l’underlay, <code class="docutils literal notranslate"><span class="pre">nolearning</span></code>), et pose sur le bridge la <strong>gateway
+anycast</strong> <code class="docutils literal notranslate"><span class="pre">240.0.0.1/24</span></code> avec la même MAC sur les deux, <code class="docutils literal notranslate"><span class="pre">02:01:00:00:00:01</span></code> (la MAC anycast
+de two pour le VNI 1), ainsi qu’une destination de test <code class="docutils literal notranslate"><span class="pre">240.255.0.1/32</span></code> sur une interface
+<code class="docutils literal notranslate"><span class="pre">dummy</span></code> <code class="docutils literal notranslate"><span class="pre">internet</span></code>. Leur <code class="docutils literal notranslate"><span class="pre">frr.conf</span></code> est celui d’un hyperviseur — iBGP AS 64600 vers les
+deux route reflectors, <code class="docutils literal notranslate"><span class="pre">advertise-all-vni</span></code> — plus <code class="docutils literal notranslate"><span class="pre">advertise-default-gw</span></code> : la MAC et l’IP
+de la gateway sont annoncées en type 2 avec la communauté <em>Default Gateway</em> (RFC 7432, §7.8 et
+§10.1). Sans elle, la MAC propre du bridge n’est pas annoncée, les hyperviseurs inondent le
+trafic vers tous les VTEP et les deux bordures répondent ; avec elle, chaque hyperviseur installe
+la MAC vers une seule bordure et bascule sur l’autre quand elle disparaît (mesuré le 2026-10-25,
+#87). Les adresses publiques du lab sont prises dans <code class="docutils literal notranslate"><span class="pre">240.0.0.0/4</span></code>, réservée (RFC 1112,
+registre RFC 6890) et jamais routée sur Internet. Les bordures sont déclarées après les
+hyperviseurs : les adresses et les taps de l’underlay ne changent pas, ceux du segment <code class="docutils literal notranslate"><span class="pre">lan</span></code>
+sont renumérotés.</p>
 <p><strong>Tester l’arbre courant plutôt que la release.</strong> <code class="docutils literal notranslate"><span class="pre">test/e2e/build.sh</span></code> compile <code class="docutils literal notranslate"><span class="pre">agent</span></code>,
 <code class="docutils literal notranslate"><span class="pre">dhcp</span></code> et <code class="docutils literal notranslate"><span class="pre">metadata</span></code> pour linux/amd64 dans <code class="docutils literal notranslate"><span class="pre">test/e2e/topologies/bin/</span></code> (ignoré par git),
 que les hyperviseurs reçoivent par <code class="docutils literal notranslate"><span class="pre">files:</span> <span class="pre">{bin:</span> <span class="pre">bin}</span></code>. Après <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code>,
@@ -849,37 +865,42 @@ fait en fermant le ticket. Chaque ticket concerné liste ses marqueurs en commen
 <td><p>hv1 hv2</p></td>
 <td><p>#57</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">51-l3vni</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">45-segment-public</span></code></p></td>
+<td><p>segment public de l’hôte — vxlan-public (VNI 1) posé par le bootstrap sur br-public, VNI annoncé en EVPN et vu par les bordures, gateway anycast des bordures installée vers une seule bordure, gateway et destination de test joignables sans doublon, L2 entre hyperviseurs, veth des VPC sur le bridge public, watchdog</p></td>
+<td><p>hv1 hv2 hv3</p></td>
+<td><p>#87</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">51-l3vni</span></code></p></td>
 <td><p>routage inter-subnet entre hôtes par L3VNI (IRB symétrique) — VRF, RMAC, exports /24 et /32, RT-5 réfléchies, TTL, isolation par RT, unreachable default dans la VRF, démontage d’un VPC routé</p></td>
 <td><p>hv1 hv2</p></td>
 <td><p>#41, #81</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">52-migration</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">52-migration</span></code></p></td>
 <td><p>migration d’une adresse de VM entre hôtes d’un VPC routé — /32 retiré en premier, /24 en filet puis en ECMP, séquence orchestrée, 40 sources, suppression du subnet refusée tant qu’une VM l’utilise, MAC anycast hors EVPN</p></td>
 <td><p>hv1 hv2 hv3</p></td>
 <td><p>#41, #57</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">53-watchdog-l3</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">53-watchdog-l3</span></code></p></td>
 <td><p>watchdog d’un VPC routé — /32 orphelin signalé comme trou noir, /32 manquant signalé, unreachable default absente signalée, aucune fausse alerte BGP ni L3VNI, trafic intact après les essais</p></td>
 <td><p>hv1 hv3</p></td>
 <td><p>#41, #81</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">61-redemarrage-agent</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">61-redemarrage-agent</span></code></p></td>
 <td><p>redémarrage de l’agent avec des VM en marche — rien ne disparaît ni n’est recréé, trafic routé sans perte, DHCP et métadonnées servis, base BGP réappliquée à l’identique, ressources toujours gérées</p></td>
 <td><p>hv1 hv2</p></td>
 <td><p>#41, #46</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">62-nettoyage-global</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">62-nettoyage-global</span></code></p></td>
 <td><p>nettoyage global en fin de suite — aucun hôte ne garde de ressource : API vide, ni netns, tap, VRF, unité, instance DHCP ou de métadonnées, processus QEMU, règle de port, volume ; FRR réduit à la base BGP</p></td>
 <td></td>
 <td><p>#70</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">71-perte-rr</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">71-perte-rr</span></code></p></td>
 <td><p>perte d’un route reflector — l’autre garde la session EVPN, le VTEP distant reste connu, le trafic L2 entre hôtes passe sans perte mesurable, retour du RR arrêté</p></td>
 <td><p>hv1 hv2</p></td>
 <td><p>#54</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">72-perte-switch</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">72-perte-switch</span></code></p></td>
 <td><p>perte d’un switch de la passerelle VRRP — bascule vers l’autre en moins de 5 s, sessions EVPN jamais coupées ; au retour, un seul maître (préemption désactivée : celui qui l’est est relevé), plus long silence mesuré</p></td>
 <td></td>
 <td><p>#54, #69, #80</p></td>

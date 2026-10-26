@@ -389,8 +389,9 @@ encore est décrit sur son ticket :</p>
 <ul class="simple">
 <li><p><strong>Internet</strong> (<a class="reference external" href="https://git.g3e.fr/syonad/two/issues/31">#31</a>,
 <a class="reference external" href="https://git.g3e.fr/syonad/two/issues/42">#42</a>). Les bordures partagent avec les hyperviseurs
-un VXLAN public (VNI 66001) et portent toutes la même IP et la même MAC de gateway. Elles restent
-sans état : tout NAT vit sur un hyperviseur. Trois façons de sortir :</p>
+un VXLAN public (VNI 1, <code class="docutils literal notranslate"><span class="pre">vxlan-public</span></code> sur <code class="docutils literal notranslate"><span class="pre">br-public</span></code>, #87) et portent toutes la même IP et
+la même MAC de gateway. Elles restent sans état : tout NAT vit sur un hyperviseur. Trois façons
+de sortir :</p>
 <ul>
 <li><p>une VM qui porte une IP publique a une NIC sur un subnet public de son VPC, relié au subnet
 public de l’hôte ;</p></li>
@@ -403,7 +404,8 @@ par défaut de type 5, si le VPC autorise Internet.</p></li>
 l’orchestrateur sont des VM du VNI 66000, partagé entre clusters. Les agents s’y connectent
 <strong>en sortie</strong>, par leur passerelle ; les routeurs de chaque cluster les traduisent (NAT) vers le
 VNI 66000.
-L’orchestrateur a aussi une patte dans le VNI 66001 : son API est joignable depuis Internet.</p></li>
+L’orchestrateur a aussi une patte dans le segment public (VNI 1) : son API est joignable
+depuis Internet.</p></li>
 <li><p><strong>Route reflectors.</strong> Au moins un ; deux sont prévus dans l’architecture et dans les exemples
 (plages d’adresses de <a class="reference internal" href="route-reflector.html"><span class="doc">VM route reflector</span></a>), placés ici dans deux clusters différents pour
 qu’un incident sur un cluster ne coupe pas les deux sessions EVPN. Chaque lien entre routeurs
@@ -518,7 +520,6 @@ mécanisme rejouable au démarrage, jamais par une modification manuelle d’un 
 <li><p>la plage utilisée pour les adresses d’hyperviseurs, et son rapport avec <code class="docutils literal notranslate"><span class="pre">br-000000</span></code> ;</p></li>
 <li><p>l’allocation des VNI VXLAN : qui la tient, et comment on évite les collisions, puisque
 l’agent ne valide pas <code class="docutils literal notranslate"><span class="pre">vxlan_id</span></code> ;</p></li>
-<li><p>l’usage prévu de <code class="docutils literal notranslate"><span class="pre">br-public</span></code>, créé vide et réservé par le bootstrap ;</p></li>
 <li><p>le plan d’adressage des VPC, et ce qui garantit qu’ils ne se recouvrent pas entre clients.</p></li>
 </ul>
 </div>

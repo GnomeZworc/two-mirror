@@ -812,11 +812,12 @@ window.runMermaid = runMermaid;</script>
 <h2>VPC<a class="headerlink" href="#vpc" title="Lien vers cette rubrique">#</a></h2>
 <p>Un VPC est un <strong>network namespace</strong> portant un espace d’adressage (<code class="docutils literal notranslate"><span class="pre">cidr</span></code>). C’est l’unité
 d’isolation : deux VPC ne se voient pas, et peuvent réutiliser les mêmes plages d’adresses.</p>
-<p>À la création, l’agent relie le netns au bridge <code class="docutils literal notranslate"><span class="pre">br-public</span></code> de l’host par un veth
-<code class="docutils literal notranslate"><span class="pre">vp-&lt;id&gt;-e</span></code> (côté host) ↔ <code class="docutils literal notranslate"><span class="pre">vp-&lt;id&gt;-i</span></code> (côté netns, rattaché à un <code class="docutils literal notranslate"><span class="pre">br-public</span></code> propre au
-netns). Ce nom de bridge est <strong>en dur</strong> : l’host doit porter un bridge <code class="docutils literal notranslate"><span class="pre">br-public</span></code>, celui que
-crée <code class="docutils literal notranslate"><span class="pre">deploy.sh</span> <span class="pre">-i</span></code> avec la valeur par défaut de <code class="docutils literal notranslate"><span class="pre">-P</span></code> (<a class="reference internal" href="../demarrage/installation.html"><span class="doc">Installation d’un hyperviseur</span></a>) ;
-sans lui, toute création de VPC échoue.</p>
+<p>À la création, l’agent relie le netns au <strong>bridge public</strong> de l’host par un veth <code class="docutils literal notranslate"><span class="pre">vp-&lt;id&gt;-e</span></code>
+(côté host) ↔ <code class="docutils literal notranslate"><span class="pre">vp-&lt;id&gt;-i</span></code> (côté netns, rattaché à un <code class="docutils literal notranslate"><span class="pre">br-public</span></code> propre au netns). Le bridge
+public est celui de <code class="docutils literal notranslate"><span class="pre">interfaces.internet</span></code>, <code class="docutils literal notranslate"><span class="pre">br-public</span></code> si la clé est absente, jamais
+<code class="docutils literal notranslate"><span class="pre">default_interface</span></code> (<a class="reference internal" href="../exploitation/configuration.html"><span class="doc">Configuration</span></a>). <code class="docutils literal notranslate"><span class="pre">deploy.sh</span> <span class="pre">-i</span></code> le crée et y
+accroche <code class="docutils literal notranslate"><span class="pre">vxlan-public</span></code>, le VXLAN du segment public partagé avec les bordures
+(<a class="reference internal" href="../demarrage/installation.html"><span class="doc">Installation d’un hyperviseur</span></a>) ; sans ce bridge, toute création de VPC échoue.</p>
 <p>Un VPC ne peut être supprimé que si tous ses subnets le sont déjà — sinon 409.</p>
 <section id="routage-entre-hyperviseurs-l3vni">
 <h3>Routage entre hyperviseurs : <code class="docutils literal notranslate"><span class="pre">l3vni</span></code><a class="headerlink" href="#routage-entre-hyperviseurs-l3vni" title="Lien vers cette rubrique">#</a></h3>
@@ -825,10 +826,13 @@ au VPC (IRB symétrique, <a class="reference external" href="https://git.g3e.fr/
 plus besoin de porter un subnet pour joindre ses VM. Sans <code class="docutils literal notranslate"><span class="pre">l3vni</span></code>, le VPC se comporte comme
 avant. Le champ exige la section <code class="docutils literal notranslate"><span class="pre">bgp</span></code> de l’agent (<a class="reference internal" href="../exploitation/configuration.html"><span class="doc">Configuration</span></a>) et ne
 se change pas après création.</p>
-<p><strong>Plan de VNI.</strong> L3VNI et <code class="docutils literal notranslate"><span class="pre">vxlan_id</span></code> des subnets partagent l’espace des VNI VXLAN : la plage
-<strong>1–65535</strong> (sauf 253–255, tables du noyau) est réservée aux L3VNI des VPC, <strong>65536–16777215</strong> aux
-subnets. L’agent n’impose que la première borne (le RD <code class="docutils literal notranslate"><span class="pre">&lt;VTEP&gt;:&lt;l3vni&gt;</span></code> porte un numéro sur
-16 bits) ; le respect du plan revient à l’appelant, qui alloue les deux.</p>
+<p><strong>Plan de VNI.</strong> Segment public, L3VNI et <code class="docutils literal notranslate"><span class="pre">vxlan_id</span></code> des subnets partagent l’espace des VNI
+VXLAN : le VNI <strong>1</strong> est celui du segment public (<code class="docutils literal notranslate"><span class="pre">deploy.sh</span> <span class="pre">--public_vni</span></code>, 1 par défaut), la
+plage <strong>2–65535</strong> (sauf 253–255, tables du noyau) est réservée aux L3VNI des VPC,
+<strong>65536–16777215</strong> aux subnets. L’agent n’impose que la borne haute des L3VNI (le RD
+<code class="docutils literal notranslate"><span class="pre">&lt;VTEP&gt;:&lt;l3vni&gt;</span></code> porte un numéro sur 16 bits) ; le respect du plan revient à l’appelant, qui
+alloue les L3VNI et les <code class="docutils literal notranslate"><span class="pre">vxlan_id</span></code>. Un VPC créé avec le VNI du segment public pour <code class="docutils literal notranslate"><span class="pre">l3vni</span></code>
+passe en <code class="docutils literal notranslate"><span class="pre">error</span></code> : ce VNI est déjà porté par <code class="docutils literal notranslate"><span class="pre">vxlan-public</span></code>.</p>
 <p>À la création, l’agent pose sur l’hyperviseur, pour un VPC <code class="docutils literal notranslate"><span class="pre">vp-&lt;id&gt;</span></code> :</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>vrf-&lt;id&gt;         VRF, table de routage = l3vni, unreachable default metric 4278198272
 ├── brl3-&lt;id&gt;    bridge sans adresse, MAC de routeur 02:02:&lt;IPv4 du VTEP&gt;
