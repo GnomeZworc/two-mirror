@@ -47,7 +47,7 @@ Paquets
    * - ``internal/sysctl``
      - écriture sous ``/proc/sys``, dans un netns si besoin
    * - ``internal/netns``
-     - network namespaces : create/enter/delete/call
+     - network namespaces : create/delete/call
    * - ``internal/netif``
      - netlink : bridge, veth, vxlan, tap, routes, adresses
    * - ``internal/nft``, ``internal/iptables``

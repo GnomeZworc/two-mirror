@@ -37,6 +37,13 @@ Réseau
   gateway de l'hôte n'est pas sur le subnet, la route par défaut serait inutilisable, et jointe
   elle contournerait le netns et la VRF.
 * ``169.254.169.254`` est centralisé dans ``metadata.ServiceIP`` — ne pas le réécrire en dur.
+* **Tout travail dans un netns passe par ``netns.Call``.** ``setns`` ne change que le thread
+  courant : ``netns.Call`` verrouille la goroutine sur son thread, revient ensuite au netns de ce
+  thread (``/proc/thread-self``, jamais ``/proc/self``, qui désigne le thread principal) et
+  détruit un thread qui ne peut pas y revenir (#91).
+* **Une socket appartient au netns du thread qui la crée** : un listener destiné à un VPC est
+  créé dans ``netns.Call``, puis servi hors du netns. Après un ``setns`` suivi d'un
+  déverrouillage du thread, rien ne garantit que la socket soit créée sur le bon thread (#92).
 
 QEMU et VM
 ----------
