@@ -669,6 +669,7 @@ window.runMermaid = runMermaid;</script>
 <li class="toctree-l2"><a class="reference internal" href="modes-reseau.html">Modes réseau</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cycle-de-vie.html">Cycle de vie des ressources</a></li>
 <li class="toctree-l2"><a class="reference internal" href="metadata-cloud-init.html">Metadata et cloud-init</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dns-ntp.html">DNS et NTP des VM</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../architecture/index.html">Architecture</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -818,6 +819,10 @@ public est celui de <code class="docutils literal notranslate"><span class="pre"
 <code class="docutils literal notranslate"><span class="pre">default_interface</span></code> (<a class="reference internal" href="../exploitation/configuration.html"><span class="doc">Configuration</span></a>). <code class="docutils literal notranslate"><span class="pre">deploy.sh</span> <span class="pre">-i</span></code> le crée et y
 accroche <code class="docutils literal notranslate"><span class="pre">vxlan-public</span></code>, le VXLAN du segment public partagé avec les bordures
 (<a class="reference internal" href="../demarrage/installation.html"><span class="doc">Installation d’un hyperviseur</span></a>) ; sans ce bridge, toute création de VPC échoue.</p>
+<p>Dans le netns, l’agent pose aussi la <code class="docutils literal notranslate"><span class="pre">dummy</span></code> <code class="docutils literal notranslate"><span class="pre">hostsvc</span></code> (<code class="docutils literal notranslate"><span class="pre">169.254.169.253/32</span></code>) et la chaîne
+iptables <code class="docutils literal notranslate"><span class="pre">TWO-HOSTSVC</span></code>, puis demande à <code class="docutils literal notranslate"><span class="pre">two-hostsvc</span></code> de servir le VPC : c’est le chemin du
+DNS et du NTP des VM (voir <a class="reference internal" href="dns-ntp.html"><span class="doc">DNS et NTP des VM</span></a>). Si <code class="docutils literal notranslate"><span class="pre">two-hostsvc</span></code> ne répond pas, la création du VPC
+échoue.</p>
 <p>Un VPC ne peut être supprimé que si tous ses subnets le sont déjà — sinon 409.</p>
 <section id="routage-entre-hyperviseurs-l3vni">
 <h3>Routage entre hyperviseurs : <code class="docutils literal notranslate"><span class="pre">l3vni</span></code><a class="headerlink" href="#routage-entre-hyperviseurs-l3vni" title="Lien vers cette rubrique">#</a></h3>

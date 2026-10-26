@@ -233,6 +233,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../concepts/modes-reseau.html">Modes réseau</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../concepts/cycle-de-vie.html">Cycle de vie des ressources</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../concepts/metadata-cloud-init.html">Metadata et cloud-init</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/dns-ntp.html">DNS et NTP des VM</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../architecture/index.html">Architecture</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -539,12 +540,13 @@ relancer. Arrêter les services à la main avant de lancer le script fait perdre
 </section>
 <section id="verifier-l-installation">
 <h2>Vérifier l’installation<a class="headerlink" href="#verifier-l-installation" title="Lien vers cette rubrique">#</a></h2>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>systemctl<span class="w"> </span>status<span class="w"> </span>agent
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>systemctl<span class="w"> </span>status<span class="w"> </span>two-hostsvc<span class="w"> </span>agent
 curl<span class="w"> </span>-s<span class="w"> </span>http://127.0.0.1:8080/vpcs
 </pre></div>
 </div>
-<p>Une liste JSON — vide au premier démarrage — signifie que l’API répond. Passez à
-<a class="reference internal" href="premier-vpc.html"><span class="doc">Premier VPC, premier subnet, première VM</span></a>.</p>
+<p>Une liste JSON — vide au premier démarrage — signifie que l’API répond. <code class="docutils literal notranslate"><span class="pre">two-hostsvc</span></code>, le relais
+DNS et NTP des VM, doit être actif : sans lui, la création d’un VPC échoue (voir
+<a class="reference internal" href="../concepts/dns-ntp.html"><span class="doc">DNS et NTP des VM</span></a>). Passez à <a class="reference internal" href="premier-vpc.html"><span class="doc">Premier VPC, premier subnet, première VM</span></a>.</p>
 <div class="admonition important">
 <p class="admonition-title">Important</p>
 <p>L’API de l’agent <strong>n’a aucune authentification</strong>. Avant d’ouvrir le port au-delà de la boucle
