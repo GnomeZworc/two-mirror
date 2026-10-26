@@ -398,6 +398,13 @@ retirer explicitement au démontage.</p></li>
 gateway de l’hôte n’est pas sur le subnet, la route par défaut serait inutilisable, et jointe
 elle contournerait le netns et la VRF.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">169.254.169.254</span></code> est centralisé dans <code class="docutils literal notranslate"><span class="pre">metadata.ServiceIP</span></code> — ne pas le réécrire en dur.</p></li>
+<li><p><strong>Tout travail dans un netns passe par ``netns.Call``.</strong> <code class="docutils literal notranslate"><span class="pre">setns</span></code> ne change que le thread
+courant : <code class="docutils literal notranslate"><span class="pre">netns.Call</span></code> verrouille la goroutine sur son thread, revient ensuite au netns de ce
+thread (<code class="docutils literal notranslate"><span class="pre">/proc/thread-self</span></code>, jamais <code class="docutils literal notranslate"><span class="pre">/proc/self</span></code>, qui désigne le thread principal) et
+détruit un thread qui ne peut pas y revenir (#91).</p></li>
+<li><p><strong>Une socket appartient au netns du thread qui la crée</strong> : un listener destiné à un VPC est
+créé dans <code class="docutils literal notranslate"><span class="pre">netns.Call</span></code>, puis servi hors du netns. Après un <code class="docutils literal notranslate"><span class="pre">setns</span></code> suivi d’un
+déverrouillage du thread, rien ne garantit que la socket soit créée sur le bon thread (#92).</p></li>
 </ul>
 </section>
 <section id="qemu-et-vm">
