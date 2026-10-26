@@ -378,7 +378,7 @@ doit donc figurer dans la 121 ; l’option 3 ne sert que les clients qui n’imp
 <li><p><strong>La route vers le CIDR du VPC garde ``interface_ip`` comme next-hop</strong> dans tous les modes sauf
 <code class="docutils literal notranslate"><span class="pre">bridge</span></code> : sur un subnet à IP publique, le trafic interne ne doit pas sortir par la gateway
 publique.</p></li>
-<li><p><strong>La MAC anycast d’une gateway ``vxlan`` ne sort jamais du netns</strong> : règles ebtables sur le veth
+<li><p><strong>La MAC anycast d’une gateway ``vxlan`` ne sort jamais du netns</strong> : règles nftables sur le veth
 du subnet (source anycast rejetée en entrée et en sortie) <strong>et</strong> entrée FDB locale dans le bridge
 du netns. Sans l’entrée FDB, que le macvlan ne crée pas, toute trame d’une VM vers sa gateway est
 inondée vers le fabric et traitée par la gateway de chaque hôte.</p></li>
@@ -410,6 +410,9 @@ casserait le démarrage (<code class="docutils literal notranslate"><span class=
 <li><p>QEMU est lancé par <code class="docutils literal notranslate"><span class="pre">systemd-run</span> <span class="pre">--scope</span></code>, <strong>jamais</strong> en unit transitoire : le scope est
 exécuté par le processus appelant et hérite du netns posé par <code class="docutils literal notranslate"><span class="pre">netns.Call</span></code>. Une unit
 transitoire, forkée par PID 1, démarrerait dans le netns racine et ne verrait pas le tap.</p></li>
+<li><p><strong>Un tap n’existe jamais sans ses règles</strong> : la chaîne <code class="docutils literal notranslate"><span class="pre">pre-tap&lt;id&gt;</span></code> est posée avant la
+création du tap et retirée après sa suppression. Dans l’autre ordre, une VM pourrait émettre
+sans filtre entre deux étapes.</p></li>
 <li><p>L’arrêt d’une VM ne touche <strong>jamais</strong> aux fichiers disque. En revanche, un <code class="docutils literal notranslate"><span class="pre">quit</span></code> brutal est
 envoyé à l’expiration de <code class="docutils literal notranslate"><span class="pre">times.timeout_vms_stop</span></code>. <code class="docutils literal notranslate"><span class="pre">system_powerdown</span></code> est renvoyé toutes les
 <code class="docutils literal notranslate"><span class="pre">times.next_vms_shutdown</span></code> : un appui ACPI arrivé avant que l’invité sache le traiter est perdu.</p></li>

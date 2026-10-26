@@ -716,9 +716,9 @@ code de sortie vaut 1 si une vérification échoue <strong>ou si aucune n’a é
 <p><strong>Tests autonomes.</strong> Avant chaque test, le runner supprime les ressources <code class="docutils literal notranslate"><span class="pre">tNN</span></code> laissées par un
 passage précédent, puis relève l’état de chaque hôte de l’en-tête <code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">hôtes:</span></code>. Après le test, il
 supprime ses VM, ses subnets puis ses VPC, et vérifie que l’hôte est revenu à l’état relevé
-(<code class="docutils literal notranslate"><span class="pre">assert_clean</span></code> : netns, liens, adresses, routes, règles ebtables et iptables, configuration FRR et
-<code class="docutils literal notranslate"><span class="pre">frr.conf</span></code>, fichiers de <code class="docutils literal notranslate"><span class="pre">/run/two</span></code>, <code class="docutils literal notranslate"><span class="pre">dnsmasq.d</span></code> et des volumes, unités <code class="docutils literal notranslate"><span class="pre">two-vm-*</span></code>,
-processus dnsmasq et QEMU). Aucun test ne dépend d’un autre : n’importe lequel se lance seul.</p>
+(<code class="docutils literal notranslate"><span class="pre">assert_clean</span></code> : netns, liens, adresses, routes, règles nftables de pont et iptables,
+configuration FRR et <code class="docutils literal notranslate"><span class="pre">frr.conf</span></code>, fichiers de <code class="docutils literal notranslate"><span class="pre">/run/two</span></code>, <code class="docutils literal notranslate"><span class="pre">dnsmasq.d</span></code> et des volumes, unités
+<code class="docutils literal notranslate"><span class="pre">two-vm-*</span></code>, processus dnsmasq et QEMU). Aucun test ne dépend d’un autre : n’importe lequel se lance seul.</p>
 <p><strong>Plages.</strong> Le test <code class="docutils literal notranslate"><span class="pre">NN</span></code> nomme ses ressources <code class="docutils literal notranslate"><span class="pre">vp-tNN*</span></code>, <code class="docutils literal notranslate"><span class="pre">sn-tNN*</span></code> et <code class="docutils literal notranslate"><span class="pre">tNN-*</span></code>, et utilise
 <code class="docutils literal notranslate"><span class="pre">10.NN.0.0/16</span></code> et les VNI <code class="docutils literal notranslate"><span class="pre">NN00</span></code> à <code class="docutils literal notranslate"><span class="pre">NN99</span></code> : aucune collision entre tests.</p>
 <p><strong>Échecs connus.</strong> Un contrôle dont l’échec est connu et rattaché à un ticket s’écrit <code class="docutils literal notranslate"><span class="pre">known</span>
@@ -745,7 +745,7 @@ fait en fermant le ticket. Chaque ticket concerné liste ses marqueurs en commen
 <td><p>#50, #51, #54, #41</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">02-prerequis</span></code></p></td>
-<td><p>hypothèses d’environnement de la suite — firmware UEFI, unités modèles de l’agent, journalctl, format de ebtables -L, br-lan, priorités VRRP lues dans FRR</p></td>
+<td><p>hypothèses d’environnement de la suite — firmware UEFI, unités modèles de l’agent, journalctl, format de nft list table, br-lan, priorités VRRP lues dans FRR</p></td>
 <td><p>hv1 hv2 hv3</p></td>
 <td><p>#70</p></td>
 </tr>
@@ -815,9 +815,9 @@ fait en fermant le ticket. Chaque ticket concerné liste ses marqueurs en commen
 <td><p>#57, #41</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">33-bridge</span></code></p></td>
-<td><p>subnet en mode bridge rattaché au bridge br-lan de l’hôte — un hôte, puis le même subnet sur deux hôtes (interface_ip confinée à son hôte : une seule réponse ARP, métadonnées servies par l’hôte de la VM, ni ARP ni DHCP de la gateway sur le segment, règles surveillées par le watchdog)</p></td>
+<td><p>subnet en mode bridge rattaché au bridge br-lan de l’hôte — un hôte, puis le même subnet sur deux hôtes (interface_ip confinée à son hôte : une seule réponse ARP, métadonnées servies par l’hôte de la VM, ni ARP ni DHCP de la gateway sur le segment, règles surveillées par le watchdog) ; VM serveur DHCP des machines diskless (dhcp_server) entendue sur le segment, voisine bloquée</p></td>
 <td><p>hv1 hv2</p></td>
-<td><p>#70, #75</p></td>
+<td><p>#70, #75, #76</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">34-isolation-locale</span></code></p></td>
 <td><p>isolation entre deux VPC sur un même hôte — ni ICMP ni TCP d’un VPC à l’autre</p></td>
@@ -825,9 +825,9 @@ fait en fermant le ticket. Chaque ticket concerné liste ses marqueurs en commen
 <td><p>#50</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">35-filtrage-port</span></code></p></td>
-<td><p>filtrage au port — en sortie vers le fabric (v-&lt;id&gt;-i) : ARP vers la gateway et l’adresse d’émission, DHCP émis depuis ces adresses, MAC anycast confinée dans les deux sens ; entre VM d’un même hôte : faux serveur DHCP et usurpation ARP de la gateway (comportement attendu, non filtré à ce jour)</p></td>
+<td><p>filtrage au port — en sortie vers le fabric (v-&lt;id&gt;-i) : ARP vers la gateway et l’adresse d’émission, DHCP émis depuis ces adresses, MAC anycast confinée dans les deux sens ; à la sortie de chaque VM (pre-tap&lt;id&gt;) : MAC, IP et ARP usurpés, faux serveur DHCP, source 0.0.0.0 hors DHCP, type de trame non IP, NIC autorisée en serveur DHCP (dhcp_server), règles surveillées par le watchdog et retirées avec la VM</p></td>
 <td><p>hv1</p></td>
-<td><p>#57</p></td>
+<td><p>#57, #76</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">41-evpn-l2</span></code></p></td>
 <td><p>subnet vxlan étendu entre deux hôtes par EVPN — VTEP local, VTEP distant et inondation appris, MAC des VM en type 2, trafic ICMP et TCP, MTU 1500 de bout en bout</p></td>
@@ -912,7 +912,6 @@ attend jusqu’à 480 s, au-delà du <code class="docutils literal notranslate">
 <li><p>systemd-networkd <strong>ne réécrit pas</strong> un bail renouvelé à l’identique : un renouvellement se
 vérifie par le DHCPACK dans le journal du serveur (<code class="docutils literal notranslate"><span class="pre">lease_renewed</span></code>), pas par le fichier de bail ;</p></li>
 <li><p>l’agent n’accepte <strong>qu’un seul disque virtio</strong> (le disque racine, <code class="docutils literal notranslate"><span class="pre">vda</span></code>) ; les autres sont des <code class="docutils literal notranslate"><span class="pre">xvdX</span></code> ;</p></li>
-<li><p>sur Debian 12, <code class="docutils literal notranslate"><span class="pre">ebtables</span> <span class="pre">-L</span></code> (nft) garde les zéros de tête des MAC ;</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> est posée en <code class="docutils literal notranslate"><span class="pre">/32</span></code> sur le bridge du netns en mode <code class="docutils literal notranslate"><span class="pre">bridge</span></code> ;</p></li>
 <li><p>depuis le netns d’un hôte, une VM d’un autre hôte ne répond pas : la réponse repart vers la
 gateway de son propre hôte. Une vérification entre hôtes passe par une VM.</p></li>
@@ -934,7 +933,7 @@ Chaque bloc est précédé des bibliothèques de <code class="docutils literal n
 <code class="docutils literal notranslate"><span class="pre">user_data</span></code>, mot de passe), SSH, bail, métadonnées. La MAC de chaque NIC est fournie à l’API :
 <code class="docutils literal notranslate"><span class="pre">52:54:00</span></code> suivi des trois derniers octets de l’IP (<code class="docutils literal notranslate"><span class="pre">mac_for_ip</span></code>), unique dans la suite
 puisque chaque test a sa plage ; <code class="docutils literal notranslate"><span class="pre">--nic</span> <span class="pre">sn=ip=mac</span></code> en impose une autre ;</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">net.sh</span></code> : VPC, subnets, MAC anycast, trames brutes, règles ebtables, VRRP ;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">net.sh</span></code> : VPC, subnets, MAC anycast, trames brutes, règles nftables, VRRP ;</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">evpn.sh</span></code> : VRF, BGP, L3VNI, watchdog ;</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">fixture.sh</span></code> : nettoyage et <code class="docutils literal notranslate"><span class="pre">assert_clean</span></code>, appelés par le runner. Le nettoyage couvre les
 ressources <code class="docutils literal notranslate"><span class="pre">t&lt;NN&gt;</span></code> de l’API, les netns <code class="docutils literal notranslate"><span class="pre">t&lt;NN&gt;-*</span></code> et les fichiers <code class="docutils literal notranslate"><span class="pre">t&lt;NN&gt;-*</span></code> / <code class="docutils literal notranslate"><span class="pre">t&lt;NN&gt;.*</span></code> de

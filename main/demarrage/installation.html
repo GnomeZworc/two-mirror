@@ -368,7 +368,7 @@ plan de contrôle — est traité à part : voir <a class="reference internal" h
 <section id="prerequis">
 <h2>Prérequis<a class="headerlink" href="#prerequis" title="Lien vers cette rubrique">#</a></h2>
 <p>Un host Linux avec KVM, sur lequel vous avez <code class="docutils literal notranslate"><span class="pre">root</span></code>. Les opérations réseau (network
-namespaces, netlink, VXLAN, ebtables, iptables) et QEMU ne fonctionnent que sous Linux.</p>
+namespaces, netlink, VXLAN, nftables, iptables) et QEMU ne fonctionnent que sous Linux.</p>
 </section>
 <section id="deploiement">
 <h2>Déploiement<a class="headerlink" href="#deploiement" title="Lien vers cette rubrique">#</a></h2>
@@ -444,7 +444,7 @@ l’utiliser que pour diagnostiquer un manifeste cassé, jamais en déploiement 
 </section>
 <section id="ce-que-fait-i">
 <h2>Ce que fait <code class="docutils literal notranslate"><span class="pre">-i</span></code><a class="headerlink" href="#ce-que-fait-i" title="Lien vers cette rubrique">#</a></h2>
-<p><strong>Paquets</strong> — <code class="docutils literal notranslate"><span class="pre">qemu-system-x86</span></code>, <code class="docutils literal notranslate"><span class="pre">qemu-utils</span></code>, <code class="docutils literal notranslate"><span class="pre">ovmf</span></code>, <code class="docutils literal notranslate"><span class="pre">dnsmasq</span></code>, <code class="docutils literal notranslate"><span class="pre">ebtables</span></code>,
+<p><strong>Paquets</strong> — <code class="docutils literal notranslate"><span class="pre">qemu-system-x86</span></code>, <code class="docutils literal notranslate"><span class="pre">qemu-utils</span></code>, <code class="docutils literal notranslate"><span class="pre">ovmf</span></code>, <code class="docutils literal notranslate"><span class="pre">dnsmasq</span></code>, <code class="docutils literal notranslate"><span class="pre">nftables</span></code>,
 <code class="docutils literal notranslate"><span class="pre">iptables</span></code>, <code class="docutils literal notranslate"><span class="pre">nfs-common</span></code>, <code class="docutils literal notranslate"><span class="pre">jq</span></code>, <code class="docutils literal notranslate"><span class="pre">curl</span></code>, <strong>sans les paquets recommandés</strong> : ceux de
 <code class="docutils literal notranslate"><span class="pre">qemu-system-x86</span></code> (interface graphique, gtk, gstreamer, pilotes de stockage réseau) ne servent
 pas à un hyperviseur sans écran, et l’installation passe d’environ 270 à 65 Mo — rejouée à chaque

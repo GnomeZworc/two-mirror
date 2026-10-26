@@ -882,6 +882,28 @@ la route par défaut et le serveur de metadata. Tous les subnets d’une VM doiv
 <p><strong>MAC.</strong> Chaque interface porte la MAC choisie par l’appelant, comme son IP. L’agent la donne
 telle quelle à QEMU et à la réservation DHCP, sans en vérifier le format ni l’unicité : c’est à
 l’appelant de garantir qu’elle est unique sur le segment L2.</p>
+<p><strong>Filtrage.</strong> Chaque interface ne peut émettre que depuis sa propre MAC et sa propre IP. L’agent
+pose sur son tap, avant de le créer, des règles qui rejettent toute trame émise par la VM :</p>
+<ul class="simple">
+<li><p>dont la MAC source n’est pas celle de l’interface ;</p></li>
+<li><p>d’un autre type qu’IPv4, ARP ou IPv6 (une trame étiquetée VLAN par exemple) ;</p></li>
+<li><p>ARP, dont la MAC ou l’adresse d’émetteur n’est pas celle de l’interface, sauf l’adresse
+<code class="docutils literal notranslate"><span class="pre">0.0.0.0</span></code> d’une sonde de conflit d’adresse ;</p></li>
+<li><p>IPv4, dont la source n’est pas l’adresse de l’interface, sauf <code class="docutils literal notranslate"><span class="pre">0.0.0.0</span></code> vers le port 67 (un
+client DHCP qui n’a pas encore de bail) ;</p></li>
+<li><p>réponse de serveur DHCP (UDP depuis le port 67).</p></li>
+</ul>
+<p>Une VM ne peut donc ni se faire passer pour la gateway ou une autre VM, ni distribuer de baux. Une
+VM qui route pour d’autres machines ou porte des adresses supplémentaires ne peut pas émettre
+depuis ces adresses. L’IPv6 n’est pas filtrée (#61). Les règles sont retirées après la suppression
+du tap ; le watchdog signale une interface d’une VM <code class="docutils literal notranslate"><span class="pre">running</span></code> dont les règles manquent ou ont
+été modifiées.</p>
+<p><strong>Serveur DHCP.</strong> <code class="docutils literal notranslate"><span class="pre">dhcp_server:</span> <span class="pre">true</span></code> sur une interface lève le seul blocage des réponses DHCP,
+pour cette interface. Cas d’usage : une VM d’un subnet <code class="docutils literal notranslate"><span class="pre">bridge</span></code> qui sert le DHCP et le PXE de
+machines diskless du segment physique, avec des réservations statiques. Les autres contrôles
+restent en place. L’agent applique ce champ quel que soit le mode du subnet : le réserver au mode
+<code class="docutils literal notranslate"><span class="pre">bridge</span></code> revient à l’appelant. Le serveur de la VM reçoit aussi les requêtes des VM du subnet, à
+côté du DHCP de l’agent : il ne doit répondre qu’aux machines qui lui sont destinées.</p>
 <p><strong>Routes.</strong> Dans un VPC routé par <code class="docutils literal notranslate"><span class="pre">l3vni</span></code>, chaque interface sur un subnet <code class="docutils literal notranslate"><span class="pre">vxlan</span></code> est annoncée
 en <code class="docutils literal notranslate"><span class="pre">/32</span></code> dans la VRF du VPC une fois QEMU démarré, juste avant le passage en <code class="docutils literal notranslate"><span class="pre">running</span></code>. À la
 suppression, ces <code class="docutils literal notranslate"><span class="pre">/32</span></code> sont retirés <strong>avant</strong> l’arrêt de QEMU. Comme un subnet ne peut être

@@ -787,6 +787,7 @@ window.runMermaid = runMermaid;</script>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#bridge">bridge</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#regles-de-pont">Règles de pont</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#routes-annoncees-aux-vm">Routes annoncées aux VM</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#route-par-defaut-default-route-et-gateway">Route par défaut : <code class="docutils literal notranslate"><span class="pre">default_route</span></code> et <code class="docutils literal notranslate"><span class="pre">gateway</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pourquoi-la-route-32-vers-le-serveur-de-metadata-est-indispensable">Pourquoi la route <code class="docutils literal notranslate"><span class="pre">/32</span></code> vers le serveur de metadata est indispensable</a></li>
@@ -901,8 +902,8 @@ trafic routé entre VM n’est pas concerné, il garde sa source.</p>
 EVPN par chaque hôte, détectée en double, et déplacerait l’apprentissage des bridges. Trois
 mécanismes la confinent :</p>
 <ul class="simple">
-<li><p>ebtables, sur le veth du subnet : toute trame de <strong>source</strong> anycast est rejetée à l’entrée
-(<code class="docutils literal notranslate"><span class="pre">nat</span> <span class="pre">PREROUTING</span></code>) et à la sortie (<code class="docutils literal notranslate"><span class="pre">FORWARD</span></code> et <code class="docutils literal notranslate"><span class="pre">OUTPUT</span></code>) ;</p></li>
+<li><p>nftables, sur le veth du subnet : toute trame de <strong>source</strong> anycast est rejetée à l’entrée
+(<code class="docutils literal notranslate"><span class="pre">prerouting</span></code>) et à la sortie (<code class="docutils literal notranslate"><span class="pre">forward</span></code> et <code class="docutils literal notranslate"><span class="pre">output</span></code>) ;</p></li>
 <li><p>une <strong>entrée FDB locale</strong> pour la MAC anycast dans le bridge du netns. Le macvlan ne la crée pas
 lui-même : sans elle, toute trame d’une VM vers sa gateway est inondée vers le fabric et les
 autres VM, et traitée par la gateway de chaque hôte ;</p></li>
@@ -911,7 +912,7 @@ sont bloquées vers le veth, comme avant.</p></li>
 </ul>
 <p>IPv6 n’est pas désactivé sur le macvlan : ses trames (DAD, ND) sont arrêtées par le confinement.
 Le watchdog contrôle le macvlan, sa MAC, les deux adresses et l’entrée FDB ; il ne relit pas les
-règles ebtables.</p>
+règles nftables.</p>
 </section>
 <section id="subnets-crees-avant-la-gateway-anycast">
 <h3>Subnets créés avant la gateway anycast<a class="headerlink" href="#subnets-crees-avant-la-gateway-anycast" title="Lien vers cette rubrique">#</a></h3>
@@ -927,19 +928,30 @@ quelques secondes (#57).</p>
 VPC : le trafic sort par le bridge, et la VM est joignable depuis l’host.</p>
 <p>Le même subnet peut être posé sur plusieurs hôtes raccordés au même segment. Chaque hôte porte
 alors la <strong>même</strong> <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> dans son netns, avec sa propre MAC. Pour qu’une VM ne voie que
-l”<code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> de son hôte (gateway, metadata, DHCP), l’agent pose quatre règles ebtables sur
+l”<code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> de son hôte (gateway, metadata, DHCP), l’agent pose quatre règles nftables sur
 le veth du subnet dans le netns (<code class="docutils literal notranslate"><span class="pre">v-&lt;subnet&gt;-i</span></code>), en sortie vers le bridge de l’host :</p>
 <ul class="simple">
-<li><p>les requêtes ARP des VM <strong>vers</strong> <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> ne quittent pas l’hôte (<code class="docutils literal notranslate"><span class="pre">FORWARD</span></code>) ;</p></li>
+<li><p>les requêtes ARP des VM <strong>vers</strong> <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> ne quittent pas l’hôte (<code class="docutils literal notranslate"><span class="pre">forward</span></code>) ;</p></li>
 <li><p>l’ARP émis <strong>depuis</strong> <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> par le netns, requêtes et réponses, ne sort pas
-(<code class="docutils literal notranslate"><span class="pre">OUTPUT</span></code>) : une VM d’un autre hôte n’associe jamais <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> à cet hôte ;</p></li>
-<li><p>le DHCP émis depuis <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> ne sort ni en transit (<code class="docutils literal notranslate"><span class="pre">FORWARD</span></code>) ni depuis le serveur
-local lui-même (<code class="docutils literal notranslate"><span class="pre">OUTPUT</span></code>).</p></li>
+(<code class="docutils literal notranslate"><span class="pre">output</span></code>) : une VM d’un autre hôte n’associe jamais <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> à cet hôte ;</p></li>
+<li><p>le DHCP émis depuis <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> ne sort ni en transit (<code class="docutils literal notranslate"><span class="pre">forward</span></code>) ni depuis le serveur
+local lui-même (<code class="docutils literal notranslate"><span class="pre">output</span></code>).</p></li>
 </ul>
 <p>Le trafic entre VM du subnet, sur un même hôte ou sur des hôtes différents, n’est pas concerné.
 Par conception, une VM ne joint pas le netns d’un autre hôte. Les règles sont retirées à la
 suppression du subnet ; une règle déjà absente ne fait pas échouer la suppression. Le watchdog
-signale les règles manquantes.</p>
+signale les règles manquantes et celles qui ne sont pas de l’agent.</p>
+</section>
+<section id="regles-de-pont">
+<h2>Règles de pont<a class="headerlink" href="#regles-de-pont" title="Lien vers cette rubrique">#</a></h2>
+<p>Dans les deux modes, les règles de couche 2 vivent dans une table nftables <code class="docutils literal notranslate"><span class="pre">bridge</span> <span class="pre">two</span></code> du netns
+du VPC. Trois chaînes de base (<code class="docutils literal notranslate"><span class="pre">prerouting</span></code>, <code class="docutils literal notranslate"><span class="pre">forward</span></code>, <code class="docutils literal notranslate"><span class="pre">output</span></code>) aiguillent chaque trame,
+selon l’interface d’entrée ou de sortie, vers la chaîne du port concerné (<code class="docutils literal notranslate"><span class="pre">pre-&lt;port&gt;</span></code>,
+<code class="docutils literal notranslate"><span class="pre">fwd-&lt;port&gt;</span></code>, <code class="docutils literal notranslate"><span class="pre">out-&lt;port&gt;</span></code>) par les tables <code class="docutils literal notranslate"><span class="pre">pre_ports</span></code>, <code class="docutils literal notranslate"><span class="pre">fwd_ports</span></code> et <code class="docutils literal notranslate"><span class="pre">out_ports</span></code>.
+L’agent pose ou retire toutes les règles d’un port en une seule transaction. Les ports sont le
+veth de chaque subnet (<code class="docutils literal notranslate"><span class="pre">v-&lt;subnet&gt;-i</span></code>, règles décrites plus haut) et le tap de chaque interface
+de VM (<code class="docutils literal notranslate"><span class="pre">tap&lt;id&gt;</span></code>, chaîne <code class="docutils literal notranslate"><span class="pre">pre-tap&lt;id&gt;</span></code> : ce que la VM émet, voir
+<a class="reference internal" href="vpc-subnet-vm.html"><span class="doc">VPC, subnet et VM</span></a>).</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Un subnet <code class="docutils literal notranslate"><span class="pre">bridge</span></code> créé par une version antérieure de l’agent n’a que la règle DHCP
@@ -1054,6 +1066,7 @@ silencieusement.</p>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#bridge">bridge</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#regles-de-pont">Règles de pont</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#routes-annoncees-aux-vm">Routes annoncées aux VM</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#route-par-defaut-default-route-et-gateway">Route par défaut : <code class="docutils literal notranslate"><span class="pre">default_route</span></code> et <code class="docutils literal notranslate"><span class="pre">gateway</span></code></a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pourquoi-la-route-32-vers-le-serveur-de-metadata-est-indispensable">Pourquoi la route <code class="docutils literal notranslate"><span class="pre">/32</span></code> vers le serveur de metadata est indispensable</a></li>

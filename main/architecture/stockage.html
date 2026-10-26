@@ -379,6 +379,7 @@ vm/&lt;name&gt;/nic/&lt;i&gt;/subnet     → &lt;subnet-name&gt;   (une interfac
 vm/&lt;name&gt;/nic/&lt;i&gt;/ip         → &lt;ip&gt;
 vm/&lt;name&gt;/nic/&lt;i&gt;/mac        → &lt;mac&gt;           (fournie par l'appelant, conservée telle quelle)
 vm/&lt;name&gt;/nic/&lt;i&gt;/primary    → "true"          (exactement une interface ; absent sur les autres)
+vm/&lt;name&gt;/nic/&lt;i&gt;/dhcp_server → "true"         (absent si l'interface ne sert pas le DHCP)
 vm/&lt;name&gt;/nic/&lt;i&gt;/tap_id     → &lt;int&gt;           (alloué au premier démarrage, puis conservé)
 vm/&lt;name&gt;/metadata_port      → &lt;port&gt;
 vm/&lt;name&gt;/disk/&lt;dev&gt;         → &lt;path&gt;          (une clé par disque : vda, xvda, xvdb, …)
