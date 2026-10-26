@@ -25,6 +25,11 @@ public est celui de ``interfaces.internet``, ``br-public`` si la clé est absent
 accroche ``vxlan-public``, le VXLAN du segment public partagé avec les bordures
 (:doc:`/demarrage/installation`) ; sans ce bridge, toute création de VPC échoue.
 
+Dans le netns, l'agent pose aussi la ``dummy`` ``hostsvc`` (``169.254.169.253/32``) et la chaîne
+iptables ``TWO-HOSTSVC``, puis demande à ``two-hostsvc`` de servir le VPC : c'est le chemin du
+DNS et du NTP des VM (voir :doc:`dns-ntp`). Si ``two-hostsvc`` ne répond pas, la création du VPC
+échoue.
+
 Un VPC ne peut être supprimé que si tous ses subnets le sont déjà — sinon 409.
 
 Routage entre hyperviseurs : ``l3vni``

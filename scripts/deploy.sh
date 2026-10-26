@@ -116,7 +116,7 @@ start_services () {
 
 profile_units () {
     case "${1}" in
-        kvm)   echo "agent.service dnsmasq@.service dhcp@.service metadata@.service" ;;
+        kvm)   echo "two-hostsvc.service agent.service dnsmasq@.service dhcp@.service metadata@.service" ;;
         intel) echo "" ;;
         *)     return 1 ;;
     esac
@@ -124,7 +124,7 @@ profile_units () {
 
 profile_binaries () {
     case "${1}" in
-        kvm)   echo "agent metadata dhcp run-dnsmasq-in-netns.sh run-dhcp-in-netns.sh" ;;
+        kvm)   echo "agent metadata dhcp two-hostsvc run-dnsmasq-in-netns.sh run-dhcp-in-netns.sh" ;;
         intel) echo "" ;;
         *)     return 1 ;;
     esac

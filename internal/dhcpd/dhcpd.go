@@ -7,13 +7,6 @@ import (
 
 const LeaseTime = 12 * time.Hour
 
-func DNSServers() []net.IP {
-	return []net.IP{
-		net.IPv4(1, 1, 1, 1),
-		net.IPv4(8, 8, 8, 8),
-	}
-}
-
 type SubnetConfig struct {
 	Network        *net.IPNet
 	InterfaceIP    net.IP

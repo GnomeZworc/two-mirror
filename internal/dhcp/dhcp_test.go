@@ -69,6 +69,24 @@ func TestGenerateConfig_ContainsDefaultGateway(t *testing.T) {
 	}
 }
 
+func TestGenerateConfig_DNSAndNTPAreTheInterfaceIP(t *testing.T) {
+	conf := newConf(t, "192.168.1.0/24")
+	path, err := GenerateConfig(conf)
+	if err != nil {
+		t.Fatalf("GenerateConfig : %v", err)
+	}
+	content, _ := os.ReadFile(path)
+
+	for _, want := range []string{"\ndhcp-option=6,192.168.1.254\n", "\ndhcp-option=42,192.168.1.254\n"} {
+		if !strings.Contains(string(content), want) {
+			t.Errorf("%q absente : DNS et NTP passent par la gateway, relayés par two-hostsvc\n%s", strings.TrimSpace(want), content)
+		}
+	}
+	if strings.Contains(string(content), "1.1.1.1") || strings.Contains(string(content), "8.8.8.8") {
+		t.Errorf("résolveurs publics encore annoncés :\n%s", content)
+	}
+}
+
 func TestGenerateConfig_NoDefaultGateway(t *testing.T) {
 	conf := newConf(t, "192.168.1.0/29")
 	conf.DefaultGateway = nil

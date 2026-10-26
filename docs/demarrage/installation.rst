@@ -165,11 +165,12 @@ Vérifier l'installation
 
 .. code-block:: bash
 
-   systemctl status agent
+   systemctl status two-hostsvc agent
    curl -s http://127.0.0.1:8080/vpcs
 
-Une liste JSON — vide au premier démarrage — signifie que l'API répond. Passez à
-:doc:`/demarrage/premier-vpc`.
+Une liste JSON — vide au premier démarrage — signifie que l'API répond. ``two-hostsvc``, le relais
+DNS et NTP des VM, doit être actif : sans lui, la création d'un VPC échoue (voir
+:doc:`/concepts/dns-ntp`). Passez à :doc:`/demarrage/premier-vpc`.
 
 .. important::
 

@@ -86,7 +86,8 @@ func BuildReply(c SubnetConfig, h Host, req *dhcpv4.DHCPv4) (*dhcpv4.DHCPv4, err
 		dhcpv4.WithNetmask(c.Network.Mask),
 		dhcpv4.WithLeaseTime(uint32(LeaseTime.Seconds())),
 		dhcpv4.WithOption(dhcpv4.OptServerIdentifier(c.InterfaceIP)),
-		dhcpv4.WithOption(dhcpv4.OptDNS(DNSServers()...)),
+		dhcpv4.WithOption(dhcpv4.OptDNS(c.InterfaceIP)),
+		dhcpv4.WithOption(dhcpv4.OptNTPServers(c.InterfaceIP)),
 		dhcpv4.WithOption(dhcpv4.OptClasslessStaticRoute(routes...)),
 		dhcpv4.WithOption(dhcpv4.OptGeneric(dhcpv4.OptionInterfaceMTU, dhcpv4.Uint16(c.InterfaceMTU()).ToBytes())),
 	}

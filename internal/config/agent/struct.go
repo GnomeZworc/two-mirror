@@ -54,6 +54,7 @@ type Config struct {
 	} `mapstructure:"watchdog"`
 	Network          Network           `mapstructure:"network"`
 	BGP              BGP               `mapstructure:"bgp"`
+	HostSvc          HostSvc           `mapstructure:"hostsvc"`
 	DefaultInterface string            `mapstructure:"default_interface"`
 	Interfaces       map[string]string `mapstructure:"interfaces"`
 }
@@ -79,6 +80,9 @@ func LoadConfig(path string) (*Config, error) {
 	v.SetDefault("times.poll_interval", PollInterval)
 	v.SetDefault("metadata.run_dir", "/run/two/metadata")
 	v.SetDefault("dhcp.backend", BackendTwo)
+	v.SetDefault("hostsvc.dns_upstream", []string{})
+	v.SetDefault("hostsvc.ntp_upstream", []string{})
+	v.SetDefault("hostsvc.rate_limit_per_vpc", RateLimitPerVPC)
 	v.SetDefault("qemu.ovmf_code_path", "/usr/share/OVMF/OVMF_CODE.fd")
 	v.SetDefault("qemu.ovmf_vars_template", "/usr/share/OVMF/OVMF_VARS.fd")
 	v.SetDefault("qemu.uefi_vars_dir", "/run/two/vms/uefi")
@@ -109,6 +113,9 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 	if err := cfg.Times.Validate(); err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	if err := cfg.HostSvc.Validate(); err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 

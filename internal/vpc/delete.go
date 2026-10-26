@@ -17,6 +17,10 @@ func DeleteVPC(db *badger.DB, name string) error {
 	} else if current == state.Deleting {
 		vpcID := strings.SplitN(name, "-", 2)[1]
 
+		if err := teardownHostSvc(name, newSystemHostSvc()); err != nil {
+			return err
+		}
+
 		if err := l3vni.Delete(db, name); err != nil {
 			return err
 		}

@@ -53,6 +53,9 @@ func CreateVPC(db *badger.DB, name string, cfg *configuration.Config) error {
 		if err := l3vni.Create(db, name, cfg); err != nil {
 			return err
 		}
+		if err := setupHostSvc(name, newSystemHostSvc()); err != nil {
+			return err
+		}
 		return state.Set(db, "vpc/"+name, state.Running)
 	}
 	return nil

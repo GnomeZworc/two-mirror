@@ -52,6 +52,7 @@ jobs:
           - metadata
           - agent
           - dhcp
+          - two-hostsvc
     uses: ./.forgejo/workflows/build.yml
     with:
       tag: ${{ needs.set-release-target.outputs.release_cible }}
@@ -80,6 +81,8 @@ jobs:
             name: dhcp@.service
           - path: systemd/metadata@.service
             name: metadata@.service
+          - path: systemd/two-hostsvc.service
+            name: two-hostsvc.service
     steps:
       - uses: actions/checkout@v3
       - name: Move asset
