@@ -32,7 +32,7 @@ func CreateVPC(db *badger.DB, name string, cfg *configuration.Config) error {
 			return err
 		}
 
-		if err := netif.BridgeSetMaster("vp-"+vpcID+"-e", "br-public"); err != nil {
+		if err := netif.BridgeSetMaster("vp-"+vpcID+"-e", cfg.PublicBridge()); err != nil {
 			return err
 		}
 

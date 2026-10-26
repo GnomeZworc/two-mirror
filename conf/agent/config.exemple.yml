@@ -39,10 +39,12 @@ times:
 # Bridge interface used when the requested iface_type is not found in interfaces
 default_interface: br-000000
 
-# Map of logical interface types to physical bridge names on this host
+# Map of logical interface types to physical bridge names on this host.
+# internet: public bridge, carrying vxlan-public (deploy.sh --public_vni); every VPC
+#   plugs its vp-<id>-e veth into it. br-public when absent, never default_interface.
 interfaces:
   vms: br-000000
-  internet: br-000000
+  internet: br-public
   admin: br-000000
 
 # MTU, identical on every hypervisor.

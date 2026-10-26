@@ -74,6 +74,13 @@ func TestNew_IntervalleValideConserve(t *testing.T) {
 	}
 }
 
+func TestNew_ChecksThePublicSegmentOnTheSystem(t *testing.T) {
+	w := New(newTestDB(t), testCfg(t), &recorder{}, nil, time.Second)
+	if _, ok := w.public.(systemPublicProbe); !ok {
+		t.Errorf("sonde du segment public = %T, systemPublicProbe attendue", w.public)
+	}
+}
+
 func TestNew_LoggerNil(t *testing.T) {
 	w := New(newTestDB(t), testCfg(t), &recorder{}, nil, time.Second)
 	if w.logger == nil {
@@ -141,6 +148,7 @@ func TestRun_ErreurDeBaseLogueeEtBoucleContinue(t *testing.T) {
 	n := newChanNotifier()
 	l, buf := testLogger()
 	w := New(db, testCfg(t), n, l, 10*time.Millisecond)
+	w.public = &fakePublicProbe{ports: []string{"vxlan-public"}}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
 	defer cancel()

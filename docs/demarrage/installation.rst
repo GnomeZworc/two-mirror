@@ -50,9 +50,12 @@ depuis la release, et les vérifie contre le manifeste ``SHA256SUMS``.
      - bridge principal, auquel l'uplink est rattaché
      - ``br-000000``
    * - ``-P <bridge>``
-     - bridge supplémentaire, créé vide et réservé ; garder ``br-public``, nom attendu par
-       l'agent (voir ci-dessous)
+     - bridge public, sans adresse : il porte ``vxlan-public`` et les veth des VPC ; à
+       reporter dans ``interfaces.internet`` s'il change (voir ci-dessous)
      - ``br-public``
+   * - ``-N <vni>``
+     - VNI du segment public, partagé avec les bordures (``vxlan-public``)
+     - ``1``
    * - ``-R <secondes>``
      - délai avant le redémarrage de secours pendant la migration réseau
      - ``120``
@@ -89,12 +92,19 @@ en arrière. Voir :doc:`/exploitation/configuration`.
 le serveur de metadata : sans elle, iptables ne voit pas le trafic bridgé des VM et cloud-init
 ne se provisionne pas. Contrepartie assumée : tout le trafic inter-VM traverse les tables NAT.
 
-**Réseau** — création du bridge réservé, puis rattachement de l'uplink au bridge principal,
+**Réseau** — création du bridge public, puis rattachement de l'uplink au bridge principal,
 l'adresse et la route par défaut étant déplacées de l'interface physique vers le bridge.
 
-Le nom ``br-public`` est **en dur dans l'agent** : chaque VPC ``vp-<id>`` y raccorde un veth
-``vp-<id>-e`` côté host, dont l'autre extrémité ``vp-<id>-i`` rejoint un ``br-public`` créé dans
-le netns du VPC. Avec un autre nom passé à ``-P``, toute création de VPC échoue.
+**Segment public** — ``vxlan-public`` est créé avec le VNI de ``-N``, l'adresse IPv4 du bridge
+principal pour VTEP (comme les VXLAN de l'agent), le port 4789, sans apprentissage (les MAC
+distantes viennent d'EVPN) et un MTU de 1500, puis rattaché au bridge public. FRR l'annonce de
+lui-même (``advertise-all-vni``). Relancer ``-i`` ne change rien ; le VXLAN est recréé si son VNI
+ou son VTEP a changé.
+
+Chaque VPC ``vp-<id>`` raccorde au bridge public un veth ``vp-<id>-e`` côté host, dont l'autre
+extrémité ``vp-<id>-i`` rejoint un ``br-public`` créé dans le netns du VPC. L'agent lit le nom
+du bridge public dans ``interfaces.internet`` (``br-public`` par défaut) : avec un autre nom
+passé à ``-P`` sans le reporter dans cette clé, toute création de VPC échoue.
 
 .. danger::
 

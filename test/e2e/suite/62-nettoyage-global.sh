@@ -11,7 +11,7 @@ for kind in vms subnets vpcs; do
 done
 check "${HOST} : aucun netns de VPC" none sh -c "ip netns list | awk '{print \$1}' | grep '^vp-'"
 check "${HOST} : aucun tap" none sh -c "ip -o link show | awk -F': ' '{print \$2}' | grep '^tap'"
-check "${HOST} : aucune interface de subnet (v-*, vxlan-*)" none sh -c "ip -o link show | awk -F': ' '{print \$2}' | cut -d@ -f1 | grep -E '^(v-|vxlan-)'"
+check "${HOST} : aucune interface de subnet (v-*, vxlan-*)" none sh -c "ip -o link show | awk -F': ' '{print \$2}' | cut -d@ -f1 | grep -E '^(v-|vxlan-[0-9])'"
 check "${HOST} : aucune VRF de VPC (vrf-*)" none sh -c "ip -o link show type vrf | awk -F': ' '{print \$2}' | grep '^vrf-'"
 check "${HOST} : aucune unité two-vm-*" none systemctl list-units --all --plain --no-legend 'two-vm-*'
 check "${HOST} : aucune instance DHCP (dhcp@, dnsmasq@) ni de métadonnées (metadata@) active" none sh -c "systemctl list-units --plain --no-legend 'dhcp@*' 'dnsmasq@*' 'metadata@*' | grep -w active"

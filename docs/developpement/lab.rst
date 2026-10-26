@@ -127,6 +127,23 @@ un subnet créé avec ``mode: bridge`` et ``iface_type: lan`` rattache son veth 
 subnets ``vxlan`` (``iface_type: vms``, clé absente) restent sur ``default_interface`` : le VTEP
 ne change pas. Le bridge n'est créé qu'au premier démarrage, comme le reste du provisionnement.
 
+**Bordures (``evpn-3hv``, #87).** ``bd1`` et ``bd2`` (``192.168.14.21`` et ``.22``) jouent les
+routeurs de bordure du segment public. Ce sont des nœuds ``host`` sans agent : leur provision
+(``test/e2e/topologies/provision/border.sh``) crée ``br-public``, y accroche ``vxlan-public``
+(VNI 1, VTEP = adresse de l'underlay, ``nolearning``), et pose sur le bridge la **gateway
+anycast** ``240.0.0.1/24`` avec la même MAC sur les deux, ``02:01:00:00:00:01`` (la MAC anycast
+de two pour le VNI 1), ainsi qu'une destination de test ``240.255.0.1/32`` sur une interface
+``dummy`` ``internet``. Leur ``frr.conf`` est celui d'un hyperviseur — iBGP AS 64600 vers les
+deux route reflectors, ``advertise-all-vni`` — plus ``advertise-default-gw`` : la MAC et l'IP
+de la gateway sont annoncées en type 2 avec la communauté *Default Gateway* (RFC 7432, §7.8 et
+§10.1). Sans elle, la MAC propre du bridge n'est pas annoncée, les hyperviseurs inondent le
+trafic vers tous les VTEP et les deux bordures répondent ; avec elle, chaque hyperviseur installe
+la MAC vers une seule bordure et bascule sur l'autre quand elle disparaît (mesuré le 2026-10-25,
+#87). Les adresses publiques du lab sont prises dans ``240.0.0.0/4``, réservée (RFC 1112,
+registre RFC 6890) et jamais routée sur Internet. Les bordures sont déclarées après les
+hyperviseurs : les adresses et les taps de l'underlay ne changent pas, ceux du segment ``lan``
+sont renumérotés.
+
 **Tester l'arbre courant plutôt que la release.** ``test/e2e/build.sh`` compile ``agent``,
 ``dhcp`` et ``metadata`` pour linux/amd64 dans ``test/e2e/topologies/bin/`` (ignoré par git),
 que les hyperviseurs reçoivent par ``files: {bin: bin}``. Après ``deploy.sh``,
@@ -369,6 +386,10 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - fenêtre ARP de la gateway anycast entre deux hôtes — relais L2 depuis l'adresse d'émission d'un hôte, gateway de la VM inchangée, métadonnées, renouvellement DHCP et TCP local sans perte pendant la fenêtre
      - hv1 hv2
      - #57
+   * - ``45-segment-public``
+     - segment public de l'hôte — vxlan-public (VNI 1) posé par le bootstrap sur br-public, VNI annoncé en EVPN et vu par les bordures, gateway anycast des bordures installée vers une seule bordure, gateway et destination de test joignables sans doublon, L2 entre hyperviseurs, veth des VPC sur le bridge public, watchdog
+     - hv1 hv2 hv3
+     - #87
    * - ``51-l3vni``
      - routage inter-subnet entre hôtes par L3VNI (IRB symétrique) — VRF, RMAC, exports /24 et /32, RT-5 réfléchies, TTL, isolation par RT, unreachable default dans la VRF, démontage d'un VPC routé
      - hv1 hv2

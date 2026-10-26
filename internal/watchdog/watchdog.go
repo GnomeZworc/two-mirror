@@ -23,6 +23,7 @@ type Watchdog struct {
 	interval time.Duration
 	dbusDown bool
 	l3       l3Probe
+	public   publicProbe
 }
 
 func New(db *badger.DB, cfg *configuration.Config, n notify.Notifier, logger *slog.Logger, interval time.Duration) *Watchdog {
@@ -41,6 +42,7 @@ func New(db *badger.DB, cfg *configuration.Config, n notify.Notifier, logger *sl
 		logger:   logger,
 		interval: interval,
 		l3:       systemProbe{frr: frr.NewClient()},
+		public:   systemPublicProbe{},
 	}
 }
 
@@ -74,6 +76,7 @@ func (w *Watchdog) tick() {
 	if err := CheckVMs(w.db, w.cfg, u, w.notifier); err != nil {
 		w.logger.Error("watchdog: vm check failed", "err", err)
 	}
+	CheckPublicSegment(w.cfg, w.public, w.notifier)
 	CheckBGP(w.cfg, w.l3, w.notifier)
 	if err := CheckL3VPCs(w.db, w.cfg, w.l3, w.notifier); err != nil {
 		w.logger.Error("watchdog: l3 vpc check failed", "err", err)

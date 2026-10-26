@@ -1,6 +1,7 @@
 #!/bin/sh
 set -eu
 RELEASE=0.2.0
+PUBLIC_VNI=1
 GIT_SERVER=https://git.g3e.fr/
 REPO=syonad/two
 n=0
@@ -29,6 +30,11 @@ done
 chmod 0755 deploy.sh bootstrap_kvm.sh
 bash ./deploy.sh --noup_script -i -u "${LAB_UPLINK}" -t "${RELEASE}"
 DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends nftables
+if [ -f "${LAB_FILES}/scripts/bootstrap_kvm.sh" ]; then
+    bash -c 'FLAGS_TRUE=0; FLAGS_FALSE=1; . ./deploy.sh && . "$1" && kvm_public_segment "${FLAGS_FALSE}" "${FLAGS_TRUE}" br-000000 br-public "$2"' \
+        lab "${LAB_FILES}/scripts/bootstrap_kvm.sh" "${PUBLIC_VNI}"
+    echo "lab: segment public posé par le bootstrap_kvm.sh de l'arbre courant (VNI ${PUBLIC_VNI})"
+fi
 for binary in "${LAB_FILES}"/bin/*; do
     [ -f "${binary}" ] || continue
     name=$(basename "${binary}")
