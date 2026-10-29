@@ -399,19 +399,19 @@ test_matrix_lists_every_test_from_its_header () {
 }
 
 test_owned_keeps_only_the_resources_of_the_test () {
-    setup "owned : vp-tNN, sn-tNN, ng-tNN, tNN- seulement"
-    [[ $(node 'printf "%s\n" vp-t41a sn-t41b ng-t41c t41-vm vp-t42a ng-t42 t4-x vp-s4 sn-s41 ng-s41 | T=41 owned | tr "\n" " "') == "vp-t41a sn-t41b ng-t41c t41-vm " ]] \
-        || fail "$(node 'printf "%s\n" vp-t41a sn-t41b ng-t41c t41-vm vp-t42a ng-t42 t4-x vp-s4 sn-s41 ng-s41 | T=41 owned | tr "\n" " "')"
+    setup "owned : vp-tNN, sn-tNN, ng-tNN, fip-tNN, tNN- seulement"
+    [[ $(node 'printf "%s\n" vp-t41a sn-t41b ng-t41c fip-t41d t41-vm vp-t42a ng-t42 fip-t42 t4-x vp-s4 sn-s41 ng-s41 fip-s41 | T=41 owned | tr "\n" " "') == "vp-t41a sn-t41b ng-t41c fip-t41d t41-vm " ]] \
+        || fail "$(node 'printf "%s\n" vp-t41a sn-t41b ng-t41c fip-t41d t41-vm vp-t42a ng-t42 fip-t42 t4-x vp-s4 sn-s41 ng-s41 fip-s41 | T=41 owned | tr "\n" " "')"
     teardown
 }
 
 test_teardown_deletes_vms_then_subnets_then_vpcs () {
-    setup "teardown_owned : VM, puis subnets, puis passerelles NAT, puis VPC, et rien d'autre"
-    local stub='api_names () { case $1 in vms) [ -f /tmp/.t70.$$ ] || echo t41-a; echo t42-z ;; subnets) echo sn-t41a ;; nat-gateways) echo ng-t41a; echo ng-t42 ;; vpcs) echo vp-t41a ;; esac; }; api_delete () { echo "DEL $1"; [ "$1" = vms/t41-a ] && touch /tmp/.t70.$$; :; }; wait_state () { :; }; rm () { :; }; scratch_netns () { :; }; scratch_files () { :; }; '
+    setup "teardown_owned : IP flottantes, puis VM, subnets, passerelles NAT, VPC, et rien d'autre"
+    local stub='api_names () { case $1 in floating-ips) echo fip-t41a; echo fip-t42 ;; vms) [ -f /tmp/.t70.$$ ] || echo t41-a; echo t42-z ;; subnets) echo sn-t41a ;; nat-gateways) echo ng-t41a; echo ng-t42 ;; vpcs) echo vp-t41a ;; esac; }; api_delete () { echo "DEL $1"; [ "$1" = vms/t41-a ] && touch /tmp/.t70.$$; :; }; wait_state () { :; }; rm () { :; }; scratch_netns () { :; }; scratch_files () { :; }; '
     local out
     out=$(node "T=41; ${stub}teardown_owned; command rm -f /tmp/.t70.\$\$")
-    [[ $(grep '^DEL' <<< "${out}" | tr '\n' ' ') == "DEL vms/t41-a DEL subnets/sn-t41a DEL nat-gateways/ng-t41a DEL vpcs/vp-t41a " ]] || fail "ordre : ${out}"
-    grep -q 'encore présents : subnets/sn-t41a nat-gateways/ng-t41a vpcs/vp-t41a' <<< "${out}" || fail "restes non signalés : ${out}"
+    [[ $(grep '^DEL' <<< "${out}" | tr '\n' ' ') == "DEL floating-ips/fip-t41a DEL vms/t41-a DEL subnets/sn-t41a DEL nat-gateways/ng-t41a DEL vpcs/vp-t41a " ]] || fail "ordre : ${out}"
+    grep -q 'encore présents : floating-ips/fip-t41a subnets/sn-t41a nat-gateways/ng-t41a vpcs/vp-t41a' <<< "${out}" || fail "restes non signalés : ${out}"
     teardown
 }
 
