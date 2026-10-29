@@ -7,10 +7,10 @@ import (
 	"net"
 )
 
-func RuleAddFrom(_ net.IP, _, _ int, _ bool) error {
+func RuleAddFrom(_ net.IP, _ *net.IPNet, _, _ int) error {
 	return errors.New("not supported on this platform")
 }
 
-func RuleDelFromIfExists(_ net.IP, _, _ int, _ bool) error {
+func RuleDelFromIfExists(_ net.IP, _ *net.IPNet, _, _ int) error {
 	return errors.New("not supported on this platform")
 }
