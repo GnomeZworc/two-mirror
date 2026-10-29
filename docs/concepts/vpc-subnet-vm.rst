@@ -25,6 +25,14 @@ public est celui de ``interfaces.internet``, ``br-public`` si la clé est absent
 accroche ``vxlan-public``, le VXLAN du segment public partagé avec les bordures
 (:doc:`/demarrage/installation`) ; sans ce bridge, toute création de VPC échoue.
 
+Le ``br-public`` du netns n'est qu'un point de raccordement : rien n'entre dans le VPC par lui.
+L'agent y pose ``arp_ignore=1`` (il ne répond pas à l'ARP pour les adresses du netns) et, dans la
+table nftables ``ip two``, rejette tout IP arrivé par ``br-public`` (chaînes ``in-br-public`` et
+``fwd-br-public``). Seules les interfaces publiques prévues — passerelle NAT, IP flottante — y
+reçoivent du trafic. Il désactive aussi ``br_netfilter`` dans le netns
+(``net.bridge.bridge-nf-call-{iptables,ip6tables,arptables}=0``, quand le module est chargé) : sinon
+conntrack voit chaque trame pontée et le SNAT de la passerelle NAT ne s'applique plus.
+
 Dans le netns, l'agent pose aussi la ``dummy`` ``hostsvc`` (``169.254.169.253/32``) et la chaîne
 iptables ``TWO-HOSTSVC``, puis demande à ``two-hostsvc`` de servir le VPC : c'est le chemin du
 DNS et du NTP des VM (voir :doc:`dns-ntp`). Si ``two-hostsvc`` ne répond pas, la création du VPC

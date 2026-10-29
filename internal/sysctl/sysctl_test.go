@@ -46,3 +46,25 @@ func TestSetRefusesAnUnknownKeyWithoutCreatingIt(t *testing.T) {
 		t.Errorf("clé inconnue créée : %v", err)
 	}
 }
+
+func TestSetIfPresentSkipsAnAbsentKey(t *testing.T) {
+	dir := fakeRoot(t)
+	set, err := SetIfPresent("net.bridge.bridge-nf-call-iptables", "0")
+	if err != nil || set {
+		t.Errorf("clé absente : %v, %v ; false, nil attendus", set, err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "net", "bridge")); err == nil {
+		t.Error("répertoire créé pour une clé absente")
+	}
+}
+
+func TestSetIfPresentWritesAPresentKey(t *testing.T) {
+	dir := fakeRoot(t)
+	set, err := SetIfPresent("net.ipv4.ip_forward", "1")
+	if err != nil || !set {
+		t.Fatalf("clé présente : %v, %v", set, err)
+	}
+	if got, _ := os.ReadFile(filepath.Join(dir, "net", "ipv4", "ip_forward")); string(got) != "1" {
+		t.Errorf("contenu %q", got)
+	}
+}

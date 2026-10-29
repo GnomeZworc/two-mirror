@@ -1,7 +1,9 @@
 package sysctl
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,4 +22,14 @@ func Set(key, value string) error {
 		return fmt.Errorf("sysctl %s=%s: %w", key, value, err)
 	}
 	return f.Close()
+}
+
+func SetIfPresent(key, value string) (bool, error) {
+	path := filepath.Join(root, strings.ReplaceAll(key, ".", "/"))
+	if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
+		return false, nil
+	} else if err != nil {
+		return false, fmt.Errorf("sysctl %s: %w", key, err)
+	}
+	return true, Set(key, value)
 }
