@@ -39,6 +39,14 @@ func BridgeAddLocalMAC(bridge string, mac net.HardwareAddr) error {
 	return netlink.NeighAdd(bridgeLocalEntry(link.Attrs().Index, mac))
 }
 
+func BridgeSetLocalMAC(bridge string, mac net.HardwareAddr) error {
+	link, err := netlink.LinkByName(bridge)
+	if err != nil {
+		return err
+	}
+	return netlink.NeighSet(bridgeLocalEntry(link.Attrs().Index, mac))
+}
+
 func BridgeHasLocalMAC(bridge string, mac net.HardwareAddr) (bool, error) {
 	link, err := netlink.LinkByName(bridge)
 	if err != nil {

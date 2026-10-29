@@ -44,7 +44,9 @@ Dans le netns du VPC ``vp-<id>``, sur l'hôte de la passerelle :
   même quel que soit l'hôte : c'est ce qui permet de déplacer la passerelle ;
 * une entrée FDB locale de cette MAC sur ``br-public`` : un ``macvlan`` n'en crée pas dans son
   bridge parent, et sans elle les trames vers la passerelle seraient inondées au lieu de lui être
-  remises (même mécanisme que la MAC anycast des subnets ``vxlan``) ;
+  remises (même mécanisme que la MAC anycast des subnets ``vxlan``). Elle est posée par
+  remplacement : après une bascule, le bridge a appris cette MAC sur le segment, vers l'ancien
+  hôte ;
 * ``arp_ignore=1``, ``arp_announce=2`` et ``arp_notify=1`` sur ``ng-<id>`` : la passerelle ne
   répond à l'ARP que pour son IP de sortie, et annonce celle-ci par un ARP gratuit à sa mise en
   route ;

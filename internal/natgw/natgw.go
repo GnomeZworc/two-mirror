@@ -92,7 +92,7 @@ func create(h host, g gateway) error {
 	ns := g.vpc
 	steps := []step{
 		{"create " + g.iface, func() error { return h.CreateMacvlan(ns, g.iface, publicBridge, g.mac) }},
-		{"local fdb entry " + g.mac.String(), func() error { return h.BridgeAddLocalMAC(ns, publicBridge, g.mac) }},
+		{"local fdb entry " + g.mac.String(), func() error { return h.BridgeSetLocalMAC(ns, publicBridge, g.mac) }},
 	}
 	for _, kv := range sysctls(g.iface) {
 		steps = append(steps, step{kv[0], func() error { return h.Sysctl(ns, kv[0], kv[1]) }})
