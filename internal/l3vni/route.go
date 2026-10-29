@@ -24,6 +24,10 @@ func WithdrawDefault(db *badger.DB, vpcName string) error {
 	return withdrawDefault(newSystem(), db, vpcName)
 }
 
+func NetnsDefaultToVRF(db *badger.DB, vpcName string) error {
+	return netnsDefaultToVRF(newSystem(), db, vpcName)
+}
+
 func loadRouted(db *badger.DB, vpcName string) (l3VPC, bool, error) {
 	parts := strings.SplitN(vpcName, "-", 2)
 	if len(parts) != 2 {
@@ -86,6 +90,17 @@ func withdrawDefault(h host, db *badger.DB, vpcName string) error {
 	}
 	if err := h.TableRouteDelVia(v.vni, defaultRoute, transitNetns.IP, v.vethHost()); err != nil {
 		return fmt.Errorf("withdraw default from %s: %w", v.vrf(), err)
+	}
+	return nil
+}
+
+func netnsDefaultToVRF(h host, db *badger.DB, vpcName string) error {
+	v, err := loadRequired(db, vpcName)
+	if err != nil {
+		return err
+	}
+	if err := h.RouteVia(v.netns, defaultRoute, transitHost.IP, v.vethNetns()); err != nil {
+		return fmt.Errorf("default route of %s towards %s: %w", v.netns, v.vrf(), err)
 	}
 	return nil
 }

@@ -134,3 +134,22 @@ func TestDefaultRouteErrorsArePropagated(t *testing.T) {
 		t.Errorf("withdraw : %v", err)
 	}
 }
+
+func TestNetnsDefaultToVRFPointsTheNetnsDefaultAtTheVRF(t *testing.T) {
+	f := &fakeHost{}
+	if err := netnsDefaultToVRF(f, routedDB(t), "vp-s7"); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"route [vp-s7] 0.0.0.0/0 via 169.254.0.1 dev l3-s7-i"}
+	if !reflect.DeepEqual(f.calls, want) {
+		t.Errorf("appels %q, attendu %q", f.calls, want)
+	}
+}
+
+func TestNetnsDefaultToVRFRefusesAVPCWithoutL3VNI(t *testing.T) {
+	f := &fakeHost{}
+	err := netnsDefaultToVRF(f, routedDB(t), "vp-flat")
+	if err == nil || !strings.Contains(err.Error(), `vpc "vp-flat" has no l3vni`) || len(f.calls) != 0 {
+		t.Errorf("erreur %v, appels %q", err, f.calls)
+	}
+}
