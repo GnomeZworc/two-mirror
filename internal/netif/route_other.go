@@ -30,3 +30,7 @@ func RouteDelUnreachableDefaultIfExists(_, _ int) error {
 func HasUnreachableDefault(_, _ int) (bool, error) {
 	return false, errors.New("route listing is only implemented on linux")
 }
+
+func RouteDelViaIfExists(_ int, _ *net.IPNet, _ net.IP, _ string) error {
+	return errors.New("not supported on this platform")
+}

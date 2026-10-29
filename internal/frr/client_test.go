@@ -124,6 +124,8 @@ func TestWithdrawVRFRunsEachStepInOrderThenSaves(t *testing.T) {
 		{"configure terminal", "no router bgp 64600 vrf vrf-a1b2"},
 		{"configure terminal", "no route-map EXPORT-a1b2"},
 		{"configure terminal", "no ip prefix-list PL-a1b2"},
+		{"configure terminal", "no ip prefix-list PL-a1b2-default"},
+		{"configure terminal", "no ip prefix-list PL-a1b2-transit"},
 		{"write memory"},
 		{"show running-config"},
 	}
