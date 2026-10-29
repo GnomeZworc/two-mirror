@@ -14,3 +14,4 @@ fonctionnent entre eux. Le contrat HTTP correspondant est dans
    metadata-cloud-init
    dns-ntp
    passerelle-nat
+   ip-flottante

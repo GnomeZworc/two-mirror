@@ -43,6 +43,12 @@ de sérialisation structurée.
    nat-gateway/<name>/ip        → <ip>/<préfixe>  (IP de sortie, telle que fournie)
    nat-gateway/<name>/gateway   → <ip>            (gateway des bordures)
 
+   floating-ip/<name>/state     → creating | running | error | deleting | deleted
+   floating-ip/<name>/vm        → <vm-name>
+   floating-ip/<name>/interface → <nom>           (nom de l'interface de la VM ; l'IP privée y est lue)
+   floating-ip/<name>/ip        → <ip>/<préfixe>  (IP publique, telle que fournie)
+   floating-ip/<name>/gateway   → <ip>            (gateway des bordures)
+
 Règles
 ------
 

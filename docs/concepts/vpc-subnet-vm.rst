@@ -120,7 +120,9 @@ Une VM est un processus QEMU/KVM raccordé à un ou plusieurs subnets par des ta
 le nom de l'interface dans le guest. Chaque interface porte un ``name``, obligatoire et unique dans
 la VM, choisi par l'appelant (``nic-a1b2`` par exemple) : c'est l'identifiant stable par lequel
 l'API désigne une interface, son rang pouvant changer. Aucune interface Linux n'en tire son nom,
-ni dans le guest ni sur l'hôte. Exactement une interface doit être ``primary`` : elle porte
+ni dans le guest ni sur l'hôte. Une :doc:`IP flottante <ip-flottante>` désigne l'interface par ce
+nom ; le ``GET`` de la VM l'affiche sur l'interface (``floating_ip``, en lecture seule, refusé à la
+création), et la suppression de la VM est refusée (409) tant qu'elle est attachée. Exactement une interface doit être ``primary`` : elle porte
 la route par défaut et le serveur de metadata. Tous les subnets d'une VM doivent appartenir au
 **même VPC**.
 
