@@ -636,8 +636,17 @@ components:
 
     VMInterface:
       type: object
-      required: [subnet, ip, mac, primary]
+      required: [name, subnet, ip, mac, primary]
       properties:
+        name:
+          type: string
+          description: >
+            Name of the interface, chosen by the caller and unique within the VM. It is an API
+            identifier only, used to point at the interface (a floating IP for instance): no
+            Linux interface is named after it, neither in the guest nor on the host. The agent
+            does not check its format. Missing, empty or used twice in the VM → 400. Interfaces
+            of VMs created before it was required are named nic-<index> at agent start.
+          example: nic-a1b2
         subnet:
           type: string
           example: sn-00001

@@ -22,6 +22,7 @@ de sérialisation structurée.
    subnet/<name>/gateway        → <ip>            (optionnel)
 
    vm/<name>/state              → creating | running | error | deleting | deleted
+   vm/<name>/nic/<i>/name       → <nom>           (choisi par l'appelant, unique dans la VM)
    vm/<name>/nic/<i>/subnet     → <subnet-name>   (une interface par index, ordre du tableau interfaces)
    vm/<name>/nic/<i>/ip         → <ip>
    vm/<name>/nic/<i>/mac        → <mac>           (fournie par l'appelant, conservée telle quelle)
@@ -60,6 +61,9 @@ recopie la MAC de chaque interface existante dans ``vm/<name>/nic/<i>/mac``, pui
 clés. Les VM ``deleted`` sont ignorées. Une interface dont la MAC est introuvable fait échouer le
 démarrage en la nommant, et la table reste en place tant que toutes les interfaces ne sont pas
 migrées.
+
+**Interfaces sans nom.** Avant la 0.3.0, une interface n'avait pas de nom. Au démarrage, l'agent
+nomme ``nic-<i>`` chaque interface qui n'en a pas, d'après son rang ; un nom existant est gardé.
 
 **Anciens noms de disques.** Jusqu'en 0.1.0, les disques additionnels s'appelaient ``sdX``. Au
 démarrage, l'agent renomme chaque clé ``vm/<name>/disk/sdX`` en ``vm/<name>/disk/xvdX`` (même

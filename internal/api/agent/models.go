@@ -40,6 +40,7 @@ type Subnet struct {
 }
 
 type VMInterface struct {
+	Name       string `json:"name"`
 	Subnet     string `json:"subnet"`
 	IP         string `json:"ip"`
 	MAC        string `json:"mac"`

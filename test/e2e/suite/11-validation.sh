@@ -42,6 +42,8 @@ done
 check "VM : subnet inconnu, 422" expect_code 422 api_post_code vms "$(vm_body t11-x sn-t11z 10.11.1.12 "${NONE}")"
 check "VM : aucune interface primaire, 400" expect_code 400 api_post_code vms "$(vm_body t11-x sn-t11a 10.11.1.12 "${NONE}" | sed 's/"primary":true/"primary":false/')"
 check "VM : interface sans mac, 400" expect_code 400 api_post_code vms "$(vm_body t11-x sn-t11a 10.11.1.12 "${NONE}" | jq -c 'del(.interfaces[0].mac)')"
+check "VM : interface sans nom, 400" expect_code 400 api_post_code vms "$(vm_body t11-x sn-t11a 10.11.1.12 "${NONE}" | jq -c 'del(.interfaces[0].name)')"
+check "VM : deux interfaces de même nom, 400" expect_code 400 api_post_code vms "$(vm_json t11-x --disk "vda=${NONE}" --nic sn-t11a=10.11.1.12 --nic sn-t11a=10.11.1.13 | jq -c '.interfaces[1].name = "nic-0"')"
 for dev in sdb vdb xvdaa; do
     check "VM : disque additionnel ${dev}, 400" expect_code 400 api_post_code vms "$(vm_body t11-x sn-t11a 10.11.1.12 "${NONE}" | jq -c --arg d "${dev}" '.storage += [{"path":"/x.qcow2","dev":$d}]')"
 done

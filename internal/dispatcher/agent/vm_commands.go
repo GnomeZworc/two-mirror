@@ -22,6 +22,7 @@ type VMDisk struct {
 }
 
 type VMNIC struct {
+	Name       string
 	Subnet     string
 	IP         string
 	MAC        string
@@ -57,6 +58,9 @@ func (c StartVMCommand) Prepare(db *badger.DB, _ *configuration.Config) error {
 	state.Set(db, c.Key(), state.Creating)
 	for i, n := range c.NICs {
 		prefix := fmt.Sprintf("vm/%s/nic/%d/", c.Name, i)
+		if err := kv.AddInDB(db, prefix+"name", n.Name); err != nil {
+			return fmt.Errorf("store nic %d name: %w", i, err)
+		}
 		if err := kv.AddInDB(db, prefix+"subnet", n.Subnet); err != nil {
 			return fmt.Errorf("store nic %d subnet: %w", i, err)
 		}

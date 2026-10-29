@@ -117,7 +117,10 @@ VM
 Une VM est un processus QEMU/KVM raccordé à un ou plusieurs subnets par des taps.
 
 **Interfaces.** L'ordre du tableau ``interfaces`` détermine le slot PCI (``0x03 + index``), donc
-le nom de l'interface dans le guest. Exactement une interface doit être ``primary`` : elle porte
+le nom de l'interface dans le guest. Chaque interface porte un ``name``, obligatoire et unique dans
+la VM, choisi par l'appelant (``nic-a1b2`` par exemple) : c'est l'identifiant stable par lequel
+l'API désigne une interface, son rang pouvant changer. Aucune interface Linux n'en tire son nom,
+ni dans le guest ni sur l'hôte. Exactement une interface doit être ``primary`` : elle porte
 la route par défaut et le serveur de metadata. Tous les subnets d'une VM doivent appartenir au
 **même VPC**.
 

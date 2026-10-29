@@ -96,6 +96,8 @@ func interfacesFromDB(prefix string, entries map[string]string) []VMInterface {
 			byIndex[idx] = &VMInterface{}
 		}
 		switch parts[1] {
+		case "name":
+			byIndex[idx].Name = value
 		case "subnet":
 			byIndex[idx].Subnet = value
 		case "ip":
