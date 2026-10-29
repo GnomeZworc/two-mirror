@@ -4,6 +4,7 @@ package netif
 
 import (
 	"bytes"
+	"errors"
 	"net"
 	"syscall"
 
@@ -48,4 +49,15 @@ func BridgeHasLocalMAC(bridge string, mac net.HardwareAddr) (bool, error) {
 		return false, err
 	}
 	return hasBridgeLocalMAC(entries, link.Attrs().Index, mac), nil
+}
+
+func BridgeDelLocalMACIfExists(bridge string, mac net.HardwareAddr) error {
+	link, err := netlink.LinkByName(bridge)
+	if err != nil {
+		return err
+	}
+	if err := netlink.NeighDel(bridgeLocalEntry(link.Attrs().Index, mac)); err != nil && !errors.Is(err, syscall.ENOENT) {
+		return err
+	}
+	return nil
 }

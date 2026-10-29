@@ -11,6 +11,7 @@ const (
 	RoleAnycastGateway byte = 0x01
 	RoleRouter         byte = 0x02
 	RoleHostGateway    byte = 0x03
+	RoleNATGateway     byte = 0x04
 
 	MaxVNI = 1<<24 - 1
 )
@@ -24,8 +25,16 @@ func HostMAC(role byte, vtep net.IP) (net.HardwareAddr, error) {
 }
 
 func AnycastMAC(vni int) (net.HardwareAddr, error) {
+	return vniMAC(RoleAnycastGateway, vni)
+}
+
+func NATGatewayMAC(l3vni int) (net.HardwareAddr, error) {
+	return vniMAC(RoleNATGateway, l3vni)
+}
+
+func vniMAC(role byte, vni int) (net.HardwareAddr, error) {
 	if vni < 1 || vni > MaxVNI {
 		return nil, fmt.Errorf("vni %d out of range 1-%d", vni, MaxVNI)
 	}
-	return net.HardwareAddr{locallyAdministered, RoleAnycastGateway, 0x00, byte(vni >> 16), byte(vni >> 8), byte(vni)}, nil
+	return net.HardwareAddr{locallyAdministered, role, 0x00, byte(vni >> 16), byte(vni >> 8), byte(vni)}, nil
 }

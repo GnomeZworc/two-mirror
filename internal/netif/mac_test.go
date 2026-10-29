@@ -98,3 +98,46 @@ func TestAnycastMACDiffersFromHostMACs(t *testing.T) {
 		}
 	}
 }
+
+func TestNATGatewayMAC(t *testing.T) {
+	cases := map[int]string{
+		1:      "02:04:00:00:00:01",
+		2911:   "02:04:00:00:0b:5f",
+		65535:  "02:04:00:00:ff:ff",
+		MaxVNI: "02:04:00:ff:ff:ff",
+	}
+	for l3vni, want := range cases {
+		got, err := NATGatewayMAC(l3vni)
+		if err != nil {
+			t.Fatalf("l3vni %d : erreur inattendue %v", l3vni, err)
+		}
+		if got.String() != want {
+			t.Errorf("l3vni %d : %s, %s attendu", l3vni, got, want)
+		}
+		if got[0]&0x02 == 0 || got[0]&0x01 != 0 {
+			t.Errorf("l3vni %d : %s n'est pas une MAC unicast administrée localement", l3vni, got)
+		}
+	}
+}
+
+func TestNATGatewayMACRefusesOutOfRangeVNI(t *testing.T) {
+	for _, l3vni := range []int{0, -1, MaxVNI + 1} {
+		if _, err := NATGatewayMAC(l3vni); err == nil {
+			t.Errorf("l3vni %d : une erreur était attendue", l3vni)
+		}
+	}
+}
+
+func TestNATGatewayMACDiffersFromOtherRoles(t *testing.T) {
+	nat, _ := NATGatewayMAC(2911)
+	anycast, _ := AnycastMAC(2911)
+	if nat.String() == anycast.String() {
+		t.Errorf("même MAC que la gateway anycast de même VNI : %s", nat)
+	}
+	for _, role := range []byte{RoleRouter, RoleHostGateway} {
+		host, _ := HostMAC(role, net.ParseIP("192.168.14.11"))
+		if host[1] == nat[1] {
+			t.Errorf("rôle %#x : même octet de rôle que la passerelle NAT (%s, %s)", role, host, nat)
+		}
+	}
+}
