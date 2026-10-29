@@ -198,6 +198,13 @@ func (c StopVMCommand) Prepare(db *badger.DB, _ *configuration.Config) error {
 	if !state.CanDelete(current) {
 		return fmt.Errorf("vm %q cannot be stopped while %s", c.Name, current)
 	}
+	floating, err := floatingIPOf(db, c.Name)
+	if err != nil {
+		return err
+	}
+	if floating != "" {
+		return fmt.Errorf("floating ip %q must be deleted before deleting vm %q", floating, c.Name)
+	}
 	return state.Set(db, c.Key(), state.Deleting)
 }
 

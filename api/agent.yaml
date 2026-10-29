@@ -189,7 +189,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
-          description: VM not stoppable — only running or error states can be stopped
+          description: VM not stoppable — only running or error states can be stopped, and its floating IPs must be deleted first
           content:
             application/json:
               schema:
@@ -387,6 +387,101 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           description: NAT gateway not deletable — only running or error states can be deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ── Floating IP ────────────────────────────────────────────────────────────
+
+  /floating-ips:
+    get:
+      summary: List all floating IPs of this agent
+      operationId: listFloatingIPs
+      responses:
+        "200":
+          description: List of floating IPs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FloatingIP"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      summary: Attach a floating IP to an interface of a VM of this agent
+      operationId: createFloatingIP
+      description: >-
+        Makes an interface of a VM reachable through a public IP it does not carry: stateless 1:1
+        translation in the netns of the VPC, on the host of the VM, the public IP answering ARP on
+        the public bridge (interfaces.internet). The VM leaves through its floating IP, even in a
+        VPC with a NAT gateway. To move it with the VM, delete it on the old host, then create it
+        on the new one. Attach and detach without touching the VM.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FloatingIPCreateRequest"
+      responses:
+        "202":
+          description: Floating IP creation accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FloatingIP"
+        "400":
+          description: Missing required field, invalid request body, ip without prefix length or not IPv4, or gateway not IPv4
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Floating IP already exists, VM unknown on this agent or not running, no interface of that name on the VM, interface that already has a floating IP, or public IP already used by another floating IP of this agent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /floating-ips/{name}:
+    parameters:
+      - $ref: "#/components/parameters/ResourceName"
+
+    get:
+      summary: Get floating IP status and info
+      operationId: getFloatingIP
+      responses:
+        "200":
+          description: Floating IP found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FloatingIP"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      summary: Detach and delete a floating IP
+      operationId: deleteFloatingIP
+      responses:
+        "202":
+          description: Floating IP deletion accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FloatingIP"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Floating IP not deletable — only running or error states can be deleted
           content:
             application/json:
               schema:
@@ -677,6 +772,24 @@ components:
             of the subnet: restricting it is the caller's job. Always returned
             by GET.
           example: false
+        floating_ip:
+          readOnly: true
+          description: >
+            Floating IP attached to this interface, computed on read from /floating-ips; absent
+            when the interface has none. Refused in a creation request (400): a floating IP is
+            attached with /floating-ips.
+          type: object
+          properties:
+            name:
+              type: string
+              example: fip-7
+            ip:
+              type: string
+              example: "203.0.113.20/24"
+            state:
+              type: string
+              enum: [creating, running, error, deleting, deleted]
+              example: running
 
     VMStorage:
       type: object
@@ -769,6 +882,53 @@ components:
         gateway:
           type: string
           example: "198.51.100.1"
+
+    FloatingIPCreateRequest:
+      type: object
+      required: [name, vm, interface, ip, gateway]
+      properties:
+        name:
+          type: string
+          example: fip-7
+        vm:
+          type: string
+          description: VM of the interface; must be running on this agent
+          example: vm-7
+        interface:
+          type: string
+          description: Name of the interface of the VM (VMInterface.name), not a Linux interface
+          example: nic-a1b2
+        ip:
+          type: string
+          description: Public IP with its prefix length, chosen by the caller and not checked by the agent
+          example: "203.0.113.20/24"
+        gateway:
+          type: string
+          description: Gateway of the border routers on the public segment, not checked by the agent
+          example: "203.0.113.1"
+
+    FloatingIP:
+      type: object
+      properties:
+        name:
+          type: string
+          example: fip-7
+        state:
+          type: string
+          enum: [creating, running, error, deleting, deleted]
+          example: running
+        vm:
+          type: string
+          example: vm-7
+        interface:
+          type: string
+          example: nic-a1b2
+        ip:
+          type: string
+          example: "203.0.113.20/24"
+        gateway:
+          type: string
+          example: "203.0.113.1"
 
     Error:
       type: object

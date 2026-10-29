@@ -46,6 +46,14 @@ type VMInterface struct {
 	MAC        string `json:"mac"`
 	Primary    bool   `json:"primary"`
 	DHCPServer bool   `json:"dhcp_server"`
+
+	FloatingIP *VMFloatingIP `json:"floating_ip,omitempty"`
+}
+
+type VMFloatingIP struct {
+	Name  string `json:"name"`
+	IP    string `json:"ip"`
+	State string `json:"state"`
 }
 
 type VMStorage struct {
@@ -97,4 +105,21 @@ type NATGateway struct {
 	VPC     string `json:"vpc,omitempty"`
 	IP      string `json:"ip,omitempty"`
 	Gateway string `json:"gateway,omitempty"`
+}
+
+type FloatingIPCreateRequest struct {
+	Name      string `json:"name"`
+	VM        string `json:"vm"`
+	Interface string `json:"interface"`
+	IP        string `json:"ip"`
+	Gateway   string `json:"gateway"`
+}
+
+type FloatingIP struct {
+	Name      string `json:"name"`
+	State     string `json:"state"`
+	VM        string `json:"vm,omitempty"`
+	Interface string `json:"interface,omitempty"`
+	IP        string `json:"ip,omitempty"`
+	Gateway   string `json:"gateway,omitempty"`
 }

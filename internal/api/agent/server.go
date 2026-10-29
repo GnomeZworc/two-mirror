@@ -31,6 +31,8 @@ func New(d *dispatcher.Dispatcher, db *badger.DB, logger *slog.Logger, address s
 	mux.HandleFunc("/vms/", s.VmByNameHandler)
 	mux.HandleFunc("/nat-gateways", s.NATGatewaysHandler)
 	mux.HandleFunc("/nat-gateways/", s.NATGatewayByNameHandler)
+	mux.HandleFunc("/floating-ips", s.FloatingIPsHandler)
+	mux.HandleFunc("/floating-ips/", s.FloatingIPByNameHandler)
 	s.srv = &http.Server{Addr: address, Handler: s.logMiddleware(mux)}
 	return s
 }

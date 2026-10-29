@@ -44,6 +44,13 @@ func (s *Server) getVM(w http.ResponseWriter, _ *http.Request, name string) {
 		json.NewEncoder(w).Encode(ErrorResponse{Error: "failed to read vm"})
 		return
 	}
+	floating, err := kv.ListByPrefix(s.db, "floating-ip/")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "failed to list floating ips"})
+		return
+	}
+	attachFloatingIPs(&vm, floating)
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(vm)
 }
@@ -144,4 +151,19 @@ func vmFromDB(name string, entries map[string]string) (VM, error) {
 	}
 
 	return vm, nil
+}
+
+func attachFloatingIPs(vm *VM, entries map[string]string) {
+	for key, value := range entries {
+		name, ok := strings.CutSuffix(strings.TrimPrefix(key, "floating-ip/"), "/vm")
+		if !ok || strings.Contains(name, "/") || value != vm.Name {
+			continue
+		}
+		prefix := "floating-ip/" + name + "/"
+		for i := range vm.Interfaces {
+			if vm.Interfaces[i].Name == entries[prefix+"interface"] {
+				vm.Interfaces[i].FloatingIP = &VMFloatingIP{Name: name, IP: entries[prefix+"ip"], State: entries[prefix+"state"]}
+			}
+		}
+	}
 }
