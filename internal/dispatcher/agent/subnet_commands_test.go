@@ -391,6 +391,23 @@ func TestCreateSubnetCommand_Prepare_AcceptsPublicIPMode(t *testing.T) {
 	if _, err := kv.GetFromDB(db, "subnet/sn-pub/vxlan_id"); err == nil {
 		t.Error("vxlan_id ne doit être écrit que pour le mode vxlan")
 	}
+	if got, _ := kv.GetFromDB(db, "subnet/sn-pub/local_iface"); got != "br-public" {
+		t.Errorf("local_iface %q, br-public attendu malgré iface_type vms", got)
+	}
+}
+
+func TestCreateSubnetCommand_Prepare_PublicIPFollowsInterfacesInternet(t *testing.T) {
+	cfg := testCfg()
+	cfg.Interfaces["internet"] = "br-pub2"
+	_, db := newTestDispatcher(t)
+	kv.AddInDB(db, "vpc/vpc-1/state", "running")
+	cmd := CreateSubnetCommand{Name: "sn-pub", VPC: "vpc-1", Mode: "public_ip", IfaceType: "vms", InterfaceIP: "203.0.113.254", CIDR: "203.0.113.0/24"}
+	if err := cmd.Prepare(db, cfg); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := kv.GetFromDB(db, "subnet/sn-pub/local_iface"); got != "br-pub2" {
+		t.Errorf("local_iface %q, br-pub2 attendu", got)
+	}
 }
 
 func TestCreateSubnetCommand_Prepare_RejectsUnknownMode(t *testing.T) {

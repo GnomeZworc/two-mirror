@@ -566,8 +566,10 @@ components:
           description: >
             Subnet mode. "vxlan" (default): creates a VXLAN tunnel and a host bridge.
             "bridge": attaches directly to an existing bridge resolved from iface_type in the agent config.
-            "public_ip": accepted and routed like vxlan for DHCP purposes, but its host network
-            setup is not implemented yet — creating such a subnet currently fails in Execute.
+            "public_ip": attached like bridge, but always to the public bridge (interfaces.internet,
+            br-public when absent); iface_type is ignored. The VMs carry public IPs; the VPC route
+            keeps interface_ip as next-hop. Several VPCs may use the same range with the same
+            interface_ip: each has its own subnet, whose name the caller keeps unique on the agent.
             "vlan" is reserved for future use.
           enum: [vxlan, bridge, public_ip]
           default: vxlan

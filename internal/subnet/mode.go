@@ -13,3 +13,7 @@ func ValidMode(mode string) bool {
 	}
 	return false
 }
+
+func Bridged(mode string) bool {
+	return mode == ModeBridge || mode == ModePublicIP
+}

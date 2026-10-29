@@ -64,12 +64,15 @@ func (c CreateSubnetCommand) Prepare(db *badger.DB, cfg *configuration.Config) e
 	if !ok {
 		localIface = cfg.DefaultInterface
 	}
+	if c.Mode == subnet.ModePublicIP {
+		localIface = cfg.PublicBridge()
+	}
 	switch c.Mode {
 	case subnet.ModeVxlan:
 		if err := checkUnderlay(cfg, localIface); err != nil {
 			return err
 		}
-	case subnet.ModeBridge:
+	case subnet.ModeBridge, subnet.ModePublicIP:
 		if err := checkBridge(cfg, localIface); err != nil {
 			return err
 		}

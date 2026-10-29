@@ -48,7 +48,7 @@ func DeleteSubnet(db *badger.DB, subnetName string, cfg *configuration.Config) e
 		if err := deleteSubnetVxlan(d); err != nil {
 			return err
 		}
-	case "bridge":
+	case ModeBridge, ModePublicIP:
 		if err := deleteSubnetBridge(d); err != nil {
 			return err
 		}
