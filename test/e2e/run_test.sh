@@ -399,19 +399,19 @@ test_matrix_lists_every_test_from_its_header () {
 }
 
 test_owned_keeps_only_the_resources_of_the_test () {
-    setup "owned : vp-tNN, sn-tNN, tNN- seulement"
-    [[ $(node 'printf "%s\n" vp-t41a sn-t41b t41-vm vp-t42a t4-x vp-s4 sn-s41 | T=41 owned | tr "\n" " "') == "vp-t41a sn-t41b t41-vm " ]] \
-        || fail "$(node 'printf "%s\n" vp-t41a sn-t41b t41-vm vp-t42a t4-x vp-s4 sn-s41 | T=41 owned | tr "\n" " "')"
+    setup "owned : vp-tNN, sn-tNN, ng-tNN, tNN- seulement"
+    [[ $(node 'printf "%s\n" vp-t41a sn-t41b ng-t41c t41-vm vp-t42a ng-t42 t4-x vp-s4 sn-s41 ng-s41 | T=41 owned | tr "\n" " "') == "vp-t41a sn-t41b ng-t41c t41-vm " ]] \
+        || fail "$(node 'printf "%s\n" vp-t41a sn-t41b ng-t41c t41-vm vp-t42a ng-t42 t4-x vp-s4 sn-s41 ng-s41 | T=41 owned | tr "\n" " "')"
     teardown
 }
 
 test_teardown_deletes_vms_then_subnets_then_vpcs () {
-    setup "teardown_owned : VM, puis subnets, puis VPC, et rien d'autre"
-    local stub='api_names () { case $1 in vms) [ -f /tmp/.t70.$$ ] || echo t41-a; echo t42-z ;; subnets) echo sn-t41a ;; vpcs) echo vp-t41a ;; esac; }; api_delete () { echo "DEL $1"; [ "$1" = vms/t41-a ] && touch /tmp/.t70.$$; :; }; wait_state () { :; }; rm () { :; }; scratch_netns () { :; }; scratch_files () { :; }; '
+    setup "teardown_owned : VM, puis subnets, puis passerelles NAT, puis VPC, et rien d'autre"
+    local stub='api_names () { case $1 in vms) [ -f /tmp/.t70.$$ ] || echo t41-a; echo t42-z ;; subnets) echo sn-t41a ;; nat-gateways) echo ng-t41a; echo ng-t42 ;; vpcs) echo vp-t41a ;; esac; }; api_delete () { echo "DEL $1"; [ "$1" = vms/t41-a ] && touch /tmp/.t70.$$; :; }; wait_state () { :; }; rm () { :; }; scratch_netns () { :; }; scratch_files () { :; }; '
     local out
     out=$(node "T=41; ${stub}teardown_owned; command rm -f /tmp/.t70.\$\$")
-    [[ $(grep '^DEL' <<< "${out}" | tr '\n' ' ') == "DEL vms/t41-a DEL subnets/sn-t41a DEL vpcs/vp-t41a " ]] || fail "ordre : ${out}"
-    grep -q 'encore présents : subnets/sn-t41a vpcs/vp-t41a' <<< "${out}" || fail "restes non signalés : ${out}"
+    [[ $(grep '^DEL' <<< "${out}" | tr '\n' ' ') == "DEL vms/t41-a DEL subnets/sn-t41a DEL nat-gateways/ng-t41a DEL vpcs/vp-t41a " ]] || fail "ordre : ${out}"
+    grep -q 'encore présents : subnets/sn-t41a nat-gateways/ng-t41a vpcs/vp-t41a' <<< "${out}" || fail "restes non signalés : ${out}"
     teardown
 }
 
@@ -801,6 +801,27 @@ assert match('arp-from', ['10.33.0.1'], garp), 'réponse depuis 10.33.0.1'
 assert not match('arp-from', ['10.33.0.21'], arp), 'la cible n\'est pas l\'émetteur'
 assert not match('arp-from', ['10.33.0.1'], dhcp), 'DHCP depuis 10.33.0.1'
 assert match('udp-from', ['10.33.0.1', '67'], dhcp), 'udp-from témoin'
+PY
+    teardown
+}
+
+test_frames_match_selects_icmp_by_source () {
+    setup "frames : icmp-from retient l'ICMP émis depuis une adresse, et rien d'autre"
+    local src
+    src=$(node 'frames_py')
+    python3 - "${src}" <<'PY' || fail "icmp-from"
+import sys
+exec(sys.argv[1].split('cmd, a = ')[0])
+def ip4(proto, s, d):
+    h = struct.pack('!BBHHHBBH4s4s', 0x45, 0, 28, 0, 0, 64, proto, 0, ipb(s), ipb(d))
+    return eth('ff:ff:ff:ff:ff:ff', '02:00:00:00:00:0a', 0x0800, h + bytes(8))
+echo = ip4(1, '240.0.0.46', '240.0.0.146')
+private = ip4(1, '10.46.1.10', '240.0.0.146')
+udp = ip4(17, '240.0.0.46', '240.0.0.146')
+assert match('icmp-from', ['240.0.0.46'], echo), 'ICMP depuis 240.0.0.46'
+assert not match('icmp-from', ['240.0.0.46'], private), 'ICMP depuis une autre adresse'
+assert not match('icmp-from', ['240.0.0.46'], udp), 'UDP depuis 240.0.0.46'
+assert match('icmp-from', ['10.46.1.10'], private), 'témoin'
 PY
     teardown
 }

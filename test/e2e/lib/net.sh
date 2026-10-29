@@ -126,6 +126,8 @@ def match(kind, a, f):
         return t == b'\x08\x06' and f[20:22] == b'\x00\x01' and f[38:42] == ipb(a[0])
     if kind == 'arp-from':
         return t == b'\x08\x06' and f[28:32] == ipb(a[0])
+    if kind == 'icmp-from':
+        return t == b'\x08\x00' and f[23] == 1 and f[26:30] == ipb(a[0])
     if kind == 'udp-from':
         return t == b'\x08\x00' and f[23] == 17 and f[26:30] == ipb(a[0]) and struct.unpack('!H', f[34:36])[0] == int(a[1])
     if kind == 'marker':
