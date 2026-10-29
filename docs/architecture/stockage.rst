@@ -37,6 +37,11 @@ de sérialisation structurée.
    vm/<name>/sshkey             → <pubkey>        (optionnel)
    vm/<name>/metadata/<document> → <contenu brut> (optionnel : user-data, vendor-data, …)
 
+   nat-gateway/<name>/state     → creating | running | error | deleting | deleted
+   nat-gateway/<name>/vpc       → <vpc-name>      (une passerelle par VPC)
+   nat-gateway/<name>/ip        → <ip>/<préfixe>  (IP de sortie, telle que fournie)
+   nat-gateway/<name>/gateway   → <ip>            (gateway des bordures)
+
 Règles
 ------
 

@@ -396,6 +396,10 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - segment public de l'hôte — vxlan-public (VNI 1) posé par le bootstrap sur br-public, VNI annoncé en EVPN et vu par les bordures, gateway anycast des bordures installée vers une seule bordure, gateway et destination de test joignables sans doublon, L2 entre hyperviseurs, veth des VPC sur le bridge public, watchdog
      - hv1 hv2 hv3
      - #87
+   * - ``46-passerelle-nat``
+     - passerelle NAT d'un VPC — macvlan ng-<id> sur le br-public du netns, MAC 02:04:00 + l3vni, SNAT vers l'IP de sortie (source vue à la sortie du netns), route par défaut en type 5 importée par un autre hôte, unreachable default jamais annoncée, rien n'entre sans connexion établie, refus 409, suppression propre, bascule vers un autre hôte par mobilité MAC
+     - hv1 hv2 hv3
+     - #42
    * - ``51-l3vni``
      - routage inter-subnet entre hôtes par L3VNI (IRB symétrique) — VRF, RMAC, exports /24 et /32, RT-5 réfléchies, TTL, isolation par RT, unreachable default dans la VRF, démontage d'un VPC routé
      - hv1 hv2

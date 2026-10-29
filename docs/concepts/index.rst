@@ -13,3 +13,4 @@ fonctionnent entre eux. Le contrat HTTP correspondant est dans
    cycle-de-vie
    metadata-cloud-init
    dns-ntp
+   passerelle-nat

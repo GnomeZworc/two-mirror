@@ -58,12 +58,15 @@ passe en ``error`` : ce VNI est déjà porté par ``vxlan-public``.
    │   └── vxl3-<id>    VXLAN du l3vni, VTEP = IPv4 primaire de default_interface
    └── l3-<id>-o    169.254.0.1/30 ── l3-<id>-i 169.254.0.2/30, dans le netns du VPC
 
-Dans le netns, le ``cidr`` du VPC est routé vers ``169.254.0.1`` ; le transit ``/30`` est le même
+Dans le netns, le ``cidr`` du VPC et la route par défaut sont routés vers ``169.254.0.1`` : sans
+passerelle NAT, l'``unreachable default`` de la VRF rejette ce qui n'est pas dans le VPC (voir
+:doc:`passerelle-nat`) ; le transit ``/30`` est le même
 sur tous les hyperviseurs et pour tous les VPC. L'agent active le forwarding IPv4 dans le netns,
 et sur l'hôte sur ``brl3-<id>`` et ``l3-<id>-o``, les deux interfaces d'entrée de la VRF ; il ne
 touche pas au réglage global, que ``bootstrap_kvm.sh`` met déjà à 1. FRR reçoit la VRF, son ``vni``, une instance
 ``router bgp <asn> vrf vrf-<id>`` avec RD ``<VTEP>:<l3vni>`` et RT ``<asn>:<l3vni>``, et
-l'export des routes du ``cidr`` présentes dans la VRF.
+l'export des routes du ``cidr`` présentes dans la VRF, et de la route par défaut de la passerelle
+NAT.
 
 La table de la VRF reçoit, juste après sa création, une route ``unreachable default`` de métrique
 maximale (``4278198272``, valeur recommandée par la documentation VRF du noyau). Sans elle, une
@@ -71,7 +74,8 @@ recherche qui échoue dans la VRF continue dans les règles suivantes, donc dans
 de l'hôte : un paquet d'un locataire vers une adresse inconnue de la VRF sortirait par l'underlay,
 avec ``169.254.0.2`` pour source (mesuré, `#81 <https://git.g3e.fr/syonad/two/issues/81>`_). La
 métrique maximale laisse passer avant elle toute route réelle de la VRF. Cette route n'est pas
-annoncée en EVPN : le route-map de la VRF n'exporte que le ``cidr`` du VPC. Elle n'est liée à
+annoncée en EVPN : le route-map de la VRF n'exporte que le ``cidr`` du VPC, et la route par
+défaut seulement quand son next-hop est ``169.254.0.2``, celle d'une passerelle NAT. Elle n'est liée à
 aucune interface et ne disparaît pas avec la VRF : la suppression la retire explicitement. IPv4
 seulement.
 
