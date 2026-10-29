@@ -91,7 +91,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
-          description: VPC not deletable — only running or error states can be deleted, and all its subnets must be deleted or deleting; subnets still deleting are awaited by the asynchronous deletion
+          description: VPC not deletable — only running or error states can be deleted, all its subnets must be deleted or deleting (subnets still deleting are awaited by the asynchronous deletion), and its NAT gateway, if any, must be deleted first
           content:
             application/json:
               schema:
@@ -298,6 +298,101 @@ paths:
           $ref: "#/components/responses/InternalError"
 
 # ── Components ──────────────────────────────────────────────────────────────
+
+  # ── NAT gateway ────────────────────────────────────────────────────────────
+
+  /nat-gateways:
+    get:
+      summary: List all NAT gateways of this agent
+      operationId: listNATGateways
+      responses:
+        "200":
+          description: List of NAT gateways
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NATGateway"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      summary: Create the NAT gateway of a VPC on this agent
+      operationId: createNATGateway
+      description: >-
+        Gives the VMs of a VPC without a public IP an Internet exit through this host. The
+        gateway owns the given public IP on the public bridge (interfaces.internet) and announces
+        a type-5 default route in the VRF of the VPC. Only VPCs created by this version or later
+        route their default traffic to the VRF, and can use it. To move the gateway, delete it on
+        the old host if it answers, then create it on the new one.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NATGatewayCreateRequest"
+      responses:
+        "202":
+          description: NAT gateway creation accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATGateway"
+        "400":
+          description: Missing required field, invalid request body, ip without prefix length or not IPv4, or gateway not IPv4
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: NAT gateway already exists, VPC unknown on this agent or not running, VPC without l3vni, or VPC that already has a NAT gateway on this agent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /nat-gateways/{name}:
+    parameters:
+      - $ref: "#/components/parameters/ResourceName"
+
+    get:
+      summary: Get NAT gateway status and info
+      operationId: getNATGateway
+      responses:
+        "200":
+          description: NAT gateway found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATGateway"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      summary: Delete a NAT gateway
+      operationId: deleteNATGateway
+      responses:
+        "202":
+          description: NAT gateway deletion accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NATGateway"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: NAT gateway not deletable — only running or error states can be deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          $ref: "#/components/responses/InternalError"
 
 components:
 
@@ -625,6 +720,46 @@ components:
         uefi:
           type: boolean
           example: false
+
+    NATGatewayCreateRequest:
+      type: object
+      required: [name, vpc, ip, gateway]
+      properties:
+        name:
+          type: string
+          example: ng-42
+        vpc:
+          type: string
+          description: VPC of the gateway; must be running on this agent and have an l3vni
+          example: vp-42
+        ip:
+          type: string
+          description: Public exit IP of the VPC with its prefix length, chosen by the caller and not checked by the agent
+          example: "198.51.100.50/24"
+        gateway:
+          type: string
+          description: Gateway of the border routers on the public segment, not checked by the agent
+          example: "198.51.100.1"
+
+    NATGateway:
+      type: object
+      properties:
+        name:
+          type: string
+          example: ng-42
+        state:
+          type: string
+          enum: [creating, running, error, deleting, deleted]
+          example: running
+        vpc:
+          type: string
+          example: vp-42
+        ip:
+          type: string
+          example: "198.51.100.50/24"
+        gateway:
+          type: string
+          example: "198.51.100.1"
 
     Error:
       type: object

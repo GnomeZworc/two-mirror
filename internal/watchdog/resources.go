@@ -14,6 +14,7 @@ const (
 	prefixVPC    = "vpc/"
 	prefixSubnet = "subnet/"
 	prefixVM     = "vm/"
+	prefixNATGW  = "nat-gateway/"
 
 	kindVPC    = "vpc"
 	kindSubnet = "subnet"

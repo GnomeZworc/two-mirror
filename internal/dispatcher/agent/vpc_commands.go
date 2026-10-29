@@ -126,6 +126,13 @@ func (c DeleteVPCCommand) Prepare(db *badger.DB, _ *configuration.Config) error 
 			return fmt.Errorf("subnet %q must be deleted before deleting vpc %q", subnetName, c.Name)
 		}
 	}
+	gateway, err := natGatewayOf(db, c.Name)
+	if err != nil {
+		return err
+	}
+	if gateway != "" {
+		return fmt.Errorf("nat gateway %q must be deleted before deleting vpc %q", gateway, c.Name)
+	}
 	return state.Set(db, c.Key(), state.Deleting)
 }
 

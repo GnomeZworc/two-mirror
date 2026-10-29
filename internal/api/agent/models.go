@@ -82,3 +82,18 @@ type VM struct {
 type ErrorResponse struct {
 	Error string `json:"error"`
 }
+
+type NATGatewayCreateRequest struct {
+	Name    string `json:"name"`
+	VPC     string `json:"vpc"`
+	IP      string `json:"ip"`
+	Gateway string `json:"gateway"`
+}
+
+type NATGateway struct {
+	Name    string `json:"name"`
+	State   string `json:"state"`
+	VPC     string `json:"vpc,omitempty"`
+	IP      string `json:"ip,omitempty"`
+	Gateway string `json:"gateway,omitempty"`
+}

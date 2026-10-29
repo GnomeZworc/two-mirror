@@ -14,7 +14,7 @@ import (
 )
 
 // prefixes énumère les familles de ressources portant une clé /state.
-var prefixes = []string{"vpc/", "subnet/", "vm/"}
+var prefixes = []string{"vpc/", "subnet/", "vm/", "nat-gateway/"}
 
 // legacyStates traduit l'ancien vocabulaire (états VPC/subnet d'avant
 // l'unification, et états VM start/stop) vers l'enum courant.
