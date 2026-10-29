@@ -32,7 +32,7 @@ func (f *fakeHost) CreateMacvlan(ns, name, parent string, mac net.HardwareAddr) 
 	return f.record(fmt.Sprintf("macvlan [%s] %s parent %s mac %s", ns, name, parent, mac))
 }
 
-func (f *fakeHost) BridgeAddLocalMAC(ns, bridge string, mac net.HardwareAddr) error {
+func (f *fakeHost) BridgeSetLocalMAC(ns, bridge string, mac net.HardwareAddr) error {
 	return f.record(fmt.Sprintf("fdb add [%s] %s %s", ns, bridge, mac))
 }
 

@@ -30,8 +30,9 @@ Dans le netns du VPC de l'interface, sur l'hôte de la VM :
 * un ``macvlan`` ``fip-<IP publique en hexadécimal>`` (``203.0.113.20`` → ``fip-cb007114``) sur
   le bridge ``br-public`` du netns. Sa MAC est ``02:05`` suivi des quatre octets de l'IP publique
   (``02:05:cb:00:71:14``) : unique dans l'infrastructure, la même sur tout hôte ;
-* une entrée FDB locale de cette MAC, et ``arp_ignore=1``, ``arp_announce=2``, ``arp_notify=1``,
-  comme pour la :doc:`passerelle NAT <passerelle-nat>` ;
+* une entrée FDB locale de cette MAC, posée par remplacement (le bridge a pu l'apprendre sur le
+  segment tant que l'IP flottante vivait sur un autre hôte), et ``arp_ignore=1``,
+  ``arp_announce=2``, ``arp_notify=1``, comme pour la :doc:`passerelle NAT <passerelle-nat>` ;
 * deux chaînes dans la table nftables ``ip two`` :
 
   * ``pre-fip-…``, en ``prerouting`` à la priorité ``raw`` : ce qui arrive par ``fip-…`` vers

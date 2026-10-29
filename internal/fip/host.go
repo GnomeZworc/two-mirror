@@ -11,7 +11,7 @@ import (
 
 type host interface {
 	CreateMacvlan(ns, name, parent string, mac net.HardwareAddr) error
-	BridgeAddLocalMAC(ns, bridge string, mac net.HardwareAddr) error
+	BridgeSetLocalMAC(ns, bridge string, mac net.HardwareAddr) error
 	BridgeDelLocalMAC(ns, bridge string, mac net.HardwareAddr) error
 	Sysctl(ns, key, value string) error
 	SetFloatingIP(ns string, f nft.FloatingIP) error
@@ -33,8 +33,8 @@ func (system) CreateMacvlan(ns, name, parent string, mac net.HardwareAddr) error
 	return netns.Call(ns, func() error { return netif.CreateMacvlan(name, parent, mac) })
 }
 
-func (system) BridgeAddLocalMAC(ns, bridge string, mac net.HardwareAddr) error {
-	return netns.Call(ns, func() error { return netif.BridgeAddLocalMAC(bridge, mac) })
+func (system) BridgeSetLocalMAC(ns, bridge string, mac net.HardwareAddr) error {
+	return netns.Call(ns, func() error { return netif.BridgeSetLocalMAC(bridge, mac) })
 }
 
 func (system) BridgeDelLocalMAC(ns, bridge string, mac net.HardwareAddr) error {

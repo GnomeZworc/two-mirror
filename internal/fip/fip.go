@@ -157,7 +157,7 @@ func create(h host, f floatingIP) error {
 	rules := nft.FloatingIP{Iface: f.iface, Public: f.public.IP.String(), Private: f.private.String()}
 	steps := []step{
 		{"create " + f.iface, func() error { return h.CreateMacvlan(ns, f.iface, publicBridge, f.mac) }},
-		{"local fdb entry " + f.mac.String(), func() error { return h.BridgeAddLocalMAC(ns, publicBridge, f.mac) }},
+		{"local fdb entry " + f.mac.String(), func() error { return h.BridgeSetLocalMAC(ns, publicBridge, f.mac) }},
 	}
 	for _, sc := range sysctls(f.iface) {
 		steps = append(steps, step{sc[0], func() error { return h.Sysctl(ns, sc[0], sc[1]) }})
