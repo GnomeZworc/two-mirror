@@ -86,7 +86,6 @@ check "t47-a joignable sur hv2" vm_wait vp-t47 10.47.1.10
 check "hv2 : fip-t47 recréée sur hv2, même IP" api_post floating-ips '{"name":"fip-t47","vm":"t47-a","interface":"nic-0","ip":"240.0.0.47/24","gateway":"240.0.0.1"}'
 check "hv2 : fip-t47 running" wait_state floating-ips/fip-t47 running
 check "hv2 : même MAC 02:05:f0:00:00:2f qu'avant le déplacement" sh -c "ip -n vp-t47 -o link show fip-f000002f | grep -q 'link/ether 02:05:f0:00:00:2f '"
-check "t47-a (hv2) sort par son IP flottante" vm_ssh vp-t47 10.47.1.10 'ping -n -c 3 -W 2 240.255.0.1'
 NODE
 
 on hv3 <<'NODE'
@@ -95,4 +94,9 @@ START=$(date +%s)
 for i in $(seq 1 30); do ip netns exec t47-pub ping -n -c 1 -W 1 240.0.0.47 >/dev/null 2>&1 && break; sleep 2; done
 info "hv3 : 240.0.0.47 joignable $(( $(date +%s) - START )) s après l'apprentissage de la MAC via hv2"
 check "hv3 : t47-pub joint t47-a sur hv2 par son IP flottante" ip netns exec t47-pub ping -n -c 3 -W 2 240.0.0.47
+NODE
+
+on hv2 <<'NODE'
+for i in $(seq 1 15); do vm_ssh vp-t47 10.47.1.10 'ping -n -c 1 -W 2 240.255.0.1' >/dev/null 2>&1 && break; sleep 2; done
+check "t47-a (hv2) sort par son IP flottante" vm_ssh vp-t47 10.47.1.10 'ping -n -c 3 -W 2 240.255.0.1'
 NODE
