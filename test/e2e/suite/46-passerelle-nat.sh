@@ -116,11 +116,15 @@ on hv2 <<'NODE'
 check "hv2 : bascule, passerelle ng-t46 recréée sur hv2, même IP" api_post nat-gateways '{"name":"ng-t46","vpc":"vp-t46","ip":"240.0.0.46/24","gateway":"240.0.0.1"}'
 check "hv2 : ng-t46 running" wait_state nat-gateways/ng-t46 running
 check "hv2 : même MAC 02:04:00:00:11:f8 qu'avant la bascule" sh -c "ip -n vp-t46 -o link show ng-t46 | grep -q 'link/ether 02:04:00:00:11:f8 '"
-check "t46-b (hôte de la passerelle désormais) joint 240.255.0.1" vm_ssh vp-t46 10.46.2.10 'ping -n -c 3 -W 2 240.255.0.1'
 NODE
 
 on hv3 <<'NODE'
 check "hv3 : 02:04:00:00:11:f8 a suivi la passerelle, apprise via hv2" wait_evpn_mac 1 02:04:00:00:11:f8 192.168.14.12
+NODE
+
+on hv2 <<'NODE'
+for i in $(seq 1 15); do vm_ssh vp-t46 10.46.2.10 'ping -n -c 1 -W 2 240.255.0.1' >/dev/null 2>&1 && break; sleep 2; done
+check "t46-b (hôte de la passerelle désormais) joint 240.255.0.1" vm_ssh vp-t46 10.46.2.10 'ping -n -c 3 -W 2 240.255.0.1'
 NODE
 
 on hv1 <<'NODE'
