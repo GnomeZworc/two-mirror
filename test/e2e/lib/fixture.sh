@@ -2,7 +2,7 @@ STATE_DIR=/var/tmp/e2e
 SCRATCH_DIR=/tmp
 
 owned () {
-    grep -E "^(vp-|sn-|ng-)?t${T}"
+    grep -E "^(vp-|sn-|ng-|fip-)?t${T}"
 }
 
 api_names () {
@@ -39,11 +39,11 @@ clean_scratch () {
 }
 
 teardown_owned () {
-    delete_owned vms && delete_owned subnets && delete_owned nat-gateways && delete_owned vpcs || return 1
+    delete_owned floating-ips && delete_owned vms && delete_owned subnets && delete_owned nat-gateways && delete_owned vpcs || return 1
     rm -f "${VOLUMES}/t${T}"-*
     clean_scratch || return 1
     local left="" kind names
-    for kind in vms subnets nat-gateways vpcs; do
+    for kind in floating-ips vms subnets nat-gateways vpcs; do
         names=$(api_names "${kind}") || return 1
         left="${left}$(owned <<<"${names}" | sed "s|^|${kind}/|" | tr '\n' ' ')"
     done
@@ -67,7 +67,7 @@ host_state () {
 prepare_test () {
     mkdir -p "${STATE_DIR}"
     curl -fsS -o /dev/null "${API}/vpcs" || echo "ÉCHOUÉ: ${HOST} : API de l'agent injoignable avant le test"
-    if [ -n "$(for kind in vms subnets nat-gateways vpcs; do api_names "${kind}" | owned; done)$(scratch_netns)$(scratch_files)" ]; then
+    if [ -n "$(for kind in floating-ips vms subnets nat-gateways vpcs; do api_names "${kind}" | owned; done)$(scratch_netns)$(scratch_files)" ]; then
         info "${HOST} : ressources, netns ou fichiers t${T} d'un passage précédent, suppression"
         check "${HOST} : nettoyage des ressources t${T} restantes" teardown_owned
     fi

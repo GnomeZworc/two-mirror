@@ -44,12 +44,19 @@ func (s *Server) listVMs(w http.ResponseWriter, _ *http.Request) {
 		}
 	}
 
+	floating, err := kv.ListByPrefix(s.db, "floating-ip/")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(ErrorResponse{Error: "failed to list floating ips"})
+		return
+	}
 	result := make([]VM, 0, len(names))
 	for name := range names {
 		vm, err := vmFromDB(name, entries)
 		if err != nil {
 			continue
 		}
+		attachFloatingIPs(&vm, floating)
 		result = append(result, vm)
 	}
 
@@ -72,13 +79,30 @@ func (s *Server) startVM(w http.ResponseWriter, r *http.Request) {
 
 	nics := make([]dispatcher.VMNIC, len(req.Interfaces))
 	primaries := 0
+	names := make(map[string]int, len(req.Interfaces))
 	for i, iface := range req.Interfaces {
+		if iface.Name == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: fmt.Sprintf("interface %d: name is required", i)})
+			return
+		}
+		if other, ok := names[iface.Name]; ok {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: fmt.Sprintf("interface %d: name %q is already used by interface %d", i, iface.Name, other)})
+			return
+		}
+		names[iface.Name] = i
+		if iface.FloatingIP != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(ErrorResponse{Error: fmt.Sprintf("interface %d: floating_ip is read-only, attach it with /floating-ips", i)})
+			return
+		}
 		if iface.MAC == "" {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(ErrorResponse{Error: fmt.Sprintf("interface %d: mac is required", i)})
 			return
 		}
-		nics[i] = dispatcher.VMNIC{Subnet: iface.Subnet, IP: iface.IP, MAC: iface.MAC, Primary: iface.Primary, DHCPServer: iface.DHCPServer}
+		nics[i] = dispatcher.VMNIC{Name: iface.Name, Subnet: iface.Subnet, IP: iface.IP, MAC: iface.MAC, Primary: iface.Primary, DHCPServer: iface.DHCPServer}
 		if iface.Primary {
 			primaries++
 		}

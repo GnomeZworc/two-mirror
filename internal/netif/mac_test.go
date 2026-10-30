@@ -141,3 +141,34 @@ func TestNATGatewayMACDiffersFromOtherRoles(t *testing.T) {
 		}
 	}
 }
+
+func TestFloatingIPMAC(t *testing.T) {
+	cases := map[string]string{
+		"203.0.113.20": "02:05:cb:00:71:14",
+		"240.0.0.47":   "02:05:f0:00:00:2f",
+	}
+	for ip, want := range cases {
+		got, err := FloatingIPMAC(net.ParseIP(ip))
+		if err != nil {
+			t.Fatalf("%s : erreur inattendue %v", ip, err)
+		}
+		if got.String() != want {
+			t.Errorf("%s : %s, %s attendu", ip, got, want)
+		}
+	}
+	if mac, err := FloatingIPMAC(net.ParseIP("2001:db8::20")); err == nil {
+		t.Errorf("IPv6 acceptée : %s", mac)
+	}
+}
+
+func TestFloatingIPMACDiffersFromOtherRoles(t *testing.T) {
+	fip, _ := FloatingIPMAC(net.ParseIP("192.168.14.11"))
+	for _, role := range []byte{RoleAnycastGateway, RoleRouter, RoleHostGateway, RoleNATGateway} {
+		if fip[1] == role {
+			t.Errorf("rôle %#x : même octet de rôle que l'IP flottante (%s)", role, fip)
+		}
+	}
+	if fip[1] != 0x05 {
+		t.Errorf("%s : octet de rôle 0x05 attendu (valeur publiée dans la doc)", fip)
+	}
+}

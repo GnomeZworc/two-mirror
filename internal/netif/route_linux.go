@@ -51,6 +51,19 @@ func TableRoutesVia(table int, iface string) ([]*net.IPNet, error) {
 	return dsts, nil
 }
 
+func RouteReplaceDev(table int, dst *net.IPNet, iface string) error {
+	link, err := netlink.LinkByName(iface)
+	if err != nil {
+		return err
+	}
+	return netlink.RouteReplace(&netlink.Route{
+		LinkIndex: link.Attrs().Index,
+		Dst:       dst,
+		Table:     table,
+		Scope:     netlink.SCOPE_LINK,
+	})
+}
+
 func RouteDelViaIfExists(table int, dst *net.IPNet, gw net.IP, iface string) error {
 	link, err := netlink.LinkByName(iface)
 	if err != nil {

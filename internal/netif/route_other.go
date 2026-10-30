@@ -34,3 +34,7 @@ func HasUnreachableDefault(_, _ int) (bool, error) {
 func RouteDelViaIfExists(_ int, _ *net.IPNet, _ net.IP, _ string) error {
 	return errors.New("not supported on this platform")
 }
+
+func RouteReplaceDev(_ int, _ *net.IPNet, _ string) error {
+	return errors.New("not supported on this platform")
+}

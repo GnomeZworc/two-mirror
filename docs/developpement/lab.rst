@@ -400,6 +400,10 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - passerelle NAT d'un VPC — macvlan ng-<id> sur le br-public du netns, MAC 02:04:00 + l3vni, SNAT vers l'IP de sortie (source vue à la sortie du netns), route par défaut en type 5 importée par un autre hôte, unreachable default jamais annoncée, rien n'entre sans connexion établie, refus 409, suppression propre, bascule vers un autre hôte par mobilité MAC
      - hv1 hv2 hv3
      - #42
+   * - ``47-ip-flottante``
+     - IP flottante d'une interface de VM — macvlan fip-<hex> sur le br-public du netns, MAC 02:05 + IP publique, NAT 1:1 sans état, routage par source (sortie par l'IP flottante, pas par la passerelle NAT du VPC), entrée neuve depuis le segment public, métadonnées servies, affichage sur la VM, refus 409, détachement, déplacement vers un autre hôte par mobilité MAC
+     - hv1 hv2 hv3
+     - #88
    * - ``51-l3vni``
      - routage inter-subnet entre hôtes par L3VNI (IRB symétrique) — VRF, RMAC, exports /24 et /32, RT-5 réfléchies, TTL, isolation par RT, unreachable default dans la VRF, démontage d'un VPC routé
      - hv1 hv2

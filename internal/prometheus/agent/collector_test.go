@@ -46,6 +46,8 @@ func collect(t *testing.T, c *AgentCollector) map[string]map[string]float64 {
 			name = "vms"
 		case strings.Contains(desc, "syonad_nat_gateways_total"):
 			name = "nat_gateways"
+		case strings.Contains(desc, "syonad_floating_ips_total"):
+			name = "floating_ips"
 		default:
 			t.Fatalf("métrique inattendue : %s", desc)
 		}
@@ -64,13 +66,14 @@ func collect(t *testing.T, c *AgentCollector) map[string]map[string]float64 {
 func TestCollector_CountsByState(t *testing.T) {
 	db := newTestDB(t)
 	for resource, s := range map[string]state.State{
-		"vpc/vpc-1":        state.Running,
-		"vpc/vpc-2":        state.Running,
-		"vpc/vpc-3":        state.Error,
-		"subnet/sn-1":      state.Creating,
-		"vm/vm-1":          state.Running,
-		"vm/vm-2":          state.Error,
-		"nat-gateway/ng-1": state.Running,
+		"vpc/vpc-1":         state.Running,
+		"vpc/vpc-2":         state.Running,
+		"vpc/vpc-3":         state.Error,
+		"subnet/sn-1":       state.Creating,
+		"vm/vm-1":           state.Running,
+		"vm/vm-2":           state.Error,
+		"nat-gateway/ng-1":  state.Running,
+		"floating-ip/fip-1": state.Error,
 	} {
 		if err := state.Set(db, resource, s); err != nil {
 			t.Fatalf("préparation du test : %v", err)
@@ -91,6 +94,9 @@ func TestCollector_CountsByState(t *testing.T) {
 		if got["vms"][s] != want {
 			t.Errorf("vms{state=%q} = %v, attendu %v", s, got["vms"][s], want)
 		}
+	}
+	if got["floating_ips"]["error"] != 1 || got["floating_ips"]["running"] != 0 {
+		t.Errorf("floating_ips{state=error} = %v, {state=running} = %v, attendu 1 et 0", got["floating_ips"]["error"], got["floating_ips"]["running"])
 	}
 	if got["nat_gateways"]["running"] != 1 || got["vpcs"]["running"] != 2 {
 		t.Errorf("nat_gateways{state=running} = %v, vpcs{state=running} = %v, attendu 1 et 2", got["nat_gateways"]["running"], got["vpcs"]["running"])
@@ -117,7 +123,7 @@ func TestCollector_IgnoresVMDiskKeys(t *testing.T) {
 // côté Prometheus casse les alertes qui s'en servent.
 func TestCollector_EmitsEveryState(t *testing.T) {
 	got := collect(t, NewAgentCollector(newTestDB(t)))
-	for _, family := range []string{"vpcs", "subnets", "vms", "nat_gateways"} {
+	for _, family := range []string{"vpcs", "subnets", "vms", "nat_gateways", "floating_ips"} {
 		if len(got[family]) != len(state.All()) {
 			t.Errorf("%s : %d séries, attendu %d", family, len(got[family]), len(state.All()))
 		}
@@ -151,7 +157,7 @@ func TestCollector_Describe(t *testing.T) {
 	for range ch {
 		n++
 	}
-	if n != 4 {
-		t.Errorf("%d descripteurs, attendu 4", n)
+	if n != 5 {
+		t.Errorf("%d descripteurs, attendu 5", n)
 	}
 }

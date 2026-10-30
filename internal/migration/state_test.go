@@ -41,6 +41,8 @@ func TestMigrateStates_LegacyMapping(t *testing.T) {
 		"nat creating":    {"nat-gateway/ng-1", "creating", state.Error},
 		"nat deleting":    {"nat-gateway/ng-2", "deleting", state.Error},
 		"nat running":     {"nat-gateway/ng-3", "running", state.Running},
+		"fip creating":    {"floating-ip/fip-1", "creating", state.Error},
+		"fip running":     {"floating-ip/fip-2", "running", state.Running},
 	}
 	for _, c := range cases {
 		kv.AddInDB(db, c.resource+"/state", c.from)

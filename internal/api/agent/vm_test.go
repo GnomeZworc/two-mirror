@@ -104,7 +104,7 @@ func TestStartVM_MultiDisk(t *testing.T) {
 	body, _ := json.Marshal(VMCreateRequest{
 		Name: "vm-10",
 		Interfaces: []VMInterface{
-			{Subnet: "sn-1", IP: "10.0.0.10", MAC: "52:54:00:00:00:05", Primary: true},
+			{Name: "nic-sn-1", Subnet: "sn-1", IP: "10.0.0.10", MAC: "52:54:00:00:00:05", Primary: true},
 		},
 		Storage: []VMStorage{
 			{Path: "/data/root.qcow2", Dev: "vda"},
@@ -139,7 +139,7 @@ func TestStartVM_StorageReturnedInResponse(t *testing.T) {
 	body, _ := json.Marshal(VMCreateRequest{
 		Name: "vm-11",
 		Interfaces: []VMInterface{
-			{Subnet: "sn-1", IP: "10.0.0.11", MAC: "52:54:00:00:00:05", Primary: true},
+			{Name: "nic-sn-1", Subnet: "sn-1", IP: "10.0.0.11", MAC: "52:54:00:00:00:05", Primary: true},
 		},
 		Storage: []VMStorage{
 			{Path: "/data/root.qcow2", Dev: "xvda"},
@@ -171,7 +171,7 @@ func TestStartVM_RejectsInvalidDiskDev(t *testing.T) {
 
 		body, _ := json.Marshal(VMCreateRequest{
 			Name:       "vm-12",
-			Interfaces: []VMInterface{{Subnet: "sn-1", IP: "10.0.0.12", MAC: "52:54:00:00:00:05", Primary: true}},
+			Interfaces: []VMInterface{{Name: "nic-sn-1", Subnet: "sn-1", IP: "10.0.0.12", MAC: "52:54:00:00:00:05", Primary: true}},
 			Storage:    []VMStorage{{Path: "/data/root.qcow2", Dev: "vda"}, {Path: "/data/data.qcow2", Dev: dev}},
 		})
 
@@ -200,7 +200,7 @@ func postVM(t *testing.T, name string, meta VMMetadata) (*httptest.ResponseRecor
 
 	body, _ := json.Marshal(VMCreateRequest{
 		Name:       name,
-		Interfaces: []VMInterface{{Subnet: "sn-1", IP: "10.0.0.20", MAC: "52:54:00:00:00:05", Primary: true}},
+		Interfaces: []VMInterface{{Name: "nic-sn-1", Subnet: "sn-1", IP: "10.0.0.20", MAC: "52:54:00:00:00:05", Primary: true}},
 		Storage:    []VMStorage{{Path: "/data/root.qcow2", Dev: "vda"}},
 		Memory:     1024,
 		CPUs:       2,
@@ -334,8 +334,8 @@ func TestStartVM_StoresAllInterfaces(t *testing.T) {
 	body, _ := json.Marshal(VMCreateRequest{
 		Name: "vm-multi",
 		Interfaces: []VMInterface{
-			{Subnet: "sn-1", IP: "10.1.0.5", MAC: "52:54:00:00:00:05", Primary: true},
-			{Subnet: "sn-2", IP: "10.2.0.5", MAC: "52:54:00:aa:bb:cc"},
+			{Name: "nic-sn-1", Subnet: "sn-1", IP: "10.1.0.5", MAC: "52:54:00:00:00:05", Primary: true},
+			{Name: "nic-sn-2", Subnet: "sn-2", IP: "10.2.0.5", MAC: "52:54:00:aa:bb:cc"},
 		},
 		Storage: []VMStorage{{Path: "/data/root.qcow2", Dev: "vda"}},
 	})
@@ -371,8 +371,8 @@ func TestStartVM_StoresDHCPServerOnlyWhenRequested(t *testing.T) {
 	body, _ := json.Marshal(VMCreateRequest{
 		Name: "vm-pxe",
 		Interfaces: []VMInterface{
-			{Subnet: "sn-1", IP: "10.1.0.5", MAC: "52:54:00:00:00:05", Primary: true},
-			{Subnet: "sn-2", IP: "10.2.0.5", MAC: "52:54:00:aa:bb:cc", DHCPServer: true},
+			{Name: "nic-sn-1", Subnet: "sn-1", IP: "10.1.0.5", MAC: "52:54:00:00:00:05", Primary: true},
+			{Name: "nic-sn-2", Subnet: "sn-2", IP: "10.2.0.5", MAC: "52:54:00:aa:bb:cc", DHCPServer: true},
 		},
 		Storage: []VMStorage{{Path: "/data/root.qcow2", Dev: "vda"}},
 	})
@@ -418,10 +418,10 @@ func TestVmFromDB_ReturnsDHCPServer(t *testing.T) {
 
 func TestStartVM_RejectsZeroOrTwoPrimaries(t *testing.T) {
 	cases := map[string][]VMInterface{
-		"aucune primaire": {{Subnet: "sn-1", IP: "10.1.0.5", MAC: "52:54:00:00:00:05"}},
+		"aucune primaire": {{Name: "nic-sn-1", Subnet: "sn-1", IP: "10.1.0.5", MAC: "52:54:00:00:00:05"}},
 		"deux primaires": {
-			{Subnet: "sn-1", IP: "10.1.0.5", MAC: "52:54:00:00:00:05", Primary: true},
-			{Subnet: "sn-2", IP: "10.2.0.5", MAC: "52:54:00:00:00:05", Primary: true},
+			{Name: "nic-sn-1", Subnet: "sn-1", IP: "10.1.0.5", MAC: "52:54:00:00:00:05", Primary: true},
+			{Name: "nic-sn-2", Subnet: "sn-2", IP: "10.2.0.5", MAC: "52:54:00:00:00:05", Primary: true},
 		},
 	}
 	for label, ifaces := range cases {
@@ -454,8 +454,8 @@ func TestStartVM_RejectsAnInterfaceWithoutMAC(t *testing.T) {
 	body, _ := json.Marshal(VMCreateRequest{
 		Name: "vm-nomac",
 		Interfaces: []VMInterface{
-			{Subnet: "sn-1", IP: "10.1.0.5", MAC: "52:54:00:00:00:05", Primary: true},
-			{Subnet: "sn-2", IP: "10.2.0.5"},
+			{Name: "nic-sn-1", Subnet: "sn-1", IP: "10.1.0.5", MAC: "52:54:00:00:00:05", Primary: true},
+			{Name: "nic-sn-2", Subnet: "sn-2", IP: "10.2.0.5"},
 		},
 		Storage: []VMStorage{{Path: "/data/root.qcow2", Dev: "vda"}},
 	})
@@ -488,7 +488,7 @@ func TestStartVM_RejectsReservedOrForeignAddresses(t *testing.T) {
 		kv.AddInDB(db, "subnet/sn-1/gateway", "10.0.0.1")
 		body, _ := json.Marshal(VMCreateRequest{
 			Name:       "vm-ip",
-			Interfaces: []VMInterface{{Subnet: "sn-1", IP: ip, MAC: "52:54:00:00:00:05", Primary: true}},
+			Interfaces: []VMInterface{{Name: "nic-sn-1", Subnet: "sn-1", IP: ip, MAC: "52:54:00:00:00:05", Primary: true}},
 			Storage:    []VMStorage{{Path: "/data/root.qcow2", Dev: "vda"}},
 		})
 		w := httptest.NewRecorder()
@@ -511,7 +511,7 @@ func TestStartVM_AcceptsHostAddressBesideReservedOnes(t *testing.T) {
 	kv.AddInDB(db, "subnet/sn-1/relay_ip", "10.0.0.253")
 	body, _ := json.Marshal(VMCreateRequest{
 		Name:       "vm-ip",
-		Interfaces: []VMInterface{{Subnet: "sn-1", IP: "10.0.0.252", MAC: "52:54:00:00:00:05", Primary: true}},
+		Interfaces: []VMInterface{{Name: "nic-sn-1", Subnet: "sn-1", IP: "10.0.0.252", MAC: "52:54:00:00:00:05", Primary: true}},
 		Storage:    []VMStorage{{Path: "/data/root.qcow2", Dev: "vda"}},
 	})
 	w := httptest.NewRecorder()
@@ -527,12 +527,84 @@ func TestStartVM_RejectsSubnetWithoutCIDR(t *testing.T) {
 	kv.AddInDB(db, "subnet/sn-1/vpc", "vpc-1")
 	body, _ := json.Marshal(VMCreateRequest{
 		Name:       "vm-ip",
-		Interfaces: []VMInterface{{Subnet: "sn-1", IP: "10.0.0.5", MAC: "52:54:00:00:00:05", Primary: true}},
+		Interfaces: []VMInterface{{Name: "nic-sn-1", Subnet: "sn-1", IP: "10.0.0.5", MAC: "52:54:00:00:00:05", Primary: true}},
 		Storage:    []VMStorage{{Path: "/data/root.qcow2", Dev: "vda"}},
 	})
 	w := httptest.NewRecorder()
 	s.VmsHandler(w, httptest.NewRequest(http.MethodPost, "/vms", bytes.NewReader(body)))
 	if w.Code != http.StatusUnprocessableEntity || !strings.Contains(w.Body.String(), "has no cidr") {
 		t.Errorf("attendu 422 « has no cidr », obtenu %d : %s", w.Code, w.Body.String())
+	}
+}
+
+func TestStartVM_RejectsAnInterfaceWithoutOrWithADuplicateName(t *testing.T) {
+	cases := []struct {
+		label  string
+		ifaces []VMInterface
+		msg    string
+	}{
+		{"nom absent", []VMInterface{
+			{Name: "nic-a", Subnet: "sn-1", IP: "10.1.0.5", MAC: "52:54:00:00:00:05", Primary: true},
+			{Subnet: "sn-2", IP: "10.2.0.5", MAC: "52:54:00:aa:bb:cc"},
+		}, "interface 1: name is required"},
+		{"nom en double", []VMInterface{
+			{Name: "nic-a", Subnet: "sn-1", IP: "10.1.0.5", MAC: "52:54:00:00:00:05", Primary: true},
+			{Name: "nic-a", Subnet: "sn-2", IP: "10.2.0.5", MAC: "52:54:00:aa:bb:cc"},
+		}, `interface 1: name \"nic-a\" is already used by interface 0`},
+	}
+	for _, c := range cases {
+		s, db := newTestServer(t)
+		for sn, cidr := range map[string]string{"sn-1": "10.1.0.0/24", "sn-2": "10.2.0.0/24"} {
+			kv.AddInDB(db, "subnet/"+sn+"/state", "running")
+			kv.AddInDB(db, "subnet/"+sn+"/vpc", "vpc-1")
+			kv.AddInDB(db, "subnet/"+sn+"/cidr", cidr)
+		}
+		body, _ := json.Marshal(VMCreateRequest{
+			Name:       "vm-names",
+			Interfaces: c.ifaces,
+			Storage:    []VMStorage{{Path: "/data/root.qcow2", Dev: "vda"}},
+		})
+		w := httptest.NewRecorder()
+		s.VmsHandler(w, httptest.NewRequest(http.MethodPost, "/vms", bytes.NewReader(body)))
+		if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), c.msg) {
+			t.Errorf("%s : attendu 400 « %s », obtenu %d — %s", c.label, c.msg, w.Code, w.Body.String())
+		}
+		if _, err := kv.GetFromDB(db, "vm/vm-names/state"); err == nil {
+			t.Errorf("%s : une VM refusée ne doit laisser aucune trace en base", c.label)
+		}
+	}
+}
+
+func TestStartVM_StoresAndReturnsInterfaceNames(t *testing.T) {
+	s, db := newTestServer(t)
+	for sn, cidr := range map[string]string{"sn-1": "10.1.0.0/24", "sn-2": "10.2.0.0/24"} {
+		kv.AddInDB(db, "subnet/"+sn+"/state", "running")
+		kv.AddInDB(db, "subnet/"+sn+"/vpc", "vpc-1")
+		kv.AddInDB(db, "subnet/"+sn+"/cidr", cidr)
+	}
+	body, _ := json.Marshal(VMCreateRequest{
+		Name: "vm-named",
+		Interfaces: []VMInterface{
+			{Name: "nic-a1b2", Subnet: "sn-1", IP: "10.1.0.5", MAC: "52:54:00:00:00:05", Primary: true},
+			{Name: "nic-c3d4", Subnet: "sn-2", IP: "10.2.0.5", MAC: "52:54:00:aa:bb:cc"},
+		},
+		Storage: []VMStorage{{Path: "/data/root.qcow2", Dev: "vda"}},
+	})
+	w := httptest.NewRecorder()
+	s.VmsHandler(w, httptest.NewRequest(http.MethodPost, "/vms", bytes.NewReader(body)))
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("attendu 202, obtenu %d : %s", w.Code, w.Body.String())
+	}
+	for key, want := range map[string]string{"vm/vm-named/nic/0/name": "nic-a1b2", "vm/vm-named/nic/1/name": "nic-c3d4"} {
+		if got, err := kv.GetFromDB(db, key); err != nil || got != want {
+			t.Errorf("%s = %q (%v), attendu %q", key, got, err, want)
+		}
+	}
+	w = httptest.NewRecorder()
+	s.VmByNameHandler(w, httptest.NewRequest(http.MethodGet, "/vms/vm-named", nil))
+	var got VM
+	json.NewDecoder(w.Body).Decode(&got)
+	if len(got.Interfaces) != 2 || got.Interfaces[0].Name != "nic-a1b2" || got.Interfaces[1].Name != "nic-c3d4" {
+		t.Errorf("interfaces renvoyées : %+v", got.Interfaces)
 	}
 }

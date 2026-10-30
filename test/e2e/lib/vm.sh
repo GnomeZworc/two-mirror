@@ -48,7 +48,7 @@ vm_create () {
     api_state "vms/${name}" | grep -qx running && return 0
     [ -n "${key}" ] && meta="{\"sshkey\":\"${key}\"}"
     vm_volume "${name}" || return 1
-    api_post vms "{\"name\":\"${name}\",\"memory\":1024,\"cpus\":1,\"metadata\":${meta},\"interfaces\":[{\"subnet\":\"${subnet}\",\"ip\":\"${ip}\",\"mac\":\"$(mac_for_ip "${ip}")\",\"primary\":true}],\"storage\":[{\"path\":\"${VOLUMES}/${name}.qcow2\",\"dev\":\"vda\"}]}" \
+    api_post vms "{\"name\":\"${name}\",\"memory\":1024,\"cpus\":1,\"metadata\":${meta},\"interfaces\":[{\"name\":\"nic-0\",\"subnet\":\"${subnet}\",\"ip\":\"${ip}\",\"mac\":\"$(mac_for_ip "${ip}")\",\"primary\":true}],\"storage\":[{\"path\":\"${VOLUMES}/${name}.qcow2\",\"dev\":\"vda\"}]}" \
         && wait_state "vms/${name}" running
 }
 
@@ -109,7 +109,7 @@ ping_rate () {
 
 vm_body () {
     local name="${1}" subnet="${2}" ip="${3}" disk="${4:-${VOLUMES}/${1}.qcow2}" meta="${5:-{\}}" dev="${6:-vda}"
-    printf '{"name":"%s","memory":1024,"cpus":1,"metadata":%s,"interfaces":[{"subnet":"%s","ip":"%s","mac":"%s","primary":true}],"storage":[{"path":"%s","dev":"%s"}]}' \
+    printf '{"name":"%s","memory":1024,"cpus":1,"metadata":%s,"interfaces":[{"name":"nic-0","subnet":"%s","ip":"%s","mac":"%s","primary":true}],"storage":[{"path":"%s","dev":"%s"}]}' \
         "${name}" "${meta}" "${subnet}" "${ip}" "$(mac_for_ip "${ip}")" "${disk}" "${dev}"
 }
 
@@ -121,7 +121,7 @@ vm_json () {
             --nic)
                 sn=${2%%=*}; rest=${2#*=}; ip=${rest%%=*}; mac=$(mac_for_ip "${ip}")
                 [ "${rest}" != "${ip}" ] && mac=${rest#*=}
-                nics=$(jq -c --arg s "${sn}" --arg ip "${ip}" --arg m "${mac}" --argjson p "${primary}" '. + [{subnet: $s, ip: $ip, mac: $m, primary: $p}]' <<<"${nics}"); primary=false; shift 2 ;;
+                nics=$(jq -c --arg s "${sn}" --arg ip "${ip}" --arg m "${mac}" --argjson p "${primary}" '. + [{name: ("nic-" + (length | tostring)), subnet: $s, ip: $ip, mac: $m, primary: $p}]' <<<"${nics}"); primary=false; shift 2 ;;
             --dhcp-server) nics=$(jq -c '.[-1].dhcp_server = true' <<<"${nics}"); shift ;;
             --disk) disks=$(jq -c --arg d "${2%%=*}" --arg p "${2#*=}" '. + [{path: $p, dev: $d}]' <<<"${disks}"); shift 2 ;;
             --sshkey) meta=$(jq -c --arg v "${2}" '. + {sshkey: $v}' <<<"${meta}"); shift 2 ;;

@@ -12,6 +12,7 @@ const (
 	RoleRouter         byte = 0x02
 	RoleHostGateway    byte = 0x03
 	RoleNATGateway     byte = 0x04
+	RoleFloatingIP     byte = 0x05
 
 	MaxVNI = 1<<24 - 1
 )
@@ -26,6 +27,10 @@ func HostMAC(role byte, vtep net.IP) (net.HardwareAddr, error) {
 
 func AnycastMAC(vni int) (net.HardwareAddr, error) {
 	return vniMAC(RoleAnycastGateway, vni)
+}
+
+func FloatingIPMAC(public net.IP) (net.HardwareAddr, error) {
+	return HostMAC(RoleFloatingIP, public)
 }
 
 func NATGatewayMAC(l3vni int) (net.HardwareAddr, error) {

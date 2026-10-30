@@ -92,6 +92,9 @@ Si l'hôte de la passerelle tombe, ses routes restent annoncées jusqu'à l'expi
 BGP vers les route reflectors (180 s), et le VPC n'a plus de sortie jusqu'à la création d'une
 nouvelle passerelle.
 
+Une VM qui a une :doc:`IP flottante <ip-flottante>` ne sort pas par la passerelle : elle sort par
+son IP flottante, y compris sur l'hôte de la passerelle.
+
 Limites
 -------
 
