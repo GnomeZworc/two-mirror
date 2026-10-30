@@ -86,3 +86,21 @@ func TestCreateVPCCommand_Prepare_L3VNIChecksTheUnderlay(t *testing.T) {
 		t.Errorf("un VPC sans l3vni ne contrôle pas l'underlay : %v", err)
 	}
 }
+
+func TestCreateSubnetCommand_Prepare_PublicIPChecksThePublicBridge(t *testing.T) {
+	withLinkMTU(t, map[string]int{"br-vms": 9000, "br-public": 1499})
+	_, db := newTestDispatcher(t)
+	kv.AddInDB(db, "vpc/vpc-1/state", "running")
+	cmd := CreateSubnetCommand{Name: "sn-pub", VPC: "vpc-1", Mode: "public_ip", IfaceType: "vms", InterfaceIP: "203.0.113.254", CIDR: "203.0.113.0/24"}
+	err := cmd.Prepare(db, testCfg())
+	if err == nil || !strings.Contains(err.Error(), "br-public") {
+		t.Fatalf("bridge public à 1499 : %v", err)
+	}
+	if _, err := kv.GetFromDB(db, "subnet/sn-pub/state"); err == nil {
+		t.Error("aucune clé ne doit être écrite après un refus")
+	}
+	withLinkMTU(t, map[string]int{"br-public": 1500})
+	if err := cmd.Prepare(db, testCfg()); err != nil {
+		t.Errorf("bridge public à 1500 : %v", err)
+	}
+}

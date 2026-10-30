@@ -18,17 +18,12 @@ annoncées aux VM.
      - rattachement direct à un bridge existant de l'host, résolu depuis ``iface_type``
      - disponible
    * - ``public_ip``
-     - routé comme ``vxlan`` côté DHCP
-     - **mise en place host non implémentée** — la création échoue à l'exécution
+     - comme ``bridge``, toujours au bridge public de l'host (``interfaces.internet``) ; la VM
+       porte son IP publique
+     - disponible
    * - ``vlan``
      - —
      - réservé, non implémenté
-
-.. warning::
-
-   ``public_ip`` est accepté par l'API et traité comme ``vxlan`` pour le DHCP, mais sa
-   configuration réseau côté host n'existe pas encore : la création part en ``error`` dans
-   ``Execute``. Ne pas s'appuyer dessus en production.
 
 vxlan
 -----
@@ -137,6 +132,33 @@ Le trafic entre VM du subnet, sur un même hôte ou sur des hôtes différents, 
 Par conception, une VM ne joint pas le netns d'un autre hôte. Les règles sont retirées à la
 suppression du subnet ; une règle déjà absente ne fait pas échouer la suppression. Le watchdog
 signale les règles manquantes et celles qui ne sont pas de l'agent.
+
+public_ip
+---------
+
+La VM **porte elle-même une IP publique**, sans NAT. Le subnet est raccordé comme un subnet
+``bridge``, mais toujours au **bridge public** de l'host (``interfaces.internet``, ``br-public``
+par défaut) ; ``iface_type`` est ignoré. Le bridge du subnet dans le netns porte
+``interface_ip`` ; un veth ``v-<subnet>-e`` le relie au bridge public. Le ``br-public`` propre au
+netns n'est pas utilisé.
+
+Une plage publique (plusieurs /24 cohabitent sur le segment) est partagée par tous les VPC qui en
+demandent : **chaque VPC a son propre subnet**, avec la **même** ``interface_ip``, sur un même
+hôte comme sur des hôtes différents. Les règles de confinement du mode ``bridge`` sont posées sur
+chaque ``v-<subnet>-i`` : une VM ne résout ``interface_ip`` que vers le netns de son VPC (sa
+gateway, son DHCP, son DNS et son NTP), et ``interface_ip`` n'est jamais visible sur le segment.
+
+Le **nom** de chaque subnet est choisi par l'appelant et doit être **unique sur l'hyperviseur** :
+l'orchestrateur tient un seul subnet public (``pub-203`` par exemple) et en crée une instance par
+VPC (``pub-203a42`` pour ``vp-42``). La partie qui suit le premier tiret sert aux noms d'interface
+(``br-<id>``, ``v-<id>-e``) : 10 caractères au plus.
+
+Routes annoncées : la route par défaut vers la ``gateway`` fournie (``default_route: true`` et
+``gateway`` obligatoires ensemble), la route du ``cidr`` du VPC vers ``interface_ip``. Le contrôle
+de MTU est celui du mode ``bridge``, appliqué au bridge public. Les VM de plages publiques se
+joignent directement sur le segment ; le filtrage au port les empêche d'usurper l'IP ou la MAC
+d'une autre. Une interface d'un subnet ``public_ip`` ne reçoit pas d':doc:`IP flottante
+<ip-flottante>` (409).
 
 Règles de pont
 --------------

@@ -404,6 +404,10 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - IP flottante d'une interface de VM — macvlan fip-<hex> sur le br-public du netns, MAC 02:05 + IP publique, NAT 1:1 sans état, routage par source (sortie par l'IP flottante, pas par la passerelle NAT du VPC), entrée neuve depuis le segment public, métadonnées servies, affichage sur la VM, refus 409, détachement, déplacement vers un autre hôte par mobilité MAC
      - hv1 hv2 hv3
      - #88
+   * - ``48-subnet-public``
+     - subnet public_ip — VM qui porte son IP publique, subnet raccordé au bridge public de l'hôte (iface_type ignoré), même plage et même interface_ip pour plusieurs VPC sur un même hôte et sur deux hôtes, interface_ip invisible sur le segment, gateway et DNS propres à chaque VPC, sortie et entrée sans NAT, usurpation refusée, IP flottante refusée
+     - hv1 hv2 hv3
+     - #89
    * - ``51-l3vni``
      - routage inter-subnet entre hôtes par L3VNI (IRB symétrique) — VRF, RMAC, exports /24 et /32, RT-5 réfléchies, TTL, isolation par RT, unreachable default dans la VRF, démontage d'un VPC routé
      - hv1 hv2

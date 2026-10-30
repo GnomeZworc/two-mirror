@@ -132,6 +132,25 @@ func TestCheckSubnets_ModeBridgeNeVerifiePasDeVxlan(t *testing.T) {
 	}
 }
 
+func TestCheckSubnets_ModePublicIPEstConnuEtSansVxlan(t *testing.T) {
+	db := newTestDB(t)
+	seedSubnet(t, db, "pub-203a42", "vp-admin", modePublicIP)
+	r := &recorder{}
+
+	if err := CheckSubnets(db, dnsmasqConfig(), newFakeUnits(), r); err != nil {
+		t.Fatalf("erreur inattendue: %v", err)
+	}
+
+	for _, c := range r.calls {
+		if strings.Contains(c.problem, "unknown mode") || strings.Contains(c.problem, "vxlan") || strings.Contains(c.problem, "(host)") {
+			t.Errorf("un subnet public_ip est contrôlé comme bridge : %q", c.problem)
+		}
+	}
+	if !r.hasProblemContaining("vp-admin_br-203a42.conf") {
+		t.Errorf("témoin : le contrôle DHCP du subnet public_ip doit avoir lieu, obtenu %v", r.calls)
+	}
+}
+
 func TestCheckSubnets_ModeVxlanSansVxlanID(t *testing.T) {
 	db := newTestDB(t)
 	seedSubnet(t, db, "br-000042", "vp-admin", modeVxlan)

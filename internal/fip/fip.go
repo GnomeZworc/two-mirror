@@ -24,6 +24,8 @@ type Target struct {
 	VPC     string
 	CIDR    *net.IPNet
 	Private net.IP
+	Subnet  string
+	Mode    string
 }
 
 type floatingIP struct {
@@ -85,7 +87,11 @@ func Resolve(db *badger.DB, vmName, ifaceName string) (Target, error) {
 		if err != nil {
 			return Target{}, fmt.Errorf("vm %q: interface %q: invalid cidr %q of vpc %q", vmName, ifaceName, raw, vpc)
 		}
-		return Target{VPC: vpc, CIDR: cidr, Private: ip}, nil
+		mode, err := kv.GetFromDB(db, "subnet/"+subnet+"/mode")
+		if err != nil {
+			return Target{}, fmt.Errorf("vm %q: interface %q: mode of subnet %q: %w", vmName, ifaceName, subnet, err)
+		}
+		return Target{VPC: vpc, CIDR: cidr, Private: ip, Subnet: subnet, Mode: mode}, nil
 	}
 	return Target{}, fmt.Errorf("vm %q has no interface %q", vmName, ifaceName)
 }

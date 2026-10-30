@@ -61,9 +61,7 @@ func createSubnet(db *badger.DB, subnetName string, d subnetData, backend dhcpba
 		if err := setupVxlanHost(d, vethE); err != nil {
 			return err
 		}
-	case ModePublicIP:
-		return fmt.Errorf("subnet mode %q: host network setup is not implemented yet", d.mode)
-	case ModeBridge:
+	case ModeBridge, ModePublicIP:
 		if err := netif.BridgeSetMaster(vethE, d.localIface); err != nil {
 			return fmt.Errorf("add veth-e to bridge: %w", err)
 		}
@@ -122,7 +120,7 @@ func createSubnet(db *badger.DB, subnetName string, d subnetData, backend dhcpba
 		}); err != nil {
 			return fmt.Errorf("configure netns: %w", err)
 		}
-	case d.mode == ModeBridge:
+	case Bridged(d.mode):
 		if err := netns.Call(d.vpc, func() error {
 			if err := netif.AddrAdd(d.bridge, d.interfaceIP); err != nil {
 				return fmt.Errorf("add addr: %w", err)

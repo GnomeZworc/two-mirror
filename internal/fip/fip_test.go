@@ -184,6 +184,8 @@ func seedVM(t *testing.T) *badger.DB {
 	t.Cleanup(func() { db.Close() })
 	for key, value := range map[string]string{
 		"vpc/vp-t47/cidr":       "10.47.0.0/16",
+		"subnet/sn-a/mode":      "vxlan",
+		"subnet/sn-b/mode":      "public_ip",
 		"subnet/sn-a/vpc":       "vp-t47",
 		"subnet/sn-b/vpc":       "vp-t47",
 		"vm/vm-1/nic/0/name":    "nic-a1b2",
@@ -206,7 +208,7 @@ func TestResolveFindsTheInterfaceByName(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.VPC != "vp-t47" || got.CIDR.String() != "10.47.0.0/16" || got.Private.String() != "10.47.2.10" {
+	if got.VPC != "vp-t47" || got.CIDR.String() != "10.47.0.0/16" || got.Private.String() != "10.47.2.10" || got.Subnet != "sn-b" || got.Mode != "public_ip" {
 		t.Errorf("cible %+v", got)
 	}
 }
