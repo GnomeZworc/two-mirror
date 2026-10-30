@@ -51,6 +51,24 @@ func TableRoutesVia(table int, iface string) ([]*net.IPNet, error) {
 	return dsts, nil
 }
 
+func RouteDelViaIfExists(table int, dst *net.IPNet, gw net.IP, iface string) error {
+	link, err := netlink.LinkByName(iface)
+	if err != nil {
+		return err
+	}
+	err = netlink.RouteDel(&netlink.Route{
+		LinkIndex: link.Attrs().Index,
+		Dst:       dst,
+		Gw:        gw,
+		Table:     table,
+		Type:      unix.RTN_UNICAST,
+	})
+	if err != nil && !errors.Is(err, syscall.ESRCH) {
+		return err
+	}
+	return nil
+}
+
 func unreachableDefault(table, metric int) *netlink.Route {
 	return &netlink.Route{
 		Dst:      defaultIPv4,

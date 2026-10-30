@@ -25,6 +25,14 @@ public est celui de ``interfaces.internet``, ``br-public`` si la clé est absent
 accroche ``vxlan-public``, le VXLAN du segment public partagé avec les bordures
 (:doc:`/demarrage/installation`) ; sans ce bridge, toute création de VPC échoue.
 
+Le ``br-public`` du netns n'est qu'un point de raccordement : rien n'entre dans le VPC par lui.
+L'agent y pose ``arp_ignore=1`` (il ne répond pas à l'ARP pour les adresses du netns) et, dans la
+table nftables ``ip two``, rejette tout IP arrivé par ``br-public`` (chaînes ``in-br-public`` et
+``fwd-br-public``). Seules les interfaces publiques prévues — passerelle NAT, IP flottante — y
+reçoivent du trafic. Il désactive aussi ``br_netfilter`` dans le netns
+(``net.bridge.bridge-nf-call-{iptables,ip6tables,arptables}=0``, quand le module est chargé) : sinon
+conntrack voit chaque trame pontée et le SNAT de la passerelle NAT ne s'applique plus.
+
 Dans le netns, l'agent pose aussi la ``dummy`` ``hostsvc`` (``169.254.169.253/32``) et la chaîne
 iptables ``TWO-HOSTSVC``, puis demande à ``two-hostsvc`` de servir le VPC : c'est le chemin du
 DNS et du NTP des VM (voir :doc:`dns-ntp`). Si ``two-hostsvc`` ne répond pas, la création du VPC
@@ -58,12 +66,15 @@ passe en ``error`` : ce VNI est déjà porté par ``vxlan-public``.
    │   └── vxl3-<id>    VXLAN du l3vni, VTEP = IPv4 primaire de default_interface
    └── l3-<id>-o    169.254.0.1/30 ── l3-<id>-i 169.254.0.2/30, dans le netns du VPC
 
-Dans le netns, le ``cidr`` du VPC est routé vers ``169.254.0.1`` ; le transit ``/30`` est le même
+Dans le netns, le ``cidr`` du VPC et la route par défaut sont routés vers ``169.254.0.1`` : sans
+passerelle NAT, l'``unreachable default`` de la VRF rejette ce qui n'est pas dans le VPC (voir
+:doc:`passerelle-nat`) ; le transit ``/30`` est le même
 sur tous les hyperviseurs et pour tous les VPC. L'agent active le forwarding IPv4 dans le netns,
 et sur l'hôte sur ``brl3-<id>`` et ``l3-<id>-o``, les deux interfaces d'entrée de la VRF ; il ne
 touche pas au réglage global, que ``bootstrap_kvm.sh`` met déjà à 1. FRR reçoit la VRF, son ``vni``, une instance
 ``router bgp <asn> vrf vrf-<id>`` avec RD ``<VTEP>:<l3vni>`` et RT ``<asn>:<l3vni>``, et
-l'export des routes du ``cidr`` présentes dans la VRF.
+l'export des routes du ``cidr`` présentes dans la VRF, et de la route par défaut de la passerelle
+NAT.
 
 La table de la VRF reçoit, juste après sa création, une route ``unreachable default`` de métrique
 maximale (``4278198272``, valeur recommandée par la documentation VRF du noyau). Sans elle, une
@@ -71,7 +82,8 @@ recherche qui échoue dans la VRF continue dans les règles suivantes, donc dans
 de l'hôte : un paquet d'un locataire vers une adresse inconnue de la VRF sortirait par l'underlay,
 avec ``169.254.0.2`` pour source (mesuré, `#81 <https://git.g3e.fr/syonad/two/issues/81>`_). La
 métrique maximale laisse passer avant elle toute route réelle de la VRF. Cette route n'est pas
-annoncée en EVPN : le route-map de la VRF n'exporte que le ``cidr`` du VPC. Elle n'est liée à
+annoncée en EVPN : le route-map de la VRF n'exporte que le ``cidr`` du VPC, et la route par
+défaut seulement quand son next-hop est ``169.254.0.2``, celle d'une passerelle NAT. Elle n'est liée à
 aucune interface et ne disparaît pas avec la VRF : la suppression la retire explicitement. IPv4
 seulement.
 

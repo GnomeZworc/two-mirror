@@ -87,3 +87,69 @@ func TestRouteErrorsArePropagated(t *testing.T) {
 		t.Error("nom de VPC sans tiret accepté")
 	}
 }
+
+func TestExportDefaultInstallsTheDefaultRouteInTheVRFTowardsTheNetns(t *testing.T) {
+	f := &fakeHost{}
+	if err := exportDefault(f, routedDB(t), "vp-s7"); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"table 2700 route 0.0.0.0/0 via 169.254.0.2 dev l3-s7-o"}
+	if !reflect.DeepEqual(f.calls, want) {
+		t.Errorf("appels %q, attendu %q", f.calls, want)
+	}
+}
+
+func TestWithdrawDefaultNamesTheGatewaySoTheUnreachableDefaultStays(t *testing.T) {
+	f := &fakeHost{}
+	if err := withdrawDefault(f, routedDB(t), "vp-s7"); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"table 2700 del 0.0.0.0/0 via 169.254.0.2 dev l3-s7-o"}
+	if !reflect.DeepEqual(f.calls, want) {
+		t.Errorf("appels %q, attendu %q", f.calls, want)
+	}
+}
+
+func TestDefaultRouteRefusesAVPCWithoutL3VNI(t *testing.T) {
+	db := routedDB(t)
+	for label, run := range map[string]func(host, *badger.DB, string) error{
+		"export":   exportDefault,
+		"withdraw": withdrawDefault,
+	} {
+		f := &fakeHost{}
+		err := run(f, db, "vp-flat")
+		if err == nil || !strings.Contains(err.Error(), `vpc "vp-flat" has no l3vni`) || len(f.calls) != 0 {
+			t.Errorf("%s : erreur %v, appels %q", label, err, f.calls)
+		}
+	}
+}
+
+func TestDefaultRouteErrorsArePropagated(t *testing.T) {
+	db := routedDB(t)
+	f := &fakeHost{fail: map[string]error{"table ": errors.New("network unreachable")}}
+	if err := exportDefault(f, db, "vp-s7"); err == nil || !strings.Contains(err.Error(), "export default in vrf-s7: network unreachable") {
+		t.Errorf("export : %v", err)
+	}
+	if err := withdrawDefault(f, db, "vp-s7"); err == nil || !strings.Contains(err.Error(), "withdraw default from vrf-s7: network unreachable") {
+		t.Errorf("withdraw : %v", err)
+	}
+}
+
+func TestNetnsDefaultToVRFPointsTheNetnsDefaultAtTheVRF(t *testing.T) {
+	f := &fakeHost{}
+	if err := netnsDefaultToVRF(f, routedDB(t), "vp-s7"); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"route [vp-s7] 0.0.0.0/0 via 169.254.0.1 dev l3-s7-i"}
+	if !reflect.DeepEqual(f.calls, want) {
+		t.Errorf("appels %q, attendu %q", f.calls, want)
+	}
+}
+
+func TestNetnsDefaultToVRFRefusesAVPCWithoutL3VNI(t *testing.T) {
+	f := &fakeHost{}
+	err := netnsDefaultToVRF(f, routedDB(t), "vp-flat")
+	if err == nil || !strings.Contains(err.Error(), `vpc "vp-flat" has no l3vni`) || len(f.calls) != 0 {
+		t.Errorf("erreur %v, appels %q", err, f.calls)
+	}
+}

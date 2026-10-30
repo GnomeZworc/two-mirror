@@ -20,6 +20,7 @@ type VRF struct {
 	L3VNI    uint32
 	VTEP     net.IP
 	Supernet *net.IPNet
+	Transit  net.IP
 }
 
 func (b Base) validate() error {
@@ -94,6 +95,14 @@ func (v VRF) prefixList() string {
 	return "PL-" + v.ID
 }
 
+func (v VRF) defaultPrefixList() string {
+	return "PL-" + v.ID + "-default"
+}
+
+func (v VRF) transitPrefixList() string {
+	return "PL-" + v.ID + "-transit"
+}
+
 func (v VRF) routeMap() string {
 	return "EXPORT-" + v.ID
 }
@@ -125,14 +134,23 @@ func (v VRF) validate() error {
 	if v.Supernet == nil || v.Supernet.IP.To4() == nil {
 		return fmt.Errorf("frr: supernet %v is not an IPv4 prefix", v.Supernet)
 	}
+	if v.Transit.To4() == nil {
+		return fmt.Errorf("frr: transit %v is not an IPv4 address", v.Transit)
+	}
 	return nil
 }
 
 func (v VRF) commands() []string {
 	return []string{
 		fmt.Sprintf("ip prefix-list %s seq 10 permit %s le 32", v.prefixList(), v.Supernet),
+		fmt.Sprintf("ip prefix-list %s seq 10 permit 0.0.0.0/0", v.defaultPrefixList()),
+		fmt.Sprintf("ip prefix-list %s seq 10 permit %s/32", v.transitPrefixList(), v.Transit.To4()),
 		fmt.Sprintf("route-map %s permit 10", v.routeMap()),
 		fmt.Sprintf("match ip address prefix-list %s", v.prefixList()),
+		"exit",
+		fmt.Sprintf("route-map %s permit 15", v.routeMap()),
+		fmt.Sprintf("match ip address prefix-list %s", v.defaultPrefixList()),
+		fmt.Sprintf("match ip next-hop prefix-list %s", v.transitPrefixList()),
 		"exit",
 		fmt.Sprintf("route-map %s deny 20", v.routeMap()),
 		"exit",

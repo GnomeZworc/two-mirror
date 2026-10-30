@@ -19,6 +19,7 @@ const UnreachableMetric = 4278198272
 var (
 	transitHost  = &net.IPNet{IP: net.IPv4(169, 254, 0, 1).To4(), Mask: net.CIDRMask(30, 32)}
 	transitNetns = &net.IPNet{IP: net.IPv4(169, 254, 0, 2).To4(), Mask: net.CIDRMask(30, 32)}
+	defaultRoute = &net.IPNet{IP: net.IPv4zero.To4(), Mask: net.CIDRMask(0, 32)}
 )
 
 type l3VPC struct {
@@ -104,8 +105,11 @@ func createL3(h host, cfg *configuration.Config, v l3VPC) error {
 		{"route " + v.supernet.String() + " in " + v.netns, func() error {
 			return h.RouteVia(v.netns, v.supernet, transitHost.IP, v.vethNetns())
 		}},
+		{"default route in " + v.netns, func() error {
+			return h.RouteVia(v.netns, defaultRoute, transitHost.IP, v.vethNetns())
+		}},
 		{"frr " + v.vrf(), func() error {
-			return h.ApplyVRF(frr.VRF{ASN: asn, ID: v.id, L3VNI: v.vni, VTEP: vtep, Supernet: v.supernet})
+			return h.ApplyVRF(frr.VRF{ASN: asn, ID: v.id, L3VNI: v.vni, VTEP: vtep, Supernet: v.supernet, Transit: transitNetns.IP})
 		}},
 	}
 	for _, s := range steps {

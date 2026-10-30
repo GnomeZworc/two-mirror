@@ -23,6 +23,7 @@ func labVRF(t *testing.T) VRF {
 		L3VNI:    4001,
 		VTEP:     net.ParseIP("192.168.14.11"),
 		Supernet: mustCIDR(t, "10.10.0.0/16"),
+		Transit:  net.ParseIP("169.254.0.2"),
 	}
 }
 
@@ -55,8 +56,14 @@ func TestBaseCommands(t *testing.T) {
 func TestVRFCommands(t *testing.T) {
 	want := []string{
 		"ip prefix-list PL-a1b2 seq 10 permit 10.10.0.0/16 le 32",
+		"ip prefix-list PL-a1b2-default seq 10 permit 0.0.0.0/0",
+		"ip prefix-list PL-a1b2-transit seq 10 permit 169.254.0.2/32",
 		"route-map EXPORT-a1b2 permit 10",
 		"match ip address prefix-list PL-a1b2",
+		"exit",
+		"route-map EXPORT-a1b2 permit 15",
+		"match ip address prefix-list PL-a1b2-default",
+		"match ip next-hop prefix-list PL-a1b2-transit",
 		"exit",
 		"route-map EXPORT-a1b2 deny 20",
 		"exit",
@@ -124,6 +131,8 @@ func TestVRFValidateRejects(t *testing.T) {
 		"vtep IPv6":         {func(v *VRF) { v.VTEP = net.ParseIP("fd00::1") }, "vtep fd00::1 is not an IPv4 address"},
 		"supernet absent":   {func(v *VRF) { v.Supernet = nil }, "supernet <nil> is not an IPv4 prefix"},
 		"supernet IPv6":     {func(v *VRF) { v.Supernet = mustCIDR(t, "fd00::/48") }, "supernet fd00::/48 is not an IPv4 prefix"},
+		"transit absent":    {func(v *VRF) { v.Transit = nil }, "transit <nil> is not an IPv4 address"},
+		"transit IPv6":      {func(v *VRF) { v.Transit = net.ParseIP("fd00::2") }, "transit fd00::2 is not an IPv4 address"},
 	}
 	for name, c := range cases {
 		v := labVRF(t)

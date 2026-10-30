@@ -232,6 +232,20 @@ func expectedExports(db *badger.DB, vpcName string) (expected, tolerated map[str
 			classify(st, ip.String()+"/32")
 		}
 	}
+
+	gateways, err := kv.ListByPrefix(db, prefixNATGW)
+	if err != nil {
+		return nil, nil, fmt.Errorf("watchdog: listing nat gateways: %w", err)
+	}
+	for key, value := range gateways {
+		name, ok := strings.CutSuffix(strings.TrimPrefix(key, prefixNATGW), "/vpc")
+		if !ok || strings.Contains(name, "/") || value != vpcName {
+			continue
+		}
+		if st, err := state.Get(db, prefixNATGW+name); err == nil {
+			classify(st, "0.0.0.0/0")
+		}
+	}
 	return expected, tolerated, nil
 }
 

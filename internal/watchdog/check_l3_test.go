@@ -278,3 +278,41 @@ func TestCheckL3VPCsReportsAVRFWithoutUnreachableDefault(t *testing.T) {
 		t.Errorf("notifications %q", notified(r))
 	}
 }
+
+func TestCheckL3VPCsExpectsTheDefaultRouteOfARunningNATGateway(t *testing.T) {
+	cases := []struct {
+		label    string
+		gateway  state.State
+		vpc      string
+		exported bool
+		want     []string
+	}{
+		{"passerelle running, route exportée", state.Running, "vp-s7", true, nil},
+		{"passerelle running, route absente", state.Running, "vp-s7", false,
+			[]string{"vpc vp-s7: route 0.0.0.0/0 not exported in vrf-s7"}},
+		{"passerelle en création, route exportée", state.Creating, "vp-s7", true, nil},
+		{"passerelle en erreur, route absente", state.Error, "vp-s7", false, nil},
+		{"passerelle d'un autre VPC, route exportée", state.Running, "vp-s70", true,
+			[]string{"vpc vp-s7: route 0.0.0.0/0 exported in vrf-s7 without a running owner: its traffic is black-holed"}},
+	}
+	for _, c := range cases {
+		db := newTestDB(t)
+		seedResource(t, db, prefixVPC, "vp-s7", state.Running)
+		seedKV(t, db, "vpc/vp-s7/cidr", "10.241.0.0/16")
+		seedKV(t, db, "vpc/vp-s7/l3vni", "2700")
+		seedResource(t, db, prefixNATGW, "ng-1", c.gateway)
+		seedKV(t, db, "nat-gateway/ng-1/vpc", c.vpc)
+		p := seedRoutedVPC(t)
+		p.routes = map[uint32][]string{2700: nil}
+		if c.exported {
+			p.routes[2700] = []string{"0.0.0.0/0"}
+		}
+		r := &recorder{}
+		if err := CheckL3VPCs(db, bgpCfg(), p, r); err != nil {
+			t.Fatal(err)
+		}
+		if got := notified(r); !reflect.DeepEqual(got, c.want) {
+			t.Errorf("%s :\n%q\nattendu :\n%q", c.label, got, c.want)
+		}
+	}
+}

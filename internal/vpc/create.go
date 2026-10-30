@@ -32,6 +32,10 @@ func CreateVPC(db *badger.DB, name string, cfg *configuration.Config) error {
 			return err
 		}
 
+		if err := netns.Call(name, guardPublicBridge); err != nil {
+			return err
+		}
+
 		if err := netif.BridgeSetMaster("vp-"+vpcID+"-e", cfg.PublicBridge()); err != nil {
 			return err
 		}

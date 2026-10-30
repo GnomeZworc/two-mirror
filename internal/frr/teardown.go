@@ -25,8 +25,10 @@ func routingTeardown(v VRF, running string) []step {
 	if hasPrefix(lines, "route-map "+v.routeMap()+" ") {
 		steps = append(steps, step{"no route-map " + v.routeMap()})
 	}
-	if hasPrefix(lines, "ip prefix-list "+v.prefixList()+" ") {
-		steps = append(steps, step{"no ip prefix-list " + v.prefixList()})
+	for _, list := range []string{v.prefixList(), v.defaultPrefixList(), v.transitPrefixList()} {
+		if hasPrefix(lines, "ip prefix-list "+list+" ") {
+			steps = append(steps, step{"no ip prefix-list " + list})
+		}
 	}
 	return steps
 }

@@ -18,6 +18,7 @@ type AgentCollector struct {
 	vpcsTotal    *prometheus.Desc
 	subnetsTotal *prometheus.Desc
 	vmsTotal     *prometheus.Desc
+	natGateways  *prometheus.Desc
 }
 
 func NewAgentCollector(db *badger.DB) *AgentCollector {
@@ -38,6 +39,11 @@ func NewAgentCollector(db *badger.DB) *AgentCollector {
 			"Number of VMs by state.",
 			[]string{"state"}, nil,
 		),
+		natGateways: prometheus.NewDesc(
+			"syonad_nat_gateways_total",
+			"Number of NAT gateways by state.",
+			[]string{"state"}, nil,
+		),
 	}
 }
 
@@ -45,12 +51,14 @@ func (c *AgentCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.vpcsTotal
 	ch <- c.subnetsTotal
 	ch <- c.vmsTotal
+	ch <- c.natGateways
 }
 
 func (c *AgentCollector) Collect(ch chan<- prometheus.Metric) {
 	c.collectStates(ch, "vpc/", c.vpcsTotal)
 	c.collectStates(ch, "subnet/", c.subnetsTotal)
 	c.collectStates(ch, "vm/", c.vmsTotal)
+	c.collectStates(ch, "nat-gateway/", c.natGateways)
 }
 
 // collectStates counts resources under the given DB prefix by their state value

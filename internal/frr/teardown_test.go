@@ -51,10 +51,17 @@ router bgp 64600 vrf vrf-a1b2c
 exit
 !
 ip prefix-list PL-a1b2 seq 10 permit 10.10.0.0/16 le 32
+ip prefix-list PL-a1b2-default seq 10 permit 0.0.0.0/0
+ip prefix-list PL-a1b2-transit seq 10 permit 169.254.0.2/32
 ip prefix-list PL-a1b2c seq 10 permit 10.20.0.0/16 le 32
 !
 route-map EXPORT-a1b2 permit 10
  match ip address prefix-list PL-a1b2
+exit
+!
+route-map EXPORT-a1b2 permit 15
+ match ip address prefix-list PL-a1b2-default
+ match ip next-hop prefix-list PL-a1b2-transit
 exit
 !
 route-map EXPORT-a1b2 deny 20
@@ -91,6 +98,8 @@ func TestRoutingTeardownFollowsTheOrderFRRRequires(t *testing.T) {
 		{"no router bgp 64600 vrf vrf-a1b2"},
 		{"no route-map EXPORT-a1b2"},
 		{"no ip prefix-list PL-a1b2"},
+		{"no ip prefix-list PL-a1b2-default"},
+		{"no ip prefix-list PL-a1b2-transit"},
 	}
 	if got := routingTeardown(labVRF(t), fullRunning); !reflect.DeepEqual(got, want) {
 		t.Errorf("démontage :\n%q\nattendu :\n%q", got, want)
@@ -104,6 +113,8 @@ func TestRoutingTeardownTakesTheASNOfTheInstanceFromFRR(t *testing.T) {
 		{"no router bgp 64600 vrf vrf-a1b2"},
 		{"no route-map EXPORT-a1b2"},
 		{"no ip prefix-list PL-a1b2"},
+		{"no ip prefix-list PL-a1b2-default"},
+		{"no ip prefix-list PL-a1b2-transit"},
 	}
 	for _, asn := range []uint32{0, 64601} {
 		v := labVRF(t)

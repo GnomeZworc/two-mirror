@@ -44,6 +44,8 @@ func collect(t *testing.T, c *AgentCollector) map[string]map[string]float64 {
 			name = "subnets"
 		case strings.Contains(desc, "syonad_vms_total"):
 			name = "vms"
+		case strings.Contains(desc, "syonad_nat_gateways_total"):
+			name = "nat_gateways"
 		default:
 			t.Fatalf("métrique inattendue : %s", desc)
 		}
@@ -62,12 +64,13 @@ func collect(t *testing.T, c *AgentCollector) map[string]map[string]float64 {
 func TestCollector_CountsByState(t *testing.T) {
 	db := newTestDB(t)
 	for resource, s := range map[string]state.State{
-		"vpc/vpc-1":   state.Running,
-		"vpc/vpc-2":   state.Running,
-		"vpc/vpc-3":   state.Error,
-		"subnet/sn-1": state.Creating,
-		"vm/vm-1":     state.Running,
-		"vm/vm-2":     state.Error,
+		"vpc/vpc-1":        state.Running,
+		"vpc/vpc-2":        state.Running,
+		"vpc/vpc-3":        state.Error,
+		"subnet/sn-1":      state.Creating,
+		"vm/vm-1":          state.Running,
+		"vm/vm-2":          state.Error,
+		"nat-gateway/ng-1": state.Running,
 	} {
 		if err := state.Set(db, resource, s); err != nil {
 			t.Fatalf("préparation du test : %v", err)
@@ -88,6 +91,9 @@ func TestCollector_CountsByState(t *testing.T) {
 		if got["vms"][s] != want {
 			t.Errorf("vms{state=%q} = %v, attendu %v", s, got["vms"][s], want)
 		}
+	}
+	if got["nat_gateways"]["running"] != 1 || got["vpcs"]["running"] != 2 {
+		t.Errorf("nat_gateways{state=running} = %v, vpcs{state=running} = %v, attendu 1 et 2", got["nat_gateways"]["running"], got["vpcs"]["running"])
 	}
 }
 
@@ -111,7 +117,7 @@ func TestCollector_IgnoresVMDiskKeys(t *testing.T) {
 // côté Prometheus casse les alertes qui s'en servent.
 func TestCollector_EmitsEveryState(t *testing.T) {
 	got := collect(t, NewAgentCollector(newTestDB(t)))
-	for _, family := range []string{"vpcs", "subnets", "vms"} {
+	for _, family := range []string{"vpcs", "subnets", "vms", "nat_gateways"} {
 		if len(got[family]) != len(state.All()) {
 			t.Errorf("%s : %d séries, attendu %d", family, len(got[family]), len(state.All()))
 		}
@@ -145,7 +151,7 @@ func TestCollector_Describe(t *testing.T) {
 	for range ch {
 		n++
 	}
-	if n != 3 {
-		t.Errorf("%d descripteurs, attendu 3", n)
+	if n != 4 {
+		t.Errorf("%d descripteurs, attendu 4", n)
 	}
 }

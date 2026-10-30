@@ -14,3 +14,11 @@ func BridgeAddLocalMAC(_ string, _ net.HardwareAddr) error {
 func BridgeHasLocalMAC(_ string, _ net.HardwareAddr) (bool, error) {
 	return false, errors.New("not supported on this platform")
 }
+
+func BridgeDelLocalMACIfExists(_ string, _ net.HardwareAddr) error {
+	return errors.New("not supported on this platform")
+}
+
+func BridgeSetLocalMAC(_ string, _ net.HardwareAddr) error {
+	return errors.New("not supported on this platform")
+}

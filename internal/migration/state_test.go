@@ -38,6 +38,9 @@ func TestMigrateStates_LegacyMapping(t *testing.T) {
 		"vm stopping":     {"vm/vm-4", "stopping", state.Error},
 		"vpc creating":    {"vpc/vpc-2", "creating", state.Error},
 		"subnet deleting": {"subnet/sn-2", "deleting", state.Error},
+		"nat creating":    {"nat-gateway/ng-1", "creating", state.Error},
+		"nat deleting":    {"nat-gateway/ng-2", "deleting", state.Error},
+		"nat running":     {"nat-gateway/ng-3", "running", state.Running},
 	}
 	for _, c := range cases {
 		kv.AddInDB(db, c.resource+"/state", c.from)

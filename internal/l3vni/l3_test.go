@@ -83,6 +83,10 @@ func (f *fakeHost) TableRouteDel(table uint32, dst *net.IPNet) error {
 	return f.record(fmt.Sprintf("table %d del %s", table, dst))
 }
 
+func (f *fakeHost) TableRouteDelVia(table uint32, dst *net.IPNet, gw net.IP, iface string) error {
+	return f.record(fmt.Sprintf("table %d del %s via %s dev %s", table, dst, gw, iface))
+}
+
 func (f *fakeHost) TableUnreachableDefault(table uint32) error {
 	return f.record(fmt.Sprintf("table %d unreachable default", table))
 }
@@ -92,7 +96,7 @@ func (f *fakeHost) TableUnreachableDefaultDel(table uint32) error {
 }
 
 func (f *fakeHost) ApplyVRF(v frr.VRF) error {
-	return f.record(fmt.Sprintf("frr apply asn=%d id=%s vni=%d vtep=%s supernet=%s", v.ASN, v.ID, v.L3VNI, v.VTEP, v.Supernet))
+	return f.record(fmt.Sprintf("frr apply asn=%d id=%s vni=%d vtep=%s supernet=%s transit=%s", v.ASN, v.ID, v.L3VNI, v.VTEP, v.Supernet, v.Transit))
 }
 
 func (f *fakeHost) WithdrawVRF(v frr.VRF) error {
@@ -145,7 +149,8 @@ func TestCreateL3FollowsTheLabRecipe(t *testing.T) {
 		"up [vp-s7] l3-s7-i",
 		"sysctl [vp-s7] net.ipv4.ip_forward=1",
 		"route [vp-s7] 10.241.0.0/16 via 169.254.0.1 dev l3-s7-i",
-		"frr apply asn=64600 id=s7 vni=2700 vtep=192.168.14.11 supernet=10.241.0.0/16",
+		"route [vp-s7] 0.0.0.0/0 via 169.254.0.1 dev l3-s7-i",
+		"frr apply asn=64600 id=s7 vni=2700 vtep=192.168.14.11 supernet=10.241.0.0/16 transit=169.254.0.2",
 	}
 	if !reflect.DeepEqual(f.calls, want) {
 		t.Errorf("appels :\n%s\nattendu :\n%s", strings.Join(f.calls, "\n"), strings.Join(want, "\n"))
