@@ -234,6 +234,8 @@
 <li class="toctree-l2"><a class="reference internal" href="../concepts/cycle-de-vie.html">Cycle de vie des ressources</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../concepts/metadata-cloud-init.html">Metadata et cloud-init</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../concepts/dns-ntp.html">DNS et NTP des VM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/passerelle-nat.html">Passerelle NAT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/ip-flottante.html">IP flottante</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../architecture/index.html">Architecture</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -878,37 +880,52 @@ fait en fermant le ticket. Chaque ticket concerné liste ses marqueurs en commen
 <td><p>hv1 hv2 hv3</p></td>
 <td><p>#87</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">51-l3vni</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">46-passerelle-nat</span></code></p></td>
+<td><p>passerelle NAT d’un VPC — macvlan ng-&lt;id&gt; sur le br-public du netns, MAC 02:04:00 + l3vni, SNAT vers l’IP de sortie (source vue à la sortie du netns), route par défaut en type 5 importée par un autre hôte, unreachable default jamais annoncée, rien n’entre sans connexion établie, refus 409, suppression propre, bascule vers un autre hôte par mobilité MAC</p></td>
+<td><p>hv1 hv2 hv3</p></td>
+<td><p>#42</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">47-ip-flottante</span></code></p></td>
+<td><p>IP flottante d’une interface de VM — macvlan fip-&lt;hex&gt; sur le br-public du netns, MAC 02:05 + IP publique, NAT 1:1 sans état, routage par source (sortie par l’IP flottante, pas par la passerelle NAT du VPC), entrée neuve depuis le segment public, métadonnées servies, affichage sur la VM, refus 409, détachement, déplacement vers un autre hôte par mobilité MAC</p></td>
+<td><p>hv1 hv2 hv3</p></td>
+<td><p>#88</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">48-subnet-public</span></code></p></td>
+<td><p>subnet public_ip — VM qui porte son IP publique, subnet raccordé au bridge public de l’hôte (iface_type ignoré), même plage et même interface_ip pour plusieurs VPC sur un même hôte et sur deux hôtes, interface_ip invisible sur le segment, gateway et DNS propres à chaque VPC, sortie et entrée sans NAT, usurpation refusée, IP flottante refusée</p></td>
+<td><p>hv1 hv2 hv3</p></td>
+<td><p>#89</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">51-l3vni</span></code></p></td>
 <td><p>routage inter-subnet entre hôtes par L3VNI (IRB symétrique) — VRF, RMAC, exports /24 et /32, RT-5 réfléchies, TTL, isolation par RT, unreachable default dans la VRF, démontage d’un VPC routé</p></td>
 <td><p>hv1 hv2</p></td>
 <td><p>#41, #81</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">52-migration</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">52-migration</span></code></p></td>
 <td><p>migration d’une adresse de VM entre hôtes d’un VPC routé — /32 retiré en premier, /24 en filet puis en ECMP, séquence orchestrée, 40 sources, suppression du subnet refusée tant qu’une VM l’utilise, MAC anycast hors EVPN</p></td>
 <td><p>hv1 hv2 hv3</p></td>
 <td><p>#41, #57</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">53-watchdog-l3</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">53-watchdog-l3</span></code></p></td>
 <td><p>watchdog d’un VPC routé — /32 orphelin signalé comme trou noir, /32 manquant signalé, unreachable default absente signalée, aucune fausse alerte BGP ni L3VNI, trafic intact après les essais</p></td>
 <td><p>hv1 hv3</p></td>
 <td><p>#41, #81</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">61-redemarrage-agent</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">61-redemarrage-agent</span></code></p></td>
 <td><p>redémarrage de l’agent avec des VM en marche — rien ne disparaît ni n’est recréé, trafic routé sans perte, DHCP et métadonnées servis, base BGP réappliquée à l’identique, ressources toujours gérées</p></td>
 <td><p>hv1 hv2</p></td>
 <td><p>#41, #46</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">62-nettoyage-global</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">62-nettoyage-global</span></code></p></td>
 <td><p>nettoyage global en fin de suite — aucun hôte ne garde de ressource : API vide, ni netns, tap, VRF, unité, instance DHCP ou de métadonnées, processus QEMU, règle de port, volume ; FRR réduit à la base BGP</p></td>
 <td></td>
 <td><p>#70</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">71-perte-rr</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">71-perte-rr</span></code></p></td>
 <td><p>perte d’un route reflector — l’autre garde la session EVPN, le VTEP distant reste connu, le trafic L2 entre hôtes passe sans perte mesurable, retour du RR arrêté</p></td>
 <td><p>hv1 hv2</p></td>
 <td><p>#54</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">72-perte-switch</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">72-perte-switch</span></code></p></td>
 <td><p>perte d’un switch de la passerelle VRRP — bascule vers l’autre en moins de 5 s, sessions EVPN jamais coupées ; au retour, un seul maître (préemption désactivée : celui qui l’est est relevé), plus long silence mesuré</p></td>
 <td></td>
 <td><p>#54, #69, #80</p></td>

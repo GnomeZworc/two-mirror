@@ -670,6 +670,8 @@ window.runMermaid = runMermaid;</script>
 <li class="toctree-l2"><a class="reference internal" href="cycle-de-vie.html">Cycle de vie des ressources</a></li>
 <li class="toctree-l2"><a class="reference internal" href="metadata-cloud-init.html">Metadata et cloud-init</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dns-ntp.html">DNS et NTP des VM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="passerelle-nat.html">Passerelle NAT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ip-flottante.html">IP flottante</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../architecture/index.html">Architecture</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -819,6 +821,13 @@ public est celui de <code class="docutils literal notranslate"><span class="pre"
 <code class="docutils literal notranslate"><span class="pre">default_interface</span></code> (<a class="reference internal" href="../exploitation/configuration.html"><span class="doc">Configuration</span></a>). <code class="docutils literal notranslate"><span class="pre">deploy.sh</span> <span class="pre">-i</span></code> le crée et y
 accroche <code class="docutils literal notranslate"><span class="pre">vxlan-public</span></code>, le VXLAN du segment public partagé avec les bordures
 (<a class="reference internal" href="../demarrage/installation.html"><span class="doc">Installation d’un hyperviseur</span></a>) ; sans ce bridge, toute création de VPC échoue.</p>
+<p>Le <code class="docutils literal notranslate"><span class="pre">br-public</span></code> du netns n’est qu’un point de raccordement : rien n’entre dans le VPC par lui.
+L’agent y pose <code class="docutils literal notranslate"><span class="pre">arp_ignore=1</span></code> (il ne répond pas à l’ARP pour les adresses du netns) et, dans la
+table nftables <code class="docutils literal notranslate"><span class="pre">ip</span> <span class="pre">two</span></code>, rejette tout IP arrivé par <code class="docutils literal notranslate"><span class="pre">br-public</span></code> (chaînes <code class="docutils literal notranslate"><span class="pre">in-br-public</span></code> et
+<code class="docutils literal notranslate"><span class="pre">fwd-br-public</span></code>). Seules les interfaces publiques prévues — passerelle NAT, IP flottante — y
+reçoivent du trafic. Il désactive aussi <code class="docutils literal notranslate"><span class="pre">br_netfilter</span></code> dans le netns
+(<code class="docutils literal notranslate"><span class="pre">net.bridge.bridge-nf-call-{iptables,ip6tables,arptables}=0</span></code>, quand le module est chargé) : sinon
+conntrack voit chaque trame pontée et le SNAT de la passerelle NAT ne s’applique plus.</p>
 <p>Dans le netns, l’agent pose aussi la <code class="docutils literal notranslate"><span class="pre">dummy</span></code> <code class="docutils literal notranslate"><span class="pre">hostsvc</span></code> (<code class="docutils literal notranslate"><span class="pre">169.254.169.253/32</span></code>) et la chaîne
 iptables <code class="docutils literal notranslate"><span class="pre">TWO-HOSTSVC</span></code>, puis demande à <code class="docutils literal notranslate"><span class="pre">two-hostsvc</span></code> de servir le VPC : c’est le chemin du
 DNS et du NTP des VM (voir <a class="reference internal" href="dns-ntp.html"><span class="doc">DNS et NTP des VM</span></a>). Si <code class="docutils literal notranslate"><span class="pre">two-hostsvc</span></code> ne répond pas, la création du VPC
@@ -845,19 +854,23 @@ passe en <code class="docutils literal notranslate"><span class="pre">error</spa
 └── l3-&lt;id&gt;-o    169.254.0.1/30 ── l3-&lt;id&gt;-i 169.254.0.2/30, dans le netns du VPC
 </pre></div>
 </div>
-<p>Dans le netns, le <code class="docutils literal notranslate"><span class="pre">cidr</span></code> du VPC est routé vers <code class="docutils literal notranslate"><span class="pre">169.254.0.1</span></code> ; le transit <code class="docutils literal notranslate"><span class="pre">/30</span></code> est le même
+<p>Dans le netns, le <code class="docutils literal notranslate"><span class="pre">cidr</span></code> du VPC et la route par défaut sont routés vers <code class="docutils literal notranslate"><span class="pre">169.254.0.1</span></code> : sans
+passerelle NAT, l”<code class="docutils literal notranslate"><span class="pre">unreachable</span> <span class="pre">default</span></code> de la VRF rejette ce qui n’est pas dans le VPC (voir
+<a class="reference internal" href="passerelle-nat.html"><span class="doc">Passerelle NAT</span></a>) ; le transit <code class="docutils literal notranslate"><span class="pre">/30</span></code> est le même
 sur tous les hyperviseurs et pour tous les VPC. L’agent active le forwarding IPv4 dans le netns,
 et sur l’hôte sur <code class="docutils literal notranslate"><span class="pre">brl3-&lt;id&gt;</span></code> et <code class="docutils literal notranslate"><span class="pre">l3-&lt;id&gt;-o</span></code>, les deux interfaces d’entrée de la VRF ; il ne
 touche pas au réglage global, que <code class="docutils literal notranslate"><span class="pre">bootstrap_kvm.sh</span></code> met déjà à 1. FRR reçoit la VRF, son <code class="docutils literal notranslate"><span class="pre">vni</span></code>, une instance
 <code class="docutils literal notranslate"><span class="pre">router</span> <span class="pre">bgp</span> <span class="pre">&lt;asn&gt;</span> <span class="pre">vrf</span> <span class="pre">vrf-&lt;id&gt;</span></code> avec RD <code class="docutils literal notranslate"><span class="pre">&lt;VTEP&gt;:&lt;l3vni&gt;</span></code> et RT <code class="docutils literal notranslate"><span class="pre">&lt;asn&gt;:&lt;l3vni&gt;</span></code>, et
-l’export des routes du <code class="docutils literal notranslate"><span class="pre">cidr</span></code> présentes dans la VRF.</p>
+l’export des routes du <code class="docutils literal notranslate"><span class="pre">cidr</span></code> présentes dans la VRF, et de la route par défaut de la passerelle
+NAT.</p>
 <p>La table de la VRF reçoit, juste après sa création, une route <code class="docutils literal notranslate"><span class="pre">unreachable</span> <span class="pre">default</span></code> de métrique
 maximale (<code class="docutils literal notranslate"><span class="pre">4278198272</span></code>, valeur recommandée par la documentation VRF du noyau). Sans elle, une
 recherche qui échoue dans la VRF continue dans les règles suivantes, donc dans la table <code class="docutils literal notranslate"><span class="pre">main</span></code>
 de l’hôte : un paquet d’un locataire vers une adresse inconnue de la VRF sortirait par l’underlay,
 avec <code class="docutils literal notranslate"><span class="pre">169.254.0.2</span></code> pour source (mesuré, <a class="reference external" href="https://git.g3e.fr/syonad/two/issues/81">#81</a>). La
 métrique maximale laisse passer avant elle toute route réelle de la VRF. Cette route n’est pas
-annoncée en EVPN : le route-map de la VRF n’exporte que le <code class="docutils literal notranslate"><span class="pre">cidr</span></code> du VPC. Elle n’est liée à
+annoncée en EVPN : le route-map de la VRF n’exporte que le <code class="docutils literal notranslate"><span class="pre">cidr</span></code> du VPC, et la route par
+défaut seulement quand son next-hop est <code class="docutils literal notranslate"><span class="pre">169.254.0.2</span></code>, celle d’une passerelle NAT. Elle n’est liée à
 aucune interface et ne disparaît pas avec la VRF : la suppression la retire explicitement. IPv4
 seulement.</p>
 <p>La suppression retire d’abord la configuration de routage de FRR, puis les interfaces, la route
@@ -885,7 +898,12 @@ filet qui couvre une VM tant que son <code class="docutils literal notranslate">
 <h2>VM<a class="headerlink" href="#vm" title="Lien vers cette rubrique">#</a></h2>
 <p>Une VM est un processus QEMU/KVM raccordé à un ou plusieurs subnets par des taps.</p>
 <p><strong>Interfaces.</strong> L’ordre du tableau <code class="docutils literal notranslate"><span class="pre">interfaces</span></code> détermine le slot PCI (<code class="docutils literal notranslate"><span class="pre">0x03</span> <span class="pre">+</span> <span class="pre">index</span></code>), donc
-le nom de l’interface dans le guest. Exactement une interface doit être <code class="docutils literal notranslate"><span class="pre">primary</span></code> : elle porte
+le nom de l’interface dans le guest. Chaque interface porte un <code class="docutils literal notranslate"><span class="pre">name</span></code>, obligatoire et unique dans
+la VM, choisi par l’appelant (<code class="docutils literal notranslate"><span class="pre">nic-a1b2</span></code> par exemple) : c’est l’identifiant stable par lequel
+l’API désigne une interface, son rang pouvant changer. Aucune interface Linux n’en tire son nom,
+ni dans le guest ni sur l’hôte. Une <a class="reference internal" href="ip-flottante.html"><span class="doc">IP flottante</span></a> désigne l’interface par ce
+nom ; le <code class="docutils literal notranslate"><span class="pre">GET</span></code> de la VM l’affiche sur l’interface (<code class="docutils literal notranslate"><span class="pre">floating_ip</span></code>, en lecture seule, refusé à la
+création), et la suppression de la VM est refusée (409) tant qu’elle est attachée. Exactement une interface doit être <code class="docutils literal notranslate"><span class="pre">primary</span></code> : elle porte
 la route par défaut et le serveur de metadata. Tous les subnets d’une VM doivent appartenir au
 <strong>même VPC</strong>.</p>
 <p><strong>MAC.</strong> Chaque interface porte la MAC choisie par l’appelant, comme son IP. L’agent la donne

@@ -676,6 +676,8 @@ window.runMermaid = runMermaid;</script>
 <li class="toctree-l2"><a class="reference internal" href="concepts/cycle-de-vie.html">Cycle de vie des ressources</a></li>
 <li class="toctree-l2"><a class="reference internal" href="concepts/metadata-cloud-init.html">Metadata et cloud-init</a></li>
 <li class="toctree-l2"><a class="reference internal" href="concepts/dns-ntp.html">DNS et NTP des VM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/passerelle-nat.html">Passerelle NAT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/ip-flottante.html">IP flottante</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="architecture/index.html">Architecture</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -792,12 +794,60 @@ window.runMermaid = runMermaid;</script>
    <h1>Table de routage HTTP</h1>
 
    <div class="modindex-jumpbox">
+   <a href="#cap-/floating-ips"><strong>/floating-ips</strong></a> | 
+   <a href="#cap-/nat-gateways"><strong>/nat-gateways</strong></a> | 
    <a href="#cap-/subnets"><strong>/subnets</strong></a> | 
    <a href="#cap-/vms"><strong>/vms</strong></a> | 
    <a href="#cap-/vpcs"><strong>/vpcs</strong></a>
    </div>
 
    <table class="indextable modindextable">
+     <tr class="pcap"><td></td><td>&#160;</td><td></td></tr>
+     <tr class="cap" id="cap-/floating-ips"><td></td><td>
+       <strong>/floating-ips</strong></td><td></td></tr>
+     <tr>
+       <td></td>
+       <td>
+       <a href="exploitation/api-agent/reference.html#get--floating-ips"><code class="xref">GET /floating-ips</code></a></td><td>
+       <em>List all floating IPs of this agent</em></td></tr>
+     <tr>
+       <td></td>
+       <td>
+       <a href="exploitation/api-agent/reference.html#get--floating-ips-name"><code class="xref">GET /floating-ips/{name}</code></a></td><td>
+       <em>Get floating IP status and info</em></td></tr>
+     <tr>
+       <td></td>
+       <td>
+       <a href="exploitation/api-agent/reference.html#post--floating-ips"><code class="xref">POST /floating-ips</code></a></td><td>
+       <em>Attach a floating IP to an interface of a VM of this agent</em></td></tr>
+     <tr>
+       <td></td>
+       <td>
+       <a href="exploitation/api-agent/reference.html#delete--floating-ips-name"><code class="xref">DELETE /floating-ips/{name}</code></a></td><td>
+       <em>Detach and delete a floating IP</em></td></tr>
+     <tr class="pcap"><td></td><td>&#160;</td><td></td></tr>
+     <tr class="cap" id="cap-/nat-gateways"><td></td><td>
+       <strong>/nat-gateways</strong></td><td></td></tr>
+     <tr>
+       <td></td>
+       <td>
+       <a href="exploitation/api-agent/reference.html#get--nat-gateways"><code class="xref">GET /nat-gateways</code></a></td><td>
+       <em>List all NAT gateways of this agent</em></td></tr>
+     <tr>
+       <td></td>
+       <td>
+       <a href="exploitation/api-agent/reference.html#get--nat-gateways-name"><code class="xref">GET /nat-gateways/{name}</code></a></td><td>
+       <em>Get NAT gateway status and info</em></td></tr>
+     <tr>
+       <td></td>
+       <td>
+       <a href="exploitation/api-agent/reference.html#post--nat-gateways"><code class="xref">POST /nat-gateways</code></a></td><td>
+       <em>Create the NAT gateway of a VPC on this agent</em></td></tr>
+     <tr>
+       <td></td>
+       <td>
+       <a href="exploitation/api-agent/reference.html#delete--nat-gateways-name"><code class="xref">DELETE /nat-gateways/{name}</code></a></td><td>
+       <em>Delete a NAT gateway</em></td></tr>
      <tr class="pcap"><td></td><td>&#160;</td><td></td></tr>
      <tr class="cap" id="cap-/subnets"><td></td><td>
        <strong>/subnets</strong></td><td></td></tr>

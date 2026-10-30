@@ -670,6 +670,8 @@ window.runMermaid = runMermaid;</script>
 <li class="toctree-l2"><a class="reference internal" href="cycle-de-vie.html">Cycle de vie des ressources</a></li>
 <li class="toctree-l2"><a class="reference internal" href="metadata-cloud-init.html">Metadata et cloud-init</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dns-ntp.html">DNS et NTP des VM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="passerelle-nat.html">Passerelle NAT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ip-flottante.html">IP flottante</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../architecture/index.html">Architecture</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -788,6 +790,7 @@ window.runMermaid = runMermaid;</script>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#bridge">bridge</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#public-ip">public_ip</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#regles-de-pont">Règles de pont</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#routes-annoncees-aux-vm">Routes annoncées aux VM</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#route-par-defaut-default-route-et-gateway">Route par défaut : <code class="docutils literal notranslate"><span class="pre">default_route</span></code> et <code class="docutils literal notranslate"><span class="pre">gateway</span></code></a></li>
@@ -829,8 +832,9 @@ annoncées aux VM.</p>
 <td><p>disponible</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">public_ip</span></code></p></td>
-<td><p>routé comme <code class="docutils literal notranslate"><span class="pre">vxlan</span></code> côté DHCP</p></td>
-<td><p><strong>mise en place host non implémentée</strong> — la création échoue à l’exécution</p></td>
+<td><p>comme <code class="docutils literal notranslate"><span class="pre">bridge</span></code>, toujours au bridge public de l’host (<code class="docutils literal notranslate"><span class="pre">interfaces.internet</span></code>) ; la VM
+porte son IP publique</p></td>
+<td><p>disponible</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">vlan</span></code></p></td>
 <td><p>—</p></td>
@@ -838,12 +842,6 @@ annoncées aux VM.</p>
 </tr>
 </tbody>
 </table>
-</div>
-<div class="admonition warning">
-<p class="admonition-title">Avertissement</p>
-<p><code class="docutils literal notranslate"><span class="pre">public_ip</span></code> est accepté par l’API et traité comme <code class="docutils literal notranslate"><span class="pre">vxlan</span></code> pour le DHCP, mais sa
-configuration réseau côté host n’existe pas encore : la création part en <code class="docutils literal notranslate"><span class="pre">error</span></code> dans
-<code class="docutils literal notranslate"><span class="pre">Execute</span></code>. Ne pas s’appuyer dessus en production.</p>
 </div>
 <section id="vxlan">
 <h2>vxlan<a class="headerlink" href="#vxlan" title="Lien vers cette rubrique">#</a></h2>
@@ -942,6 +940,28 @@ local lui-même (<code class="docutils literal notranslate"><span class="pre">ou
 Par conception, une VM ne joint pas le netns d’un autre hôte. Les règles sont retirées à la
 suppression du subnet ; une règle déjà absente ne fait pas échouer la suppression. Le watchdog
 signale les règles manquantes et celles qui ne sont pas de l’agent.</p>
+</section>
+<section id="public-ip">
+<h2>public_ip<a class="headerlink" href="#public-ip" title="Lien vers cette rubrique">#</a></h2>
+<p>La VM <strong>porte elle-même une IP publique</strong>, sans NAT. Le subnet est raccordé comme un subnet
+<code class="docutils literal notranslate"><span class="pre">bridge</span></code>, mais toujours au <strong>bridge public</strong> de l’host (<code class="docutils literal notranslate"><span class="pre">interfaces.internet</span></code>, <code class="docutils literal notranslate"><span class="pre">br-public</span></code>
+par défaut) ; <code class="docutils literal notranslate"><span class="pre">iface_type</span></code> est ignoré. Le bridge du subnet dans le netns porte
+<code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> ; un veth <code class="docutils literal notranslate"><span class="pre">v-&lt;subnet&gt;-e</span></code> le relie au bridge public. Le <code class="docutils literal notranslate"><span class="pre">br-public</span></code> propre au
+netns n’est pas utilisé.</p>
+<p>Une plage publique (plusieurs /24 cohabitent sur le segment) est partagée par tous les VPC qui en
+demandent : <strong>chaque VPC a son propre subnet</strong>, avec la <strong>même</strong> <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code>, sur un même
+hôte comme sur des hôtes différents. Les règles de confinement du mode <code class="docutils literal notranslate"><span class="pre">bridge</span></code> sont posées sur
+chaque <code class="docutils literal notranslate"><span class="pre">v-&lt;subnet&gt;-i</span></code> : une VM ne résout <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> que vers le netns de son VPC (sa
+gateway, son DHCP, son DNS et son NTP), et <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code> n’est jamais visible sur le segment.</p>
+<p>Le <strong>nom</strong> de chaque subnet est choisi par l’appelant et doit être <strong>unique sur l’hyperviseur</strong> :
+l’orchestrateur tient un seul subnet public (<code class="docutils literal notranslate"><span class="pre">pub-203</span></code> par exemple) et en crée une instance par
+VPC (<code class="docutils literal notranslate"><span class="pre">pub-203a42</span></code> pour <code class="docutils literal notranslate"><span class="pre">vp-42</span></code>). La partie qui suit le premier tiret sert aux noms d’interface
+(<code class="docutils literal notranslate"><span class="pre">br-&lt;id&gt;</span></code>, <code class="docutils literal notranslate"><span class="pre">v-&lt;id&gt;-e</span></code>) : 10 caractères au plus.</p>
+<p>Routes annoncées : la route par défaut vers la <code class="docutils literal notranslate"><span class="pre">gateway</span></code> fournie (<code class="docutils literal notranslate"><span class="pre">default_route:</span> <span class="pre">true</span></code> et
+<code class="docutils literal notranslate"><span class="pre">gateway</span></code> obligatoires ensemble), la route du <code class="docutils literal notranslate"><span class="pre">cidr</span></code> du VPC vers <code class="docutils literal notranslate"><span class="pre">interface_ip</span></code>. Le contrôle
+de MTU est celui du mode <code class="docutils literal notranslate"><span class="pre">bridge</span></code>, appliqué au bridge public. Les VM de plages publiques se
+joignent directement sur le segment ; le filtrage au port les empêche d’usurper l’IP ou la MAC
+d’une autre. Une interface d’un subnet <code class="docutils literal notranslate"><span class="pre">public_ip</span></code> ne reçoit pas d”<a class="reference internal" href="ip-flottante.html"><span class="doc">IP flottante</span></a> (409).</p>
 </section>
 <section id="regles-de-pont">
 <h2>Règles de pont<a class="headerlink" href="#regles-de-pont" title="Lien vers cette rubrique">#</a></h2>
@@ -1067,6 +1087,7 @@ silencieusement.</p>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#bridge">bridge</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#public-ip">public_ip</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#regles-de-pont">Règles de pont</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#routes-annoncees-aux-vm">Routes annoncées aux VM</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#route-par-defaut-default-route-et-gateway">Route par défaut : <code class="docutils literal notranslate"><span class="pre">default_route</span></code> et <code class="docutils literal notranslate"><span class="pre">gateway</span></code></a></li>
