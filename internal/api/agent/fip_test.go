@@ -17,6 +17,7 @@ func seedRunningVM(t *testing.T, db *badger.DB) {
 	for key, value := range map[string]string{
 		"vpc/vp-t47/cidr":      "10.47.0.0/16",
 		"subnet/sn-a/vpc":      "vp-t47",
+		"subnet/sn-a/mode":     "vxlan",
 		"vm/vm-1/state":        "running",
 		"vm/vm-1/nic/0/name":   "nic-a",
 		"vm/vm-1/nic/0/subnet": "sn-a",

@@ -441,7 +441,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "409":
-          description: Floating IP already exists, VM unknown on this agent or not running, no interface of that name on the VM, interface that already has a floating IP, or public IP already used by another floating IP of this agent
+          description: Floating IP already exists, VM unknown on this agent or not running, no interface of that name on the VM, interface on a public_ip subnet (it carries its public IP itself), interface that already has a floating IP, or public IP already used by another floating IP of this agent
           content:
             application/json:
               schema:

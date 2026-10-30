@@ -8,6 +8,7 @@ import (
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/fip"
 	"git.g3e.fr/syonad/two/internal/state"
+	"git.g3e.fr/syonad/two/internal/subnet"
 	"git.g3e.fr/syonad/two/pkg/db/kv"
 	"github.com/dgraph-io/badger/v4"
 )
@@ -39,8 +40,12 @@ func (c CreateFloatingIPCommand) Prepare(db *badger.DB, _ *configuration.Config)
 	if vmState != state.Running {
 		return fmt.Errorf("vm %q is %s", c.VM, vmState)
 	}
-	if _, err := fip.Resolve(db, c.VM, c.Interface); err != nil {
+	target, err := fip.Resolve(db, c.VM, c.Interface)
+	if err != nil {
 		return err
+	}
+	if target.Mode == subnet.ModePublicIP {
+		return fmt.Errorf("interface %q of vm %q is on public_ip subnet %q: it carries its public ip itself", c.Interface, c.VM, target.Subnet)
 	}
 	others, err := floatingIPs(db)
 	if err != nil {

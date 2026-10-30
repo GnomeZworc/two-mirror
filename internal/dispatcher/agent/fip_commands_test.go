@@ -12,6 +12,12 @@ func seedVMWithInterfaces(t *testing.T, db *badger.DB, name, st string) {
 	t.Helper()
 	for key, value := range map[string]string{
 		"vpc/vp-t47/cidr":              "10.47.0.0/16",
+		"subnet/sn-a/mode":             "vxlan",
+		"subnet/sn-p/vpc":              "vp-t47",
+		"subnet/sn-p/mode":             "public_ip",
+		"vm/" + name + "/nic/2/name":   "nic-pub",
+		"vm/" + name + "/nic/2/subnet": "sn-p",
+		"vm/" + name + "/nic/2/ip":     "203.0.113.20",
 		"subnet/sn-a/vpc":              "vp-t47",
 		"vm/" + name + "/state":        st,
 		"vm/" + name + "/nic/0/name":   "nic-a",
@@ -71,6 +77,7 @@ func TestCreateFloatingIPCommand_Prepare_Refuses(t *testing.T) {
 			kv.AddInDB(db, "floating-ip/fip-0/interface", "nic-ab")
 			kv.AddInDB(db, "floating-ip/fip-0/ip", "240.0.0.47/24")
 		}, nil, `public ip 240.0.0.47 is already used by floating ip "fip-0"`},
+		{"interface sur un subnet public_ip", nil, func(c *CreateFloatingIPCommand) { c.Interface = "nic-pub" }, `interface "nic-pub" of vm "vm-1" is on public_ip subnet "sn-p"`},
 		{"ip sans préfixe", nil, func(c *CreateFloatingIPCommand) { c.IP = "240.0.0.47" }, `invalid ip "240.0.0.47"`},
 		{"gateway invalide", nil, func(c *CreateFloatingIPCommand) { c.Gateway = "bordure" }, `invalid gateway "bordure"`},
 	}
