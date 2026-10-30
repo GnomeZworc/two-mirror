@@ -79,4 +79,5 @@ Limites
 -------
 
 * IPv4 seulement.
+* Refusée (409) sur une interface d'un subnet ``public_ip`` : la VM y porte déjà son IP publique.
 * Une VM qui joint l'IP flottante d'une autre VM passe par les bordures.
