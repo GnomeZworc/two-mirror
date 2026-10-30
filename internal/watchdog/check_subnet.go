@@ -16,8 +16,9 @@ import (
 )
 
 const (
-	modeVxlan  = "vxlan"
-	modeBridge = "bridge"
+	modeVxlan    = "vxlan"
+	modeBridge   = "bridge"
+	modePublicIP = "public_ip"
 )
 
 func subnetIfaceNames(subnetName string) (hostVeth, nsVeth, bridge string, err error) {
@@ -83,7 +84,7 @@ func checkSubnet(db *badger.DB, name string, backend dhcpbackend.Backend, u unit
 			n.Notify(kindSubnet, name, p+" (host)")
 		}
 		checkVxlanIface(db, name, n)
-	case modeBridge:
+	case modeBridge, modePublicIP:
 	default:
 		n.Notify(kindSubnet, name, fmt.Sprintf("unknown mode %q", mode))
 	}
@@ -92,7 +93,7 @@ func checkSubnet(db *badger.DB, name string, backend dhcpbackend.Backend, u unit
 	switch mode {
 	case modeVxlan:
 		checkAnycastGateway(db, name, vpc, bridge, n)
-	case modeBridge:
+	case modeBridge, modePublicIP:
 		checkBridgeGateway(db, name, vpc, nsVeth, n)
 	}
 
