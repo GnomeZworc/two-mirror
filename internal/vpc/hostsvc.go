@@ -7,9 +7,9 @@ import (
 	hostsvcapi "git.g3e.fr/syonad/two/internal/api/hostsvc"
 	hostsvcclient "git.g3e.fr/syonad/two/internal/client/hostsvc"
 	"git.g3e.fr/syonad/two/internal/hostsvc"
-	"git.g3e.fr/syonad/two/internal/iptables"
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
+	"git.g3e.fr/syonad/two/internal/nft"
 )
 
 const HostSvcLink = "hostsvc"
@@ -34,7 +34,7 @@ func newSystemHostSvc() systemHostSvc {
 func (systemHostSvc) InNetns(vpc string, fn func() error) error { return netns.Call(vpc, fn) }
 func (systemHostSvc) CreateDummy(name string) error             { return netif.CreateDummy(name) }
 func (systemHostSvc) AddrAdd(iface string, ip net.IP) error     { return netif.AddrAdd(iface, ip) }
-func (systemHostSvc) AddRedirect(target string) error           { return iptables.AddHostSvcRedirect(target) }
+func (systemHostSvc) AddRedirect(target string) error           { return nft.SetHostSvcRedirect(target) }
 func (s systemHostSvc) Open(vpc string) error                   { return s.client.Open(vpc) }
 func (s systemHostSvc) Close(vpc string) error                  { return s.client.Close(vpc) }
 

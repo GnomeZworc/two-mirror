@@ -18,3 +18,17 @@ func TestNicMACs_KeepsTheOrderAndLowersTheCase(t *testing.T) {
 		t.Errorf("nicMACs = %v, attendu %v", got, want)
 	}
 }
+
+func TestNicIPs_EveryInterfaceGetsTheRedirect(t *testing.T) {
+	nics := []nicData{
+		{index: 0, ip: "10.49.1.10"},
+		{index: 1, ip: "10.49.2.10", primary: true},
+	}
+
+	got := nicIPs(nics)
+
+	want := []string{"10.49.1.10", "10.49.2.10"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("nicIPs = %v, attendu %v", got, want)
+	}
+}

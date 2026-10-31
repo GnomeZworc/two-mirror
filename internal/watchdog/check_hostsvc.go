@@ -7,9 +7,9 @@ import (
 	hostsvcapi "git.g3e.fr/syonad/two/internal/api/hostsvc"
 	hostsvcclient "git.g3e.fr/syonad/two/internal/client/hostsvc"
 	"git.g3e.fr/syonad/two/internal/hostsvc"
-	"git.g3e.fr/syonad/two/internal/iptables"
 	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
+	"git.g3e.fr/syonad/two/internal/nft"
 	"git.g3e.fr/syonad/two/internal/state"
 	"git.g3e.fr/syonad/two/internal/vpc"
 	"git.g3e.fr/syonad/two/internal/watchdog/notify"
@@ -58,7 +58,7 @@ func (systemHostSvcProbe) Redirect(name string) (bool, error) {
 	var ok bool
 	err := netns.Call(name, func() error {
 		var err error
-		ok, err = iptables.HasHostSvcRedirect(hostsvc.ServiceIP)
+		ok, err = nft.HasHostSvcRedirect(hostsvc.ServiceIP)
 		return err
 	})
 	return ok, err
@@ -103,7 +103,7 @@ func CheckHostSvc(db *badger.DB, p hostSvcProbe, n notify.Notifier) error {
 		if ok, err := p.Redirect(name); err != nil {
 			n.Notify(kindVPC, name, fmt.Sprintf("dns and ntp redirection unreadable: %v", err))
 		} else if !ok {
-			n.Notify(kindVPC, name, fmt.Sprintf("dns and ntp redirection to %s missing or incomplete (chain %s)", hostsvc.ServiceIP, iptables.HostSvcChain))
+			n.Notify(kindVPC, name, fmt.Sprintf("dns and ntp redirection to %s missing or incomplete (nft chain ip %s %s)", hostsvc.ServiceIP, nft.Table, nft.HostSvcChain))
 		}
 	}
 	return nil

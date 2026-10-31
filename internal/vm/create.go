@@ -10,7 +10,6 @@ import (
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/dhcpbackend"
-	"git.g3e.fr/syonad/two/internal/iptables"
 	"git.g3e.fr/syonad/two/internal/l3vni"
 	"git.g3e.fr/syonad/two/internal/metadata"
 	"git.g3e.fr/syonad/two/internal/netif"
@@ -63,12 +62,7 @@ func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	// métadonnées de l'interface primaire. Toutes les interfaces étant dans le
 	// même VPC, donc le même netns, il est joignable depuis n'importe laquelle.
 	if err := netns.Call(nic.vpcName, func() error {
-		for _, n := range d.nics {
-			if err := iptables.AddMetadataRedirect(n.ip, nic.interfaceIP, d.metadataPort); err != nil {
-				return fmt.Errorf("interface %d: %w", n.index, err)
-			}
-		}
-		return nil
+		return nft.SetMetadataRedirect(name, nicIPs(d.nics), nic.interfaceIP+":"+d.metadataPort)
 	}); err != nil {
 		return fmt.Errorf("add metadata redirect: %w", err)
 	}
@@ -184,6 +178,14 @@ func copyFile(src, dst string) error {
 		return err
 	}
 	return out.Sync()
+}
+
+func nicIPs(nics []nicData) []string {
+	ips := make([]string, len(nics))
+	for i, n := range nics {
+		ips[i] = n.ip
+	}
+	return ips
 }
 
 func nicMACs(nics []nicData) []string {
