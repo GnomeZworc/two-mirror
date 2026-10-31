@@ -26,6 +26,8 @@ un échec, ou INATTENDU (compté comme un échec) s'il passe : retirer alors le 
 compte les CONNU comme des échecs. known_flaky (échec intermittent) donne RÉUSSI, annoté, s'il passe.
 Une ligne RÉUSSI ou ÉCHOUÉ par vérification ; code de sortie 1 si une vérification échoue ou
 si aucune n'a été faite.
+VM_IMAGE choisit l'image des VM de test : debian12 (défaut) ou rocky10 (déposée au préalable
+dans /var/tmp/two-images/ de chaque hyperviseur, avec son SHA512SUMS).
 USAGE
     exit 2
 }
@@ -34,6 +36,7 @@ on () {
     local node="${1}" assignment lib
     shift
     {
+        printf 'export VM_IMAGE=%q\n' "${VM_IMAGE:-debian12}"
         for assignment in "$@"; do
             printf 'export %q=%q\n' "${assignment%%=*}" "${assignment#*=}"
         done

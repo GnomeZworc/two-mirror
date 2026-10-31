@@ -1,8 +1,22 @@
 set -u
 API=http://127.0.0.1:8080
-IMAGE_URL=https://cloud.debian.org/images/cloud/bookworm/latest
-IMAGE_FILE=debian-12-genericcloud-amd64.qcow2
-TWO_IMAGE=/var/tmp/deb-two.qcow2
+VM_IMAGE="${VM_IMAGE:-debian12}"
+case "${VM_IMAGE}" in
+    debian12)
+        IMAGE_URL=https://cloud.debian.org/images/cloud/bookworm/latest
+        IMAGE_FILE=debian-12-genericcloud-amd64.qcow2
+        TWO_IMAGE=/var/tmp/deb-two.qcow2
+        ;;
+    rocky10)
+        IMAGE_DIR=/var/tmp/two-images
+        IMAGE_FILE=rocky10.qcow2
+        TWO_IMAGE=/var/tmp/rocky10-two.qcow2
+        ;;
+    *)
+        echo "VM_IMAGE inconnue : ${VM_IMAGE} (debian12, rocky10)" >&2
+        exit 1
+        ;;
+esac
 VM_KEY=/root/.ssh/lab-vm
 VOLUMES=/var/lib/two/volumes
 

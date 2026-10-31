@@ -58,6 +58,36 @@ test_on_sends_assignments_library_and_block_to_the_node () {
     teardown
 }
 
+test_on_sends_the_vm_image_to_the_node () {
+    setup "on : VM_IMAGE transmise au nœud, debian12 par défaut"
+    printf '%s\n' "on hv1 <<'NODE'" 'true' 'NODE' > "${WORK}/scenarios/t1.sh"
+    FAKE_OUT='RÉUSSI: un' run t1 >/dev/null
+    [[ $(bash -c "$(grep '^export VM_IMAGE=' "${WORK}/payload.1"); echo \"\${VM_IMAGE}\"") == debian12 ]] || fail "défaut : $(grep '^export VM_IMAGE' "${WORK}/payload.1")"
+    rm -f "${WORK}/payload."*
+    VM_IMAGE=rocky10 FAKE_OUT='RÉUSSI: un' run t1 >/dev/null
+    [[ $(bash -c "$(grep '^export VM_IMAGE=' "${WORK}/payload.1"); echo \"\${VM_IMAGE}\"") == rocky10 ]] || fail "rocky10 : $(grep '^export VM_IMAGE' "${WORK}/payload.1")"
+    teardown
+}
+
+test_two_image_built_checks_the_sum_before_copying () {
+    setup "two_image (rocky10) : image déposée vérifiée par SHA512SUMS puis copiée, refus sinon"
+    local d="${WORK}/images" out
+    mkdir -p "${d}" && printf 'qcow2\n' > "${d}/rocky10.qcow2"
+    (cd "${d}" && sha512sum rocky10.qcow2 > SHA512SUMS && printf '%s  debian13.qcow2\n' "$(printf 'x' | sha512sum | cut -d' ' -f1)" >> SHA512SUMS)
+    built () { bash -c "VM_IMAGE=rocky10; $(printf ". '%s'; " "${DIR}"/lib/{core,vm}.sh)IMAGE_DIR='${d}'; TWO_IMAGE='${WORK}/two.qcow2'; ${1}" 2>&1; }
+    out=$(built 'two_image && cat "${TWO_IMAGE}"') || fail "image conforme refusée : ${out}"
+    [[ ${out} == qcow2 ]] || fail "copie : ${out}"
+    rm -f "${WORK}/two.qcow2"
+    printf 'autre\n' >> "${d}/rocky10.qcow2"
+    out=$(built 'two_image') && fail "image modifiée acceptée"
+    [[ ${out} == *"somme SHA-512 incorrecte"* ]] || fail "message : ${out}"
+    [[ ! -e "${WORK}/two.qcow2" ]] || fail "image modifiée copiée"
+    rm -f "${d}/rocky10.qcow2"
+    [[ $(built 'two_image') == *"absente, à déposer depuis two-images"* ]] || fail "image absente : $(built 'two_image')"
+    [[ $(bash -c "VM_IMAGE=ubuntu; . '${DIR}/lib/core.sh'; echo suite" 2>&1) == *"VM_IMAGE inconnue : ubuntu"* ]] || fail "image inconnue acceptée"
+    teardown
+}
+
 test_scenario_result_counts_and_exit_codes () {
     local CASE
     for CASE in ok fail none; do

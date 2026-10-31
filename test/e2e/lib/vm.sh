@@ -1,5 +1,22 @@
 two_image () {
     [ -f "${TWO_IMAGE}" ] && return 0
+    case "${VM_IMAGE}" in
+        rocky10) two_image_built ;;
+        *) two_image_debian ;;
+    esac
+}
+
+two_image_built () {
+    local want got
+    [ -f "${IMAGE_DIR}/${IMAGE_FILE}" ] || { echo "image: ${IMAGE_DIR}/${IMAGE_FILE} absente, à déposer depuis two-images" >&2; return 1; }
+    want=$(awk -v f="${IMAGE_FILE}" '$2 == f {print $1}' "${IMAGE_DIR}/SHA512SUMS")
+    [ -n "${want}" ] || { echo "image: ${IMAGE_FILE} absente de ${IMAGE_DIR}/SHA512SUMS" >&2; return 1; }
+    got=$(sha512sum < "${IMAGE_DIR}/${IMAGE_FILE}" | cut -d' ' -f1) || return 1
+    [ "${got}" = "${want}" ] || { echo "image: somme SHA-512 incorrecte" >&2; return 1; }
+    cp "${IMAGE_DIR}/${IMAGE_FILE}" "${TWO_IMAGE}.part" && mv "${TWO_IMAGE}.part" "${TWO_IMAGE}"
+}
+
+two_image_debian () {
     local work
     work=$(mktemp -d)
     curl -fsSL -o "${work}/${IMAGE_FILE}" "${IMAGE_URL}/${IMAGE_FILE}" || return 1
