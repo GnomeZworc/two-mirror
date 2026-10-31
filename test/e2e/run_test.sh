@@ -88,6 +88,24 @@ test_two_image_built_checks_the_sum_before_copying () {
     teardown
 }
 
+test_lease_value_reads_networkd_and_networkmanager () {
+    setup "lease_value : mêmes clés lues dans un bail networkd et dans nmcli -g DHCP4"
+    local nd="${WORK}/networkd" nm="${WORK}/nm" k
+    printf '%s\n' '# This is private data. Do not parse.' 'ADDRESS=10.21.1.10' 'NETMASK=255.255.255.0' 'ROUTER=10.21.1.254' \
+        'SERVER_ADDRESS=10.21.1.254' 'DNS=10.21.1.254' 'NTP=10.21.1.254' 'MTU=1450' 'CLIENTID=ffb6220feb' > "${nd}"
+    printf '%s\n' 'DHCP4:dhcp_client_identifier = 01\:52\:54\:00\:82\:00\:0a ' ' dhcp_lease_time = 86400 ' \
+        ' dhcp_server_identifier = 10.21.1.254 ' ' domain_name_servers = 10.21.1.254 ' ' expiry = 1793566056 ' \
+        ' interface_mtu = 1450 ' ' ip_address = 10.21.1.10 ' ' ntp_servers = 10.21.1.254 ' ' requested_ntp_servers = 1 ' \
+        ' routers = 10.21.1.254 ' > "${nm}"
+    for k in ADDRESS:10.21.1.10 SERVER_ADDRESS:10.21.1.254 DNS:10.21.1.254 NTP:10.21.1.254 MTU:1450; do
+        [[ $(node "lease_value ${k%%:*} < '${nd}'") == "${k#*:}" ]] || fail "networkd ${k%%:*} : $(node "lease_value ${k%%:*} < '${nd}'")"
+        [[ $(node "lease_value ${k%%:*} < '${nm}'") == "${k#*:}" ]] || fail "NetworkManager ${k%%:*} : $(node "lease_value ${k%%:*} < '${nm}'")"
+    done
+    [[ -z $(node "lease_value ROUTER < '${nm}'") ]] || fail "clé sans correspondance NetworkManager lue"
+    [[ -z $(node "lease_value ADDRESS < /dev/null") ]] || fail "bail vide : valeur inventée"
+    teardown
+}
+
 test_scenario_result_counts_and_exit_codes () {
     local CASE
     for CASE in ok fail none; do
@@ -549,7 +567,12 @@ test_lease_renewed_requires_a_server_ack () {
     local f
     f=$(mktemp)
     [[ $(node "sleep () { :; }; dhcp_acks () { echo 1; }; vm_ssh () { echo \"\$3\" >> '${f}'; }; lease_renewed vp ip && echo OUI") == OUI ]] || fail "renouvellement non vu"
-    grep -qx 'sudo networkctl renew ens3' "${f}" || fail "renouvellement non demandé : $(cat "${f}")"
+    [[ $(bash -c "sudo () { \"\$@\"; }; date () { echo 1000; }; nmcli () { echo \"NM \$*\"; }; networkctl () { echo \"ND \$*\"; }; $(cat "${f}")") == "NM device modify ens3 ipv4.dhcp-timeout 700" ]] \
+        || fail "NetworkManager : $(cat "${f}")"
+    [[ $(bash -c "sudo () { \"\$@\"; }; date () { echo 1001; }; nmcli () { echo \"NM \$*\"; }; $(cat "${f}")") == "NM device modify ens3 ipv4.dhcp-timeout 701" ]] \
+        || fail "NetworkManager : même valeur d'une seconde à l'autre, rien à réappliquer"
+    [[ $(bash -c "sudo () { \"\$@\"; }; networkctl () { echo \"ND \$*\"; }; PATH=/nonexistent; $(cat "${f}")") == "ND renew ens3" ]] \
+        || fail "systemd-networkd : $(cat "${f}")"
     [[ $(node "sleep () { :; }; dhcp_acks () { echo 0; }; vm_ssh () { :; }; lease_renewed vp ip 2>&1 || echo NON") == *NON ]] || fail "aucun ACK accepté"
     rm -f "${f}"
     teardown

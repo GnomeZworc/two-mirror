@@ -29,13 +29,13 @@ for vm in 10.22.1.10:10.22.1.254 10.22.1.11:10.22.1.254 10.22.2.10:10.22.2.254 1
     ip=${vm%%:*}; gw=${vm#*:}
     check "${ip} joignable" vm_wait vp-t22 "${ip}"
     check "${ip} : adresse de son propre subnet" has_addr vp-t22 "${ip}"
-    check "${ip} : bail DHCP tenu par systemd-networkd" vm_ssh vp-t22 "${ip}" 'ls /run/systemd/netif/leases/ | grep -q .'
+    check "${ip} : bail DHCP tenu par le gestionnaire réseau de l'image (adresse du bail)" test "$(vm_lease vp-t22 "${ip}" ADDRESS)" = "${ip}"
     check "${ip} : bail servi par la gateway ${gw} (server-id)" test "$(vm_lease vp-t22 "${ip}" SERVER_ADDRESS)" = "${gw}"
     check "${ip} : route par défaut via ${gw}" route_via vp-t22 "${ip}" default "${gw}"
     check "${ip} : route vers le VPC via ${gw}" route_via vp-t22 "${ip}" 10.22.0.0/16 "${gw}"
     check "${ip} : route /32 vers les métadonnées via ${gw}" route_via vp-t22 "${ip}" 169.254.169.254 "${gw}"
 done
-check "10.22.1.10 : bail renouvelé (networkctl renew)" lease_renewed vp-t22 10.22.1.10
+check "10.22.1.10 : bail renouvelé (renouvellement DHCP demandé par l'invité)" lease_renewed vp-t22 10.22.1.10
 check "10.22.1.10 : même adresse après le renouvellement" has_addr vp-t22 10.22.1.10
 check "10.22.1.10 : renouvellement servi par la gateway" test "$(vm_lease vp-t22 10.22.1.10 SERVER_ADDRESS)" = 10.22.1.254
 vm_host () { echo "$(vm_ssh vp-t22 "${1}" 'cat /sys/class/net/ens3/address'),${1}"; }

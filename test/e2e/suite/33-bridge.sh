@@ -63,7 +63,7 @@ vm_sniff_start "${S}/arp.temoin" vp-t33 10.33.0.21 ens3 16 arp-from 10.33.0.1
 vm_sniff_start "${S}/dhcp.temoin" vp-t33 10.33.0.21 ens3 16 udp-from 10.33.0.1 67
 ip -n vp-t33 neigh flush dev br-t33a
 ip netns exec vp-t33 ping -c 2 -W 1 10.33.0.21 >/dev/null 2>&1
-vm_ssh vp-t33 10.33.0.21 'sudo networkctl renew ens3' >/dev/null 2>&1
+vm_renew vp-t33 10.33.0.21 >/dev/null 2>&1
 vm_frames vp-t33 10.33.0.21 arp ens3 10.33.0.21 10.33.0.99 3 >/dev/null 2>&1
 wait
 check "br-t33a : apprentissage rétabli (ageing_time ${AGEING})" ip netns exec vp-t33 ip link set br-t33a type bridge ageing_time "${AGEING}"
