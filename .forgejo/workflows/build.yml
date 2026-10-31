@@ -33,7 +33,7 @@ jobs:
           echo "Building for ${BINARI}/${GOOS}/${GOARCH} (release: ${RELEASE_CIBLE})"
           go env GOOS GOARCH
           mkdir -p dist/
-          go build -o dist/${BINARI}_${GOOS}_${GOARCH} ./cmd/${BINARI}
+          go build -ldflags "-X main.version=${RELEASE_CIBLE}" -o dist/${BINARI}_${GOOS}_${GOARCH} ./cmd/${BINARI}
           echo "artifact pour ${RELEASE_CIBLE} ${BINARI} ${GOOS} ${GOARCH}" > dist/${BINARI}-${GOOS}-${GOARCH}.txt
           ls -l ./dist
       - name: Upload artifact

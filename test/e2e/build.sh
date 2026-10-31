@@ -30,11 +30,24 @@ clean () {
     done
 }
 
+build_version () {
+    local commit changes
+    commit=$(git -C "${REPO_DIR}" rev-parse --short HEAD) || return 1
+    changes=$(git -C "${REPO_DIR}" status --porcelain) || return 1
+    if [ -n "${changes}" ]; then
+        echo "${commit}-dirty"
+    else
+        echo "${commit}"
+    fi
+}
+
 build () {
-    local binary unit script
+    local binary unit script version
+    version=$(build_version) || return 1
+    echo "== version ${version}" >&2
     for binary in ${BINARIES}; do
         echo "== ${binary}" >&2
-        (cd "${REPO_DIR}" && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "${BIN_DIR}/${binary}" "./cmd/${binary}") || return 1
+        (cd "${REPO_DIR}" && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=${version}" -o "${BIN_DIR}/${binary}" "./cmd/${binary}") || return 1
     done
     for unit in ${UNITS}; do
         cp "${REPO_DIR}/systemd/${unit}" "${BIN_DIR}/${unit}" || return 1
