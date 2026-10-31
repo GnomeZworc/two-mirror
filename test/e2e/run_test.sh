@@ -610,6 +610,19 @@ test_nft_tap_of_finds_the_tap_of_a_mac () {
     teardown
 }
 
+test_fdb_pinned_requires_static_sticky_without_vlan () {
+    setup "fdb_pinned : entrée static sticky de la MAC sur le tap, hors vlan"
+    local pinned static
+    pinned="ip () { [ \"\$*\" = 'netns exec ns bridge fdb show dev tap1' ] && printf '%s\\n' '52:54:00:5f:01:32 vlan 1 sticky master br0 static' '52:54:00:5f:01:32 sticky master br0 static' '33:33:00:00:00:01 self permanent'; }; "
+    static="ip () { printf '%s\\n' '52:54:00:5f:01:32 vlan 1 master br0 static' '52:54:00:5f:01:32 master br0 static'; }; "
+    node "${pinned}fdb_pinned ns tap1 52:54:00:5F:01:32" || fail "entrée static sticky non reconnue"
+    node "${static}fdb_pinned ns tap1 52:54:00:5f:01:32" && fail "entrée static sans sticky acceptée"
+    node "ip () { echo '52:54:00:5f:01:32 vlan 1 sticky master br0 static'; }; fdb_pinned ns tap1 52:54:00:5f:01:32" && fail "seule l'entrée du vlan 1 acceptée"
+    node "${pinned}fdb_pinned ns tap1 52:54:00:5f:01:33" && fail "autre MAC acceptée"
+    node "${pinned}fdb_pinned ns tap2 52:54:00:5f:01:32" && fail "autre tap accepté"
+    teardown
+}
+
 test_nft_handle_finds_the_exact_rule () {
     setup "nft_handle : numéro de la règle exacte dans nft -a list chain"
     local stub

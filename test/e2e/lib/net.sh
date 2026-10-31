@@ -223,6 +223,10 @@ nft_tap_of () {
     nft_table "${1}" | awk -v r="ether saddr != $(tr 'A-F' 'a-f' <<<"${2}") drop" '$1 == "chain" {c = $2; next} {line = $0; sub(/^[ \t]+/, "", line)} line == r && c ~ /^pre-tap/ {print substr(c, 5)}'
 }
 
+fdb_pinned () {
+    ip netns exec "${1}" bridge fdb show dev "${2}" | awk -v m="$(tr 'A-F' 'a-f' <<<"${3}")" '$1 == m && !/ vlan / && / sticky / && / static( |$)/ {f = 1} END {exit !f}'
+}
+
 nft_handle () {
     ip netns exec "${1}" nft -a list chain bridge two "${2}" | awk -v r="${3}" '{line = $0; sub(/^[ \t]+/, "", line); if (sub(/ # handle [0-9]+$/, "", line) && line == r) print $NF}'
 }

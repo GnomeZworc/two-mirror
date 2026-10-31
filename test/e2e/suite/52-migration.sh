@@ -1,6 +1,6 @@
-# fonctionnalité: migration d'une adresse de VM entre hôtes d'un VPC routé — /32 retiré en premier, /24 en filet puis en ECMP, séquence orchestrée, 40 sources, suppression du subnet refusée tant qu'une VM l'utilise, MAC anycast hors EVPN
+# fonctionnalité: migration d'une adresse de VM entre hôtes d'un VPC routé — /32 retiré en premier, /24 en filet puis en ECMP, séquence orchestrée, 40 sources, suppression du subnet refusée tant qu'une VM l'utilise, MAC anycast hors EVPN, MAC de la VM migrée figée sur son tap pendant la séquence orchestrée
 # hôtes: hv1 hv2 hv3
-# tickets: #41, #57
+# tickets: #41, #57, #95
 
 on hv1 <<'NODE'
 check "hv1 : VPC vp-t52, l3vni 5200" vpc_create vp-t52 10.52.0.0/16 5200
@@ -75,6 +75,11 @@ check "orchestrée, 3 — sn-t52s non supprimable sur hv2 tant que t52-m2 existe
 check "orchestrée, 4 — suppression de t52-m2 sur hv2 (source) : son /32 part en premier" vm_delete t52-m2
 check "orchestrée, 5 — suppression de sn-t52s sur hv2" api_delete subnets/sn-t52s
 check "sn-t52s supprimé sur hv2" wait_state subnets/sn-t52s deleted
+NODE
+on hv1 <<'NODE'
+M3MAC=$(curl -fsS "${API}/vms/t52-m3" | jq -r '.interfaces[0].mac')
+M3TAP=$(nft_tap_of vp-t52 "${M3MAC}")
+check "après la séquence orchestrée : hv1 : MAC ${M3MAC} de t52-m3 toujours figée sur ${M3TAP:-?}, pas réapprise vers hv2" fdb_pinned vp-t52 "${M3TAP}" "${M3MAC}"
 NODE
 on hv3 <<'NODE'
 check "hv3 : /32 de 10.52.1.50 via hv1 seulement" wait_vrf_nexthops vp-t52 10.52.1.50 192.168.14.11
