@@ -78,6 +78,7 @@ func LoadConfig(path string) (*Config, error) {
 	v.SetDefault("times.timeout_subnet_start", TimeoutSubnetStart)
 	v.SetDefault("times.timeout_vms_start", TimeoutVMsStart)
 	v.SetDefault("times.poll_interval", PollInterval)
+	v.SetDefault("times.host_state_interval", HostStateInterval)
 	v.SetDefault("metadata.run_dir", "/run/two/metadata")
 	v.SetDefault("dhcp.backend", BackendTwo)
 	v.SetDefault("hostsvc.dns_upstream", []string{})

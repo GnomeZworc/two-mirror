@@ -13,6 +13,7 @@ const (
 	TimeoutSubnetStart = 300
 	TimeoutVMsStart    = 300
 	PollInterval       = 2
+	HostStateInterval  = 10
 )
 
 type Times struct {
@@ -23,6 +24,7 @@ type Times struct {
 	TimeoutSubnetStart int `mapstructure:"timeout_subnet_start"`
 	TimeoutVMsStart    int `mapstructure:"timeout_vms_start"`
 	PollInterval       int `mapstructure:"poll_interval"`
+	HostStateInterval  int `mapstructure:"host_state_interval"`
 }
 
 func seconds(value, fallback int) time.Duration {
@@ -39,6 +41,7 @@ func (t Times) VPCStop() time.Duration     { return seconds(t.TimeoutVPCStop, Ti
 func (t Times) SubnetStart() time.Duration { return seconds(t.TimeoutSubnetStart, TimeoutSubnetStart) }
 func (t Times) VMsStart() time.Duration    { return seconds(t.TimeoutVMsStart, TimeoutVMsStart) }
 func (t Times) Poll() time.Duration        { return seconds(t.PollInterval, PollInterval) }
+func (t Times) HostState() time.Duration   { return seconds(t.HostStateInterval, HostStateInterval) }
 
 func (t Times) Validate() error {
 	for _, f := range []struct {
@@ -52,6 +55,7 @@ func (t Times) Validate() error {
 		{"timeout_subnet_start", t.TimeoutSubnetStart},
 		{"timeout_vms_start", t.TimeoutVMsStart},
 		{"poll_interval", t.PollInterval},
+		{"host_state_interval", t.HostStateInterval},
 	} {
 		if f.value <= 0 {
 			return fmt.Errorf("times.%s %d must be a positive number of seconds", f.key, f.value)

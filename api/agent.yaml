@@ -489,6 +489,63 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  # ── Host ───────────────────────────────────────────────────────────────────
+
+  /register:
+    get:
+      summary: Facts of the host that do not change while it runs
+      operationId: getRegister
+      description: >-
+        Read once when the agent starts and kept in memory. Will also be sent to the broker of the
+        orchestrator at startup.
+      responses:
+        "200":
+          description: Host facts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HostRegister"
+        "405":
+          description: Method other than GET
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: Host facts could not be read when the agent started (the error says why)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /ping:
+    get:
+      summary: Current state of the host and of the agent
+      operationId: getPing
+      description: >-
+        Last reading, taken when the agent starts then every times.host_state_interval seconds and
+        kept in memory; collected_at gives its age. boot_time and agent_start_time tell a host
+        reboot from an agent restart; boot_time plus uptime_seconds give the clock of the host.
+      responses:
+        "200":
+          description: Last host state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HostPing"
+        "405":
+          description: Method other than GET
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: No reading has succeeded yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
 components:
 
   parameters:
@@ -931,6 +988,87 @@ components:
         gateway:
           type: string
           example: "203.0.113.1"
+
+    HostRegister:
+      type: object
+      properties:
+        hostname:
+          type: string
+          example: hv1
+        cpu:
+          type: object
+          properties:
+            vendor:
+              type: string
+              example: AuthenticAMD
+            model:
+              type: string
+              example: AMD EPYC 7272 12-Core Processor
+            sockets:
+              type: integer
+              example: 1
+            cores:
+              type: integer
+              description: Physical cores, all sockets together
+              example: 12
+            threads:
+              type: integer
+              description: Logical processors, all sockets together
+              example: 24
+        memory_bytes:
+          type: integer
+          format: int64
+          example: 134217728000
+        os:
+          type: object
+          description: From /etc/os-release
+          properties:
+            id:
+              type: string
+              example: debian
+            version_id:
+              type: string
+              example: "12"
+            pretty_name:
+              type: string
+              example: Debian GNU/Linux 12 (bookworm)
+        kernel:
+          type: string
+          example: 6.1.0-26-amd64
+
+    HostPing:
+      type: object
+      properties:
+        agent_version:
+          type: string
+          description: Release tag, commit for a lab build, undefined when not set at build time
+          example: 0.3.0
+        collected_at:
+          type: integer
+          format: int64
+          description: Unix time (seconds) of the reading
+          example: 1793520853
+        boot_time:
+          type: integer
+          format: int64
+          description: Unix time (seconds) the host booted
+          example: 1793499123
+        agent_start_time:
+          type: integer
+          format: int64
+          description: Unix time (seconds) the agent started
+          example: 1793499190
+        uptime_seconds:
+          type: number
+          example: 21730.4
+        load:
+          type: array
+          description: Load average over 1, 5 and 15 minutes
+          minItems: 3
+          maxItems: 3
+          items:
+            type: number
+          example: [0.12, 0.3, 0.25]
 
     Error:
       type: object

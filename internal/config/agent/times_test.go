@@ -19,6 +19,7 @@ func TestLoadConfig_TimesDefauts(t *testing.T) {
 		TimeoutSubnetStart: 300,
 		TimeoutVMsStart:    300,
 		PollInterval:       2,
+		HostStateInterval:  10,
 	}
 	if cfg.Times != want {
 		t.Errorf("times par défaut : %+v, attendu %+v", cfg.Times, want)
@@ -26,11 +27,11 @@ func TestLoadConfig_TimesDefauts(t *testing.T) {
 }
 
 func TestLoadConfig_TimesValeursExplicites(t *testing.T) {
-	cfg, err := LoadConfig(writeYAML(t, "times:\n  timeout_vms_stop: 600\n  next_vms_shutdown: 10\n  timeout_subnet_stop: 700\n  timeout_vpc_stop: 800\n  timeout_subnet_start: 50\n  timeout_vms_start: 60\n  poll_interval: 1\n"))
+	cfg, err := LoadConfig(writeYAML(t, "times:\n  timeout_vms_stop: 600\n  next_vms_shutdown: 10\n  timeout_subnet_stop: 700\n  timeout_vpc_stop: 800\n  timeout_subnet_start: 50\n  timeout_vms_start: 60\n  poll_interval: 1\n  host_state_interval: 5\n"))
 	if err != nil {
 		t.Fatalf("LoadConfig a échoué : %v", err)
 	}
-	want := Times{600, 10, 700, 800, 50, 60, 1}
+	want := Times{600, 10, 700, 800, 50, 60, 1, 5}
 	if cfg.Times != want {
 		t.Errorf("times : %+v, attendu %+v", cfg.Times, want)
 	}
@@ -55,6 +56,7 @@ func TestLoadConfig_TimesInvalidesRefuses(t *testing.T) {
 		{"times:\n  timeout_subnet_start: 0\n", "times.timeout_subnet_start 0"},
 		{"times:\n  timeout_vms_start: 0\n", "times.timeout_vms_start 0"},
 		{"times:\n  poll_interval: 0\n", "times.poll_interval 0"},
+		{"times:\n  host_state_interval: 0\n", "times.host_state_interval 0"},
 		{"times:\n  next_vms_shutdown: 300\n", "times.next_vms_shutdown 300 must be below times.timeout_vms_stop 300"},
 	} {
 		if _, err := LoadConfig(writeYAML(t, c.yaml)); err == nil || !strings.Contains(err.Error(), c.msg) {
@@ -79,14 +81,15 @@ func TestTimesDurees(t *testing.T) {
 		{"SubnetStart", zero.SubnetStart(), 300 * time.Second},
 		{"VMsStart", zero.VMsStart(), 300 * time.Second},
 		{"Poll", zero.Poll(), 2 * time.Second},
+		{"HostState", zero.HostState(), 10 * time.Second},
 	}
 	for _, c := range cases {
 		if c.got != c.want {
 			t.Errorf("Times{}.%s() = %v, attendu %v", c.name, c.got, c.want)
 		}
 	}
-	set := Times{11, 12, 13, 14, 15, 16, 17}
-	got := []time.Duration{set.VMsStop(), set.VMsShutdown(), set.SubnetStop(), set.VPCStop(), set.SubnetStart(), set.VMsStart(), set.Poll()}
+	set := Times{11, 12, 13, 14, 15, 16, 17, 18}
+	got := []time.Duration{set.VMsStop(), set.VMsShutdown(), set.SubnetStop(), set.VPCStop(), set.SubnetStart(), set.VMsStart(), set.Poll(), set.HostState()}
 	for i, d := range got {
 		if want := time.Duration(11+i) * time.Second; d != want {
 			t.Errorf("durée %d = %v, attendu %v", i, d, want)
