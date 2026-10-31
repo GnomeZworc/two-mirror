@@ -56,7 +56,8 @@ host_state () {
     echo "## adresses"; ip -o -4 addr show | awk '{print $2, $4}' | sort
     echo "## routes"; ip -4 route show table all | grep -v '^local \|^broadcast ' | sort
     echo "## nftables bridge"; nft list ruleset bridge
-    echo "## iptables"; iptables-save | grep -v '^#' | sed 's/ \[[0-9]*:[0-9]*\]$//'
+    echo "## nftables ip"; nft list ruleset ip
+    echo "## nftables des netns"; local ns; for ns in $(ip netns list | awk '{print $1}' | sort); do echo "# ${ns}"; ip netns exec "${ns}" nft list ruleset; done
     echo "## frr"; vtysh -c 'show running-config' | grep -v '^Building\|^Current configuration\|^!'
     echo "## frr.conf"; sha256sum /etc/frr/frr.conf | cut -d' ' -f1
     echo "## fichiers"; find /run/two /etc/dnsmasq.d "${VOLUMES}" -mindepth 1 ! -type d 2>/dev/null | sort

@@ -18,7 +18,7 @@ check "${HOST} : aucune instance DHCP (dhcp@, dnsmasq@) ni de métadonnées (met
 check "${HOST} : aucun socket de contrôle DHCP" none sh -c "ls /run/two/dhcp/*.sock 2>/dev/null"
 check "${HOST} : aucun processus QEMU" none pgrep -a qemu-system
 check "${HOST} : aucune règle nftables de pont qui vise une interface de subnet" none sh -c "nft list ruleset bridge | grep -E 'v-[a-z0-9]'"
-check "${HOST} : aucune règle iptables qui vise une interface de subnet ou de VPC" none sh -c "iptables-save | grep -E -- '(v-|vp-|tap)[a-z0-9]'"
+check "${HOST} : aucune règle nftables ip qui vise une interface de subnet ou de VPC" none sh -c "nft list ruleset ip | grep -E -- '(v-|vp-|tap)[a-z0-9]'"
 check "${HOST} : aucun volume de VM de test" none sh -c "ls '${VOLUMES}'/t[0-9][0-9]-* 2>/dev/null"
 check "${HOST} : FRR garde la base BGP (témoin)" sh -c "vtysh -c 'show running-config' | grep -q 'peer-group fabric'"
 check "${HOST} : FRR sans aucune VRF de VPC (en mémoire)" none sh -c "vtysh -c 'show running-config' | grep -E '^(vrf |router bgp [0-9]+ vrf )'"
