@@ -16,7 +16,7 @@ bash ./deploy.sh -t 0.2.0 -i
 
 `deploy.sh` se met à jour lui-même depuis la branche, télécharge binaires, units systemd et
 scripts depuis la release, et les vérifie contre le manifeste `SHA256SUMS`. Le drapeau `-i`
-prépare l'host : paquets, module `br_netfilter`, `sysctl`, et bridges.
+prépare l'host : paquets, `sysctl`, et bridges.
 
 Options utiles :
 

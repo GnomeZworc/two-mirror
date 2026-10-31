@@ -50,12 +50,12 @@ Paquets
      - network namespaces : create/delete/call
    * - ``internal/netif``
      - netlink : bridge, veth, vxlan, tap, routes, adresses
-   * - ``internal/nft``, ``internal/iptables``
-     - wrappers dédiés ; ne pas appeler ces binaires ailleurs
+   * - ``internal/nft``
+     - wrapper dédié ; ne pas appeler ``nft`` ailleurs
    * - ``internal/qemu``, ``internal/qmp``
      - lancement de QEMU et client QMP sur socket Unix
    * - ``internal/vm``
-     - cycle de vie d'une VM : tap, iptables, metadata, qemu
+     - cycle de vie d'une VM : tap, nftables, metadata, qemu
    * - ``internal/dhcp``
      - plan d'adressage ip → mac, et configurations dnsmasq du backend historique
    * - ``internal/dhcpbackend``
