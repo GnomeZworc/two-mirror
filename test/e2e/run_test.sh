@@ -826,6 +826,23 @@ PY
     teardown
 }
 
+test_build_version_is_the_commit_dirty_when_the_tree_changed () {
+    setup "build_version : commit court, suffixé -dirty si l'arbre a des modifications, échec hors dépôt"
+    local repo="${WORK}/repo" commit
+    git init -q "${repo}" && printf 'a\n' > "${repo}/f" && git -C "${repo}" add f \
+        && git -C "${repo}" -c user.name=t -c user.email=t@t commit -q -m t || fail "dépôt de test"
+    commit=$(git -C "${repo}" rev-parse --short HEAD)
+    build_version_in () { bash -c ". '${DIR}/build.sh'; REPO_DIR='${1}'; build_version" 2>&1; }
+    [[ $(build_version_in "${repo}") == "${commit}" ]] || fail "arbre propre : $(build_version_in "${repo}")"
+    printf 'b\n' > "${repo}/f"
+    [[ $(build_version_in "${repo}") == "${commit}-dirty" ]] || fail "fichier modifié : $(build_version_in "${repo}")"
+    git -C "${repo}" checkout -q f && printf 'n\n' > "${repo}/nouveau"
+    [[ $(build_version_in "${repo}") == "${commit}-dirty" ]] || fail "fichier non suivi : $(build_version_in "${repo}")"
+    mkdir "${WORK}/hors-depot"
+    build_version_in "${WORK}/hors-depot" >/dev/null && fail "hors dépôt : réussite"
+    teardown
+}
+
 for T in $(declare -F | awk '{print $3}' | grep '^test_'); do
     "${T}"
 done

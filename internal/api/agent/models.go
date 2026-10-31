@@ -123,3 +123,34 @@ type FloatingIP struct {
 	IP        string `json:"ip,omitempty"`
 	Gateway   string `json:"gateway,omitempty"`
 }
+
+type HostCPU struct {
+	Vendor  string `json:"vendor"`
+	Model   string `json:"model"`
+	Sockets int    `json:"sockets"`
+	Cores   int    `json:"cores"`
+	Threads int    `json:"threads"`
+}
+
+type HostOS struct {
+	ID         string `json:"id"`
+	VersionID  string `json:"version_id"`
+	PrettyName string `json:"pretty_name"`
+}
+
+type HostRegister struct {
+	Hostname    string  `json:"hostname"`
+	CPU         HostCPU `json:"cpu"`
+	MemoryBytes uint64  `json:"memory_bytes"`
+	OS          HostOS  `json:"os"`
+	Kernel      string  `json:"kernel"`
+}
+
+type HostPing struct {
+	AgentVersion   string     `json:"agent_version"`
+	CollectedAt    int64      `json:"collected_at"`
+	BootTime       int64      `json:"boot_time"`
+	AgentStartTime int64      `json:"agent_start_time"`
+	UptimeSeconds  float64    `json:"uptime_seconds"`
+	Load           [3]float64 `json:"load"`
+}

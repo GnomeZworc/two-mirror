@@ -320,6 +320,10 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - machine d'états — 409 pendant creating, suppression depuis error, sockets QEMU d'une VM en error retirés, dépendances VM → subnet → VPC, suppression d'un subnet en attente de ses VM, arrêt d'une VM juste démarrée par renvoi de system_powerdown, recréation sous le même nom
      - hv1
      - #41, #84, #79
+   * - ``13-hote``
+     - connaissance de l'hôte — /register (hostname, CPU, RAM, OS, noyau) lu au démarrage, /ping (version, démarrages de l'hôte et de l'agent, uptime, load) mesuré périodiquement, lecture seule, redémarrage de l'agent distingué de celui de l'hôte
+     - hv1
+     - #39
    * - ``21-dhcp-two``
      - DHCP par le serveur intégré (backend two) — bail, server-id, renouvellement, option 121, un serveur par subnet, démarrages simultanés
      - hv1

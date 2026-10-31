@@ -17,11 +17,12 @@ type Server struct {
 	dispatcher *dispatcher.Dispatcher
 	db         *badger.DB
 	logger     *slog.Logger
+	host       HostInfo
 	srv        *http.Server
 }
 
-func New(d *dispatcher.Dispatcher, db *badger.DB, logger *slog.Logger, address string) *Server {
-	s := &Server{dispatcher: d, db: db, logger: logger}
+func New(d *dispatcher.Dispatcher, db *badger.DB, logger *slog.Logger, address string, h HostInfo) *Server {
+	s := &Server{dispatcher: d, db: db, logger: logger, host: h}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/vpcs", s.VpcsHandler)
 	mux.HandleFunc("/vpcs/", s.VpcByNameHandler)
@@ -33,6 +34,8 @@ func New(d *dispatcher.Dispatcher, db *badger.DB, logger *slog.Logger, address s
 	mux.HandleFunc("/nat-gateways/", s.NATGatewayByNameHandler)
 	mux.HandleFunc("/floating-ips", s.FloatingIPsHandler)
 	mux.HandleFunc("/floating-ips/", s.FloatingIPByNameHandler)
+	mux.HandleFunc("/register", s.RegisterHandler)
+	mux.HandleFunc("/ping", s.PingHandler)
 	s.srv = &http.Server{Addr: address, Handler: s.logMiddleware(mux)}
 	return s
 }

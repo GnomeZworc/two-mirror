@@ -14,6 +14,7 @@ import (
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	dispatcher "git.g3e.fr/syonad/two/internal/dispatcher/agent"
 	"git.g3e.fr/syonad/two/internal/frr"
+	"git.g3e.fr/syonad/two/internal/host"
 	"git.g3e.fr/syonad/two/internal/migration"
 	"git.g3e.fr/syonad/two/internal/netif"
 	agentmetrics "git.g3e.fr/syonad/two/internal/prometheus/agent"
@@ -28,6 +29,8 @@ import (
 
 const shutdownTimeout = 20 * time.Second
 
+var version = "undefined"
+
 func main() {
 	confFile := flag.String("config", "/etc/two/agent.yml", "config file path")
 	flag.Parse()
@@ -35,6 +38,7 @@ func main() {
 }
 
 func run(confFile string) int {
+	start := time.Now()
 	cfg, err := configuration.LoadConfig(confFile)
 	if err != nil {
 		slog.Error("failed to load config", "error", err)
@@ -96,6 +100,7 @@ func run(confFile string) int {
 	promAddr := fmt.Sprintf("%s:%d", cfg.Prometheus.Address, cfg.Prometheus.Port)
 
 	log.Info("starting agent",
+		"version", version,
 		"api", apiAddr,
 		"prometheus", promAddr,
 		"workers", cfg.Worker.Count,
@@ -108,7 +113,10 @@ func run(confFile string) int {
 
 	d := dispatcher.New(q, db, cfg, log.With(slog.String("component", "dispatcher")))
 
-	apiSrv := agentapi.New(d, db, log.With(slog.String("component", "api")), apiAddr)
+	hostInfo := host.NewCollector(os.DirFS("/"), version, start, cfg.Times.HostState(), log.With(slog.String("component", "host")))
+	go hostInfo.Run(ctx)
+
+	apiSrv := agentapi.New(d, db, log.With(slog.String("component", "api")), apiAddr, hostInfo)
 	go apiSrv.Start()
 
 	promSrv := promserver.New(promAddr, registry)

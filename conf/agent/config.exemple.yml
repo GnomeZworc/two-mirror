@@ -35,6 +35,8 @@ times:
   timeout_vms_start: 300
   # Interval between each state check
   poll_interval: 2
+  # Interval between two readings of the host state served by GET /ping
+  host_state_interval: 10
 
 # Bridge interface used when the requested iface_type is not found in interfaces
 default_interface: br-000000
