@@ -16,7 +16,7 @@
 # L'host est stateless (root sur tmpfs) : rien de ce qui suit ne survit à un
 # reboot, deploy.sh --bootstrap est rejoué à chaque démarrage.
 
-KVM_PACKAGES="qemu-system-x86 qemu-utils ovmf dnsmasq nftables iptables nfs-common jq curl"
+KVM_PACKAGES="qemu-system-x86 qemu-utils ovmf dnsmasq nftables nfs-common jq curl"
 
 kvm_packages () {
     local DRY_RUN="${1}"
@@ -39,15 +39,11 @@ kvm_kernel () {
 
     info "kernel"
 
-    # modprobe AVANT sysctl : les clés net.bridge.* n'existent pas tant que
-    # br_netfilter n'est pas chargé, et sysctl --system échouerait.
-    run "${DRY_RUN}" "modprobe br_netfilter"
-    run "${DRY_RUN}" "echo br_netfilter > /etc/modules-load.d/two.conf"
-
-    # bridge-nf-call-iptables est requis par le DNAT metadata (169.254.169.254,
-    # cf. internal/iptables) : sans lui, iptables ne voit pas le trafic bridgé
-    # des VMs. Contrepartie : tout le trafic inter-VM traverse les tables nat.
-    run "${DRY_RUN}" "printf 'net.ipv4.ip_forward = 1\nnet.bridge.bridge-nf-call-iptables = 1\n' > /etc/sysctl.d/90-two.conf"
+    # Pas de br_netfilter : le filtrage des ponts est en nftables (famille
+    # bridge) et les DNAT vivent dans les netns, où l'agent coupe déjà
+    # bridge-nf-call-*. Chargé, le module ferait passer tout le trafic bridgé
+    # des VM par netfilter (bridge-nf-call-iptables vaut 1 par défaut).
+    run "${DRY_RUN}" "printf 'net.ipv4.ip_forward = 1\n' > /etc/sysctl.d/90-two.conf"
     run "${DRY_RUN}" "sysctl --system >/dev/null"
 }
 
