@@ -8,7 +8,7 @@ Prérequis
 ---------
 
 Un host Linux avec KVM, sur lequel vous avez ``root``. Les opérations réseau (network
-namespaces, netlink, VXLAN, nftables, iptables) et QEMU ne fonctionnent que sous Linux.
+namespaces, netlink, VXLAN, nftables) et QEMU ne fonctionnent que sous Linux.
 
 Déploiement
 -----------
@@ -75,7 +75,7 @@ Ce que fait ``-i``
 ------------------
 
 **Paquets** — ``qemu-system-x86``, ``qemu-utils``, ``ovmf``, ``dnsmasq``, ``nftables``,
-``iptables``, ``nfs-common``, ``jq``, ``curl``, **sans les paquets recommandés** : ceux de
+``nfs-common``, ``jq``, ``curl``, **sans les paquets recommandés** : ceux de
 ``qemu-system-x86`` (interface graphique, gtk, gstreamer, pilotes de stockage réseau) ne servent
 pas à un hyperviseur sans écran, et l'installation passe d'environ 270 à 65 Mo — rejouée à chaque
 démarrage, la racine étant en tmpfs. ``qemu-utils`` est demandé explicitement : ``qemu-img`` sert
@@ -87,10 +87,11 @@ dans les netns.
 aux hyperviseurs qui déclarent ``dhcp.backend: dnsmasq``, et tant qu'un hyperviseur peut revenir
 en arrière. Voir :doc:`/exploitation/configuration`.
 
-**Noyau** — chargement de ``br_netfilter``, puis ``net.ipv4.ip_forward = 1`` et
-``net.bridge.bridge-nf-call-iptables = 1``. Cette dernière clé est **requise** par la DNAT vers
-le serveur de metadata : sans elle, iptables ne voit pas le trafic bridgé des VM et cloud-init
-ne se provisionne pas. Contrepartie assumée : tout le trafic inter-VM traverse les tables NAT.
+**Noyau** — ``net.ipv4.ip_forward = 1``. ``br_netfilter`` n'est pas chargé : le filtrage des
+ponts est en nftables (famille ``bridge``) et les redirections vers le serveur de metadata et
+vers ``two-hostsvc`` sont posées dans le netns de chaque VPC, où l'agent coupe déjà
+``bridge-nf-call-*``. Chargé, le module ferait passer tout le trafic bridgé des VM par netfilter
+(``bridge-nf-call-iptables`` vaut 1 par défaut).
 
 **Réseau** — création du bridge public, puis rattachement de l'uplink au bridge principal,
 l'adresse et la route par défaut étant déplacées de l'interface physique vers le bridge.

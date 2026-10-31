@@ -1,7 +1,7 @@
 package metadata
 
 // ServiceIP is the well-known address guests use to reach the metadata server.
-// Traffic to it is DNATed to the subnet gateway by internal/iptables, and the
+// Traffic to it is DNATed to the subnet gateway by internal/nft, and the
 // route to it is advertised by internal/dhcp.
 const ServiceIP = "169.254.169.254"
 

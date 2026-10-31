@@ -50,9 +50,9 @@ ntp_ok () {
 }
 no_answer () { ! vm_py "${1}" "${2}" dns_py "${3}" udp deb.debian.org "${4}" >/dev/null 2>&1; }
 served_ports () { ip netns exec "${1}" ss -Hlntu | awk '$5 ~ /^169\.254\.169\.253:/ {print $1, $5}' | sort | tr '\n' ' '; }
-rules () { ip netns exec "${1}" iptables -t nat -S TWO-HOSTSVC; }
+rules () { ip netns exec "${1}" nft list chain ip two hostsvc | sed -n '/^\t\t/s/^\t\t//p'; }
 state_has () { grep -q "\"${1}\"" /run/two/hostsvc/hostsvc.state; }
-excluded_first () { [ "$(rules "${1}" | sed -n '2p;3p' | tr '\n' ' ')" = "-A TWO-HOSTSVC -i br-public -j RETURN -A TWO-HOSTSVC -i l3-+ -j RETURN " ]; }
+excluded_first () { [ "$(rules "${1}" | sed -n '2p;3p' | tr '\n' ' ')" = 'iifname "br-public" return iifname "l3-*" return ' ]; }
 no_dns () { ! dns_ok "$@" >/dev/null 2>&1; }
 no_ntp () { ! ntp_ok "$@" >/dev/null 2>&1; }
 vpc_in_error () {
@@ -71,9 +71,10 @@ check "subnet sn-t29b en mode bridge sur br-lan, interface_ip 10.33.0.29" subnet
 for vpc in vp-t29 vp-t29b; do
     check "${vpc} : 169.254.169.253 sur la dummy hostsvc" sh -c "ip -n ${vpc} -4 -o addr show dev hostsvc | grep -q ' 169.254.169.253/32 '"
     check "${vpc} : two-hostsvc n'écoute que 53/udp, 53/tcp et 123/udp sur 169.254.169.253" test "$(served_ports "${vpc}")" = "tcp 169.254.169.253:53 udp 169.254.169.253:123 udp 169.254.169.253:53 "
-    check "${vpc} : chaîne TWO-HOSTSVC, br-public et l3-+ exclus avant toute redirection" excluded_first "${vpc}"
-    check "${vpc} : redirection de 53/udp, 53/tcp et 123/udp vers 169.254.169.253" test "$(rules "${vpc}" | grep -c 'DNAT --to-destination 169.254.169.253')" -eq 3
-    check "${vpc} : appel depuis PREROUTING pour les destinations locales seulement" sh -c "ip netns exec ${vpc} iptables -t nat -S PREROUTING | grep -qx -- '-A PREROUTING -m addrtype --dst-type LOCAL -j TWO-HOSTSVC'"
+    check "${vpc} : chaîne hostsvc de ip two accrochée à prerouting en dstnat" test "$(rules "${vpc}" | head -n 1)" = "type nat hook prerouting priority dstnat; policy accept;"
+    check "${vpc} : br-public et l3-* exclus avant toute redirection" excluded_first "${vpc}"
+    check "${vpc} : redirection de 53/udp, 53/tcp et 123/udp vers 169.254.169.253" test "$(rules "${vpc}" | grep -c 'dnat to 169.254.169.253$')" -eq 3
+    check "${vpc} : redirection pour les destinations locales seulement" test "$(rules "${vpc}" | grep -c '^fib daddr type local .* dnat to 169.254.169.253$')" -eq 3
     check "${vpc} : inscrit dans l'état de two-hostsvc" state_has "${vpc}"
 done
 
@@ -98,10 +99,11 @@ ip -n vp-t29 addr del 169.254.169.253/32 dev hostsvc
 check "watchdog : adresse 169.254.169.253 retirée signalée" wait_watchdog "169.254.169.253 missing on hostsvc (in netns)"
 ip -n vp-t29 addr add 169.254.169.253/32 dev hostsvc
 check "10.29.1.10 : DNS de nouveau servi une fois l'adresse remise" dns_ok vp-t29 10.29.1.10 10.29.1.254 udp
-ip netns exec vp-t29 iptables -t nat -D TWO-HOSTSVC -p udp -m udp --dport 123 -j DNAT --to-destination 169.254.169.253
-check "watchdog : redirection incomplète signalée" wait_watchdog "dns and ntp redirection to 169.254.169.253 missing or incomplete (chain TWO-HOSTSVC)"
+HANDLE=$(ip netns exec vp-t29 nft -a list chain ip two hostsvc | awk '/udp dport 123 / {print $NF}')
+check "règle 123 retirée à la main de hostsvc (handle ${HANDLE:-absent})" ip netns exec vp-t29 nft delete rule ip two hostsvc handle "${HANDLE}"
+check "watchdog : redirection incomplète signalée" wait_watchdog "dns and ntp redirection to 169.254.169.253 missing or incomplete (nft chain ip two hostsvc)"
 check "10.29.1.10 : sans la règle 123, plus de NTP (témoin)" no_ntp vp-t29 10.29.1.10 10.29.1.254
-ip netns exec vp-t29 iptables -t nat -A TWO-HOSTSVC -p udp -m udp --dport 123 -j DNAT --to-destination 169.254.169.253
+check "règle 123 reposée" ip netns exec vp-t29 nft add rule ip two hostsvc fib daddr type local udp dport 123 dnat to 169.254.169.253
 check "10.29.1.10 : NTP de nouveau servi une fois la règle remise" ntp_ok vp-t29 10.29.1.10 10.29.1.254
 
 systemctl stop two-hostsvc.service

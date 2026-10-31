@@ -11,7 +11,6 @@ import (
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
 	"git.g3e.fr/syonad/two/internal/dhcpbackend"
-	"git.g3e.fr/syonad/two/internal/iptables"
 	"git.g3e.fr/syonad/two/internal/l3vni"
 	"git.g3e.fr/syonad/two/internal/metadata"
 	"git.g3e.fr/syonad/two/internal/netif"
@@ -60,12 +59,7 @@ func StopVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	}
 
 	if err := netns.Call(nic.vpcName, func() error {
-		for _, n := range d.nics {
-			if err := iptables.DeleteMetadataRedirect(n.ip, nic.interfaceIP, d.metadataPort); err != nil {
-				return fmt.Errorf("interface %d: %w", n.index, err)
-			}
-		}
-		return nil
+		return nft.DeleteMetadataRedirect(name)
 	}); err != nil {
 		return fmt.Errorf("delete metadata redirect: %w", err)
 	}

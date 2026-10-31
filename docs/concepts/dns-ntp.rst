@@ -13,18 +13,18 @@ Chemin d'une requête
 .. mermaid::
 
    graph LR
-     V["VM<br/>vers interface_ip:53 ou :123"] --> N["netns du VPC<br/>chaîne TWO-HOSTSVC<br/>DNAT vers 169.254.169.253"]
+     V["VM<br/>vers interface_ip:53 ou :123"] --> N["netns du VPC<br/>chaîne nftables hostsvc<br/>DNAT vers 169.254.169.253"]
      N --> H["two-hostsvc<br/>socket dans le netns<br/>169.254.169.253 sur la dummy hostsvc"]
      H -->|"depuis l'hôte"| U["serveurs amont<br/>puis résolveur ou horloge de l'hôte"]
 
 À la création d'un VPC sur l'hyperviseur, l'agent pose dans son netns :
 
 * une interface ``dummy`` ``hostsvc`` portant ``169.254.169.253/32`` ;
-* une chaîne iptables ``TWO-HOSTSVC`` (table ``nat``), appelée depuis ``PREROUTING`` pour le seul
-  trafic à destination d'une adresse locale du netns (``addrtype LOCAL`` : les gateways des
-  subnets, anycast compris). Elle renvoie d'abord ce qui arrive par ``br-public`` (le segment
-  public de l'hôte) et par ``l3-+`` (le lien vers la VRF), puis redirige 53 en UDP et TCP et 123
-  en UDP vers ``169.254.169.253`` ;
+* une chaîne nftables ``hostsvc`` dans la table ``ip two``, accrochée à ``prerouting`` en
+  priorité ``dstnat``. Elle renvoie d'abord ce qui arrive par ``br-public`` (le segment public de
+  l'hôte) et par ``l3-*`` (le lien vers la VRF), puis redirige 53 en UDP et TCP et 123 en UDP vers
+  ``169.254.169.253``, pour le seul trafic à destination d'une adresse locale du netns
+  (``fib daddr type local`` : les gateways des subnets, anycast compris) ;
 
 puis demande à ``two-hostsvc`` d'ouvrir ses sockets dans ce netns. La réponse repart par
 conntrack, avec l'adresse de la gateway pour source. Une VM qui interroge un résolveur extérieur

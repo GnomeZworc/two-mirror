@@ -23,9 +23,13 @@ var natChains = []natChain{
 	{"in-", "filter", "input", "filter"},
 }
 
+func (c natChain) header() string {
+	return fmt.Sprintf("type %s hook %s priority %s; policy accept;", c.kind, c.hook, c.priority)
+}
+
 func (c natChain) declare(b *strings.Builder, iface string) string {
 	name := c.prefix + iface
-	fmt.Fprintf(b, "add chain ip %s %s { type %s hook %s priority %s; policy accept; }\n", Table, name, c.kind, c.hook, c.priority)
+	fmt.Fprintf(b, "add chain ip %s %s { %s }\n", Table, name, c.header())
 	fmt.Fprintf(b, "flush chain ip %s %s\n", Table, name)
 	return name
 }

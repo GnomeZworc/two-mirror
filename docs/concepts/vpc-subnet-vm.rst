@@ -34,7 +34,7 @@ reçoivent du trafic. Il désactive aussi ``br_netfilter`` dans le netns
 conntrack voit chaque trame pontée et le SNAT de la passerelle NAT ne s'applique plus.
 
 Dans le netns, l'agent pose aussi la ``dummy`` ``hostsvc`` (``169.254.169.253/32``) et la chaîne
-iptables ``TWO-HOSTSVC``, puis demande à ``two-hostsvc`` de servir le VPC : c'est le chemin du
+nftables ``hostsvc`` (table ``ip two``), puis demande à ``two-hostsvc`` de servir le VPC : c'est le chemin du
 DNS et du NTP des VM (voir :doc:`dns-ntp`). Si ``two-hostsvc`` ne répond pas, la création du VPC
 échoue.
 

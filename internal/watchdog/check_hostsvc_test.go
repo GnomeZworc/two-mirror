@@ -97,7 +97,7 @@ func TestCheckHostSvc_ReportsEachMissingPiece(t *testing.T) {
 	for name, want := range map[string]string{
 		"vp-unserved":   "not served by two-hostsvc: its vms get no dns nor ntp",
 		"vp-noaddr":     "169.254.169.253 missing on hostsvc (in netns)",
-		"vp-noredirect": "dns and ntp redirection to 169.254.169.253 missing or incomplete (chain TWO-HOSTSVC)",
+		"vp-noredirect": "dns and ntp redirection to 169.254.169.253 missing or incomplete (nft chain ip two hostsvc)",
 	} {
 		got := r.forName(name)
 		if len(got) != 1 || got[0].kind != "vpc" || got[0].problem != want {

@@ -274,7 +274,7 @@ code de sortie vaut 1 si une vérification échoue **ou si aucune n'a été fait
 **Tests autonomes.** Avant chaque test, le runner supprime les ressources ``tNN`` laissées par un
 passage précédent, puis relève l'état de chaque hôte de l'en-tête ``# hôtes:``. Après le test, il
 supprime ses VM, ses subnets puis ses VPC, et vérifie que l'hôte est revenu à l'état relevé
-(``assert_clean`` : netns, liens, adresses, routes, règles nftables de pont et iptables,
+(``assert_clean`` : netns, liens, adresses, routes, règles nftables de l'hôte et de chaque netns,
 configuration FRR et ``frr.conf``, fichiers de ``/run/two``, ``dnsmasq.d`` et des volumes, unités
 ``two-vm-*``, processus dnsmasq et QEMU). Aucun test ne dépend d'un autre : n'importe lequel se lance seul.
 
