@@ -829,7 +829,7 @@ reçoivent du trafic. Il désactive aussi <code class="docutils literal notransl
 (<code class="docutils literal notranslate"><span class="pre">net.bridge.bridge-nf-call-{iptables,ip6tables,arptables}=0</span></code>, quand le module est chargé) : sinon
 conntrack voit chaque trame pontée et le SNAT de la passerelle NAT ne s’applique plus.</p>
 <p>Dans le netns, l’agent pose aussi la <code class="docutils literal notranslate"><span class="pre">dummy</span></code> <code class="docutils literal notranslate"><span class="pre">hostsvc</span></code> (<code class="docutils literal notranslate"><span class="pre">169.254.169.253/32</span></code>) et la chaîne
-iptables <code class="docutils literal notranslate"><span class="pre">TWO-HOSTSVC</span></code>, puis demande à <code class="docutils literal notranslate"><span class="pre">two-hostsvc</span></code> de servir le VPC : c’est le chemin du
+nftables <code class="docutils literal notranslate"><span class="pre">hostsvc</span></code> (table <code class="docutils literal notranslate"><span class="pre">ip</span> <span class="pre">two</span></code>), puis demande à <code class="docutils literal notranslate"><span class="pre">two-hostsvc</span></code> de servir le VPC : c’est le chemin du
 DNS et du NTP des VM (voir <a class="reference internal" href="dns-ntp.html"><span class="doc">DNS et NTP des VM</span></a>). Si <code class="docutils literal notranslate"><span class="pre">two-hostsvc</span></code> ne répond pas, la création du VPC
 échoue.</p>
 <p>Un VPC ne peut être supprimé que si tous ses subnets le sont déjà — sinon 409.</p>

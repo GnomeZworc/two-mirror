@@ -807,17 +807,17 @@ VRF du VPC et l’hôte.</p>
 <h2>Chemin d’une requête<a class="headerlink" href="#chemin-d-une-requete" title="Lien vers cette rubrique">#</a></h2>
 <pre  class="mermaid">
         graph LR
-  V[&quot;VM&lt;br/&gt;vers interface_ip:53 ou :123&quot;] --&gt; N[&quot;netns du VPC&lt;br/&gt;chaîne TWO-HOSTSVC&lt;br/&gt;DNAT vers 169.254.169.253&quot;]
+  V[&quot;VM&lt;br/&gt;vers interface_ip:53 ou :123&quot;] --&gt; N[&quot;netns du VPC&lt;br/&gt;chaîne nftables hostsvc&lt;br/&gt;DNAT vers 169.254.169.253&quot;]
   N --&gt; H[&quot;two-hostsvc&lt;br/&gt;socket dans le netns&lt;br/&gt;169.254.169.253 sur la dummy hostsvc&quot;]
   H --&gt;|&quot;depuis l'hôte&quot;| U[&quot;serveurs amont&lt;br/&gt;puis résolveur ou horloge de l'hôte&quot;]
     </pre><p>À la création d’un VPC sur l’hyperviseur, l’agent pose dans son netns :</p>
 <ul class="simple">
 <li><p>une interface <code class="docutils literal notranslate"><span class="pre">dummy</span></code> <code class="docutils literal notranslate"><span class="pre">hostsvc</span></code> portant <code class="docutils literal notranslate"><span class="pre">169.254.169.253/32</span></code> ;</p></li>
-<li><p>une chaîne iptables <code class="docutils literal notranslate"><span class="pre">TWO-HOSTSVC</span></code> (table <code class="docutils literal notranslate"><span class="pre">nat</span></code>), appelée depuis <code class="docutils literal notranslate"><span class="pre">PREROUTING</span></code> pour le seul
-trafic à destination d’une adresse locale du netns (<code class="docutils literal notranslate"><span class="pre">addrtype</span> <span class="pre">LOCAL</span></code> : les gateways des
-subnets, anycast compris). Elle renvoie d’abord ce qui arrive par <code class="docutils literal notranslate"><span class="pre">br-public</span></code> (le segment
-public de l’hôte) et par <code class="docutils literal notranslate"><span class="pre">l3-+</span></code> (le lien vers la VRF), puis redirige 53 en UDP et TCP et 123
-en UDP vers <code class="docutils literal notranslate"><span class="pre">169.254.169.253</span></code> ;</p></li>
+<li><p>une chaîne nftables <code class="docutils literal notranslate"><span class="pre">hostsvc</span></code> dans la table <code class="docutils literal notranslate"><span class="pre">ip</span> <span class="pre">two</span></code>, accrochée à <code class="docutils literal notranslate"><span class="pre">prerouting</span></code> en
+priorité <code class="docutils literal notranslate"><span class="pre">dstnat</span></code>. Elle renvoie d’abord ce qui arrive par <code class="docutils literal notranslate"><span class="pre">br-public</span></code> (le segment public de
+l’hôte) et par <code class="docutils literal notranslate"><span class="pre">l3-*</span></code> (le lien vers la VRF), puis redirige 53 en UDP et TCP et 123 en UDP vers
+<code class="docutils literal notranslate"><span class="pre">169.254.169.253</span></code>, pour le seul trafic à destination d’une adresse locale du netns
+(<code class="docutils literal notranslate"><span class="pre">fib</span> <span class="pre">daddr</span> <span class="pre">type</span> <span class="pre">local</span></code> : les gateways des subnets, anycast compris) ;</p></li>
 </ul>
 <p>puis demande à <code class="docutils literal notranslate"><span class="pre">two-hostsvc</span></code> d’ouvrir ses sockets dans ce netns. La réponse repart par
 conntrack, avec l’adresse de la gateway pour source. Une VM qui interroge un résolveur extérieur

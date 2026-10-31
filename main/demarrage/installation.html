@@ -371,7 +371,7 @@ plan de contrôle — est traité à part : voir <a class="reference internal" h
 <section id="prerequis">
 <h2>Prérequis<a class="headerlink" href="#prerequis" title="Lien vers cette rubrique">#</a></h2>
 <p>Un host Linux avec KVM, sur lequel vous avez <code class="docutils literal notranslate"><span class="pre">root</span></code>. Les opérations réseau (network
-namespaces, netlink, VXLAN, nftables, iptables) et QEMU ne fonctionnent que sous Linux.</p>
+namespaces, netlink, VXLAN, nftables) et QEMU ne fonctionnent que sous Linux.</p>
 </section>
 <section id="deploiement">
 <h2>Déploiement<a class="headerlink" href="#deploiement" title="Lien vers cette rubrique">#</a></h2>
@@ -452,7 +452,7 @@ l’utiliser que pour diagnostiquer un manifeste cassé, jamais en déploiement 
 <section id="ce-que-fait-i">
 <h2>Ce que fait <code class="docutils literal notranslate"><span class="pre">-i</span></code><a class="headerlink" href="#ce-que-fait-i" title="Lien vers cette rubrique">#</a></h2>
 <p><strong>Paquets</strong> — <code class="docutils literal notranslate"><span class="pre">qemu-system-x86</span></code>, <code class="docutils literal notranslate"><span class="pre">qemu-utils</span></code>, <code class="docutils literal notranslate"><span class="pre">ovmf</span></code>, <code class="docutils literal notranslate"><span class="pre">dnsmasq</span></code>, <code class="docutils literal notranslate"><span class="pre">nftables</span></code>,
-<code class="docutils literal notranslate"><span class="pre">iptables</span></code>, <code class="docutils literal notranslate"><span class="pre">nfs-common</span></code>, <code class="docutils literal notranslate"><span class="pre">jq</span></code>, <code class="docutils literal notranslate"><span class="pre">curl</span></code>, <strong>sans les paquets recommandés</strong> : ceux de
+<code class="docutils literal notranslate"><span class="pre">nfs-common</span></code>, <code class="docutils literal notranslate"><span class="pre">jq</span></code>, <code class="docutils literal notranslate"><span class="pre">curl</span></code>, <strong>sans les paquets recommandés</strong> : ceux de
 <code class="docutils literal notranslate"><span class="pre">qemu-system-x86</span></code> (interface graphique, gtk, gstreamer, pilotes de stockage réseau) ne servent
 pas à un hyperviseur sans écran, et l’installation passe d’environ 270 à 65 Mo — rejouée à chaque
 démarrage, la racine étant en tmpfs. <code class="docutils literal notranslate"><span class="pre">qemu-utils</span></code> est demandé explicitement : <code class="docutils literal notranslate"><span class="pre">qemu-img</span></code> sert
@@ -462,10 +462,11 @@ dans les netns.</p>
 <p><code class="docutils literal notranslate"><span class="pre">dnsmasq</span></code> reste installé bien que <code class="docutils literal notranslate"><span class="pre">dhcp.backend</span></code> vaille <code class="docutils literal notranslate"><span class="pre">two</span></code> par défaut : le paquet sert
 aux hyperviseurs qui déclarent <code class="docutils literal notranslate"><span class="pre">dhcp.backend:</span> <span class="pre">dnsmasq</span></code>, et tant qu’un hyperviseur peut revenir
 en arrière. Voir <a class="reference internal" href="../exploitation/configuration.html"><span class="doc">Configuration</span></a>.</p>
-<p><strong>Noyau</strong> — chargement de <code class="docutils literal notranslate"><span class="pre">br_netfilter</span></code>, puis <code class="docutils literal notranslate"><span class="pre">net.ipv4.ip_forward</span> <span class="pre">=</span> <span class="pre">1</span></code> et
-<code class="docutils literal notranslate"><span class="pre">net.bridge.bridge-nf-call-iptables</span> <span class="pre">=</span> <span class="pre">1</span></code>. Cette dernière clé est <strong>requise</strong> par la DNAT vers
-le serveur de metadata : sans elle, iptables ne voit pas le trafic bridgé des VM et cloud-init
-ne se provisionne pas. Contrepartie assumée : tout le trafic inter-VM traverse les tables NAT.</p>
+<p><strong>Noyau</strong> — <code class="docutils literal notranslate"><span class="pre">net.ipv4.ip_forward</span> <span class="pre">=</span> <span class="pre">1</span></code>. <code class="docutils literal notranslate"><span class="pre">br_netfilter</span></code> n’est pas chargé : le filtrage des
+ponts est en nftables (famille <code class="docutils literal notranslate"><span class="pre">bridge</span></code>) et les redirections vers le serveur de metadata et
+vers <code class="docutils literal notranslate"><span class="pre">two-hostsvc</span></code> sont posées dans le netns de chaque VPC, où l’agent coupe déjà
+<code class="docutils literal notranslate"><span class="pre">bridge-nf-call-*</span></code>. Chargé, le module ferait passer tout le trafic bridgé des VM par netfilter
+(<code class="docutils literal notranslate"><span class="pre">bridge-nf-call-iptables</span></code> vaut 1 par défaut).</p>
 <p><strong>Réseau</strong> — création du bridge public, puis rattachement de l’uplink au bridge principal,
 l’adresse et la route par défaut étant déplacées de l’interface physique vers le bridge.</p>
 <p><strong>Segment public</strong> — <code class="docutils literal notranslate"><span class="pre">vxlan-public</span></code> est créé avec le VNI de <code class="docutils literal notranslate"><span class="pre">-N</span></code>, l’adresse IPv4 du bridge
