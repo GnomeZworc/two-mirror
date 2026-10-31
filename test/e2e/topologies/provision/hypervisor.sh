@@ -1,9 +1,20 @@
 #!/bin/sh
 set -eu
-RELEASE=0.2.0
 PUBLIC_VNI=1
 GIT_SERVER=https://git.g3e.fr/
 REPO=syonad/two
+ASSETS="${LAB_FILES}/bin"
+if [ -f "${ASSETS}/SHA256SUMS" ] && [ -f "${ASSETS}/VERSION" ] && [ -f "${LAB_FILES}/scripts/deploy.sh" ] && [ -f "${LAB_FILES}/scripts/bootstrap_kvm.sh" ]; then
+    MODE=tree
+    VERSION=$(cat "${ASSETS}/VERSION")
+elif [ -f "${ASSETS}/RELEASE" ]; then
+    MODE=release
+    VERSION=$(cat "${ASSETS}/RELEASE")
+else
+    echo "lab: ni arbre courant (SHA256SUMS, VERSION, scripts) ni release (RELEASE) dans ${LAB_FILES} : lancer test/e2e/build.sh" >&2
+    exit 1
+fi
+[ -n "${VERSION}" ] || { echo "lab: version vide (${MODE})" >&2; exit 1; }
 n=0
 until curl -fsS -o /dev/null "${GIT_SERVER}"; do
     n=$((n + 1))
@@ -24,31 +35,18 @@ if [ -e /sys/class/net/lan ]; then
 fi
 mkdir -p /opt/two/scripts
 cd /opt/two/scripts
-for script in deploy.sh bootstrap_kvm.sh; do
-    curl -fsS -o "${script}" "${GIT_SERVER}${REPO}/raw/tag/${RELEASE}/scripts/${script}"
-done
-chmod 0755 deploy.sh bootstrap_kvm.sh
-bash ./deploy.sh --noup_script -i -u "${LAB_UPLINK}" -t "${RELEASE}"
-DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends nftables
-if [ -f "${LAB_FILES}/scripts/bootstrap_kvm.sh" ]; then
-    bash -c 'FLAGS_TRUE=0; FLAGS_FALSE=1; . ./deploy.sh && . "$1" && kvm_public_segment "${FLAGS_FALSE}" "${FLAGS_TRUE}" br-000000 br-public "$2"' \
-        lab "${LAB_FILES}/scripts/bootstrap_kvm.sh" "${PUBLIC_VNI}"
-    echo "lab: segment public posé par le bootstrap_kvm.sh de l'arbre courant (VNI ${PUBLIC_VNI})"
-fi
-for binary in "${LAB_FILES}"/bin/*; do
-    [ -f "${binary}" ] || continue
-    name=$(basename "${binary}")
-    case "${name}" in *.service) continue ;; esac
-    install -D -m 0755 "${binary}" "/opt/two/local/bin/${name}"
-    ln -sfn "/opt/two/local/bin/${name}" "/opt/two/bin/${name}"
-    echo "lab: ${name} compilé en local remplace celui de la release ${RELEASE}"
-done
-for unit in "${LAB_FILES}"/bin/*.service; do
-    [ -f "${unit}" ] || continue
-    name=$(basename "${unit}")
-    install -m 0644 "${unit}" "/etc/systemd/system/${name}"
-    systemctl daemon-reload
-    systemctl enable "${name}"
-    systemctl restart "${name}"
-    echo "lab: unité ${name} de l'arbre local installée par-dessus la release ${RELEASE}"
-done
+case "${MODE}" in
+    tree)
+        install -m 0755 "${LAB_FILES}/scripts/deploy.sh" "${LAB_FILES}/scripts/bootstrap_kvm.sh" .
+        echo "lab: arbre courant ${VERSION}, déployé depuis ${ASSETS} sans téléchargement"
+        bash ./deploy.sh --noup_script -i -u "${LAB_UPLINK}" -N "${PUBLIC_VNI}" -a "${ASSETS}" -t "${VERSION}"
+        ;;
+    release)
+        for script in deploy.sh bootstrap_kvm.sh; do
+            curl -fsS -o "${script}" "${GIT_SERVER}${REPO}/raw/tag/${VERSION}/scripts/${script}"
+        done
+        chmod 0755 deploy.sh bootstrap_kvm.sh
+        echo "lab: release ${VERSION}, déployée telle que publiée"
+        bash ./deploy.sh --noup_script -i -u "${LAB_UPLINK}" -t "${VERSION}"
+        ;;
+esac

@@ -856,6 +856,23 @@ test_build_version_is_the_commit_dirty_when_the_tree_changed () {
     teardown
 }
 
+test_build_release_and_clean_prepare_the_next_lab () {
+    setup "build.sh : --release ne laisse que RELEASE, --clean vide tout, sans tag refusé"
+    local bin="${WORK}/bin" scripts="${WORK}/scripts" f
+    mkdir -p "${bin}" "${scripts}"
+    for f in agent dhcp metadata two-hostsvc run-dhcp-in-netns.sh agent.service SHA256SUMS VERSION; do : > "${bin}/${f}"; done
+    : > "${bin}/autre" && : > "${scripts}/deploy.sh" && : > "${scripts}/bootstrap_kvm.sh"
+    build_in () { BIN_DIR="${bin}" SCRIPTS_DIR="${scripts}" bash "${DIR}/build.sh" "$@" 2>&1; }
+    build_in --release 0.3.0 >/dev/null || fail "--release 0.3.0 en échec"
+    [[ $(LC_ALL=C ls "${bin}" | tr '\n' ' ') == "RELEASE autre " ]] || fail "après --release : $(LC_ALL=C ls "${bin}" | tr '\n' ' ')"
+    [[ $(cat "${bin}/RELEASE") == 0.3.0 ]] || fail "RELEASE : $(cat "${bin}/RELEASE")"
+    [[ -z $(ls "${scripts}") ]] || fail "scripts laissés : $(ls "${scripts}")"
+    build_in --release >/dev/null && fail "--release sans tag accepté"
+    build_in --clean >/dev/null || fail "--clean en échec"
+    [[ $(ls "${bin}") == autre ]] || fail "après --clean : $(ls "${bin}" | tr '\n' ' ')"
+    teardown
+}
+
 for T in $(declare -F | awk '{print $3}' | grep '^test_'); do
     "${T}"
 done
