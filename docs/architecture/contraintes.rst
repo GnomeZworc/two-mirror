@@ -59,6 +59,9 @@ QEMU et VM
 * **Un tap n'existe jamais sans ses règles** : la chaîne ``pre-tap<id>`` est posée avant la
   création du tap et retirée après sa suppression. Dans l'autre ordre, une VM pourrait émettre
   sans filtre entre deux étapes.
+* **La MAC d'une interface est figée sur son tap** (entrée de pont ``static sticky``), posée avant
+  que le tap soit monté. ``static`` seul ne suffit pas : l'apprentissage déplace une entrée
+  ``static``, pas une entrée ``sticky`` (mesuré, #95).
 * L'arrêt d'une VM ne touche **jamais** aux fichiers disque. En revanche, un ``quit`` brutal est
   envoyé à l'expiration de ``times.timeout_vms_stop``. ``system_powerdown`` est renvoyé toutes les
   ``times.next_vms_shutdown`` : un appui ACPI arrivé avant que l'invité sache le traiter est perdu.
