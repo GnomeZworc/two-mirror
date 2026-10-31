@@ -44,6 +44,8 @@ Paquets
        ``/24`` et ``/32``
    * - ``internal/frr``
      - génération des commandes FRR, seul point d'appel à ``vtysh``
+   * - ``internal/host``
+     - connaissance de l'hôte : faits lus au démarrage (``/register``), état mesuré périodiquement en mémoire (``/ping``)
    * - ``internal/sysctl``
      - écriture sous ``/proc/sys``, dans un netns si besoin
    * - ``internal/netns``
