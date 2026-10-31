@@ -3,12 +3,14 @@ package watchdog
 import (
 	"errors"
 	"fmt"
+	"net"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 
 	configuration "git.g3e.fr/syonad/two/internal/config/agent"
+	"git.g3e.fr/syonad/two/internal/netif"
 	"git.g3e.fr/syonad/two/internal/netns"
 	"git.g3e.fr/syonad/two/internal/nft"
 	"git.g3e.fr/syonad/two/internal/qemu"
@@ -125,6 +127,8 @@ func checkVMTap(entries map[string]string, prefix, name, vpc string, idx int, n 
 	if err := netns.Call(vpc, func() error {
 		if p := linkProblem(tapName(tapID)); p != "" {
 			n.Notify(kindVM, name, p+" (in netns "+vpc+")")
+		} else if p := tapMACProblem(entries[prefix+"mac"], tapID); p != "" {
+			n.Notify(kindVM, name, fmt.Sprintf("interface %d: %s (in netns %s)", idx, p, vpc))
 		}
 		missing, err := nft.MissingRules(tapPortFromEntries(entries, prefix, tapID))
 		if err != nil {
@@ -138,6 +142,21 @@ func checkVMTap(entries map[string]string, prefix, name, vpc string, idx int, n 
 	}); err != nil {
 		n.Notify(kindVM, name, fmt.Sprintf("cannot enter netns %s: %v", vpc, err))
 	}
+}
+
+func tapMACProblem(rawMAC string, tapID int) string {
+	mac, err := net.ParseMAC(rawMAC)
+	if err != nil {
+		return fmt.Sprintf("invalid mac %q in database: %v", rawMAC, err)
+	}
+	pinned, err := netif.TapHasMAC(tapID, mac)
+	switch {
+	case err != nil:
+		return fmt.Sprintf("fdb of %s unreadable: %v", tapName(tapID), err)
+	case !pinned:
+		return fmt.Sprintf("mac %s not pinned on %s (static sticky fdb entry missing)", mac, tapName(tapID))
+	}
+	return ""
 }
 
 func checkVMQemu(cfg *configuration.Config, name string, n notify.Notifier) {
