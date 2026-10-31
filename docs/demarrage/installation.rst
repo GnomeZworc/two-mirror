@@ -59,6 +59,12 @@ depuis la release, et les vérifie contre le manifeste ``SHA256SUMS``.
    * - ``-R <secondes>``
      - délai avant le redémarrage de secours pendant la migration réseau
      - ``120``
+   * - ``-a <répertoire>``
+     - installer hors ligne, depuis un répertoire local au format d'une release (mêmes noms
+       d'assets, ``SHA256SUMS`` compris) : ni appel à l'API ni téléchargement des assets. Le
+       tag ``-t`` ne sert alors qu'à nommer ``/opt/two/<tag>/``. Les scripts de ``-i`` sont
+       lus dans ``/opt/two/scripts/`` s'ils y sont
+     - désactivé ; tag ``local``
    * - ``-d``
      - dry-run : affiche les commandes sans les exécuter
      - désactivé
