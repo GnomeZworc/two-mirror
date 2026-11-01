@@ -179,6 +179,17 @@ release_assets () {
     curl --silent "${GIT_SERVER}api/v1/repos/${REPO_PATH}releases/tags/${RELEASE_TAG}" | jq -c '.assets[]'
 }
 
+local_assets () {
+    local DIR file
+
+    DIR=$(cd "${1}" && pwd) || return 1
+    for file in "${DIR}"/*
+    do
+        [[ -f "${file}" ]] || continue
+        jq -nc --arg n "${file##*/}" --arg u "file://${file}" '{name: $n, browser_download_url: $u}' || return 1
+    done
+}
+
 asset_name () {
     echo "${1}" | jq -r --arg s "${2}" 'select(.name == $s or (.name | startswith($s + "_"))) | .name' | head -1
 }
@@ -339,11 +350,13 @@ main () {
     DEFINE_integer 'public_vni' 1                     'VNI of the public segment (vxlan-public)'       'N'
     DEFINE_integer 'rollback'   120                   'Rollback reboot delay in seconds'               'R'
     DEFINE_boolean 'verify'     true                  'Check assets against SHA256SUMS'                'V'
+    DEFINE_string  'assets_dir' ''                    'Local directory of release assets (offline)'    'a'
 
     FLAGS "$@" || exit $?
     eval set -- "${FLAGS_ARGV}"
 
     profile_units "${FLAGS_profile}" >/dev/null || die "profil inconnu : ${FLAGS_profile}"
+    [[ -z "${FLAGS_assets_dir}" || -d "${FLAGS_assets_dir}" ]] || die "répertoire d'assets absent : ${FLAGS_assets_dir}"
 
     if [[ ${FLAGS_up_script} -eq ${FLAGS_TRUE} ]]
     then
@@ -360,15 +373,26 @@ main () {
 
     local TAG BIN_PATH UNIT_PATH LN_PATH ASSETS MANIFEST
 
-    TAG=$(resolve_tag "${FLAGS_tag}" "${FLAGS_git_server}" "${FLAGS_repo_path}")
+    if [[ -n "${FLAGS_assets_dir}" ]]
+    then
+        TAG="${FLAGS_tag:-local}"
+    else
+        TAG=$(resolve_tag "${FLAGS_tag}" "${FLAGS_git_server}" "${FLAGS_repo_path}")
+    fi
     [[ -n "${TAG}" && "${TAG}" != "null" ]] || die "impossible de déterminer la release à déployer"
 
     BIN_PATH="/opt/two/${TAG}/bin/"
     UNIT_PATH="/opt/two/${TAG}/units/"
     LN_PATH="/opt/two/bin/"
 
-    ASSETS=$(release_assets "${FLAGS_git_server}" "${FLAGS_repo_path}" "${TAG}")
-    [[ -n "${ASSETS}" ]] || die "aucun asset dans la release ${TAG}"
+    if [[ -n "${FLAGS_assets_dir}" ]]
+    then
+        ASSETS=$(local_assets "${FLAGS_assets_dir}") || die "répertoire d'assets illisible : ${FLAGS_assets_dir}"
+        [[ -n "${ASSETS}" ]] || die "aucun asset dans ${FLAGS_assets_dir}"
+    else
+        ASSETS=$(release_assets "${FLAGS_git_server}" "${FLAGS_repo_path}" "${TAG}")
+        [[ -n "${ASSETS}" ]] || die "aucun asset dans la release ${TAG}"
+    fi
 
     # Manifeste absent = release antérieure à sa mise en place, ou CI incomplète.
     # C'est bloquant : une vérification qui se désactive d'elle-même ne vérifie

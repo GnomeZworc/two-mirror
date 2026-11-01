@@ -5,28 +5,32 @@ REPO_DIR="$(cd "${E2E_DIR}/../.." && pwd)"
 BIN_DIR="${BIN_DIR:-${E2E_DIR}/topologies/bin}"
 SCRIPTS_DIR="${SCRIPTS_DIR:-${E2E_DIR}/topologies/scripts}"
 BINARIES="agent dhcp metadata two-hostsvc"
-UNITS="two-hostsvc.service"
-SCRIPTS="bootstrap_kvm.sh"
+ASSET_SCRIPTS="run-dnsmasq-in-netns.sh run-dhcp-in-netns.sh"
+UNITS="two-hostsvc.service agent.service dnsmasq@.service dhcp@.service metadata@.service"
+MARKERS="SHA256SUMS VERSION RELEASE"
+SCRIPTS="deploy.sh bootstrap_kvm.sh"
 
 usage () {
     cat >&2 <<USAGE
-usage: ${0##*/} [--clean]
+usage: ${0##*/} [--release <tag> | --clean]
 
-  sans option : compile ${BINARIES} pour linux/amd64 depuis l'arbre courant dans ${BIN_DIR}
-                et y copie ${UNITS}, copie ${SCRIPTS} dans ${SCRIPTS_DIR} ; le prochain lab
-                les installe par-dessus la release épinglée dans topologies/provision/hypervisor.sh
-  --clean     : vide ${BIN_DIR} et ${SCRIPTS_DIR} ; le prochain lab teste la release seule
+  sans option     : prépare dans ${BIN_DIR} les assets de l'arbre courant au format d'une release
+                    (${BINARIES} compilés pour linux/amd64, ${ASSET_SCRIPTS}, units, SHA256SUMS,
+                    VERSION) et copie ${SCRIPTS} dans ${SCRIPTS_DIR} ; le prochain lab déploie
+                    l'arbre courant en entier, sans rien télécharger
+  --release <tag> : le prochain lab déploie la release <tag> telle que publiée (fichier RELEASE)
+  --clean         : vide ${BIN_DIR} et ${SCRIPTS_DIR} ; le prochain lab refuse de démarrer
 USAGE
     exit 2
 }
 
 clean () {
-    local file script
-    for file in ${BINARIES} ${UNITS}; do
+    local file
+    for file in ${BINARIES} ${ASSET_SCRIPTS} ${UNITS} ${MARKERS}; do
         rm -f "${BIN_DIR}/${file}" || return 1
     done
-    for script in ${SCRIPTS}; do
-        rm -f "${SCRIPTS_DIR}/${script}" || return 1
+    for file in ${SCRIPTS}; do
+        rm -f "${SCRIPTS_DIR}/${file}" || return 1
     done
 }
 
@@ -41,27 +45,49 @@ build_version () {
     fi
 }
 
+sha256 () {
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$@"
+    else
+        shasum -a 256 "$@"
+    fi
+}
+
 build () {
-    local binary unit script version
+    local binary file version
     version=$(build_version) || return 1
+    clean || return 1
     echo "== version ${version}" >&2
     for binary in ${BINARIES}; do
         echo "== ${binary}" >&2
         (cd "${REPO_DIR}" && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=${version}" -o "${BIN_DIR}/${binary}" "./cmd/${binary}") || return 1
     done
-    for unit in ${UNITS}; do
-        cp "${REPO_DIR}/systemd/${unit}" "${BIN_DIR}/${unit}" || return 1
+    for file in ${ASSET_SCRIPTS}; do
+        install -m 0755 "${REPO_DIR}/scripts/${file}" "${BIN_DIR}/${file}" || return 1
     done
-    for script in ${SCRIPTS}; do
-        echo "== ${script}" >&2
-        cp "${REPO_DIR}/scripts/${script}" "${SCRIPTS_DIR}/${script}" || return 1
+    for file in ${UNITS}; do
+        cp "${REPO_DIR}/systemd/${file}" "${BIN_DIR}/${file}" || return 1
     done
-    (cd "${BIN_DIR}" && sha256sum ${BINARIES} ${UNITS} 2>/dev/null || shasum -a 256 ${BINARIES} ${UNITS})
+    for file in ${SCRIPTS}; do
+        echo "== ${file}" >&2
+        cp "${REPO_DIR}/scripts/${file}" "${SCRIPTS_DIR}/${file}" || return 1
+    done
+    (cd "${BIN_DIR}" && sha256 ${BINARIES} ${ASSET_SCRIPTS} ${UNITS} > SHA256SUMS) || return 1
+    echo "${version}" > "${BIN_DIR}/VERSION" || return 1
+    cat "${BIN_DIR}/SHA256SUMS"
+}
+
+release () {
+    [ -n "${1}" ] || usage
+    clean || return 1
+    echo "${1}" > "${BIN_DIR}/RELEASE" || return 1
+    echo "== le prochain lab déploie la release ${1}" >&2
 }
 
 main () {
     case "${1:-}" in
         "") build ;;
+        --release) release "${2:-}" ;;
         --clean) clean ;;
         *) usage ;;
     esac

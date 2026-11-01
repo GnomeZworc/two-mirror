@@ -99,20 +99,25 @@ clé du dépôt embarquée dans l'outil) : voir la section FRR du guide de ``lab
 
 **Hyperviseurs.** Ce sont des nœuds ``host`` dont la provision installe two comme en
 production. ``test/e2e/topologies/provision/hypervisor.sh`` dépose ``agent.yml`` (fichier
-``agent.yml`` du nœud) dans ``/etc/two/agent.yml``, télécharge ``deploy.sh`` et
-``bootstrap_kvm.sh`` **au tag de la release testée** dans ``/opt/two/scripts/``, où ``deploy.sh``
-cherche d'abord ``bootstrap_kvm.sh``, puis lance :
+``agent.yml`` du nœud) dans ``/etc/two/agent.yml``, installe ``deploy.sh`` et ``bootstrap_kvm.sh``
+dans ``/opt/two/scripts/``, où ``deploy.sh`` cherche d'abord ``bootstrap_kvm.sh``, puis lance
+``deploy.sh -i``. Ce qu'il déploie dépend de ce que ``test/e2e/build.sh`` a préparé dans
+``test/e2e/topologies/`` (transmis par ``files: {bin: bin, scripts: scripts}``) ; sans rien de
+préparé, la provision échoue (#65) :
 
-.. code-block:: text
+* **arbre courant** (``build.sh``, par défaut) : ``deploy.sh`` et ``bootstrap_kvm.sh`` de l'arbre,
+  puis ``deploy.sh --noup_script -i -u "$LAB_UPLINK" -N 1 -a <files>/bin -t <commit>``. Tout vient
+  de l'arbre — bootstrap (paquets, noyau, réseau, segment public), binaires, ``run-*.sh``, units —
+  sans télécharger d'asset ;
+* **release** (``build.sh --release <tag>``) : ``deploy.sh`` et ``bootstrap_kvm.sh`` téléchargés au
+  tag, puis ``deploy.sh --noup_script -i -u "$LAB_UPLINK" -t <tag>`` : la release telle que
+  publiée, pour qualifier ses fichiers avant de la livrer.
 
-   deploy.sh --noup_script -i -u "$LAB_UPLINK" -t <release>
-
-La release est fixée dans le script (``RELEASE=``) : sans elle, ``deploy.sh`` prendrait la dernière,
-et le lab ne serait plus reproductible. ``--noup_script`` empêche l'auto-mise à jour de remplacer le
-script par celui de ``main``. L'uplink ``-u`` est l'interface qui porte la route par défaut, parce
-que ``deploy.sh`` y lit l'adresse et la passerelle qu'il déplace sur ``br-000000``. ``deploy.sh``
-télécharge la release sur ``git.g3e.fr`` sans réessayer : le script attend d'abord que le serveur
-réponde, à travers le switch. Les deux fichiers ``agent/`` donnent à l'agent la section ``bgp``
+``--noup_script`` empêche l'auto-mise à jour de remplacer le script par celui de ``main``.
+L'uplink ``-u`` est l'interface qui porte la route par défaut, parce que ``deploy.sh`` y lit
+l'adresse et la passerelle qu'il déplace sur ``br-000000``. ``deploy.sh`` télécharge
+``shflags`` (et, en mode release, la release) sur ``git.g3e.fr`` sans réessayer : le script
+attend d'abord que le serveur réponde, à travers le switch. Les deux fichiers ``agent/`` donnent à l'agent la section ``bgp``
 (AS 64600, route reflectors ``10.255.255.1`` et ``10.255.255.2``) et un watchdog toutes les 10 s ;
 ``agent/two.yml`` met en plus hv1 sur le serveur DHCP intégré (``dhcp.backend: two``),
 ``agent/dnsmasq.yml`` met explicitement les autres sur dnsmasq (``dhcp.backend: dnsmasq``).
@@ -144,21 +149,20 @@ registre RFC 6890) et jamais routée sur Internet. Les bordures sont déclarées
 hyperviseurs : les adresses et les taps de l'underlay ne changent pas, ceux du segment ``lan``
 sont renumérotés.
 
-**Tester l'arbre courant plutôt que la release.** ``test/e2e/build.sh`` compile ``agent``,
-``dhcp``, ``metadata`` et ``two-hostsvc`` pour linux/amd64 dans ``test/e2e/topologies/bin/``
-(ignoré par git), et y copie l'unit ``two-hostsvc.service``, absente de la release 0.2.0 ; les
-hyperviseurs reçoivent le répertoire par ``files: {bin: bin}``. Après ``deploy.sh``,
-``hypervisor.sh`` installe chaque binaire présent dans ``/opt/two/local/bin/`` et y fait pointer
-``/opt/two/bin/<nom>``, puis installe, active et redémarre chaque unit ``*.service`` présente ; le
-reste (units, scripts) vient de la release. ``build.sh --clean`` vide le répertoire : le lab
-suivant teste la release seule.
+**Préparer l'arbre courant ou une release.** ``test/e2e/build.sh`` prépare dans
+``test/e2e/topologies/bin/`` (ignoré par git) les assets de l'arbre au format d'une release :
+``agent``, ``dhcp``, ``metadata`` et ``two-hostsvc`` compilés pour linux/amd64 (version = commit
+court, ``-dirty`` si l'arbre a des modifications), ``run-dnsmasq-in-netns.sh``,
+``run-dhcp-in-netns.sh``, les cinq units, ``SHA256SUMS`` et ``VERSION`` ; il copie ``deploy.sh`` et
+``bootstrap_kvm.sh`` dans ``test/e2e/topologies/scripts/``. ``build.sh --release <tag>`` ne laisse
+qu'un fichier ``RELEASE`` ; ``build.sh --clean`` vide les deux répertoires.
 
 .. code-block:: text
 
-   test/e2e/build.sh                                   # binaires de l'arbre courant
+   test/e2e/build.sh                                   # arbre courant, en entier
    test/e2e/labctl.sh push test/e2e/topologies/evpn-3hv.yml
    test/e2e/labctl.sh ssh './labctl up topology/evpn-3hv.yml'
-   test/e2e/build.sh --clean                           # retour à la release seule
+   test/e2e/build.sh --release 0.3.0                   # qualifier une release publiée
 
 FRR est installé **après** la provision : il démarre sur le réseau final. Démarré
 avant la migration, zebra peut perdre la route par défaut quand elle passe de l'uplink à
