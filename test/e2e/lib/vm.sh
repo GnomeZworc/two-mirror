@@ -77,7 +77,7 @@ vm_ssh () {
     local vpc="${1}" ip="${2}"
     shift 2
     ip netns exec "${vpc}" ssh -i "${VM_KEY}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-        -o LogLevel=ERROR -o ConnectTimeout=3 -o BatchMode=yes -n "syonad@${ip}" "$@"
+        -o LogLevel=ERROR -o ConnectTimeout=3 -o BatchMode=yes -o GSSAPIAuthentication=no -n "syonad@${ip}" "$@"
 }
 
 vm_wait () {
@@ -193,7 +193,12 @@ vm_meta () {
 }
 
 vm_cloud_init_done () {
+    local rc
     vm_ssh "${1}" "${2}" "timeout ${3:-300} cloud-init status --wait"
+    rc=$?
+    [ "${rc}" -eq 0 ] && return 0
+    echo "code ${rc}, $(vm_ssh "${1}" "${2}" 'cloud-init status --long' 2>&1 | sed -n '/^extended_status:/,$p' | tr -s '\n ' ' ')"
+    return "${rc}"
 }
 
 vm_boot_id () {

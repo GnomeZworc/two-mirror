@@ -538,11 +538,24 @@ test_vm_lease_reads_one_field_of_the_interface_lease () {
     teardown
 }
 
+test_vm_ssh_skips_gssapi () {
+    setup "vm_ssh : clé du lab, sans GSSAPI (sshd de Rocky l'accepte, le login attend alors jusqu'à 40 s)"
+    local out
+    out=$(node 'ip () { echo "$*"; }; vm_ssh vp 1.2.3.4 true')
+    [[ ${out} == "netns exec vp ssh "*" -o GSSAPIAuthentication=no "*"syonad@1.2.3.4 true" ]] || fail "GSSAPI non désactivé : ${out}"
+    teardown
+}
+
 test_vm_cloud_init_done_waits_with_a_bound () {
     setup "vm_cloud_init_done : attend la fin de cloud-init, avec un délai borné, et en rend le code"
     [[ $(node 'vm_ssh () { echo "$1 $2 $3"; }; vm_cloud_init_done vp 1.2.3.4') == "vp 1.2.3.4 timeout 300 cloud-init status --wait" ]] || fail "commande par défaut"
     [[ $(node 'vm_ssh () { echo "$3"; }; vm_cloud_init_done vp 1.2.3.4 60') == "timeout 60 cloud-init status --wait" ]] || fail "délai fourni"
-    [[ $(node 'vm_ssh () { return 2; }; vm_cloud_init_done vp 1.2.3.4 || echo NON') == NON ]] || fail "cloud-init en erreur accepté"
+    [[ $(node 'vm_ssh () { return 2; }; vm_cloud_init_done vp 1.2.3.4 || echo NON') == *NON ]] || fail "cloud-init en erreur accepté"
+    local out
+    out=$(node 'vm_ssh () { case "$3" in *--wait) echo "status: done"; return 2 ;; *--long) printf "%s\n" "status: done" "extended_status: degraded done" "detail: DataSourceNoCloud" "errors: []" "recoverable_errors:" "WARNING:" "        - Unable to find a system nic for eth0" ;; esac; }; vm_cloud_init_done vp 1.2.3.4; echo "rc=$?"')
+    [[ ${out} == *"code 2, extended_status: degraded done detail: DataSourceNoCloud errors: [] recoverable_errors: WARNING: - Unable to find a system nic for eth0"* ]] || fail "diagnostic absent : ${out}"
+    [[ $(printf '%s\n' "${out}" | tail -n 2 | head -n 1) == "code 2, "*"system nic for eth0"* ]] || fail "diagnostic sur plusieurs lignes, check n'en garde que la dernière : ${out}"
+    [[ ${out} == *"rc=2" ]] || fail "code perdu : ${out}"
     teardown
 }
 

@@ -26,7 +26,7 @@ check "t41-p (hv1) joint t41-q (hv2)" vm_ssh vp-t41 10.41.1.10 'ping -c 3 -W 2 1
 for i in $(seq 1 24); do vm_ssh vp-t41 10.41.1.10 "timeout 5 bash -c '</dev/tcp/10.41.1.11/22'" >/dev/null 2>&1 && break; sleep 5; done
 check "t41-p ouvre une connexion TCP vers t41-q:22" vm_ssh vp-t41 10.41.1.10 "timeout 5 bash -c '</dev/tcp/10.41.1.11/22'"
 check "trame pleine taille : 1472 octets en -M do" vm_ssh vp-t41 10.41.1.10 'ping -M do -s 1472 -c 2 -W 2 10.41.1.11'
-check "1473 octets refusés localement (MTU 1500)" vm_grep vp-t41 10.41.1.10 'ping -M do -s 1473 -c 1 -W 2 10.41.1.11' 'message too long'
+check "1473 octets refusés localement (MTU 1500)" vm_grep vp-t41 10.41.1.10 'ping -M do -s 1473 -c 1 -W 2 10.41.1.11' '[Mm]essage too long'
 MAC=$(vm_neigh_mac vp-t41 10.41.1.10 10.41.1.11)
 check "hv1 : MAC de t41-q résolue par t41-p (${MAC:-aucune})" test -n "${MAC}"
 check "hv1 : MAC de t41-q ${MAC} apprise en type 2 via le VTEP de hv2" wait_evpn_mac 4101 "${MAC}" 192.168.14.12
