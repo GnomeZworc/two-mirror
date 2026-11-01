@@ -423,6 +423,9 @@ transitoire, forkée par PID 1, démarrerait dans le netns racine et ne verrait 
 <li><p><strong>Un tap n’existe jamais sans ses règles</strong> : la chaîne <code class="docutils literal notranslate"><span class="pre">pre-tap&lt;id&gt;</span></code> est posée avant la
 création du tap et retirée après sa suppression. Dans l’autre ordre, une VM pourrait émettre
 sans filtre entre deux étapes.</p></li>
+<li><p><strong>La MAC d’une interface est figée sur son tap</strong> (entrée de pont <code class="docutils literal notranslate"><span class="pre">static</span> <span class="pre">sticky</span></code>), posée avant
+que le tap soit monté. <code class="docutils literal notranslate"><span class="pre">static</span></code> seul ne suffit pas : l’apprentissage déplace une entrée
+<code class="docutils literal notranslate"><span class="pre">static</span></code>, pas une entrée <code class="docutils literal notranslate"><span class="pre">sticky</span></code> (mesuré, #95).</p></li>
 <li><p>L’arrêt d’une VM ne touche <strong>jamais</strong> aux fichiers disque. En revanche, un <code class="docutils literal notranslate"><span class="pre">quit</span></code> brutal est
 envoyé à l’expiration de <code class="docutils literal notranslate"><span class="pre">times.timeout_vms_stop</span></code>. <code class="docutils literal notranslate"><span class="pre">system_powerdown</span></code> est renvoyé toutes les
 <code class="docutils literal notranslate"><span class="pre">times.next_vms_shutdown</span></code> : un appui ACPI arrivé avant que l’invité sache le traiter est perdu.</p></li>

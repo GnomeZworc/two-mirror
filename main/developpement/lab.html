@@ -545,18 +545,25 @@ exit
 clé du dépôt embarquée dans l’outil) : voir la section FRR du guide de <code class="docutils literal notranslate"><span class="pre">labctl</span></code>.</p>
 <p><strong>Hyperviseurs.</strong> Ce sont des nœuds <code class="docutils literal notranslate"><span class="pre">host</span></code> dont la provision installe two comme en
 production. <code class="docutils literal notranslate"><span class="pre">test/e2e/topologies/provision/hypervisor.sh</span></code> dépose <code class="docutils literal notranslate"><span class="pre">agent.yml</span></code> (fichier
-<code class="docutils literal notranslate"><span class="pre">agent.yml</span></code> du nœud) dans <code class="docutils literal notranslate"><span class="pre">/etc/two/agent.yml</span></code>, télécharge <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> et
-<code class="docutils literal notranslate"><span class="pre">bootstrap_kvm.sh</span></code> <strong>au tag de la release testée</strong> dans <code class="docutils literal notranslate"><span class="pre">/opt/two/scripts/</span></code>, où <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code>
-cherche d’abord <code class="docutils literal notranslate"><span class="pre">bootstrap_kvm.sh</span></code>, puis lance :</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>deploy.sh --noup_script -i -u "$LAB_UPLINK" -t &lt;release&gt;
-</pre></div>
-</div>
-<p>La release est fixée dans le script (<code class="docutils literal notranslate"><span class="pre">RELEASE=</span></code>) : sans elle, <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> prendrait la dernière,
-et le lab ne serait plus reproductible. <code class="docutils literal notranslate"><span class="pre">--noup_script</span></code> empêche l’auto-mise à jour de remplacer le
-script par celui de <code class="docutils literal notranslate"><span class="pre">main</span></code>. L’uplink <code class="docutils literal notranslate"><span class="pre">-u</span></code> est l’interface qui porte la route par défaut, parce
-que <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> y lit l’adresse et la passerelle qu’il déplace sur <code class="docutils literal notranslate"><span class="pre">br-000000</span></code>. <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code>
-télécharge la release sur <code class="docutils literal notranslate"><span class="pre">git.g3e.fr</span></code> sans réessayer : le script attend d’abord que le serveur
-réponde, à travers le switch. Les deux fichiers <code class="docutils literal notranslate"><span class="pre">agent/</span></code> donnent à l’agent la section <code class="docutils literal notranslate"><span class="pre">bgp</span></code>
+<code class="docutils literal notranslate"><span class="pre">agent.yml</span></code> du nœud) dans <code class="docutils literal notranslate"><span class="pre">/etc/two/agent.yml</span></code>, installe <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> et <code class="docutils literal notranslate"><span class="pre">bootstrap_kvm.sh</span></code>
+dans <code class="docutils literal notranslate"><span class="pre">/opt/two/scripts/</span></code>, où <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> cherche d’abord <code class="docutils literal notranslate"><span class="pre">bootstrap_kvm.sh</span></code>, puis lance
+<code class="docutils literal notranslate"><span class="pre">deploy.sh</span> <span class="pre">-i</span></code>. Ce qu’il déploie dépend de ce que <code class="docutils literal notranslate"><span class="pre">test/e2e/build.sh</span></code> a préparé dans
+<code class="docutils literal notranslate"><span class="pre">test/e2e/topologies/</span></code> (transmis par <code class="docutils literal notranslate"><span class="pre">files:</span> <span class="pre">{bin:</span> <span class="pre">bin,</span> <span class="pre">scripts:</span> <span class="pre">scripts}</span></code>) ; sans rien de
+préparé, la provision échoue (#65) :</p>
+<ul class="simple">
+<li><p><strong>arbre courant</strong> (<code class="docutils literal notranslate"><span class="pre">build.sh</span></code>, par défaut) : <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> et <code class="docutils literal notranslate"><span class="pre">bootstrap_kvm.sh</span></code> de l’arbre,
+puis <code class="docutils literal notranslate"><span class="pre">deploy.sh</span> <span class="pre">--noup_script</span> <span class="pre">-i</span> <span class="pre">-u</span> <span class="pre">&quot;$LAB_UPLINK&quot;</span> <span class="pre">-N</span> <span class="pre">1</span> <span class="pre">-a</span> <span class="pre">&lt;files&gt;/bin</span> <span class="pre">-t</span> <span class="pre">&lt;commit&gt;</span></code>. Tout vient
+de l’arbre — bootstrap (paquets, noyau, réseau, segment public), binaires, <code class="docutils literal notranslate"><span class="pre">run-*.sh</span></code>, units —
+sans télécharger d’asset ;</p></li>
+<li><p><strong>release</strong> (<code class="docutils literal notranslate"><span class="pre">build.sh</span> <span class="pre">--release</span> <span class="pre">&lt;tag&gt;</span></code>) : <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> et <code class="docutils literal notranslate"><span class="pre">bootstrap_kvm.sh</span></code> téléchargés au
+tag, puis <code class="docutils literal notranslate"><span class="pre">deploy.sh</span> <span class="pre">--noup_script</span> <span class="pre">-i</span> <span class="pre">-u</span> <span class="pre">&quot;$LAB_UPLINK&quot;</span> <span class="pre">-t</span> <span class="pre">&lt;tag&gt;</span></code> : la release telle que
+publiée, pour qualifier ses fichiers avant de la livrer.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">--noup_script</span></code> empêche l’auto-mise à jour de remplacer le script par celui de <code class="docutils literal notranslate"><span class="pre">main</span></code>.
+L’uplink <code class="docutils literal notranslate"><span class="pre">-u</span></code> est l’interface qui porte la route par défaut, parce que <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> y lit
+l’adresse et la passerelle qu’il déplace sur <code class="docutils literal notranslate"><span class="pre">br-000000</span></code>. <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> télécharge
+<code class="docutils literal notranslate"><span class="pre">shflags</span></code> (et, en mode release, la release) sur <code class="docutils literal notranslate"><span class="pre">git.g3e.fr</span></code> sans réessayer : le script
+attend d’abord que le serveur réponde, à travers le switch. Les deux fichiers <code class="docutils literal notranslate"><span class="pre">agent/</span></code> donnent à l’agent la section <code class="docutils literal notranslate"><span class="pre">bgp</span></code>
 (AS 64600, route reflectors <code class="docutils literal notranslate"><span class="pre">10.255.255.1</span></code> et <code class="docutils literal notranslate"><span class="pre">10.255.255.2</span></code>) et un watchdog toutes les 10 s ;
 <code class="docutils literal notranslate"><span class="pre">agent/two.yml</span></code> met en plus hv1 sur le serveur DHCP intégré (<code class="docutils literal notranslate"><span class="pre">dhcp.backend:</span> <span class="pre">two</span></code>),
 <code class="docutils literal notranslate"><span class="pre">agent/dnsmasq.yml</span></code> met explicitement les autres sur dnsmasq (<code class="docutils literal notranslate"><span class="pre">dhcp.backend:</span> <span class="pre">dnsmasq</span></code>).</p>
@@ -585,18 +592,17 @@ la MAC vers une seule bordure et bascule sur l’autre quand elle disparaît (me
 registre RFC 6890) et jamais routée sur Internet. Les bordures sont déclarées après les
 hyperviseurs : les adresses et les taps de l’underlay ne changent pas, ceux du segment <code class="docutils literal notranslate"><span class="pre">lan</span></code>
 sont renumérotés.</p>
-<p><strong>Tester l’arbre courant plutôt que la release.</strong> <code class="docutils literal notranslate"><span class="pre">test/e2e/build.sh</span></code> compile <code class="docutils literal notranslate"><span class="pre">agent</span></code>,
-<code class="docutils literal notranslate"><span class="pre">dhcp</span></code>, <code class="docutils literal notranslate"><span class="pre">metadata</span></code> et <code class="docutils literal notranslate"><span class="pre">two-hostsvc</span></code> pour linux/amd64 dans <code class="docutils literal notranslate"><span class="pre">test/e2e/topologies/bin/</span></code>
-(ignoré par git), et y copie l’unit <code class="docutils literal notranslate"><span class="pre">two-hostsvc.service</span></code>, absente de la release 0.2.0 ; les
-hyperviseurs reçoivent le répertoire par <code class="docutils literal notranslate"><span class="pre">files:</span> <span class="pre">{bin:</span> <span class="pre">bin}</span></code>. Après <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code>,
-<code class="docutils literal notranslate"><span class="pre">hypervisor.sh</span></code> installe chaque binaire présent dans <code class="docutils literal notranslate"><span class="pre">/opt/two/local/bin/</span></code> et y fait pointer
-<code class="docutils literal notranslate"><span class="pre">/opt/two/bin/&lt;nom&gt;</span></code>, puis installe, active et redémarre chaque unit <code class="docutils literal notranslate"><span class="pre">*.service</span></code> présente ; le
-reste (units, scripts) vient de la release. <code class="docutils literal notranslate"><span class="pre">build.sh</span> <span class="pre">--clean</span></code> vide le répertoire : le lab
-suivant teste la release seule.</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>test/e2e/build.sh                                   # binaires de l'arbre courant
+<p><strong>Préparer l’arbre courant ou une release.</strong> <code class="docutils literal notranslate"><span class="pre">test/e2e/build.sh</span></code> prépare dans
+<code class="docutils literal notranslate"><span class="pre">test/e2e/topologies/bin/</span></code> (ignoré par git) les assets de l’arbre au format d’une release :
+<code class="docutils literal notranslate"><span class="pre">agent</span></code>, <code class="docutils literal notranslate"><span class="pre">dhcp</span></code>, <code class="docutils literal notranslate"><span class="pre">metadata</span></code> et <code class="docutils literal notranslate"><span class="pre">two-hostsvc</span></code> compilés pour linux/amd64 (version = commit
+court, <code class="docutils literal notranslate"><span class="pre">-dirty</span></code> si l’arbre a des modifications), <code class="docutils literal notranslate"><span class="pre">run-dnsmasq-in-netns.sh</span></code>,
+<code class="docutils literal notranslate"><span class="pre">run-dhcp-in-netns.sh</span></code>, les cinq units, <code class="docutils literal notranslate"><span class="pre">SHA256SUMS</span></code> et <code class="docutils literal notranslate"><span class="pre">VERSION</span></code> ; il copie <code class="docutils literal notranslate"><span class="pre">deploy.sh</span></code> et
+<code class="docutils literal notranslate"><span class="pre">bootstrap_kvm.sh</span></code> dans <code class="docutils literal notranslate"><span class="pre">test/e2e/topologies/scripts/</span></code>. <code class="docutils literal notranslate"><span class="pre">build.sh</span> <span class="pre">--release</span> <span class="pre">&lt;tag&gt;</span></code> ne laisse
+qu’un fichier <code class="docutils literal notranslate"><span class="pre">RELEASE</span></code> ; <code class="docutils literal notranslate"><span class="pre">build.sh</span> <span class="pre">--clean</span></code> vide les deux répertoires.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>test/e2e/build.sh                                   # arbre courant, en entier
 test/e2e/labctl.sh push test/e2e/topologies/evpn-3hv.yml
 test/e2e/labctl.sh ssh './labctl up topology/evpn-3hv.yml'
-test/e2e/build.sh --clean                           # retour à la release seule
+test/e2e/build.sh --release 0.3.0                   # qualifier une release publiée
 </pre></div>
 </div>
 <p>FRR est installé <strong>après</strong> la provision : il démarre sur le réseau final. Démarré
@@ -856,9 +862,9 @@ fait en fermant le ticket. Chaque ticket concerné liste ses marqueurs en commen
 <td><p>#50</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">35-filtrage-port</span></code></p></td>
-<td><p>filtrage au port — en sortie vers le fabric (v-&lt;id&gt;-i) : ARP vers la gateway et l’adresse d’émission, DHCP émis depuis ces adresses, MAC anycast confinée dans les deux sens ; à la sortie de chaque VM (pre-tap&lt;id&gt;) : MAC, IP et ARP usurpés, faux serveur DHCP, source 0.0.0.0 hors DHCP, type de trame non IP, NIC autorisée en serveur DHCP (dhcp_server), règles surveillées par le watchdog et retirées avec la VM</p></td>
+<td><p>filtrage au port — en sortie vers le fabric (v-&lt;id&gt;-i) : ARP vers la gateway et l’adresse d’émission, DHCP émis depuis ces adresses, MAC anycast confinée dans les deux sens ; à la sortie de chaque VM (pre-tap&lt;id&gt;) : MAC, IP et ARP usurpés, faux serveur DHCP, source 0.0.0.0 hors DHCP, type de trame non IP, NIC autorisée en serveur DHCP (dhcp_server), règles surveillées par le watchdog et retirées avec la VM, MAC de chaque VM figée sur son tap (fdb static sticky) et surveillée par le watchdog</p></td>
 <td><p>hv1</p></td>
-<td><p>#57, #76</p></td>
+<td><p>#57, #76, #95</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">41-evpn-l2</span></code></p></td>
 <td><p>subnet vxlan étendu entre deux hôtes par EVPN — VTEP local, VTEP distant et inondation appris, MAC des VM en type 2, trafic ICMP et TCP, MTU 1500 de bout en bout</p></td>
@@ -906,9 +912,9 @@ fait en fermant le ticket. Chaque ticket concerné liste ses marqueurs en commen
 <td><p>#41, #81</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">52-migration</span></code></p></td>
-<td><p>migration d’une adresse de VM entre hôtes d’un VPC routé — /32 retiré en premier, /24 en filet puis en ECMP, séquence orchestrée, 40 sources, suppression du subnet refusée tant qu’une VM l’utilise, MAC anycast hors EVPN</p></td>
+<td><p>migration d’une adresse de VM entre hôtes d’un VPC routé — /32 retiré en premier, /24 en filet puis en ECMP, séquence orchestrée, 40 sources, suppression du subnet refusée tant qu’une VM l’utilise, MAC anycast hors EVPN, MAC de la VM migrée figée sur son tap pendant la séquence orchestrée</p></td>
 <td><p>hv1 hv2 hv3</p></td>
-<td><p>#41, #57</p></td>
+<td><p>#41, #57, #95</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">53-watchdog-l3</span></code></p></td>
 <td><p>watchdog d’un VPC routé — /32 orphelin signalé comme trou noir, /32 manquant signalé, unreachable default absente signalée, aucune fausse alerte BGP ni L3VNI, trafic intact après les essais</p></td>

@@ -925,6 +925,14 @@ VM qui route pour d’autres machines ou porte des adresses supplémentaires ne 
 depuis ces adresses. L’IPv6 n’est pas filtrée (#61). Les règles sont retirées après la suppression
 du tap ; le watchdog signale une interface d’une VM <code class="docutils literal notranslate"><span class="pre">running</span></code> dont les règles manquent ou ont
 été modifiées.</p>
+<p><strong>MAC figée sur le tap.</strong> Le pont du subnet, dans le netns du VPC, apprend sur quel port se trouve
+chaque MAC. Pendant une migration, l’ancienne VM et la nouvelle portent la même MAC sur deux hôtes :
+une trame de l’ancienne, arrivée par le VXLAN, suffisait à déplacer la MAC de la nouvelle vers
+<code class="docutils literal notranslate"><span class="pre">v-&lt;subnet&gt;-i</span></code>, et le trafic destiné à la VM locale repartait vers l’ancien hôte jusqu’à ce
+qu’elle émette à nouveau (#95). L’agent pose donc, à la création du tap, une entrée de pont
+<code class="docutils literal notranslate"><span class="pre">static</span> <span class="pre">sticky</span></code> de la MAC de l’interface sur son tap : l’apprentissage ne peut plus la déplacer
+(une entrée <code class="docutils literal notranslate"><span class="pre">static</span></code> seule le peut). Elle disparaît avec le tap ; le watchdog signale une
+interface d’une VM <code class="docutils literal notranslate"><span class="pre">running</span></code> dont l’entrée manque.</p>
 <p><strong>Serveur DHCP.</strong> <code class="docutils literal notranslate"><span class="pre">dhcp_server:</span> <span class="pre">true</span></code> sur une interface lève le seul blocage des réponses DHCP,
 pour cette interface. Cas d’usage : une VM d’un subnet <code class="docutils literal notranslate"><span class="pre">bridge</span></code> qui sert le DHCP et le PXE de
 machines diskless du segment physique, avec des réservations statiques. Les autres contrôles

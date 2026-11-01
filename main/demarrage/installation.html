@@ -434,7 +434,14 @@ reporter dans <code class="docutils literal notranslate"><span class="pre">inter
 <td><p>délai avant le redémarrage de secours pendant la migration réseau</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">120</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">-d</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">-a</span> <span class="pre">&lt;répertoire&gt;</span></code></p></td>
+<td><p>installer hors ligne, depuis un répertoire local au format d’une release (mêmes noms
+d’assets, <code class="docutils literal notranslate"><span class="pre">SHA256SUMS</span></code> compris) : ni appel à l’API ni téléchargement des assets. Le
+tag <code class="docutils literal notranslate"><span class="pre">-t</span></code> ne sert alors qu’à nommer <code class="docutils literal notranslate"><span class="pre">/opt/two/&lt;tag&gt;/</span></code>. Les scripts de <code class="docutils literal notranslate"><span class="pre">-i</span></code> sont
+lus dans <code class="docutils literal notranslate"><span class="pre">/opt/two/scripts/</span></code> s’ils y sont</p></td>
+<td><p>désactivé ; tag <code class="docutils literal notranslate"><span class="pre">local</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">-d</span></code></p></td>
 <td><p>dry-run : affiche les commandes sans les exécuter</p></td>
 <td><p>désactivé</p></td>
 </tr>
