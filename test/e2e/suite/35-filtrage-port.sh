@@ -1,6 +1,6 @@
-# fonctionnalité: filtrage au port — en sortie vers le fabric (v-<id>-i) : ARP vers la gateway et l'adresse d'émission, DHCP émis depuis ces adresses, MAC anycast confinée dans les deux sens ; à la sortie de chaque VM (pre-tap<id>) : MAC, IP et ARP usurpés, faux serveur DHCP, source 0.0.0.0 hors DHCP, type de trame non IP, NIC autorisée en serveur DHCP (dhcp_server), règles surveillées par le watchdog et retirées avec la VM
+# fonctionnalité: filtrage au port — en sortie vers le fabric (v-<id>-i) : ARP vers la gateway et l'adresse d'émission, DHCP émis depuis ces adresses, MAC anycast confinée dans les deux sens ; à la sortie de chaque VM (pre-tap<id>) : MAC, IP et ARP usurpés, faux serveur DHCP, source 0.0.0.0 hors DHCP, type de trame non IP, NIC autorisée en serveur DHCP (dhcp_server), règles surveillées par le watchdog et retirées avec la VM, MAC de chaque VM figée sur son tap (fdb static sticky) et surveillée par le watchdog
 # hôtes: hv1
-# tickets: #57, #76
+# tickets: #57, #76, #95
 
 on hv1 <<'NODE'
 KEY=$(vm_key)
@@ -26,6 +26,8 @@ CTAP=$(nft_tap_of vp-t35 "${CMAC}")
 check "t35-a : chaîne pre-<tap> trouvée par sa MAC ${AMAC} (${ATAP:-aucune})" test -n "${ATAP}"
 check "t35-c : chaîne pre-<tap> trouvée par sa MAC ${CMAC} (${CTAP:-aucune})" test -n "${CTAP}"
 check "t35-a : ${ATAP} est un port de br-t35a" sh -c "ip -n vp-t35 -o link show ${ATAP} | grep -q 'master br-t35a'"
+check "t35-a : MAC ${AMAC} figée sur ${ATAP} (fdb static sticky)" fdb_pinned vp-t35 "${ATAP}" "${AMAC}"
+check "t35-c : MAC ${CMAC} figée sur ${CTAP} (fdb static sticky)" fdb_pinned vp-t35 "${CTAP}" "${CMAC}"
 check "t35-a : 8 règles sur ${ATAP}, dont le blocage du serveur DHCP" test "$(nft_rules vp-t35 "${ATAP}" | grep -c .)" -eq 8 -a "$(nft_count vp-t35 "${ATAP}" 'udp sport 67 drop')" -eq 1
 check "t35-c : 7 règles sur ${CTAP}, sans le blocage du serveur DHCP" test "$(nft_rules vp-t35 "${CTAP}" | grep -c .)" -eq 7 -a "$(nft_count vp-t35 "${CTAP}" 'udp sport 67 drop')" -eq 0
 ip -n vp-t35 link add "${INJ}" type veth peer name "${INJ}p"
@@ -144,6 +146,11 @@ check "sans la règle, le faux serveur DHCP de t35-a atteint t35-b (témoin, ${n
 check "blocage du serveur DHCP reposé" ip netns exec vp-t35 nft add rule bridge two "pre-${ATAP}" udp sport 67 drop
 n=$(received_by_b "${S}.r" 10.35.1.10 "dhcp ens3 10.35.1.10 68 5" udp-from 10.35.1.10 67)
 check "règle reposée : le faux serveur DHCP de t35-a n'atteint plus t35-b (${n} vue(s))" test "${n}" -eq 0
+
+check "entrée fdb de t35-a retirée à la main de ${ATAP}" ip netns exec vp-t35 bridge fdb del "${AMAC}" dev "${ATAP}" master
+check "watchdog : MAC non figée signalée pour t35-a" wait_watchdog "interface 0: mac ${AMAC} not pinned on ${ATAP}"
+check "entrée fdb de t35-a reposée" ip netns exec vp-t35 bridge fdb replace "${AMAC}" dev "${ATAP}" master static sticky
+check "t35-a : MAC ${AMAC} de nouveau figée sur ${ATAP}" fdb_pinned vp-t35 "${ATAP}" "${AMAC}"
 
 check "VM t35-c supprimée" api_delete vms/t35-c
 check "t35-c en deleted" wait_state vms/t35-c deleted

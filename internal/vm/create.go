@@ -53,7 +53,11 @@ func StartVM(db *badger.DB, name string, cfg *configuration.Config) error {
 	}
 
 	for _, n := range d.nics {
-		if err := netif.CreateTap(n.tapID, n.bridge, n.vpcName, cfg.Network.VM()); err != nil {
+		mac, err := net.ParseMAC(n.mac)
+		if err != nil {
+			return fmt.Errorf("mac of interface %d: %w", n.index, err)
+		}
+		if err := netif.CreateTap(n.tapID, n.bridge, n.vpcName, cfg.Network.VM(), mac); err != nil {
 			return fmt.Errorf("create tap of interface %d: %w", n.index, err)
 		}
 	}

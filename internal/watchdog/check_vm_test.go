@@ -267,3 +267,10 @@ func TestCheckVMs_ClesDeDisqueNeCreentPasDeFausseVM(t *testing.T) {
 		}
 	}
 }
+
+func TestTapMACProblem_InvalidMACInDatabase(t *testing.T) {
+	got := tapMACProblem("52:54:00:zz:01:32", 12345678)
+	if !strings.HasPrefix(got, `invalid mac "52:54:00:zz:01:32" in database`) {
+		t.Errorf("tapMACProblem = %q", got)
+	}
+}

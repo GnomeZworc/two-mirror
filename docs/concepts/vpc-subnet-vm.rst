@@ -147,6 +147,15 @@ depuis ces adresses. L'IPv6 n'est pas filtrée (#61). Les règles sont retirées
 du tap ; le watchdog signale une interface d'une VM ``running`` dont les règles manquent ou ont
 été modifiées.
 
+**MAC figée sur le tap.** Le pont du subnet, dans le netns du VPC, apprend sur quel port se trouve
+chaque MAC. Pendant une migration, l'ancienne VM et la nouvelle portent la même MAC sur deux hôtes :
+une trame de l'ancienne, arrivée par le VXLAN, suffisait à déplacer la MAC de la nouvelle vers
+``v-<subnet>-i``, et le trafic destiné à la VM locale repartait vers l'ancien hôte jusqu'à ce
+qu'elle émette à nouveau (#95). L'agent pose donc, à la création du tap, une entrée de pont
+``static sticky`` de la MAC de l'interface sur son tap : l'apprentissage ne peut plus la déplacer
+(une entrée ``static`` seule le peut). Elle disparaît avec le tap ; le watchdog signale une
+interface d'une VM ``running`` dont l'entrée manque.
+
 **Serveur DHCP.** ``dhcp_server: true`` sur une interface lève le seul blocage des réponses DHCP,
 pour cette interface. Cas d'usage : une VM d'un subnet ``bridge`` qui sert le DHCP et le PXE de
 machines diskless du segment physique, avec des réservations statiques. Les autres contrôles
