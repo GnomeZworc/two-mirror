@@ -746,6 +746,28 @@ supprime ses VM, ses subnets puis ses VPC, et vérifie que l’hôte est revenu 
 (<code class="docutils literal notranslate"><span class="pre">assert_clean</span></code> : netns, liens, adresses, routes, règles nftables de l’hôte et de chaque netns,
 configuration FRR et <code class="docutils literal notranslate"><span class="pre">frr.conf</span></code>, fichiers de <code class="docutils literal notranslate"><span class="pre">/run/two</span></code>, <code class="docutils literal notranslate"><span class="pre">dnsmasq.d</span></code> et des volumes, unités
 <code class="docutils literal notranslate"><span class="pre">two-vm-*</span></code>, processus dnsmasq et QEMU). Aucun test ne dépend d’un autre : n’importe lequel se lance seul.</p>
+<p><strong>Image des VM de test (#82).</strong> <code class="docutils literal notranslate"><span class="pre">VM_IMAGE</span></code> choisit l’image des VM que lancent les tests ;
+<code class="docutils literal notranslate"><span class="pre">run.sh</span></code> la transmet à chaque nœud :</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">debian12</span></code> (défaut) : Debian 12 <code class="docutils literal notranslate"><span class="pre">genericcloud</span></code>, téléchargée par chaque hyperviseur et
+vérifiée par SHA-512, puis adaptée à two (source NoCloud <code class="docutils literal notranslate"><span class="pre">169.254.169.254</span></code>, DHCP sur <code class="docutils literal notranslate"><span class="pre">en*</span></code>
+par systemd-networkd, liens <code class="docutils literal notranslate"><span class="pre">/dev/xvdX</span></code>) ;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">rocky10</span></code> : image du dépôt <code class="docutils literal notranslate"><span class="pre">two-images</span></code> (NetworkManager), construite sur le serveur de lab
+par <code class="docutils literal notranslate"><span class="pre">two-images/build.sh</span> <span class="pre">rocky10</span></code> puis déposée avec son <code class="docutils literal notranslate"><span class="pre">SHA512SUMS</span></code> dans
+<code class="docutils literal notranslate"><span class="pre">/var/tmp/two-images/</span></code> de chaque hyperviseur. Le harnais la vérifie et ne la télécharge ni ne
+la modifie : les exigences two sont dans l’image.</p></li>
+</ul>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>VM_IMAGE=rocky10 test/e2e/run.sh --continue all
+</pre></div>
+</div>
+<p>Le harnais ne suppose pas le gestionnaire réseau de l’invité : <code class="docutils literal notranslate"><span class="pre">vm_lease</span></code> lit les mêmes clés
+(<code class="docutils literal notranslate"><span class="pre">ADDRESS</span></code>, <code class="docutils literal notranslate"><span class="pre">SERVER_ADDRESS</span></code>, <code class="docutils literal notranslate"><span class="pre">DNS</span></code>, <code class="docutils literal notranslate"><span class="pre">NTP</span></code>, <code class="docutils literal notranslate"><span class="pre">MTU</span></code>) dans le bail de systemd-networkd ou
+dans <code class="docutils literal notranslate"><span class="pre">nmcli</span> <span class="pre">-g</span> <span class="pre">DHCP4</span></code>, <code class="docutils literal notranslate"><span class="pre">vm_lease_mtime</span></code> date le bail, et <code class="docutils literal notranslate"><span class="pre">vm_renew</span></code> le renouvelle
+(<code class="docutils literal notranslate"><span class="pre">networkctl</span> <span class="pre">renew</span></code>, ou <code class="docutils literal notranslate"><span class="pre">nmcli</span> <span class="pre">device</span> <span class="pre">modify</span> <span class="pre">&lt;if&gt;</span> <span class="pre">ipv4.dhcp-timeout</span> <span class="pre">N</span></code> avec une valeur qui
+change à chaque appel ; mesuré sur Rocky 10 : <code class="docutils literal notranslate"><span class="pre">nmcli</span> <span class="pre">device</span> <span class="pre">connect</span></code> désactive l’interface et
+retire l’adresse le temps du renouvellement, <code class="docutils literal notranslate"><span class="pre">nmcli</span> <span class="pre">device</span> <span class="pre">reapply</span></code> sans modification ne relance
+pas le DHCP, <code class="docutils literal notranslate"><span class="pre">device</span> <span class="pre">modify</span></code> relance le client DHCP en gardant l’adresse). Les interfaces gardent leurs noms <code class="docutils literal notranslate"><span class="pre">ens3</span></code>, <code class="docutils literal notranslate"><span class="pre">ens4</span></code>… sur les deux
+images : two place les cartes aux mêmes slots PCI (mesuré sur Rocky 10).</p>
 <p><strong>Plages.</strong> Le test <code class="docutils literal notranslate"><span class="pre">NN</span></code> nomme ses ressources <code class="docutils literal notranslate"><span class="pre">vp-tNN*</span></code>, <code class="docutils literal notranslate"><span class="pre">sn-tNN*</span></code> et <code class="docutils literal notranslate"><span class="pre">tNN-*</span></code>, et utilise
 <code class="docutils literal notranslate"><span class="pre">10.NN.0.0/16</span></code> et les VNI <code class="docutils literal notranslate"><span class="pre">NN00</span></code> à <code class="docutils literal notranslate"><span class="pre">NN99</span></code> : aucune collision entre tests.</p>
 <p><strong>Échecs connus.</strong> Un contrôle dont l’échec est connu et rattaché à un ticket s’écrit <code class="docutils literal notranslate"><span class="pre">known</span>
@@ -777,9 +799,9 @@ fait en fermant le ticket. Chaque ticket concerné liste ses marqueurs en commen
 <td><p>#70</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">03-image</span></code></p></td>
-<td><p>hypothèses sur l’image de VM — outils (curl, python3), nom d’interface, effet réel de network-config, forme du compte verrouillé</p></td>
+<td><p>hypothèses sur l’image de VM — outils (curl, python3), nom d’interface, gestionnaire réseau attendu pour VM_IMAGE (systemd-networkd ou NetworkManager), effet réel de network-config, forme du compte verrouillé</p></td>
 <td><p>hv1</p></td>
-<td><p>#70, #73</p></td>
+<td><p>#70, #73, #82</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">11-validation</span></code></p></td>
 <td><p>validation de l’API — refus synchrones (400, 409, 422) des VPC, subnets et VM, sans trace en base</p></td>
@@ -837,7 +859,7 @@ fait en fermant le ticket. Chaque ticket concerné liste ses marqueurs en commen
 <td><p>#56</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">29-dns-ntp</span></code></p></td>
-<td><p>DNS et NTP des VM par two-hostsvc — options DHCP 6 et 42 = interface_ip, redirection vers 169.254.169.253 dans le VPC (vxlan et bridge), seuls 53 et 123 servis, alertes du watchdog, VPC en error si two-hostsvc ne répond pas</p></td>
+<td><p>DNS et NTP des VM par two-hostsvc — options DHCP 6 et 42 = interface_ip, redirection vers 169.254.169.253 dans le VPC (vxlan et bridge), seuls 53 et 123 servis, alertes du watchdog, VPC en error si two-hostsvc ne répond pas ; chrony de la VM sur la seule gateway (images avec chrony)</p></td>
 <td><p>hv1</p></td>
 <td><p>#86</p></td>
 </tr>
