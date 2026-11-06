@@ -59,8 +59,20 @@ check "rr1 : routes EVPN de type 2 reçues (témoin)" sh -c 'echo "$1" | grep -q
 check "rr1 : aucune route de type 2 pour la MAC anycast de sn-t52s (${MAC}), présente sur hv1 et hv2" sh -c '! echo "$1" | grep -qi "$2"' _ "${R}" "${MAC}"
 NODE
 on hv1 <<'NODE'
+no_dup_mac () {
+    local dups mac why
+    dups=$(vtysh -c "show evpn mac vni ${1} duplicate" | grep -oiE '([0-9a-f]{2}:){5}[0-9a-f]{2}' | sort -u)
+    [ -z "${dups}" ] && return 0
+    why="MAC de t52-m3 : $(curl -fsS "${API}/vms/t52-m3" | jq -r '.interfaces[0].mac')"
+    for mac in ${dups}; do
+        why="${why} | en double : ${mac} ; FRR : $(vtysh -c "show evpn mac vni ${1} mac ${mac}" | tr -s ' \n' ' ')"
+        why="${why} ; fdb vp-t52 : $(ip netns exec vp-t52 bridge fdb show | grep -i "${mac}" | tr '\n' ';')"
+    done
+    echo "${why}"
+    return 1
+}
 MAC=$(anycast_mac 5211)
-check "hv1 : aucune MAC en double sur la VNI 5211" sh -c "! vtysh -c 'show evpn mac vni 5211 duplicate' | grep -qiE '([0-9a-f]{2}:){5}[0-9a-f]{2}'"
+check "hv1 : aucune MAC en double sur la VNI 5211" no_dup_mac 5211
 check "hv1 : table EVPN de la VNI 5211 non vide (témoin)" sh -c "vtysh -c 'show evpn mac vni 5211' | grep -qiE '([0-9a-f]{2}:){5}[0-9a-f]{2}'"
 check "hv1 : MAC anycast ${MAC} absente de la table EVPN de la VNI 5211" sh -c '! vtysh -c "show evpn mac vni $1" | grep -qi "$2"' _ 5211 "${MAC}"
 NODE
