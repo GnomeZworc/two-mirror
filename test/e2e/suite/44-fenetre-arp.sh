@@ -33,7 +33,7 @@ MAC=$(anycast_mac 4411)
 check "fenêtre ouverte : t44-a2 associe l'adresse d'émission 10.44.1.253 à la MAC de hv1" vm_grep vp-t44 10.44.1.12 'ip neigh show 10.44.1.253' 'lladdr 02:03:c0:a8:0e:0b '
 check "pendant la fenêtre : la gateway de t44-a2 reste la MAC anycast ${MAC}" vm_grep vp-t44 10.44.1.12 'ip neigh show 10.44.1.254' "lladdr ${MAC} "
 check "pendant la fenêtre : métadonnées servies à t44-a2" vm_grep vp-t44 10.44.1.12 "python3 -c \"import urllib.request; print(urllib.request.urlopen('http://169.254.169.254/meta-data', timeout=5).read().decode())\"" 'instance-id: t44-a2'
-check "pendant la fenêtre : bail renouvelé (networkctl renew)" lease_renewed vp-t44 10.44.1.12
+check "pendant la fenêtre : bail renouvelé (renouvellement DHCP demandé par l'invité)" lease_renewed vp-t44 10.44.1.12
 check "bail tenu par la gateway 10.44.1.254" test "$(vm_lease vp-t44 10.44.1.12 SERVER_ADDRESS)" = 10.44.1.254
 check "t44-a2 garde son adresse après le renouvellement" has_addr vp-t44 10.44.1.12
 for i in $(seq 1 60); do [ "$(wc -l < /tmp/t44.log)" -ge 80 ] && break; sleep 1; done

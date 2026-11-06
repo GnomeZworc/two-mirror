@@ -54,7 +54,7 @@ check "hv1 : aucun VXLAN de sn-t51e (VNI 5112) sur hv1" sh -c "! ip link show vx
 for i in $(seq 1 24); do vm_ssh vp-t51 10.51.1.10 'ping -c 1 -W 2 10.51.2.10' >/dev/null 2>&1 && break; sleep 5; done
 check "t51-a (sn-t51d, hv1) joint t51-b (sn-t51e, hv2) par le L3VNI, forwarding par interface" vm_ssh vp-t51 10.51.1.10 'ping -c 3 -W 2 10.51.2.10'
 check "trame pleine taille : 1472 octets en -M do" vm_ssh vp-t51 10.51.1.10 'ping -M do -s 1472 -c 2 -W 2 10.51.2.10'
-check "1473 octets refusés localement (MTU 1500)" vm_grep vp-t51 10.51.1.10 'ping -M do -s 1473 -c 1 -W 2 10.51.2.10' 'message too long'
+check "1473 octets refusés localement (MTU 1500)" vm_grep vp-t51 10.51.1.10 'ping -M do -s 1473 -c 1 -W 2 10.51.2.10' '[Mm]essage too long'
 check "TTL 1 : expire à la gateway du subnet, netns de hv1 (10.51.1.254)" vm_grep vp-t51 10.51.1.10 'ping -n -c 3 -i 1.2 -W 2 -t 1 10.51.2.10' 'From 10.51.1.254 .*exceeded'
 check "TTL 2 : expire dans la VRF de hv1 (169.254.0.1)" vm_grep vp-t51 10.51.1.10 'ping -n -c 3 -i 1.2 -W 2 -t 2 10.51.2.10' 'From 169.254.0.1 .*exceeded'
 check "TTL 5 : atteint t51-b — quatre routeurs : gateway hv1, VRF hv1, VRF hv2, netns hv2" vm_ssh vp-t51 10.51.1.10 'ping -n -c 1 -W 2 -t 5 10.51.2.10'

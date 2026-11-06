@@ -58,6 +58,54 @@ test_on_sends_assignments_library_and_block_to_the_node () {
     teardown
 }
 
+test_on_sends_the_vm_image_to_the_node () {
+    setup "on : VM_IMAGE transmise au nœud, debian12 par défaut"
+    printf '%s\n' "on hv1 <<'NODE'" 'true' 'NODE' > "${WORK}/scenarios/t1.sh"
+    FAKE_OUT='RÉUSSI: un' run t1 >/dev/null
+    [[ $(bash -c "$(grep '^export VM_IMAGE=' "${WORK}/payload.1"); echo \"\${VM_IMAGE}\"") == debian12 ]] || fail "défaut : $(grep '^export VM_IMAGE' "${WORK}/payload.1")"
+    rm -f "${WORK}/payload."*
+    VM_IMAGE=rocky10 FAKE_OUT='RÉUSSI: un' run t1 >/dev/null
+    [[ $(bash -c "$(grep '^export VM_IMAGE=' "${WORK}/payload.1"); echo \"\${VM_IMAGE}\"") == rocky10 ]] || fail "rocky10 : $(grep '^export VM_IMAGE' "${WORK}/payload.1")"
+    teardown
+}
+
+test_two_image_built_checks_the_sum_before_copying () {
+    setup "two_image (rocky10) : image déposée vérifiée par SHA512SUMS puis copiée, refus sinon"
+    local d="${WORK}/images" out
+    mkdir -p "${d}" && printf 'qcow2\n' > "${d}/rocky10.qcow2"
+    (cd "${d}" && sha512sum rocky10.qcow2 > SHA512SUMS && printf '%s  debian13.qcow2\n' "$(printf 'x' | sha512sum | cut -d' ' -f1)" >> SHA512SUMS)
+    built () { bash -c "VM_IMAGE=rocky10; $(printf ". '%s'; " "${DIR}"/lib/{core,vm}.sh)IMAGE_DIR='${d}'; TWO_IMAGE='${WORK}/two.qcow2'; ${1}" 2>&1; }
+    out=$(built 'two_image && cat "${TWO_IMAGE}"') || fail "image conforme refusée : ${out}"
+    [[ ${out} == qcow2 ]] || fail "copie : ${out}"
+    rm -f "${WORK}/two.qcow2"
+    printf 'autre\n' >> "${d}/rocky10.qcow2"
+    out=$(built 'two_image') && fail "image modifiée acceptée"
+    [[ ${out} == *"somme SHA-512 incorrecte"* ]] || fail "message : ${out}"
+    [[ ! -e "${WORK}/two.qcow2" ]] || fail "image modifiée copiée"
+    rm -f "${d}/rocky10.qcow2"
+    [[ $(built 'two_image') == *"absente, à déposer depuis two-images"* ]] || fail "image absente : $(built 'two_image')"
+    [[ $(bash -c "VM_IMAGE=ubuntu; . '${DIR}/lib/core.sh'; echo suite" 2>&1) == *"VM_IMAGE inconnue : ubuntu"* ]] || fail "image inconnue acceptée"
+    teardown
+}
+
+test_lease_value_reads_networkd_and_networkmanager () {
+    setup "lease_value : mêmes clés lues dans un bail networkd et dans nmcli -g DHCP4"
+    local nd="${WORK}/networkd" nm="${WORK}/nm" k
+    printf '%s\n' '# This is private data. Do not parse.' 'ADDRESS=10.21.1.10' 'NETMASK=255.255.255.0' 'ROUTER=10.21.1.254' \
+        'SERVER_ADDRESS=10.21.1.254' 'DNS=10.21.1.254' 'NTP=10.21.1.254' 'MTU=1450' 'CLIENTID=ffb6220feb' > "${nd}"
+    printf '%s\n' 'DHCP4:dhcp_client_identifier = 01\:52\:54\:00\:82\:00\:0a ' ' dhcp_lease_time = 86400 ' \
+        ' dhcp_server_identifier = 10.21.1.254 ' ' domain_name_servers = 10.21.1.254 ' ' expiry = 1793566056 ' \
+        ' interface_mtu = 1450 ' ' ip_address = 10.21.1.10 ' ' ntp_servers = 10.21.1.254 ' ' requested_ntp_servers = 1 ' \
+        ' routers = 10.21.1.254 ' > "${nm}"
+    for k in ADDRESS:10.21.1.10 SERVER_ADDRESS:10.21.1.254 DNS:10.21.1.254 NTP:10.21.1.254 MTU:1450; do
+        [[ $(node "lease_value ${k%%:*} < '${nd}'") == "${k#*:}" ]] || fail "networkd ${k%%:*} : $(node "lease_value ${k%%:*} < '${nd}'")"
+        [[ $(node "lease_value ${k%%:*} < '${nm}'") == "${k#*:}" ]] || fail "NetworkManager ${k%%:*} : $(node "lease_value ${k%%:*} < '${nm}'")"
+    done
+    [[ -z $(node "lease_value ROUTER < '${nm}'") ]] || fail "clé sans correspondance NetworkManager lue"
+    [[ -z $(node "lease_value ADDRESS < /dev/null") ]] || fail "bail vide : valeur inventée"
+    teardown
+}
+
 test_scenario_result_counts_and_exit_codes () {
     local CASE
     for CASE in ok fail none; do
@@ -490,11 +538,24 @@ test_vm_lease_reads_one_field_of_the_interface_lease () {
     teardown
 }
 
+test_vm_ssh_skips_gssapi () {
+    setup "vm_ssh : clé du lab, sans GSSAPI (sshd de Rocky l'accepte, le login attend alors jusqu'à 40 s)"
+    local out
+    out=$(node 'ip () { echo "$*"; }; vm_ssh vp 1.2.3.4 true')
+    [[ ${out} == "netns exec vp ssh "*" -o GSSAPIAuthentication=no "*"syonad@1.2.3.4 true" ]] || fail "GSSAPI non désactivé : ${out}"
+    teardown
+}
+
 test_vm_cloud_init_done_waits_with_a_bound () {
     setup "vm_cloud_init_done : attend la fin de cloud-init, avec un délai borné, et en rend le code"
     [[ $(node 'vm_ssh () { echo "$1 $2 $3"; }; vm_cloud_init_done vp 1.2.3.4') == "vp 1.2.3.4 timeout 300 cloud-init status --wait" ]] || fail "commande par défaut"
     [[ $(node 'vm_ssh () { echo "$3"; }; vm_cloud_init_done vp 1.2.3.4 60') == "timeout 60 cloud-init status --wait" ]] || fail "délai fourni"
-    [[ $(node 'vm_ssh () { return 2; }; vm_cloud_init_done vp 1.2.3.4 || echo NON') == NON ]] || fail "cloud-init en erreur accepté"
+    [[ $(node 'vm_ssh () { return 2; }; vm_cloud_init_done vp 1.2.3.4 || echo NON') == *NON ]] || fail "cloud-init en erreur accepté"
+    local out
+    out=$(node 'vm_ssh () { case "$3" in *--wait) echo "status: done"; return 2 ;; *--long) printf "%s\n" "status: done" "extended_status: degraded done" "detail: DataSourceNoCloud" "errors: []" "recoverable_errors:" "WARNING:" "        - Unable to find a system nic for eth0" ;; esac; }; vm_cloud_init_done vp 1.2.3.4; echo "rc=$?"')
+    [[ ${out} == *"code 2, extended_status: degraded done detail: DataSourceNoCloud errors: [] recoverable_errors: WARNING: - Unable to find a system nic for eth0"* ]] || fail "diagnostic absent : ${out}"
+    [[ $(printf '%s\n' "${out}" | tail -n 2 | head -n 1) == "code 2, "*"system nic for eth0"* ]] || fail "diagnostic sur plusieurs lignes, check n'en garde que la dernière : ${out}"
+    [[ ${out} == *"rc=2" ]] || fail "code perdu : ${out}"
     teardown
 }
 
@@ -519,7 +580,12 @@ test_lease_renewed_requires_a_server_ack () {
     local f
     f=$(mktemp)
     [[ $(node "sleep () { :; }; dhcp_acks () { echo 1; }; vm_ssh () { echo \"\$3\" >> '${f}'; }; lease_renewed vp ip && echo OUI") == OUI ]] || fail "renouvellement non vu"
-    grep -qx 'sudo networkctl renew ens3' "${f}" || fail "renouvellement non demandé : $(cat "${f}")"
+    [[ $(bash -c "sudo () { \"\$@\"; }; date () { echo 1000; }; nmcli () { echo \"NM \$*\"; }; networkctl () { echo \"ND \$*\"; }; $(cat "${f}")") == "NM device modify ens3 ipv4.dhcp-timeout 700" ]] \
+        || fail "NetworkManager : $(cat "${f}")"
+    [[ $(bash -c "sudo () { \"\$@\"; }; date () { echo 1001; }; nmcli () { echo \"NM \$*\"; }; $(cat "${f}")") == "NM device modify ens3 ipv4.dhcp-timeout 701" ]] \
+        || fail "NetworkManager : même valeur d'une seconde à l'autre, rien à réappliquer"
+    [[ $(bash -c "sudo () { \"\$@\"; }; networkctl () { echo \"ND \$*\"; }; PATH=/nonexistent; $(cat "${f}")") == "ND renew ens3" ]] \
+        || fail "systemd-networkd : $(cat "${f}")"
     [[ $(node "sleep () { :; }; dhcp_acks () { echo 0; }; vm_ssh () { :; }; lease_renewed vp ip 2>&1 || echo NON") == *NON ]] || fail "aucun ACK accepté"
     rm -f "${f}"
     teardown

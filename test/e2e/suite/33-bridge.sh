@@ -40,12 +40,18 @@ NODE
 
 on hv1 <<'NODE'
 own_meta () {
-    local n ok=0
+    local n ok=0 out seen why=""
     for n in 1 2 3 4 5; do
         vm_ssh vp-t33 "${1}" 'sudo ip neigh flush dev ens3' >/dev/null 2>&1
-        vm_grep vp-t33 "${1}" 'curl -fsS -m 3 http://169.254.169.254/meta-data' "^instance-id: ${2}\$" && ok=$((ok + 1))
+        out=$(vm_ssh vp-t33 "${1}" 'curl -fsS -m 3 http://169.254.169.254/meta-data 2>&1; echo "curl=$?"; ip neigh show dev ens3 | tr "\n" ";"' 2>&1)
+        if grep -q "^instance-id: ${2}\$" <<<"${out}"; then
+            ok=$((ok + 1))
+            continue
+        fi
+        seen=$(grep -E '^instance-id:|^curl|lladdr' <<<"${out}" | tr '\n' ' ')
+        why="${why} [essai ${n} : ${seen:-$(tail -n 1 <<<"${out}")}]"
     done
-    [ "${ok}" -eq 5 ] || { echo "${2} : ${ok}/5 réponses avec ses propres métadonnées"; return 1; }
+    [ "${ok}" -eq 5 ] || { echo "${2} : ${ok}/5 réponses avec ses propres métadonnées${why}"; return 1; }
 }
 check "hv1 : quatre règles de confinement de 10.33.0.1 sur v-t33a-i" test "$(nft_rules vp-t33 v-t33a-i | grep -c '10.33.0.1 ')" -eq 4
 RESPONDERS=$(vm_frames vp-t33 10.33.0.21 arp-who ens3 10.33.0.21 10.33.0.1 2)
@@ -63,7 +69,7 @@ vm_sniff_start "${S}/arp.temoin" vp-t33 10.33.0.21 ens3 16 arp-from 10.33.0.1
 vm_sniff_start "${S}/dhcp.temoin" vp-t33 10.33.0.21 ens3 16 udp-from 10.33.0.1 67
 ip -n vp-t33 neigh flush dev br-t33a
 ip netns exec vp-t33 ping -c 2 -W 1 10.33.0.21 >/dev/null 2>&1
-vm_ssh vp-t33 10.33.0.21 'sudo networkctl renew ens3' >/dev/null 2>&1
+vm_renew vp-t33 10.33.0.21 >/dev/null 2>&1
 vm_frames vp-t33 10.33.0.21 arp ens3 10.33.0.21 10.33.0.99 3 >/dev/null 2>&1
 wait
 check "br-t33a : apprentissage rétabli (ageing_time ${AGEING})" ip netns exec vp-t33 ip link set br-t33a type bridge ageing_time "${AGEING}"
@@ -83,13 +89,20 @@ NODE
 
 on hv2 <<'NODE'
 own_meta () {
-    local n ok=0
+    local n ok=0 out seen why=""
     for n in 1 2 3 4 5; do
         vm_ssh vp-t33 "${1}" 'sudo ip neigh flush dev ens3' >/dev/null 2>&1
-        vm_grep vp-t33 "${1}" 'curl -fsS -m 3 http://169.254.169.254/meta-data' "^instance-id: ${2}\$" && ok=$((ok + 1))
+        out=$(vm_ssh vp-t33 "${1}" 'curl -fsS -m 3 http://169.254.169.254/meta-data 2>&1; echo "curl=$?"; ip neigh show dev ens3 | tr "\n" ";"' 2>&1)
+        if grep -q "^instance-id: ${2}\$" <<<"${out}"; then
+            ok=$((ok + 1))
+            continue
+        fi
+        seen=$(grep -E '^instance-id:|^curl|lladdr' <<<"${out}" | tr '\n' ' ')
+        why="${why} [essai ${n} : ${seen:-$(tail -n 1 <<<"${out}")}]"
     done
-    [ "${ok}" -eq 5 ] || { echo "${2} : ${ok}/5 réponses avec ses propres métadonnées"; return 1; }
+    [ "${ok}" -eq 5 ] || { echo "${2} : ${ok}/5 réponses avec ses propres métadonnées${why}"; return 1; }
 }
+info "MAC de br-t33a : hv2 $(ip -n vp-t33 link show br-t33a | awk '/ether/ {print $2}')"
 check "deux hôtes : t33-b1 (hv2) reçoit toujours ses propres métadonnées (5 essais, cache ARP vidé)" own_meta 10.33.0.23 t33-b1
 check "deux hôtes : t33-b1 (hv2) joint t33-a2 (hv1)" vm_ssh vp-t33 10.33.0.23 'ping -n -c 3 -W 2 10.33.0.22'
 NODE

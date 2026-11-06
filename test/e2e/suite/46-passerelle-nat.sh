@@ -51,7 +51,9 @@ done
 S=$(mktemp -d)
 sniff_start "${S}/public" vp-t46-e 12 icmp-from 240.0.0.46
 sniff_start "${S}/private" vp-t46-e 12 icmp-from 10.46.1.10
+T0=$(date +%s)
 for i in $(seq 1 10); do vm_ssh vp-t46 10.46.1.10 'ping -n -c 1 -W 2 240.255.0.1' >/dev/null 2>&1 && break; sleep 2; done
+info "10.46.1.10 : premier ping réussi à l'essai ${i}, $(( $(date +%s) - T0 )) s après le début de la capture (fenêtre de 12 s)"
 check "t46-a (hôte de la passerelle) joint 240.255.0.1 derrière les bordures" vm_ssh vp-t46 10.46.1.10 'ping -n -c 3 -W 2 240.255.0.1'
 wait
 info "ICMP sortis du netns par vp-t46-e : depuis 240.0.0.46 $(cat "${S}/public"), depuis 10.46.1.10 $(cat "${S}/private")"

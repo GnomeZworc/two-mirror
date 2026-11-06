@@ -1,5 +1,22 @@
 two_image () {
     [ -f "${TWO_IMAGE}" ] && return 0
+    case "${VM_IMAGE}" in
+        rocky10) two_image_built ;;
+        *) two_image_debian ;;
+    esac
+}
+
+two_image_built () {
+    local want got
+    [ -f "${IMAGE_DIR}/${IMAGE_FILE}" ] || { echo "image: ${IMAGE_DIR}/${IMAGE_FILE} absente, à déposer depuis two-images" >&2; return 1; }
+    want=$(awk -v f="${IMAGE_FILE}" '$2 == f {print $1}' "${IMAGE_DIR}/SHA512SUMS")
+    [ -n "${want}" ] || { echo "image: ${IMAGE_FILE} absente de ${IMAGE_DIR}/SHA512SUMS" >&2; return 1; }
+    got=$(sha512sum < "${IMAGE_DIR}/${IMAGE_FILE}" | cut -d' ' -f1) || return 1
+    [ "${got}" = "${want}" ] || { echo "image: somme SHA-512 incorrecte" >&2; return 1; }
+    cp "${IMAGE_DIR}/${IMAGE_FILE}" "${TWO_IMAGE}.part" && mv "${TWO_IMAGE}.part" "${TWO_IMAGE}"
+}
+
+two_image_debian () {
     local work
     work=$(mktemp -d)
     curl -fsSL -o "${work}/${IMAGE_FILE}" "${IMAGE_URL}/${IMAGE_FILE}" || return 1
@@ -60,7 +77,7 @@ vm_ssh () {
     local vpc="${1}" ip="${2}"
     shift 2
     ip netns exec "${vpc}" ssh -i "${VM_KEY}" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-        -o LogLevel=ERROR -o ConnectTimeout=3 -o BatchMode=yes -n "syonad@${ip}" "$@"
+        -o LogLevel=ERROR -o ConnectTimeout=3 -o BatchMode=yes -o GSSAPIAuthentication=no -n "syonad@${ip}" "$@"
 }
 
 vm_wait () {
@@ -148,8 +165,27 @@ vm_has_ip () {
     vm_ssh "${1}" "${2}" 'ip -4 -o addr show' | grep -q " ${3}/"
 }
 
+VM_NM='command -v nmcli >/dev/null'
+
+lease_value () {
+    awk -v k="${1}" '
+        BEGIN { nm["ADDRESS"] = "ip_address"; nm["SERVER_ADDRESS"] = "dhcp_server_identifier"; nm["DNS"] = "domain_name_servers"; nm["NTP"] = "ntp_servers"; nm["MTU"] = "interface_mtu" }
+        { sub(/^DHCP4:/, ""); gsub(/\\:/, ":") }
+        index($0, k "=") == 1 { print substr($0, length(k) + 2); exit }
+        (i = index($0, " = ")) > 0 { n = substr($0, 1, i - 1); gsub(/^ +| +$/, "", n); if (n == nm[k]) { v = substr($0, i + 3); gsub(/ +$/, "", v); print v; exit } }
+    '
+}
+
 vm_lease () {
-    vm_ssh "${1}" "${2}" "sudo cat /run/systemd/netif/leases/\$(cat /sys/class/net/${4:-ens3}/ifindex)" | sed -n "s/^${3}=//p"
+    vm_ssh "${1}" "${2}" "if ${VM_NM}; then nmcli -g DHCP4 device show ${4:-ens3} | tr '|' '\\n'; else sudo cat /run/systemd/netif/leases/\$(cat /sys/class/net/${4:-ens3}/ifindex); fi" | lease_value "${3}"
+}
+
+vm_lease_mtime () {
+    vm_ssh "${1}" "${2}" "if ${VM_NM}; then f=\$(sudo sh -c 'ls /var/lib/NetworkManager/internal-*-${3:-ens3}.lease'); else f=/run/systemd/netif/leases/\$(cat /sys/class/net/${3:-ens3}/ifindex); fi; sudo stat -c %Y \"\${f}\""
+}
+
+vm_renew () {
+    vm_ssh "${1}" "${2}" "if ${VM_NM}; then sudo nmcli device modify ${3:-ens3} ipv4.dhcp-timeout \$(( 300 + \$(date +%s) % 600 )); else sudo networkctl renew ${3:-ens3}; fi"
 }
 
 vm_meta () {
@@ -157,7 +193,12 @@ vm_meta () {
 }
 
 vm_cloud_init_done () {
+    local rc
     vm_ssh "${1}" "${2}" "timeout ${3:-300} cloud-init status --wait"
+    rc=$?
+    [ "${rc}" -eq 0 ] && return 0
+    echo "code ${rc}, $(vm_ssh "${1}" "${2}" 'cloud-init status --long' 2>&1 | sed -n '/^extended_status:/,$p' | tr -s '\n ' ' ')"
+    return "${rc}"
 }
 
 vm_boot_id () {
@@ -183,7 +224,7 @@ lease_renewed () {
     local t0 i
     t0=$(date +%s)
     sleep 1
-    vm_ssh "${1}" "${2}" "sudo networkctl renew ${3:-ens3}" || return 1
+    vm_renew "${1}" "${2}" "${3:-ens3}" || return 1
     for i in $(seq 1 15); do
         [ "$(dhcp_acks "${t0}" "${2}")" -gt 0 ] && return 0
         sleep 2

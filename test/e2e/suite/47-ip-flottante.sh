@@ -31,7 +31,9 @@ S=$(mktemp -d)
 sniff_start "${S}/fip" vp-t47-e 12 icmp-from 240.0.0.47
 sniff_start "${S}/ng" vp-t47-e 12 icmp-from 240.0.0.57
 sniff_start "${S}/private" vp-t47-e 12 icmp-from 10.47.1.10
+T0=$(date +%s)
 for i in $(seq 1 10); do vm_ssh vp-t47 10.47.1.10 'ping -n -c 1 -W 2 240.255.0.1' >/dev/null 2>&1 && break; sleep 2; done
+info "10.47.1.10 : premier ping réussi à l'essai ${i}, $(( $(date +%s) - T0 )) s après le début de la capture (fenêtre de 12 s)"
 check "t47-a joint 240.255.0.1 derrière les bordures" vm_ssh vp-t47 10.47.1.10 'ping -n -c 3 -W 2 240.255.0.1'
 wait
 info "ICMP sortis du netns pendant le ping de t47-a : source 240.0.0.47 $(cat "${S}/fip"), 240.0.0.57 $(cat "${S}/ng"), 10.47.1.10 $(cat "${S}/private")"

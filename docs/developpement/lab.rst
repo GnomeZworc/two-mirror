@@ -282,6 +282,30 @@ supprime ses VM, ses subnets puis ses VPC, et vérifie que l'hôte est revenu à
 configuration FRR et ``frr.conf``, fichiers de ``/run/two``, ``dnsmasq.d`` et des volumes, unités
 ``two-vm-*``, processus dnsmasq et QEMU). Aucun test ne dépend d'un autre : n'importe lequel se lance seul.
 
+**Image des VM de test (#82).** ``VM_IMAGE`` choisit l'image des VM que lancent les tests ;
+``run.sh`` la transmet à chaque nœud :
+
+* ``debian12`` (défaut) : Debian 12 ``genericcloud``, téléchargée par chaque hyperviseur et
+  vérifiée par SHA-512, puis adaptée à two (source NoCloud ``169.254.169.254``, DHCP sur ``en*``
+  par systemd-networkd, liens ``/dev/xvdX``) ;
+* ``rocky10`` : image du dépôt ``two-images`` (NetworkManager), construite sur le serveur de lab
+  par ``two-images/build.sh rocky10`` puis déposée avec son ``SHA512SUMS`` dans
+  ``/var/tmp/two-images/`` de chaque hyperviseur. Le harnais la vérifie et ne la télécharge ni ne
+  la modifie : les exigences two sont dans l'image.
+
+.. code-block:: text
+
+   VM_IMAGE=rocky10 test/e2e/run.sh --continue all
+
+Le harnais ne suppose pas le gestionnaire réseau de l'invité : ``vm_lease`` lit les mêmes clés
+(``ADDRESS``, ``SERVER_ADDRESS``, ``DNS``, ``NTP``, ``MTU``) dans le bail de systemd-networkd ou
+dans ``nmcli -g DHCP4``, ``vm_lease_mtime`` date le bail, et ``vm_renew`` le renouvelle
+(``networkctl renew``, ou ``nmcli device modify <if> ipv4.dhcp-timeout N`` avec une valeur qui
+change à chaque appel ; mesuré sur Rocky 10 : ``nmcli device connect`` désactive l'interface et
+retire l'adresse le temps du renouvellement, ``nmcli device reapply`` sans modification ne relance
+pas le DHCP, ``device modify`` relance le client DHCP en gardant l'adresse). Les interfaces gardent leurs noms ``ens3``, ``ens4``… sur les deux
+images : two place les cartes aux mêmes slots PCI (mesuré sur Rocky 10).
+
 **Plages.** Le test ``NN`` nomme ses ressources ``vp-tNN*``, ``sn-tNN*`` et ``tNN-*``, et utilise
 ``10.NN.0.0/16`` et les VNI ``NN00`` à ``NN99`` : aucune collision entre tests.
 
@@ -313,9 +337,9 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - hv1 hv2 hv3
      - #70
    * - ``03-image``
-     - hypothèses sur l'image de VM — outils (curl, python3), nom d'interface, effet réel de network-config, forme du compte verrouillé
+     - hypothèses sur l'image de VM — outils (curl, python3), nom d'interface, gestionnaire réseau attendu pour VM_IMAGE (systemd-networkd ou NetworkManager), effet réel de network-config, forme du compte verrouillé
      - hv1
-     - #70, #73
+     - #70, #73, #82
    * - ``11-validation``
      - validation de l'API — refus synchrones (400, 409, 422) des VPC, subnets et VM, sans trace en base
      - hv1
@@ -361,7 +385,7 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - hv1 hv2
      - #56
    * - ``29-dns-ntp``
-     - DNS et NTP des VM par two-hostsvc — options DHCP 6 et 42 = interface_ip, redirection vers 169.254.169.253 dans le VPC (vxlan et bridge), seuls 53 et 123 servis, alertes du watchdog, VPC en error si two-hostsvc ne répond pas
+     - DNS et NTP des VM par two-hostsvc — options DHCP 6 et 42 = interface_ip, redirection vers 169.254.169.253 dans le VPC (vxlan et bridge), seuls 53 et 123 servis, alertes du watchdog, VPC en error si two-hostsvc ne répond pas ; chrony de la VM sur la seule gateway (images avec chrony)
      - hv1
      - #86
    * - ``31-gateway``

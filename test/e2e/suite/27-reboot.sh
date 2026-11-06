@@ -21,7 +21,9 @@ check "t27-r : cloud-init terminé après le redémarrage" vm_cloud_init_done vp
 check "t27-r : toujours running pour l'API" test "$(api_state vms/t27-r)" = running
 check "t27-r : même processus QEMU (redémarrage invité, pas de recréation)" test "$(pgrep -f "${VOLUMES}/t27-r.qcow2" | sort | tr '\n' ' ')" = "${QEMU}"
 check "t27-r : même adresse 10.27.1.10" has_addr vp-t27 10.27.1.10
-check "t27-r : nouveau bail obtenu après le démarrage" vm_ssh vp-t27 10.27.1.10 'f=/run/systemd/netif/leases/$(cat /sys/class/net/ens3/ifindex); sudo test -f "$f" && [ "$(sudo stat -c %Y "$f")" -ge "$(( $(date +%s) - $(cut -d. -f1 /proc/uptime) ))" ]'
+BOOTED=$(vm_ssh vp-t27 10.27.1.10 'echo $(( $(date +%s) - $(cut -d. -f1 /proc/uptime) ))')
+LEASED=$(vm_lease_mtime vp-t27 10.27.1.10)
+check "t27-r : nouveau bail obtenu après le démarrage (bail ${LEASED:-illisible}, démarrage ${BOOTED:-illisible})" test "${LEASED:-0}" -ge "${BOOTED:-1}"
 check "t27-r : bail servi par la gateway" test "$(vm_lease vp-t27 10.27.1.10 SERVER_ADDRESS)" = 10.27.1.254
 check "t27-r : user_data non rejoué (même instance-id, une seule ligne)" test "$(vm_ssh vp-t27 10.27.1.10 'wc -l < /var/tmp/t27-runcmd')" -eq 1
 NODE
