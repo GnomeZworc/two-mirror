@@ -1,4 +1,4 @@
-# fonctionnalité: DNS et NTP des VM par two-hostsvc — options DHCP 6 et 42 = interface_ip, redirection vers 169.254.169.253 dans le VPC (vxlan et bridge), seuls 53 et 123 servis, alertes du watchdog, VPC en error si two-hostsvc ne répond pas
+# fonctionnalité: DNS et NTP des VM par two-hostsvc — options DHCP 6 et 42 = interface_ip, redirection vers 169.254.169.253 dans le VPC (vxlan et bridge), seuls 53 et 123 servis, alertes du watchdog, VPC en error si two-hostsvc ne répond pas ; chrony de la VM sur la seule gateway (images avec chrony)
 # hôtes: hv1
 # tickets: #86
 
@@ -48,6 +48,12 @@ ntp_ok () {
     out=$(vm_py "${1}" "${2}" ntp_py "${3}") || { echo "pas de réponse NTP de ${3}"; return 1; }
     echo "${out}" | grep -qE '^mode=4 origin=ok li=[0-3] stratum=[0-9]+ offset=[0-4]$' || { echo "${out}"; return 1; }
 }
+has_chrony () { [ "${VM_IMAGE}" = rocky10 ] || vm_ssh "${1}" "${2}" 'command -v chronyc' >/dev/null; }
+chrony_only () {
+    local got
+    got=$(vm_ssh "${1}" "${2}" 'chronyc -n -c sources' | awk -F, '{print $3}' | sort | tr '\n' ' ')
+    [ "${got}" = "${3} " ] || { echo "sources de chrony : ${got:-aucune}"; return 1; }
+}
 no_answer () { ! vm_py "${1}" "${2}" dns_py "${3}" udp deb.debian.org "${4}" >/dev/null 2>&1; }
 served_ports () { ip netns exec "${1}" ss -Hlntu | awk '$5 ~ /^169\.254\.169\.253:/ {print $1, $5}' | sort | tr '\n' ' '; }
 rules () { ip netns exec "${1}" nft list chain ip two hostsvc | sed -n '/^\t\t/s/^\t\t//p'; }
@@ -91,6 +97,11 @@ for vm in vp-t29:10.29.1.10 vp-t29b:10.33.0.129; do
     check "${ip} : DNS en TCP via ${GW}" dns_ok "${vpc}" "${ip}" "${GW}" tcp
     check "${ip} : NTP via ${GW}, réponse serveur, origine vérifiée, écart < 5 s" ntp_ok "${vpc}" "${ip}" "${GW}"
     info "${ip} : NTP $(vm_py "${vpc}" "${ip}" ntp_py "${GW}" 2>&1)"
+    if has_chrony "${vpc}" "${ip}"; then
+        check "${ip} : chrony n'a pour source que la gateway ${GW} (option 42)" chrony_only "${vpc}" "${ip}" "${GW}"
+    else
+        info "${ip} : pas de chronyc dans l'image ${VM_IMAGE}, sources NTP de la VM non contrôlées"
+    fi
     info "${ip} : résolveur système : $(vm_ssh "${vpc}" "${ip}" 'getent hosts deb.debian.org' 2>&1 | head -1)"
     check "${ip} : port 5353 de la gateway non redirigé (aucune réponse)" no_answer "${vpc}" "${ip}" "${GW}" 5353
 done

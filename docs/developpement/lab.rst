@@ -385,7 +385,7 @@ Générée par ``test/e2e/run.sh --matrice`` à partir des en-têtes ; à régé
      - hv1 hv2
      - #56
    * - ``29-dns-ntp``
-     - DNS et NTP des VM par two-hostsvc — options DHCP 6 et 42 = interface_ip, redirection vers 169.254.169.253 dans le VPC (vxlan et bridge), seuls 53 et 123 servis, alertes du watchdog, VPC en error si two-hostsvc ne répond pas
+     - DNS et NTP des VM par two-hostsvc — options DHCP 6 et 42 = interface_ip, redirection vers 169.254.169.253 dans le VPC (vxlan et bridge), seuls 53 et 123 servis, alertes du watchdog, VPC en error si two-hostsvc ne répond pas ; chrony de la VM sur la seule gateway (images avec chrony)
      - hv1
      - #86
    * - ``31-gateway``
